@@ -4,12 +4,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.NewGame;
+import com.ringsofiron.career.ServiceRecord;
 import com.ringsofiron.combatsys.modding.Loadouts;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -304,7 +307,7 @@ class EnemySurveyTest {
             }
             if (INTERCEPT.equals(start)) r.entry = hunt(world, game.player, ids);
             Entity player = game.player;
-            PlayerGunnery gun = new PlayerGunnery(world, player);
+            PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, player);
             int[] fired = new int[1], hits = new int[1];
             world.combatEvents.shots.add((sig, shot) -> { if (ships.contains(shot.shooter)) fired[0]++; });
             world.combatEvents.impacts.add((sig, hit) -> { if (ships.contains(hit.owner) && hit.target == player) hits[0]++; });

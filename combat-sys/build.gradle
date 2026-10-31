@@ -1,4 +1,3 @@
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-combat-sys'
 
 dependencies {
@@ -9,8 +8,10 @@ dependencies {
   api project(':interior-grid')
   // Def classes are filled from TOML by modding-data's DefRegistry (and its Gson mapping).
   api project(':modding-data')
+  // @SerializedName on the public def classes, which javac reads wherever they are used
+  api "com.google.code.gson:gson:$gsonVersion"
 
-  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testImplementation "org.junit.jupiter:junit-jupiter"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
   // Box2D's native library, so tests can run a real physics world without a window.
   testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"

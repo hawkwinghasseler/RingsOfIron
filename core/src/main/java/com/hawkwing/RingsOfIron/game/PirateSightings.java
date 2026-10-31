@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.orbital.math.StateVector;
 
@@ -10,6 +11,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.orbital.rails.RailsUniverse;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * Which pirates on the rails the player knows of, and where they were last seen. A pirate is seen
@@ -32,14 +36,22 @@ public class PirateSightings extends EntitySystem {
         public boolean live;
     }
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final PhysicsManager physics;
+    private final RailsUniverse universe;
+    private final MacroSimulation macroSim;
+    private final ContractBoard contracts;
     private final Map<String, Sighting> seen = new HashMap<>();
     private final List<Entity> eyes = new ArrayList<>();
     private final StateVector a = new StateVector();
     private final StateVector b = new StateVector();
 
-    public PirateSightings(GameWorld world) {
-        this.world = world;
+    public PirateSightings(GameContext ctx, PhysicsManager physics, RailsUniverse universe, MacroSimulation macroSim, ContractBoard contracts) {
+        this.ctx = ctx;
+        this.physics = physics;
+        this.universe = universe;
+        this.macroSim = macroSim;
+        this.contracts = contracts;
     }
 
     @Override
@@ -49,24 +61,24 @@ public class PirateSightings extends EntitySystem {
 
     /** Looks again now. */
     public void refresh() {
-        Map<String, HostileComponent> hostiles = world.macroSim.hostiles().all();
-        seen.keySet().removeIf(uuid -> !hostiles.containsKey(uuid) || world.engine.getEntity(uuid) == null);
+        Map<String, HostileComponent> hostiles = macroSim.hostiles().all();
+        seen.keySet().removeIf(uuid -> !hostiles.containsKey(uuid) || ctx.engine.getEntity(uuid) == null);
         eyes.clear();
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         if (player != null) eyes.add(player);
         for (Map.Entry<String, HostileComponent> e : hostiles.entrySet()) {
             HostileComponent h = e.getValue();
             if (h.role == HostileComponent.Role.PATROL && HostileTraffic.SPONSOR.equals(h.faction)) {
-                Entity patrol = world.engine.getEntity(e.getKey());
-                if (patrol != null && world.universe.orbit(patrol) != null) eyes.add(patrol);
+                Entity patrol = ctx.engine.getEntity(e.getKey());
+                if (patrol != null && universe.orbit(patrol) != null) eyes.add(patrol);
             }
         }
-        double now = world.universe.now();
+        double now = universe.now();
         for (Map.Entry<String, HostileComponent> e : hostiles.entrySet()) {
             // The base's moored guns are found with the base, not sighted on the lanes
             if (!e.getValue().isPirate() || e.getValue().moored()) continue;
-            Entity pirate = world.engine.getEntity(e.getKey());
-            if (pirate == null || world.universe.orbit(pirate) == null) {
+            Entity pirate = ctx.engine.getEntity(e.getKey());
+            if (pirate == null || universe.orbit(pirate) == null) {
                 // In the bubble the world markers show it; it is no longer where the map last had it
                 Sighting s = seen.get(e.getKey());
                 if (s != null) s.live = false;
@@ -82,9 +94,9 @@ public class PirateSightings extends EntitySystem {
             Sighting s = seen.get(e.getKey());
             if (inRange || (s == null && bountyHeld(e.getKey()))) {
                 if (s == null) seen.put(e.getKey(), s = new Sighting());
-                Entity parent = world.universe.parentOf(pirate);
-                s.parentUuid = parent == null ? null : world.universe.uuidOf(parent);
-                world.universe.stateInFrame(pirate, parent, now, s.state);
+                Entity parent = universe.parentOf(pirate);
+                s.parentUuid = parent == null ? null : universe.uuidOf(parent);
+                universe.stateInFrame(pirate, parent, now, s.state);
                 s.time = now;
                 s.live = inRange;
             } else if (s != null) {
@@ -105,7 +117,7 @@ public class PirateSightings extends EntitySystem {
 
     /** True while the player holds a bounty on {@code uuid}. */
     public boolean bountyHeld(String uuid) {
-        for (Contract c : world.contracts.active()) {
+        for (Contract c : contracts.active()) {
             if (c.type == Contract.Type.BOUNTY && uuid.equals(c.targetUuid)) return true;
         }
         return false;
@@ -113,7 +125,7 @@ public class PirateSightings extends EntitySystem {
 
     private boolean withinRange(Entity pirate, Entity eye, double now) {
         if (!absolute(eye, now, b)) return false;
-        world.universe.absoluteState(pirate, now, a);
+        universe.absoluteState(pirate, now, a);
         return Math.hypot(a.x - b.x, a.y - b.y) <= SENSOR_RANGE;
     }
 
@@ -122,18 +134,18 @@ public class PirateSightings extends EntitySystem {
 
     /** A craft's state relative to the root body, on the rails or in the bubble; false if it can't be placed. */
     private boolean absolute(Entity e, double now, StateVector out) {
-        if (world.universe.orbit(e) != null) {
-            world.universe.absoluteState(e, now, out);
+        if (universe.orbit(e) != null) {
+            universe.absoluteState(e, now, out);
             return true;
         }
         com.ringsofiron.physicsexterior.components.PhysicsBodyComponent pb =
                 e.getComponent(com.ringsofiron.physicsexterior.components.PhysicsBodyComponent.class);
-        String anchor = world.physics.getAnchorParentUuid();
-        Entity parent = anchor == null ? null : world.universe.entity(anchor);
+        String anchor = physics.getAnchorParentUuid();
+        Entity parent = anchor == null ? null : universe.entity(anchor);
         if (pb == null || pb.body == null || parent == null) return false;
-        world.physics.getTrueState(pb.body, trueState);
+        physics.getTrueState(pb.body, trueState);
         out.set(trueState[0], trueState[1], trueState[2], trueState[3]);
-        out.add(world.universe.absoluteState(parent, now, parentState));
+        out.add(universe.absoluteState(parent, now, parentState));
         return true;
     }
 }

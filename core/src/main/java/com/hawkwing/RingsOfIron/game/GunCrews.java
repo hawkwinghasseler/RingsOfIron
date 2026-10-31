@@ -1,10 +1,11 @@
 package com.hawkwing.RingsOfIron.game;
 
-import com.badlogic.ashley.core.Engine;
+import com.hawkwing.RingsOfIron.wiring.AvatarInteractor;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.Vector2;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewQueries;
+import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
@@ -17,7 +18,11 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import java.util.function.Supplier;
+import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
 
 /**
  * Who works the player's guns, and so whether they fire by themselves.
@@ -49,36 +54,56 @@ public class GunCrews extends FixedLogicSystem {
     /** The captain's order to hold fire: no gun fires at will, crewed or not. */
     public boolean holdFire;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
+    private final AvatarInteractor avatar;
+    private final Bridge bridge;
+    private final DockingSystem docking;
+    private final SensorTrackingSystem sensors;
+    private final WeaponControlSystem weaponControl;
+    /** The pirates' base, built after the guns are: a fallen base's batteries have struck. */
+    private final Supplier<PirateBase> pirateBase;
     private float restockClock;
 
-    public GunCrews(GameWorld world) {
+    public GunCrews(GameContext ctx, CrewService crew, AvatarInteractor avatar, Bridge bridge, DockingSystem docking,
+                    SensorTrackingSystem sensors, WeaponControlSystem weaponControl, Supplier<PirateBase> pirateBase) {
         super(INTERVAL);
-        this.world = world;
+        this.ctx = ctx;
+        this.crew = crew;
+        this.avatar = avatar;
+        this.bridge = bridge;
+        this.docking = docking;
+        this.sensors = sensors;
+        this.weaponControl = weaponControl;
+        this.pirateBase = pirateBase;
     }
 
     @Override
     protected void updateFixed(float deltaTime) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         WeaponsComponent weapons = ship == null ? null : ship.getComponent(WeaponsComponent.class);
         if (weapons == null) return;
-        boolean docked = world.docking.dockedTo(ship) != null;
-        restock(weapons, docked && world.docking.dockedWithClearance(ship), deltaTime);
-        man(world, ship, weapons, docked || holdFire);
+        boolean docked = docking.dockedTo(ship) != null;
+        restock(weapons, docked && docking.dockedWithClearance(ship), deltaTime);
+        man(ship, weapons, docked || holdFire);
     }
 
     /** Sets each of the ship's guns' gunner, target and whether it fires at will; {@code hold}: none does. */
     static void man(GameWorld world, Entity ship, WeaponsComponent weapons, boolean hold) {
-        Engine engine = world.engine.getEcsEngine();
-        float console = CrewQueries.gunneryAt(engine, ship, weaponsConsole(ship));
-        Entity seatedGun = world.bridge.seatedGun();
-        float player = playerSkill(world);
+        world.gunCrews.man(ship, weapons, hold);
+    }
+
+    /** {@link #man(GameWorld, Entity, WeaponsComponent, boolean)}. */
+    void man(Entity ship, WeaponsComponent weapons, boolean hold) {
+        float console = CrewQueries.gunneryAt(crew, ship, weaponsConsole(ship));
+        Entity seatedGun = bridge.seatedGun();
+        float player = playerSkill();
         SensorComponent sensor = ship.getComponent(SensorComponent.class);
         for (WeaponMountComponent m : weapons.mounts) {
             WeaponDef def = m.def;
             if (def == null || def.pointDefense) continue;
-            float gunner = isGun(m.subsystem) ? CrewQueries.gunneryAt(engine, ship, m.subsystem) : CrewQueries.NO_CREW;
-            if (PlayerGunnery.inHand(world, m)) {
+            float gunner = isGun(m.subsystem) ? CrewQueries.gunneryAt(crew, ship, m.subsystem) : CrewQueries.NO_CREW;
+            if (PlayerGunnery.inHand(bridge, m)) {
                 m.weaponsFree = false;
                 m.gunnerySkill = seatedGun != null ? player
                         : gunner != CrewQueries.NO_CREW ? gunner : player * REMOTE_SKILL;
@@ -94,7 +119,7 @@ public class GunCrews extends FixedLogicSystem {
                 m.target = null;
                 continue;
             }
-            Entity target = hold ? null : pick(world, ship, sensor, m);
+            Entity target = hold ? null : pick(ship, sensor, m);
             m.target = target;
             m.weaponsFree = target != null;
         }
@@ -105,19 +130,19 @@ public class GunCrews extends FixedLogicSystem {
      * range on it ({@link WeaponControlSystem#effectiveRange}), else the nearest hostile the ship
      * tracks inside it. Null with none.
      */
-    static Entity pick(GameWorld world, Entity ship, SensorComponent sensor, WeaponMountComponent m) {
+    Entity pick(Entity ship, SensorComponent sensor, WeaponMountComponent m) {
         if (sensor == null) return null;
         Vector2 at = new Vector2();
         Track locked = sensor.trackFor(sensor.lockedTarget);
-        if (locked != null && hostile(world, locked.target)
-                && distance(world, locked, m, at) <= world.weaponControl.openingRange(m, locked.target)) return locked.target;
+        if (locked != null && hostile(locked.target)
+                && distance(locked, m, at) <= weaponControl.openingRange(m, locked.target)) return locked.target;
         Entity best = null;
         float nearest = Float.MAX_VALUE;
         for (int i = 0; i < sensor.tracks.size; i++) {
             Track t = sensor.tracks.get(i);
-            if (t.target == ship || !hostile(world, t.target)) continue;
-            float d = distance(world, t, m, at);
-            if (d <= nearest && d <= world.weaponControl.openingRange(m, t.target)) {
+            if (t.target == ship || !hostile(t.target)) continue;
+            float d = distance(t, m, at);
+            if (d <= nearest && d <= weaponControl.openingRange(m, t.target)) {
                 nearest = d;
                 best = t.target;
             }
@@ -125,8 +150,8 @@ public class GunCrews extends FixedLogicSystem {
         return best;
     }
 
-    private static float distance(GameWorld world, Track t, WeaponMountComponent m, Vector2 at) {
-        return t.positionAt(world.sensors.ageOf(t), at).dst(m.muzzle);
+    private float distance(Track t, WeaponMountComponent m, Vector2 at) {
+        return t.positionAt(sensors.ageOf(t), at).dst(m.muzzle);
     }
 
     /**
@@ -136,10 +161,19 @@ public class GunCrews extends FixedLogicSystem {
      * player's trigger. Never a missile; point defense has those.
      */
     public static boolean hostile(GameWorld world, Entity e) {
-        Entity player = world.getPlayer();
+        return hostile(world.getPlayer(), world.pirateBase, e);
+    }
+
+    /** {@link #hostile(GameWorld, Entity)}, here. */
+    boolean hostile(Entity e) {
+        return hostile(ctx.player(), pirateBase.get(), e);
+    }
+
+    /** {@link #hostile(GameWorld, Entity)}, to {@code player}'s ship, with the pirates' base or null. */
+    static boolean hostile(Entity player, PirateBase base, Entity e) {
         if (e == null || e.isScheduledForRemoval() || e == player) return false;
         if (e.getComponent(MissileComponent.class) != null || e.getComponent(DisabledComponent.class) != null) return false;
-        if (Struck.struck(world, e)) return false;
+        if (Struck.struck(base, e)) return false;
         NpcCombatComponent fight = e.getComponent(NpcCombatComponent.class);
         if (fight != null && fight.target == player) return true;
         HudMarkerComponent marker = e.getComponent(HudMarkerComponent.class);
@@ -176,9 +210,9 @@ public class GunCrews extends FixedLogicSystem {
     }
 
     /** The gunnery skill of the player's own character, or a middling one with none aboard. */
-    static float playerSkill(GameWorld world) {
-        Entity avatar = world.avatar.getAvatar();
-        CrewMemberComponent c = avatar == null ? null : avatar.getComponent(CrewMemberComponent.class);
+    float playerSkill() {
+        Entity own = avatar.getAvatar();
+        CrewMemberComponent c = own == null ? null : own.getComponent(CrewMemberComponent.class);
         return c == null || !c.isConscious() ? (c == null ? 0.5f : 0f) : c.def.gunnerySkill;
     }
 }

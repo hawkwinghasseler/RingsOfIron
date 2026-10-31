@@ -1,5 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipops.Boarding;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.shipops.StationYard;
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
@@ -7,7 +10,9 @@ import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.signals.Signal;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Array;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.RankLadder;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
@@ -15,6 +20,7 @@ import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -30,14 +36,26 @@ import com.ringsofiron.moddingdata.defs.ShipSaleDef;
 import com.ringsofiron.moddingdata.defs.ShipyardDef;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.AbandonShip;
+import com.ringsofiron.shipops.SalvagedComponent;
+import com.ringsofiron.shipops.ShipCargo;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.ShipNames;
+import com.ringsofiron.shipops.YardOrdersComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
+import com.ringsofiron.uihud.HintRegistry;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.macrosim.MacroSimulation;
+import java.util.function.Supplier;
 
 /**
  * Ship procurement (GDD section 5, round 3 category 3): buying ships at a faction's yards, and
@@ -133,35 +151,53 @@ public class Shipyard extends EntitySystem {
     /** Every deal, once it is done. The new ship is the player's when it fires. */
     public final Signal<Deal> deals = new Signal<>();
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
+    private final PhysicsManager physics;
+    private final MacroSimulation macroSim;
+    private final DockingSystem docking;
+    private final FactionStanding standing;
+    private final StationYard yard;
+    private final ContractBoard contracts;
+    private final Boarding boarding;
+    private final Supplier<Prisoners> prisoners;
     private final double[] stateA = new double[4], stateB = new double[4];
     /** The controls last given a prize to tow. */
     private FlightControlComponent towed;
 
-    Shipyard(GameWorld world) {
-        this.world = world;
+    Shipyard(GameContext ctx, CrewService crew, PhysicsManager physics, MacroSimulation macroSim, DockingSystem docking, FactionStanding standing, StationYard yard, ContractBoard contracts, Boarding boarding, Supplier<Prisoners> prisoners) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.physics = physics;
+        this.macroSim = macroSim;
+        this.docking = docking;
+        this.standing = standing;
+        this.yard = yard;
+        this.contracts = contracts;
+        this.boarding = boarding;
+        this.prisoners = prisoners;
         // Once taken, a prize's collars are rigged for towing: the weld holds under the engines' full
         // thrust. A yard's berth clamps hold a ship it is working on the same way (StationYard.holds)
-        world.docking.towLocked = (a, b) -> tows(a, b) || tows(b, a) || world.yard.holds(a, b) || world.yard.holds(b, a);
-        world.hints.register(HintRegistry.Context.LATCHED, "hand over the prize", 3, Action.YARD)
+        docking.towLocked = (a, b) -> tows(a, b) || tows(b, a) || yard.holds(a, b) || yard.holds(b, a);
+        ctx.hints.register(HintRegistry.Context.LATCHED, "hand over the prize", 3, Action.YARD)
                 .onlyWhen(() -> prize() != null && prizeStation() != null);
     }
 
     /** Points the player's engines through the centre of mass of the pair while a prize is in tow. */
     @Override
     public void update(float deltaTime) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         FlightControlComponent controls = ship == null ? null : ship.getComponent(FlightControlComponent.class);
         if (controls != towed && towed != null) towed.towing = null;
         towed = controls;
         if (controls == null) return;
         Entity prize = prize();
-        controls.towing = prize != null && world.docking.isRigid(ship) ? bodyOf(prize) : null;
+        controls.towing = prize != null && docking.isRigid(ship) ? bodyOf(prize) : null;
     }
 
     /** Whether {@code ship}, the player's, has taken {@code prize} and so tows it. */
     private boolean tows(Entity ship, Entity prize) {
-        return ship.getComponent(PlayerControllerComponent.class) != null && world.boarding.takenBy(prize, ship);
+        return ship.getComponent(PlayerControllerComponent.class) != null && boarding.takenBy(prize, ship);
     }
 
     // ------------------------------------------------------------------
@@ -170,10 +206,10 @@ public class Shipyard extends EntitySystem {
 
     /** The station the player is docked at with clearance, or null. */
     public Entity dockedStation() {
-        Entity ship = world.getPlayer();
-        Entity station = ship == null ? null : world.docking.dockedTo(ship);
+        Entity ship = ctx.player();
+        Entity station = ship == null ? null : docking.dockedTo(ship);
         if (station == null || station.getComponent(StationComponent.class) == null) return null;
-        return world.docking.dockedWithClearance(ship) ? station : null;
+        return docking.dockedWithClearance(ship) ? station : null;
     }
 
     /** Whether {@code station} sells ships: it is one of its owner's yards. */
@@ -186,11 +222,11 @@ public class Shipyard extends EntitySystem {
         List<Listing> out = new ArrayList<>();
         DefRegistry defs = defs();
         if (defs == null || yardOf(station) == null) return out;
-        int owner = world.standing.factionOf(station);
-        RankLadder ranks = world.standing.ranks();
+        int owner = standing.factionOf(station);
+        RankLadder ranks = standing.ranks();
         for (ShipSaleDef sale : defs.all("ship_sale", ShipSaleDef.class)) {
             if (sale.ship == null || !defs.has("ship", sale.ship) || sale.seller == null) continue;
-            if (world.standing.factions().index(sale.seller) != owner) continue;
+            if (standing.factions().index(sale.seller) != owner) continue;
             ShipDef ship = defs.get("ship", sale.ship, ShipDef.class);
             out.add(new Listing(sale.id, sale.ship, ship.name == null ? sale.ship : ship.name, owner, sale.price,
                     sale.rank == null ? -1 : ranks.indexOf(sale.rank), sale.standing));
@@ -212,26 +248,26 @@ public class Shipyard extends EntitySystem {
      * yard work under way, and whether the cargo and the people aboard fit the new ship.
      */
     public String refusal(Listing listing) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         Entity station = dockedStation();
         if (ship == null || station == null || !sellsShips(station)) return "Dock at a shipyard first";
         if (listing == null) return "Not sold here";
-        RankLadder ranks = world.standing.ranks();
-        int rank = world.standing.record().rank;
-        boolean sponsor = listing.seller == world.standing.sponsor();
+        RankLadder ranks = standing.ranks();
+        int rank = standing.record().rank;
+        boolean sponsor = listing.seller == standing.sponsor();
         if (sponsor && listing.rank > rank) return "Needs rank " + ranks.get(listing.rank).name;
         if (!ranks.mayFly(rank, listing.shipId)) {
             int lowest = ranks.lowestToFly(listing.shipId);
             return lowest < 0 ? "Too big for your commission" : "Needs rank " + ranks.get(lowest).name;
         }
-        double wait = world.standing.newChassisWait(listing.shipId);
+        double wait = standing.newChassisWait(listing.shipId);
         if (sponsor && wait > 0) {
             return String.format(Locale.ROOT, "Sold to a new %s after %.1f more days in rank",
-                    world.standing.rankName(ranks.lowestToFly(listing.shipId)), wait / 86_400);
+                    standing.rankName(ranks.lowestToFly(listing.shipId)), wait / 86_400);
         }
-        if (world.standing.standing(listing.seller) < listing.standing) {
+        if (standing.standing(listing.seller) < listing.standing) {
             return String.format(Locale.ROOT, "Needs standing %.0f with the %s", listing.standing,
-                    world.standing.factions().name(listing.seller));
+                    standing.factions().name(listing.seller));
         }
         YardOrdersComponent orders = ship.getComponent(YardOrdersComponent.class);
         if (orders != null && !orders.isEmpty()) return "Wait for the yard's work on your ship to finish";
@@ -286,7 +322,7 @@ public class Shipyard extends EntitySystem {
         Listing listing = listing(id);
         String no = refusal(listing);
         if (no != null) return no;
-        Entity old = world.getPlayer();
+        Entity old = ctx.player();
         Entity station = dockedStation();
         double cost = cost(listing, old);
         double tradeIn = tradeIn(old);
@@ -297,7 +333,7 @@ public class Shipyard extends EntitySystem {
         DockingPortsComponent oldPorts = old.getComponent(DockingPortsComponent.class);
         if (oldPorts != null) {
             for (DockingPort p : oldPorts.ports) {
-                if (p.state == DockingPort.State.DOCKED && p.partnerPort >= 0 && world.docking.docked(old, station)) stationPort = p.partnerPort;
+                if (p.state == DockingPort.State.DOCKED && p.partnerPort >= 0 && docking.docked(old, station)) stationPort = p.partnerPort;
             }
         }
 
@@ -309,8 +345,8 @@ public class Shipyard extends EntitySystem {
         String deal = cost >= 0 ? String.format(Locale.ROOT, "paid %,.0f cr", cost)
                 : String.format(Locale.ROOT, "%,.0f cr to you", -cost);
         String message = String.format(Locale.ROOT, "Bought the %s at %s: %s, with %,.0f cr for the %s", listing.name,
-                PlayerDocking.name(station), deal, tradeIn, oldName);
-        world.notices.post(message, NoticeLog.Kind.IMPORTANT);
+                ShipNames.name(station), deal, tradeIn, oldName);
+        ctx.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.BOUGHT, old, ship, station, cost, 0f));
         return message;
     }
@@ -321,10 +357,10 @@ public class Shipyard extends EntitySystem {
      * purchase, and a ship docked anywhere stays docked there. Returns what happened.
      */
     public String swap(String shipId) {
-        Entity old = world.getPlayer();
+        Entity old = ctx.player();
         if (old == null) return "No player ship";
-        if (world.getContent() == null || !world.getContent().defs.ids("ship").contains(shipId)) return "No ship " + shipId;
-        Entity station = world.docking.dockedTo(old);
+        if (ctx.content() == null || !ctx.content().defs.ids("ship").contains(shipId)) return "No ship " + shipId;
+        Entity station = docking.dockedTo(old);
         int stationPort = -1;
         DockingPortsComponent oldPorts = old.getComponent(DockingPortsComponent.class);
         if (oldPorts != null && station != null) {
@@ -352,7 +388,7 @@ public class Shipyard extends EntitySystem {
             y = body.body.getPosition().y;
             angle = (float) Math.toDegrees(body.body.getAngle());
         }
-        Entity ship = world.getContent().factory.spawnShip(shipId, x, y, angle);
+        Entity ship = ctx.content().factory.spawnShip(shipId, x, y, angle);
 
         // Off the old ship: the player's controls, credits, cargo and crew
         old.remove(PlayerControllerComponent.class);
@@ -367,7 +403,7 @@ public class Shipyard extends EntitySystem {
         if (controls != null) controls.rotationAssist = true;
         moveCrew(old, ship);
 
-        world.docking.undock(old);
+        docking.undock(old);
         retire(old);
         return ship;
     }
@@ -384,7 +420,7 @@ public class Shipyard extends EntitySystem {
             if (p.size != size || p.state == DockingPort.State.DOCKED) continue;
             if (pick < 0 || i == preferred) pick = i;
         }
-        if (pick >= 0) world.docking.dockInPlace(ship, 0, station, pick);
+        if (pick >= 0) docking.dockInPlace(ship, 0, station, pick);
     }
 
     /** Loads the old ship's cargo into the new one's hold. */
@@ -403,17 +439,17 @@ public class Shipyard extends EntitySystem {
     /** Everyone who calls {@code from} home, and everyone aboard it, goes aboard {@code to} and calls it home. */
     void moveCrew(Entity from, Entity to) {
         Array<Entity> crew = crewOf(from);
-        List<int[]> floor = GameScenario.floorTiles(to.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(to.getComponent(ShipGridComponent.class));
         CrewFactory.ensureBoard(to);
-        world.crew.clearPathfinders();
+        this.crew.clearPathfinders();
         sendStaffHome(from);
         // The avatar first, so it gets the first tile; the helm seat is the caller's to give
         crew.sort((p, q) -> Boolean.compare(q.getComponent(PlayerAvatarComponent.class) != null,
                 p.getComponent(PlayerAvatarComponent.class) != null));
         for (int i = 0; i < crew.size; i++) {
             Entity e = crew.get(i);
-            world.crew.releaseTask(e);
-            GridPositionComponent pos = world.crew.position(e);
+            this.crew.releaseTask(e);
+            GridPositionComponent pos = this.crew.position(e);
             pos.stop();
             pos.crossing = null;
             pos.setShip(to);
@@ -421,7 +457,7 @@ public class Shipyard extends EntitySystem {
                 int[] t = floor.get(i * floor.size() / Math.max(1, crew.size));
                 pos.setTile(t[0], t[1]);
             }
-            CrewMemberComponent c = world.crew.crew(e);
+            CrewMemberComponent c = this.crew.crew(e);
             c.setHome(to);
             PlayerAvatarComponent walk = e.getComponent(PlayerAvatarComponent.class);
             if (walk != null) walk.moveX = walk.moveY = 0f;
@@ -430,14 +466,14 @@ public class Shipyard extends EntitySystem {
 
     /** A station's technicians or loaders still aboard {@code ship} step back aboard their station before it goes. */
     private void sendStaffHome(Entity ship) {
-        for (Entity e : world.crew.crewEntities()) {
-            CrewMemberComponent c = world.crew.crew(e);
-            GridPositionComponent p = world.crew.position(e);
-            if (c == null || p == null || p.ship != ship || c.home == null || c.home == ship
+        for (Entity e : crew.aboard(ship)) {
+            CrewMemberComponent c = crew.crew(e);
+            GridPositionComponent p = crew.position(e);
+            if (c == null || p == null || c.home == null || c.home == ship
                     || c.home.getComponent(StationComponent.class) == null) continue;
-            List<int[]> floor = GameScenario.floorTiles(c.home.getComponent(ShipGridComponent.class));
+            List<int[]> floor = FloorTiles.of(c.home.getComponent(ShipGridComponent.class));
             if (floor.isEmpty()) continue;
-            world.crew.releaseTask(e);
+            crew.releaseTask(e);
             p.stop();
             p.crossing = null;
             p.setShip(c.home);
@@ -449,9 +485,9 @@ public class Shipyard extends EntitySystem {
     /** The living crew (and the player's avatar) aboard {@code ship} or calling it home. */
     Array<Entity> crewOf(Entity ship) {
         Array<Entity> out = new Array<>();
-        for (Entity e : world.crew.crewEntities()) {
-            CrewMemberComponent c = world.crew.crew(e);
-            GridPositionComponent p = world.crew.position(e);
+        for (Entity e : crew.crewEntities()) {
+            CrewMemberComponent c = crew.crew(e);
+            GridPositionComponent p = crew.position(e);
             if (c == null || p == null || !c.isAlive()) continue;
             // A station's own people aboard (a technician walking back from the yard's work) stay with it:
             // on round 6's seed 2026 the frigate carried off Highport's technicians, and its yard could do no more
@@ -467,14 +503,14 @@ public class Shipyard extends EntitySystem {
 
     /** The taken ship latched to the player's, which they are towing, or null. */
     public Entity prize() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         DockingPortsComponent ports = ship == null ? null : ship.getComponent(DockingPortsComponent.class);
         if (ports == null) return null;
         for (DockingPort p : ports.ports) {
             if (p.state != DockingPort.State.DOCKED || p.partnerUuid == null) continue;
-            Entity other = world.engine.getEntity(p.partnerUuid);
+            Entity other = ctx.engine.getEntity(p.partnerUuid);
             if (other == null || other.getComponent(StationComponent.class) != null) continue;
-            if (world.boarding.takenBy(other, ship)) return other;
+            if (boarding.takenBy(other, ship)) return other;
         }
         return null;
     }
@@ -484,16 +520,16 @@ public class Shipyard extends EntitySystem {
      * deals with the player (not hostile to all, and not refusing them clearance), or null.
      */
     public Entity prizeStation() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         Body own = bodyOf(ship);
         if (own == null) return null;
-        world.physics.getTrueState(own, stateA);
+        physics.getTrueState(own, stateA);
         Entity best = null;
         double bestD = PRIZE_RANGE;
-        for (Entity station : world.engine.getEcsEngine().getEntitiesFor(STATIONS)) {
-            Body b = world.docking.bodyOf(station);
+        for (Entity station : ctx.engine.getEcsEngine().getEntitiesFor(STATIONS)) {
+            Body b = docking.bodyOf(station);
             if (b == null || !deals(station)) continue;
-            world.physics.getTrueState(b, stateB);
+            physics.getTrueState(b, stateB);
             double d = Math.hypot(stateB[0] - stateA[0], stateB[1] - stateA[1]);
             if (d <= bestD) {
                 bestD = d;
@@ -505,10 +541,10 @@ public class Shipyard extends EntitySystem {
 
     /** Whether {@code station} does business with the player. */
     private boolean deals(Entity station) {
-        int owner = world.standing.factionOf(station);
-        FactionDef def = world.standing.factions().def(owner);
+        int owner = standing.factionOf(station);
+        FactionDef def = standing.factions().def(owner);
         if (def != null && def.hostileToAll) return false;
-        return world.standing.refusal(station, world.getPlayer()) == null;
+        return standing.refusal(station, ctx.player()) == null;
     }
 
     /** What a station pays for {@code prize}: {@link #PRIZE_SHARE} of its value, or {@link #STRIPPED_PRIZE_SHARE} once stripped. */
@@ -525,14 +561,14 @@ public class Shipyard extends EntitySystem {
     public float prizeStanding(Entity prize) {
         UuidComponent u = prize.getComponent(UuidComponent.class);
         if (u != null) {
-            for (Contract c : world.contracts.active()) {
+            for (Contract c : contracts.active()) {
                 if (c.type == Contract.Type.BOUNTY && u.id.equals(c.targetUuid)) return c.standing;
             }
-            for (Contract c : world.contracts.history()) {
+            for (Contract c : contracts.history()) {
                 if (c.type == Contract.Type.BOUNTY && u.id.equals(c.targetUuid)) return c.standing;
             }
         }
-        double own = Difficulty.shipValue(world.getPlayer());
+        double own = Difficulty.shipValue(ctx.player());
         double ratio = own <= 0 ? 1 : Difficulty.shipValue(prize) / own;
         int tier = ratio <= 1.2 ? 0 : ratio <= 2 ? 1 : 2;
         return 6 + 3 * tier;
@@ -544,15 +580,14 @@ public class Shipyard extends EntitySystem {
         if (prize == null) return "No prize in tow: take a ship and stay latched to it";
         Entity station = prizeStation();
         if (station == null) return String.format(Locale.ROOT, "Bring it within %.0f km of a station", PRIZE_RANGE / 1000);
-        if (turnIn && world.standing.factionOf(station) != world.standing.sponsor()) {
-            return "Only the " + world.standing.factions().name(world.standing.sponsor()) + "'s stations take prizes in for standing";
+        if (turnIn && standing.factionOf(station) != standing.sponsor()) {
+            return "Only the " + standing.factions().name(standing.sponsor()) + "'s stations take prizes in for standing";
         }
         int aboard = 0;
-        Entity ship = world.getPlayer();
-        for (Entity e : world.crew.crewEntities()) {
-            CrewMemberComponent c = world.crew.crew(e);
-            GridPositionComponent p = world.crew.position(e);
-            if (c != null && p != null && c.isAlive() && !c.held && p.ship == prize && c.home == ship) aboard++;
+        Entity ship = ctx.player();
+        for (Entity e : crew.aboard(prize)) {
+            CrewMemberComponent c = crew.crew(e);
+            if (c != null && c.isAlive() && !c.held && c.home == ship) aboard++;
         }
         if (aboard > 0) return aboard + " of your crew are still aboard: recall them first";
         return null;
@@ -565,14 +600,14 @@ public class Shipyard extends EntitySystem {
         Entity prize = prize(), station = prizeStation();
         double paid = prizeValue(prize);
         String name = name(prize);
-        double forPrisoners = world.prisoners.handOverWithPrize(prize, station);
+        double forPrisoners = prisoners.get().handOverWithPrize(prize, station);
         paid += forPrisoners;
-        TraderComponent trader = world.getPlayer().getComponent(TraderComponent.class);
+        TraderComponent trader = ctx.player().getComponent(TraderComponent.class);
         if (trader != null) trader.credits += paid;
         int held = handOver(prize);
-        String message = String.format(Locale.ROOT, "%s's tugs took the %s in: +%,.0f cr%s", PlayerDocking.name(station), name,
+        String message = String.format(Locale.ROOT, "%s's tugs took the %s in: +%,.0f cr%s", ShipNames.name(station), name,
                 paid, held > 0 ? ", " + held + " prisoners handed over" : "");
-        world.notices.post(message, NoticeLog.Kind.IMPORTANT);
+        ctx.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.PRIZE_SOLD, prize, null, station, paid, 0f));
         return message;
     }
@@ -584,16 +619,16 @@ public class Shipyard extends EntitySystem {
         Entity prize = prize(), station = prizeStation();
         float standing = prizeStanding(prize);
         String name = name(prize);
-        double forPrisoners = world.prisoners.handOverWithPrize(prize, station);
-        TraderComponent trader = world.getPlayer().getComponent(TraderComponent.class);
+        double forPrisoners = prisoners.get().handOverWithPrize(prize, station);
+        TraderComponent trader = ctx.player().getComponent(TraderComponent.class);
         if (trader != null) trader.credits += forPrisoners;
         int held = handOver(prize);
-        world.standing.reward(world.standing.sponsor(), standing, "turned in a prize");
+        this.standing.reward(this.standing.sponsor(), standing, "turned in a prize");
         String message = String.format(Locale.ROOT, "Turned the %s in at %s: standing %+.0f with the %s%s", name,
-                PlayerDocking.name(station), standing, world.standing.factions().name(world.standing.sponsor()),
+                ShipNames.name(station), standing, this.standing.factions().name(this.standing.sponsor()),
                 held > 0 ? ", " + held + " prisoners handed over"
                         + (forPrisoners > 0 ? String.format(Locale.ROOT, " (+%,.0f cr)", forPrisoners) : "") : "");
-        world.notices.post(message, NoticeLog.Kind.IMPORTANT);
+        ctx.notices.post(message, NoticeLog.Kind.IMPORTANT);
         deals.dispatch(new Deal(Deal.Kind.PRIZE_TURNED_IN, prize, null, station, 0, standing));
         return message;
     }
@@ -601,8 +636,8 @@ public class Shipyard extends EntitySystem {
     /** Unlatches the prize and gives it up, with whoever is held aboard. Returns how many were. */
     private int handOver(Entity prize) {
         int held = 0;
-        for (Entity e : crewOf(prize)) if (world.crew.crew(e).held) held++;
-        world.docking.undock(world.getPlayer());
+        for (Entity e : crewOf(prize)) if (crew.crew(e).held) held++;
+        docking.undock(ctx.player());
         retire(prize);
         return held;
     }
@@ -611,20 +646,17 @@ public class Shipyard extends EntitySystem {
 
     /** Takes {@code ship} out of the world with its systems and anyone still aboard. */
     void retire(Entity ship) {
-        Engine ecs = world.engine.getEcsEngine();
+        Engine ecs = ctx.engine.getEcsEngine();
         Array<Entity> gone = new Array<>();
-        for (Entity e : world.crew.crewEntities()) {
-            GridPositionComponent p = world.crew.position(e);
-            if (p != null && p.ship == ship) gone.add(e);
-        }
+        for (Entity e : crew.aboard(ship)) gone.add(e);
         for (Entity e : gone) {
-            world.crew.releaseTask(e);
+            crew.releaseTask(e);
             ecs.removeEntity(e);
         }
         ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry != null) for (Entity system : registry.subsystems) if (system != null) ecs.removeEntity(system);
         UuidComponent u = ship.getComponent(UuidComponent.class);
-        if (u == null || !world.macroSim.destroy(u.id)) ecs.removeEntity(ship);
+        if (u == null || !macroSim.destroy(u.id)) ecs.removeEntity(ship);
     }
 
     private Body bodyOf(Entity ship) {
@@ -637,9 +669,9 @@ public class Shipyard extends EntitySystem {
         DefRegistry defs = defs();
         StationComponent sc = station == null ? null : station.getComponent(StationComponent.class);
         if (defs == null || sc == null) return null;
-        int owner = world.standing.factionOf(station);
+        int owner = standing.factionOf(station);
         for (ShipyardDef yard : defs.all("shipyard", ShipyardDef.class)) {
-            if (yard.faction == null || world.standing.factions().index(yard.faction) != owner) continue;
+            if (yard.faction == null || standing.factions().index(yard.faction) != owner) continue;
             if (yard.stations.contains(sc.name) || (sc.typeId != null && yard.stationTypes.contains(sc.typeId))) return yard;
         }
         return null;
@@ -676,7 +708,7 @@ public class Shipyard extends EntitySystem {
     }
 
     private DefRegistry defs() {
-        return world.getContent() == null ? null : world.getContent().defs;
+        return ctx.content() == null ? null : ctx.content().defs;
     }
 
     /** A ship's name: its marker's label, else its ship def's name. */

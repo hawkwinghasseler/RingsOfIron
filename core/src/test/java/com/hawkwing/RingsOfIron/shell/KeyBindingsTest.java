@@ -2,7 +2,7 @@ package com.hawkwing.RingsOfIron.shell;
 
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.utils.ObjectMap;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

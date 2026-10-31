@@ -11,6 +11,7 @@ import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.modding.ShipPhysicsAssembler;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
+import com.ringsofiron.shipsystems.RcsThrust;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;

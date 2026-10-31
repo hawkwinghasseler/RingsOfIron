@@ -11,6 +11,8 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.coreengine.GameEngine;
 
 /**
  * What a click on the outside view picks: the ship or station under the cursor, the player's own
@@ -23,15 +25,19 @@ public final class ExteriorPick {
 
     private static final Family MARKED = Family.all(HudMarkerComponent.class, TransformComponent.class).get();
 
-    private final GameWorld world;
+    private final GameEngine engine;
+    private final PhysicsManager physics;
+    private final DockingSystem docking;
     private final Array<Body> bodies = new Array<>();
     private final Vector2 point = new Vector2();
     private final Vector2 middle = new Vector2();
     private Entity best;
     private float bestDistance;
 
-    public ExteriorPick(GameWorld world) {
-        this.world = world;
+    public ExteriorPick(GameEngine engine, PhysicsManager physics, DockingSystem docking) {
+        this.engine = engine;
+        this.physics = physics;
+        this.docking = docking;
     }
 
     /**
@@ -44,11 +50,11 @@ public final class ExteriorPick {
         bestDistance = slack;
         // On a hull: as near as half the reach at most, so the hull under the cursor beats a neighbour's
         // middle, but a craft latched to a station (on the station's body) can still be picked by its own
-        world.physics.getWorld().getBodies(bodies);
+        physics.getWorld().getBodies(bodies);
         point.set(x, y).scl(PhysicsManager.UNITS_PER_METER);
         for (Body body : bodies) {
             Entity e = craft(body.getUserData(), self);
-            if (e == null || world.docking.bodyOf(e) != body) continue;
+            if (e == null || docking.bodyOf(e) != body) continue;
             for (Fixture f : body.getFixtureList()) {
                 if (f.testPoint(point)) {
                     consider(e, Math.min(0.5f * slack, PhysicsManager.getPosition(body, middle).dst(x, y)));
@@ -58,7 +64,7 @@ public final class ExteriorPick {
         }
         bodies.clear();
         // Near where the HUD marks it, which also finds a craft latched to a station (on the station's body)
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(MARKED)) {
+        for (Entity e : engine.getEcsEngine().getEntitiesFor(MARKED)) {
             if (craft(e, self) == null) continue;
             TransformComponent t = e.getComponent(TransformComponent.class);
             consider(e, Vector2.dst(x, y, t.x, t.y));

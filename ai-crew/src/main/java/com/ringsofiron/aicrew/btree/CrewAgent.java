@@ -46,7 +46,7 @@ public class CrewAgent {
     public final GridNavGraph.DoorKey doorKey;
     /** Crew aboard this one's ship, gathered while looking for hostiles. */
     final Array<Entity> aboardScratch = new Array<>();
-    /** On the way to fill their suit, or filling it ({@link CrewTasks.RefillSuit}). */
+    /** On the way to fill their suit, or filling it ({@link RefillSuit}). */
     boolean refilling;
     /** Sim time until which no oxygen supply aboard was found reachable. */
     float refillBlockedUntil = Float.NEGATIVE_INFINITY;
@@ -54,7 +54,7 @@ public class CrewAgent {
     float suitBlockedUntil = Float.NEGATIVE_INFINITY;
     /** Sim time until which no suit locker aboard with room for their suit was found reachable. */
     float stowBlockedUntil = Float.NEGATIVE_INFINITY;
-    /** Left their post to fetch a suit ({@link CrewTasks.DoWork}): {@link CrewTasks.SuitUp} gets them one on the way back. */
+    /** Left their post to fetch a suit ({@link DoWork}): {@link SuitUp} gets them one on the way back. */
     boolean fetchSuit;
     /** Whether an EVA suit and an airlock were to be had at the last look ({@link EvaTasks#suitReady}), and when to look again. */
     boolean evaSuitReady;

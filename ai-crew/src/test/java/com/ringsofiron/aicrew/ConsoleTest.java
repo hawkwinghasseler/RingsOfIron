@@ -39,7 +39,7 @@ class ConsoleTest {
         assertTrue(CrewQueries.isManning(crewman, SubsystemType.HELM), s.c(crewman).activity);
         assertTrue(CrewQueries.isManning(marine, SubsystemType.WEAPONS), s.c(marine).activity);
         assertNull(s.c(engineer).task, "engineers don't man consoles");
-        assertEquals(0.75f, CrewQueries.bestSkill(s.engine, s.ship, CrewQueries.Station.GUNNERY), 1e-6f);
+        assertEquals(0.75f, CrewQueries.bestSkill(s.crew, s.ship, CrewQueries.Station.GUNNERY), 1e-6f);
     }
 
     @Test
@@ -47,7 +47,7 @@ class ConsoleTest {
         TestShips s = bridge();
         s.spawn(CrewRole.ENGINEER, 0, 1, 4);
         s.run(1f);
-        assertEquals(0f, CrewQueries.bestSkill(s.engine, s.ship, CrewQueries.Station.GUNNERY), 1e-6f,
+        assertEquals(0f, CrewQueries.bestSkill(s.crew, s.ship, CrewQueries.Station.GUNNERY), 1e-6f,
                 "crew aboard, but no one at the console");
     }
 
@@ -76,7 +76,7 @@ class ConsoleTest {
         console(s, SubsystemType.WEAPONS).getComponent(SubsystemComponent.class).health = 0f;
         s.run(1f);
         assertFalse(CrewQueries.isManning(marine, SubsystemType.WEAPONS));
-        assertEquals(0.75f, CrewQueries.bestSkill(s.engine, s.ship, CrewQueries.Station.GUNNERY), 1e-6f,
+        assertEquals(0.75f, CrewQueries.bestSkill(s.crew, s.ship, CrewQueries.Station.GUNNERY), 1e-6f,
                 "with no console left, anyone aboard counts again");
     }
 }

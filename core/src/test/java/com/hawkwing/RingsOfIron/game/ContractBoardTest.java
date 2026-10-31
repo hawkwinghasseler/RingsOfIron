@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.macrosim.economy.CommodityType;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.economy.TradeOrder;
@@ -300,7 +301,7 @@ class ContractBoardTest {
 
     @Test
     void theMissionWindowShowsTheDockedBoardAndTheContractsHeld() {
-        ContractMissions missions = new ContractMissions(world);
+        ContractMissions missions = new ContractMissions(world.context, world.docking, world.macroSim, world.standing, world.tension, world.contracts);
         MissionProvider.MissionBoard out = new MissionProvider.MissionBoard();
         missions.collect(out);
         assertFalse(out.isOpen(), "not docked and holding nothing");

@@ -7,6 +7,8 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -16,6 +18,8 @@ import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -142,7 +146,7 @@ class PlayableLoopTest {
 
         // The fight: guns and missiles until it gives up; it fights back
         game.provokeRaider();
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(game.raider);
         assertTrue(runUntil(240f, () -> {
             gun.fireGuns();

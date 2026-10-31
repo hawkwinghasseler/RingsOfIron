@@ -7,6 +7,7 @@ import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.ashley.core.Family;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.combatsys.shields.ShieldCloudComponent;
+import com.ringsofiron.stationsdocking.DockingSystem;
 
 /**
  * Shields go down for docking and come back up after (combat-sys Design 5.11): a ship docked to
@@ -15,11 +16,13 @@ import com.ringsofiron.combatsys.shields.ShieldCloudComponent;
  */
 public class ShieldDocking extends EntitySystem {
     private static final ComponentMapper<ShieldCloudComponent> CLOUDS = ComponentMapper.getFor(ShieldCloudComponent.class);
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final DockingSystem docking;
     private ImmutableArray<Entity> shielded;
 
-    public ShieldDocking(GameWorld world) {
-        this.world = world;
+    public ShieldDocking(GameContext ctx, DockingSystem docking) {
+        this.ctx = ctx;
+        this.docking = docking;
     }
 
     @Override
@@ -32,15 +35,15 @@ public class ShieldDocking extends EntitySystem {
         for (int i = 0; i < shielded.size(); i++) {
             Entity ship = shielded.get(i);
             ShieldCloudComponent cloud = CLOUDS.get(ship);
-            boolean docked = world.docking.dockedTo(ship) != null;
+            boolean docked = docking.dockedTo(ship) != null;
             if (docked && cloud.raised) {
                 cloud.raised = false;
                 cloud.loweredForDock = true;
-                if (ship == world.getPlayer()) world.notices.post("Shields lowered for docking", NoticeLog.Kind.INFO);
+                if (ship == ctx.player()) ctx.notices.post("Shields lowered for docking", NoticeLog.Kind.INFO);
             } else if (!docked && cloud.loweredForDock) {
                 cloud.raised = true;
                 cloud.loweredForDock = false;
-                if (ship == world.getPlayer()) world.notices.post("Shields raised", NoticeLog.Kind.INFO);
+                if (ship == ctx.player()) ctx.notices.post("Shields raised", NoticeLog.Kind.INFO);
             }
         }
     }

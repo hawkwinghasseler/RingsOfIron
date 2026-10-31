@@ -1,16 +1,23 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
+import com.ringsofiron.orbital.math.ClosestApproach;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.warp.DropOutSource;
 import com.ringsofiron.orbital.warp.TimeWarpController;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 
 import java.util.Locale;
 import java.util.function.Function;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.orbital.rails.RailsUniverse;
+import com.ringsofiron.orbital.events.OrbitalEventSystem;
+import java.util.function.BooleanSupplier;
 
 /**
  * Flies a planned transfer under time warp, so a trip to the Moon needs no hand on the warp keys:
@@ -30,18 +37,32 @@ public class Autopilot implements DropOutSource {
     /** Warp stops this long before the closest approach when the target hasn't come close by then, s. */
     static final double ARRIVAL_LEAD = 120;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final BooleanSupplier crashed;
+    private final RailsUniverse universe;
+    private final OrbitalEventSystem orbitalEvents;
+    private final TimeWarpController timeWarp;
+    private final DockingSystem docking;
+    private final BurnPlanner burns;
+    private final HostileTraffic hostiles;
     private final Navigation nav;
     private final Function<Action, String> keys;
     private final StateVector q = new StateVector();
     /** Set while the autopilot changes warp itself, so it doesn't hear its own change as the player's. */
     private boolean warping;
 
-    Autopilot(GameWorld world, Navigation nav, Function<Action, String> keys) {
-        this.world = world;
+    Autopilot(GameContext ctx, BooleanSupplier crashed, RailsUniverse universe, OrbitalEventSystem orbitalEvents, TimeWarpController timeWarp, DockingSystem docking, BurnPlanner burns, HostileTraffic hostiles, Navigation nav, Function<Action, String> keys) {
+        this.ctx = ctx;
+        this.crashed = crashed;
+        this.universe = universe;
+        this.orbitalEvents = orbitalEvents;
+        this.timeWarp = timeWarp;
+        this.docking = docking;
+        this.burns = burns;
+        this.hostiles = hostiles;
         this.nav = nav;
         this.keys = keys;
-        world.timeWarp.changes.add((signal, change) -> heard(change));
+        timeWarp.changes.add((signal, change) -> heard(change));
         nav.transfer.autopilotFliesTo = uuid -> {
             AutopilotComponent a = state();
             return a != null && uuid.equals(a.targetUuid);
@@ -50,7 +71,7 @@ public class Autopilot implements DropOutSource {
 
     /** The autopilot's state on the player's ship, or null when it is off. */
     public AutopilotComponent state() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         AutopilotComponent a = ship == null ? null : ship.getComponent(AutopilotComponent.class);
         return a == null || a.targetUuid == null ? null : a;
     }
@@ -80,30 +101,30 @@ public class Autopilot implements DropOutSource {
 
     /** Engages the autopilot for the navigation target. Returns what to tell the player. */
     public String engage() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (ship == null) return "No ship";
         String uuid = nav.target.uuid();
         if (uuid == null) return "The autopilot needs a navigation target (" + keys.apply(Action.NAV_TARGET) + " picks one)";
-        if (world.docking.dockedTo(ship) != null) return "Undock first (" + keys.apply(Action.UNDOCK) + "): the autopilot flies from open space";
+        if (docking.dockedTo(ship) != null) return "Undock first (" + keys.apply(Action.UNDOCK) + "): the autopilot flies from open space";
         if (!nav.helm.hasCrewForHelm(ship)) return "Nobody aboard to take the helm: the autopilot is a helmsman's job";
         if (nav.transfer.proposal() == null && !planned()) {
             String said = nav.transfer.plan();
             if (nav.transfer.proposal() == null) return "Autopilot: " + said;
         }
         if (nav.transfer.proposal() != null && !uuid.equals(nav.transfer.proposal().targetUuid)) nav.transfer.discard();
-        if (nav.transfer.proposal() != null) nav.transfer.accept(world.burns);
+        if (nav.transfer.proposal() != null) nav.transfer.accept(burns);
         AutopilotComponent a = ship.getComponent(AutopilotComponent.class);
         if (a == null) ship.add(a = new AutopilotComponent());
         a.targetUuid = uuid;
         a.held = false;
         a.holdReason = null;
         return "Autopilot: flying the transfer to " + nav.target.name(uuid) + ", warping between burns, and "
-                + (dockable(ship, world.engine.getEntity(uuid)) ? "docking" : "closing on it") + " on arrival ("
+                + (dockable(ship, ctx.engine.getEntity(uuid)) ? "docking" : "closing on it") + " on arrival ("
                 + keys.apply(Action.AUTOPILOT) + " again stops it)";
     }
 
     public void disengage() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (ship != null) ship.remove(AutopilotComponent.class);
     }
 
@@ -114,7 +135,7 @@ public class Autopilot implements DropOutSource {
         String to = nav.target.name(a.targetUuid);
         if (a.held) return "Autopilot to " + to + " holds: " + a.holdReason + " (" + keys.apply(Action.AUTOPILOT) + " goes on)";
         ManeuverNodeComponent.Node n = nav.nextBurn();
-        if (n != null) return "Autopilot to " + to + ": next burn in " + Navigation.formatTime(n.time - world.universe.now());
+        if (n != null) return "Autopilot to " + to + ": next burn in " + Navigation.formatTime(n.time - universe.now());
         return "Autopilot to " + to + ": coasting to arrival";
     }
 
@@ -124,27 +145,27 @@ public class Autopilot implements DropOutSource {
      */
     public void afterUpdate() {
         AutopilotComponent a = state();
-        if (a == null || world.getCrash() != null) return;
-        Entity ship = world.getPlayer();
-        Entity target = world.engine.getEntity(a.targetUuid);
+        if (a == null || crashed.getAsBoolean()) return;
+        Entity ship = ctx.player();
+        Entity target = ctx.engine.getEntity(a.targetUuid);
         if (target == null) {
             disengage();
             notice("Autopilot off: " + nav.target.name(a.targetUuid) + " is gone", NoticeLog.Kind.WARNING);
             return;
         }
-        if (world.docking.dockedTo(ship) != null) {
+        if (docking.dockedTo(ship) != null) {
             disengage();
             return;
         }
         // The rest of a leg, proposed on crossing into the next sphere of influence
         PlayerTransfer.Proposal p = nav.transfer.proposal();
         if (p != null && a.targetUuid.equals(p.targetUuid)) {
-            notice("Autopilot: " + nav.transfer.accept(world.burns), NoticeLog.Kind.INFO);
+            notice("Autopilot: " + nav.transfer.accept(burns), NoticeLog.Kind.INFO);
         }
-        if (a.held || world.timeWarp.isRailsWarp()) return;
-        double now = world.universe.now();
+        if (a.held || timeWarp.isRailsWarp()) return;
+        double now = universe.now();
         if (!planned() && !legGoesOn(ship) && nav.transfer.proposal() == null) {
-            if (world.universe.orbit(ship) == null && distance(ship, target) < HelmOrders.APPROACH_RANGE) {
+            if (universe.orbit(ship) == null && distance(ship, target) < HelmOrders.APPROACH_RANGE) {
                 arrive(ship, target);
                 return;
             }
@@ -166,13 +187,13 @@ public class Autopilot implements DropOutSource {
         int level = wait > 20 * 86400 ? 1_000_000 : wait > 2 * 86400 ? 100_000 : wait > 3 * 3600 ? 10_000
                 : wait > 600 ? 1_000 : wait > 60 ? 100 : wait > 2 ? TimeWarpController.MAX_PHYSICS_WARP : 1;
         // Rails warp refused for now (a burn being flown, a fire): as fast as the bubble goes meanwhile
-        if (level > TimeWarpController.MAX_PHYSICS_WARP && world.engine.getRailsWarpBlockedReason() != null) {
+        if (level > TimeWarpController.MAX_PHYSICS_WARP && ctx.engine.getRailsWarpBlockedReason() != null) {
             level = TimeWarpController.MAX_PHYSICS_WARP;
         }
-        if (level == world.timeWarp.getWarp()) return;
+        if (level == timeWarp.getWarp()) return;
         warping = true;
         try {
-            world.timeWarp.setWarp(level);
+            timeWarp.setWarp(level);
         } finally {
             warping = false;
         }
@@ -194,8 +215,8 @@ public class Autopilot implements DropOutSource {
         double t = Double.NaN;
         ManeuverNodeComponent.Node n = nav.nextBurn();
         if (n != null) t = n.time;
-        String id = world.universe.uuidOf(world.getPlayer());
-        OrbitalEvent e = id == null ? null : world.orbitalEvents.getQueue().nextFor(id);
+        String id = universe.uuidOf(ctx.player());
+        OrbitalEvent e = id == null ? null : orbitalEvents.getQueue().nextFor(id);
         if (e != null && e.time > now && !(e.time >= t)) t = e.time;
         if (Double.isNaN(t)) {
             ClosestApproach.Result c = nav.approach();
@@ -208,11 +229,11 @@ public class Autopilot implements DropOutSource {
     @Override
     public double nextDropOutTime() {
         AutopilotComponent a = state();
-        if (a == null || planned() || legGoesOn(world.getPlayer())) return Double.NaN;
+        if (a == null || planned() || legGoesOn(ctx.player())) return Double.NaN;
         ClosestApproach.Result c = nav.approach();
         if (c == null) return Double.NaN;
         double t = c.time - ARRIVAL_LEAD;
-        return t < world.universe.now() ? Double.NaN : t;
+        return t < universe.now() ? Double.NaN : t;
     }
 
     private void heard(TimeWarpController.WarpChange change) {
@@ -235,12 +256,12 @@ public class Autopilot implements DropOutSource {
                 hold(a, change.blockedReason == null ? "warp was refused" : change.blockedReason);
                 break;
             case ENCOUNTER:
-                if (change.encounter != null && change.encounter != world.engine.getEntity(a.targetUuid)) {
-                    hold(a, PlayerDocking.name(change.encounter) + " is coming close");
+                if (change.encounter != null && change.encounter != ctx.engine.getEntity(a.targetUuid)) {
+                    hold(a, ShipNames.name(change.encounter) + " is coming close");
                 }
                 break;
             case EXTERNAL:
-                if (world.hostiles.alerted()) hold(a, "pirates about");
+                if (hostiles.alerted()) hold(a, "pirates about");
                 break;
             default:
                 break;
@@ -254,11 +275,11 @@ public class Autopilot implements DropOutSource {
     }
 
     private void notice(String text, NoticeLog.Kind kind) {
-        world.notices.post(text, kind);
+        ctx.notices.post(text, kind);
     }
 
     private boolean planned() {
-        ManeuverNodeComponent m = world.burns.nodes();
+        ManeuverNodeComponent m = burns.nodes();
         return m != null && m.nodes.size > 0;
     }
 
@@ -278,7 +299,7 @@ public class Autopilot implements DropOutSource {
     private double distance(Entity ship, Entity target) {
         PlayerOrbitInfo orbits = nav.orbits();
         Entity frame = orbits.currentConic() == null ? null : orbits.parent();
-        if (frame == null || !nav.target.stateOf(target, frame, world.universe.now(), q)) return Double.POSITIVE_INFINITY;
+        if (frame == null || !nav.target.stateOf(target, frame, universe.now(), q)) return Double.POSITIVE_INFINITY;
         StateVector s = orbits.state();
         return Math.hypot(s.x - q.x, s.y - q.y);
     }

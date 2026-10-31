@@ -5,6 +5,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
@@ -171,7 +172,7 @@ class Round6WorldTest {
     void theTrafficMapShowsEachRegionsTension() {
         world.tension.raise(patrol, selene, 60f, null);
         TrafficMapProvider.TrafficFrame out = new TrafficMapProvider.TrafficFrame();
-        new RailsTrafficMap(world).collect(out);
+        new RailsTrafficMap(world.context, world.physics, world.universe, world.macroSim, world.nav, world.contracts, world.derelicts, world.pirateBase, world.tension).collect(out);
         List<String> lines = new ArrayList<>();
         for (TrafficMapProvider.Region r : out.regions) lines.add(r.line + (r.high ? " !" : ""));
         assertEquals(3, lines.size(), "the Patrol, Selene and the Free Traders, not the pirates: " + lines);

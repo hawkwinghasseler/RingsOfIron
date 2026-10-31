@@ -60,7 +60,7 @@ public class CrewSaveParticipant implements SaveParticipant {
         for (int i = 0; i < crew.size(); i++) {
             Entity e = crew.get(i);
             GridPositionComponent p = service.position(e);
-            p.ship = p.shipRef == null ? null : p.shipRef.get(engine.getUuidRegistry());
+            p.relink(p.shipRef == null ? null : p.shipRef.get(engine.getUuidRegistry()));
             CrewMemberComponent c = service.crew(e);
             c.home = c.homeRef == null ? null : c.homeRef.get(engine.getUuidRegistry());
             if (e.getComponent(PlayerAvatarComponent.class) == null

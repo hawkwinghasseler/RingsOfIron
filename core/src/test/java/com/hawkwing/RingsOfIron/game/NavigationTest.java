@@ -12,6 +12,7 @@ import com.ringsofiron.combatsys.events.ShotFiredEvent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
+import com.ringsofiron.orbital.math.ClosestApproach;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -133,7 +134,8 @@ class NavigationTest {
 
         // The orbit map shows it
         OrbitPathProvider.OrbitPath path = new OrbitPathProvider.OrbitPath();
-        assertTrue(new PlayerOrbitPath(world, world.burns).getPlayerPath(path));
+        assertTrue(new PlayerOrbitPath(world.context, world.physics, world.universe, world.macroSim, world.pirateBase, world.nav,
+                world.burns).getPlayerPath(path));
         assertTrue(path.proposed.size > 0);
         assertEquals(4, path.proposedNodes.size);
         assertEquals(4, path.approach.size);
@@ -303,7 +305,7 @@ class NavigationTest {
         }
         assertTrue(near > 0, "a pirate lurks by Highport");
         TrafficMapProvider.TrafficFrame frame = new TrafficMapProvider.TrafficFrame();
-        new RailsTrafficMap(world).collect(frame);
+        new RailsTrafficMap(world.context, world.physics, world.universe, world.macroSim, world.nav, world.contracts, world.derelicts, world.pirateBase, world.tension).collect(frame);
         assertTrue(frame.count(TrafficMapProvider.ContactKind.HOSTILE) >= near);
         for (TrafficMapProvider.Contact c : frame.contacts) {
             if (c.kind == TrafficMapProvider.ContactKind.STATION) assertFalse(c.id.isEmpty(), "stations can be picked");

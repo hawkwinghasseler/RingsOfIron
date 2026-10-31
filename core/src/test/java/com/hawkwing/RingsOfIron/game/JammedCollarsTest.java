@@ -6,8 +6,10 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.EvaSystem;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.shipops.CollarWear;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.uihud.providers.CrewProvider;
@@ -94,7 +96,7 @@ class JammedCollarsTest {
 
     @Test
     void heldInFromTheCrewWindowNobodyGoesOutTillOneIsSent() {
-        CrewRoster roster = new CrewRoster(world);
+        CrewRoster roster = new CrewRoster(world.context, world.crew, world.macroSim, world.standing, world.crewCareer, world.crewHiring, world.medical, world.prisoners, world.spacewalks);
         CrewProvider.CrewSheet sheet = new CrewProvider.CrewSheet();
         assertEquals("Nobody goes out on EVA unless sent, and anyone out is called back in", roster.toggleEva());
         roster.collect(sheet);

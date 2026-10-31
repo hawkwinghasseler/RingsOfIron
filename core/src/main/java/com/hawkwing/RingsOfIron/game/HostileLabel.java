@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.shipops.DisabledComponent;
 
 /**
  * Round 10: the one word the playtest's {@code hostiles} command gives a hostile craft's fight. Round 9's

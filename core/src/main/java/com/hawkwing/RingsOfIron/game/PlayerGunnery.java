@@ -11,6 +11,10 @@ import com.ringsofiron.combatsys.defs.ProjectileDef;
 import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.combatsys.defs.CombatDefs;
+import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
+import com.ringsofiron.combatsys.systems.WeaponControlSystem;
+import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 
 /**
  * The player's hands on their ship's weapons. The ship's own fire control does the aiming: the
@@ -35,7 +39,11 @@ public class PlayerGunnery {
     /** Missiles one press of the missile key launches, while the launcher has them. */
     public static final int SALVO = 4;
 
-    private final GameWorld world;
+    private final Bridge bridge;
+    private final CombatDefs combatDefs;
+    private final SensorTrackingSystem sensors;
+    private final WeaponControlSystem weaponControl;
+    private final MissileGuidanceSystem missiles;
     private final Entity ship;
     private float decoyCooldown;
     /** The launcher throwing a salvo, and the shot count it stops at. */
@@ -44,17 +52,16 @@ public class PlayerGunnery {
     private final Vector2 pos = new Vector2();
     private final Vector2 vel = new Vector2();
 
-    public PlayerGunnery(GameWorld world, Entity ship) {
-        this.world = world;
+    public PlayerGunnery(Bridge bridge, CombatDefs combatDefs, SensorTrackingSystem sensors, WeaponControlSystem weaponControl, MissileGuidanceSystem missiles, Entity ship) {
+        this.bridge = bridge;
+        this.combatDefs = combatDefs;
+        this.sensors = sensors;
+        this.weaponControl = weaponControl;
+        this.missiles = missiles;
         this.ship = ship;
-        holdMainGuns(weapons());
+        WeaponsComponent.holdMainGuns(weapons());
     }
 
-    /** The main guns wait for the player; point defense is weapons free. */
-    static void holdMainGuns(WeaponsComponent weapons) {
-        if (weapons == null) return;
-        for (WeaponMountComponent m : weapons.mounts) m.weaponsFree = m.def != null && m.def.pointDefense;
-    }
 
     public Entity ship() {
         return ship;
@@ -77,7 +84,7 @@ public class PlayerGunnery {
     /** Muzzle speed of the primary gun, m/s. */
     public float muzzleSpeed() {
         WeaponMountComponent m = primary();
-        ProjectileDef p = m == null || m.def.projectile == null ? null : world.combatDefs.projectiles.get(m.def.projectile);
+        ProjectileDef p = m == null || m.def.projectile == null ? null : combatDefs.projectiles.get(m.def.projectile);
         return p == null ? 1000f : p.muzzleSpeed;
     }
 
@@ -99,9 +106,9 @@ public class PlayerGunnery {
     public void fireGuns() {
         WeaponsComponent weapons = weapons();
         if (weapons == null) return;
-        boolean onGuns = world.bridge.playerOnGuns();
+        boolean onGuns = bridge.playerOnGuns();
         for (WeaponMountComponent m : weapons.mounts) {
-            if (onGuns ? inHand(world, m) && m.def.mount != WeaponDef.MountType.LAUNCHER : isMainGun(m)) m.trigger = true;
+            if (onGuns ? inHand(bridge, m) && m.def.mount != WeaponDef.MountType.LAUNCHER : isMainGun(m)) m.trigger = true;
         }
     }
 
@@ -111,9 +118,14 @@ public class PlayerGunnery {
      * that gun, point defense or not.
      */
     public static boolean inHand(GameWorld world, WeaponMountComponent mount) {
+        return inHand(world.bridge, mount);
+    }
+
+    /** {@link #inHand(GameWorld, WeaponMountComponent)}, from where the player sits on {@code bridge}. */
+    public static boolean inHand(Bridge bridge, WeaponMountComponent mount) {
         if (mount.def == null) return false;
-        if (world.bridge.playerAtWeapons()) return !mount.def.pointDefense;
-        Entity gun = world.bridge.seatedGun();
+        if (bridge.playerAtWeapons()) return !mount.def.pointDefense;
+        Entity gun = bridge.seatedGun();
         return gun != null && mount.subsystem == gun;
     }
 
@@ -128,7 +140,7 @@ public class PlayerGunnery {
         Entity contact = contactAt(x, y, pick);
         for (WeaponMountComponent m : weapons.mounts) {
             if (m.def.mount == WeaponDef.MountType.LAUNCHER) continue;
-            if (!inHand(world, m)) {
+            if (!inHand(bridge, m)) {
                 if (m.def.pointDefense) release(m);
                 continue;
             }
@@ -171,7 +183,7 @@ public class PlayerGunnery {
         for (int i = 0; i < sensor.tracks.size; i++) {
             com.ringsofiron.combatsys.fire.Track t = sensor.tracks.get(i);
             if (t.target == ship || t.target.getComponent(com.ringsofiron.combatsys.components.MissileComponent.class) != null) continue;
-            t.positionAt(world.sensors.ageOf(t), pos);
+            t.positionAt(sensors.ageOf(t), pos);
             com.ringsofiron.combatsys.components.SignatureComponent sig =
                     t.target.getComponent(com.ringsofiron.combatsys.components.SignatureComponent.class);
             float d = pos.dst(x, y) - (sig == null ? 0f : sig.radius);
@@ -192,10 +204,10 @@ public class PlayerGunnery {
         if (getTarget() == null) return false;
         WeaponsComponent weapons = weapons();
         if (weapons == null) return false;
-        boolean onGuns = world.bridge.playerOnGuns();
+        boolean onGuns = bridge.playerOnGuns();
         for (WeaponMountComponent m : weapons.mounts) {
-            if (m.def.mount != WeaponDef.MountType.LAUNCHER || (onGuns && !inHand(world, m))) continue;
-            if (m.cooldown <= 0f && hasMissiles(m) && world.weaponControl.available(m)) {
+            if (m.def.mount != WeaponDef.MountType.LAUNCHER || (onGuns && !inHand(bridge, m))) continue;
+            if (m.cooldown <= 0f && hasMissiles(m) && weaponControl.available(m)) {
                 m.trigger = true;
                 salvoFrom = m;
                 salvoUntil = m.shotsFired + Math.min(SALVO, m.def.magazine > 0 ? Math.max(m.ammo, 1) : SALVO);
@@ -224,7 +236,7 @@ public class PlayerGunnery {
             salvoFrom = null;
             return;
         }
-        if (m.cooldown <= 0f && world.weaponControl.available(m)) m.trigger = true;
+        if (m.cooldown <= 0f && weaponControl.available(m)) m.trigger = true;
     }
 
     /** Missiles left in all the working launchers, or -1 if none of them ever runs out. */
@@ -249,7 +261,7 @@ public class PlayerGunnery {
         float back = body.getAngle() + MathUtils.PI;
         PhysicsManager.getPosition(body, pos);
         PhysicsManager.getVelocity(body, vel).add(MathUtils.cos(back) * DECOY_SPEED, MathUtils.sin(back) * DECOY_SPEED);
-        world.missiles.dropDecoy(ship, pos.x + MathUtils.cos(back) * 8f, pos.y + MathUtils.sin(back) * 8f,
+        missiles.dropDecoy(ship, pos.x + MathUtils.cos(back) * 8f, pos.y + MathUtils.sin(back) * 8f,
                 vel.x, vel.y, DECOY_RADAR, DECOY_THERMAL, DECOY_LIFETIME);
         decoyCooldown = DECOY_COOLDOWN;
         return true;
@@ -263,7 +275,7 @@ public class PlayerGunnery {
     /** True when the primary gun is loaded and its system works. */
     public boolean gunsReady() {
         WeaponMountComponent m = primary();
-        return m != null && m.cooldown <= 0f && world.weaponControl.available(m);
+        return m != null && m.cooldown <= 0f && weaponControl.available(m);
     }
 
     /** Seconds until a launcher is loaded, 0 if one is, or -1 with no working launcher that has missiles. */
@@ -272,7 +284,7 @@ public class PlayerGunnery {
         if (weapons == null) return -1f;
         float best = -1f;
         for (WeaponMountComponent m : weapons.mounts) {
-            if (m.def.mount != WeaponDef.MountType.LAUNCHER || !world.weaponControl.available(m) || !hasMissiles(m)) continue;
+            if (m.def.mount != WeaponDef.MountType.LAUNCHER || !weaponControl.available(m) || !hasMissiles(m)) continue;
             if (best < 0f || m.cooldown < best) best = m.cooldown;
         }
         return best;

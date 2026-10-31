@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -99,7 +100,7 @@ public class CrewScene {
         int[] avatar = avatarTile();
         int[] best = null;
         float far = -1f;
-        for (int[] t : GameScenario.floorTiles(g)) {
+        for (int[] t : FloorTiles.of(g)) {
             if (!g.getTile(t[0], t[1]).isFlammable()) continue;
             float d = avatar == null ? 0f : (t[0] - avatar[0]) * (t[0] - avatar[0]) + (t[1] - avatar[1]) * (t[1] - avatar[1]);
             if (d > far) {
@@ -146,7 +147,7 @@ public class CrewScene {
 
     /** Pirates aboard, at the far end of the deck from the middle. */
     void board() {
-        List<int[]> floor = GameScenario.floorTiles(grid());
+        List<int[]> floor = FloorTiles.of(grid());
         int pirates = world.standing.factions().index(GameScenario.PIRATES);
         int own = world.crew.board(ship()).faction;
         int faction = pirates >= 0 && pirates != own ? pirates : own + 1;

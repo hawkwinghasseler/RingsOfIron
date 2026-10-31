@@ -1,7 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.Fluid;
@@ -10,6 +10,7 @@ import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 
+import com.ringsofiron.uihud.HintRegistry;
 import java.util.Locale;
 
 /**
@@ -22,20 +23,20 @@ import java.util.Locale;
  * It also reports each short circuit and tank burst aboard ({@link DamageStates}) as it happens.
  */
 public final class DamageControl {
-    private final GameWorld world;
+    private final GameContext ctx;
     /** A patchable leak was venting at the last update. */
     private boolean leaking;
     /** A leak was reported and has not been reported stopped yet. */
     private boolean episode;
     private boolean outWarned;
 
-    public DamageControl(GameWorld world) {
-        this.world = world;
-        world.hints.register(HintRegistry.Context.ANY, "crew (patching a hull leak)", 4, Action.CREW)
+    public DamageControl(GameContext ctx) {
+        this.ctx = ctx;
+        ctx.hints.register(HintRegistry.Context.ANY, "crew (patching a hull leak)", 4, Action.CREW)
                 .onlyWhen(() -> leaking && kits() > 0);
-        world.hints.register(HintRegistry.Context.ANY, "station yard (hull leaking, no patches left)", 4, Action.YARD)
+        ctx.hints.register(HintRegistry.Context.ANY, "station yard (hull leaking, no patches left)", 4, Action.YARD)
                 .onlyWhen(() -> leaking && kits() <= 0);
-        world.hints.register(HintRegistry.Context.DOCKED, "repair the patched hull", 5, Action.YARD)
+        ctx.hints.register(HintRegistry.Context.DOCKED, "repair the patched hull", 5, Action.YARD)
                 .onlyWhen(() -> hasPatches(grid()));
     }
 
@@ -51,7 +52,7 @@ public final class DamageControl {
         int leaks = venting || episode ? LeakPatches.leaks(grid).size : 0;
         leaking = venting && leaks > 0;
         if (leaking && !episode) {
-            world.notices.post(grid.patchKits > 0
+            ctx.notices.post(grid.patchKits > 0
                     ? String.format(Locale.ROOT, "Hull leaking: the crew are patching it (%d patch%s aboard). Warp waits until it holds",
                             grid.patchKits, grid.patchKits == 1 ? "" : "es")
                     : "Hull leaking and no patches left: warp is refused until a station yard repairs it",
@@ -59,12 +60,12 @@ public final class DamageControl {
             episode = true;
             outWarned = grid.patchKits <= 0;
         } else if (leaking && grid.patchKits <= 0 && !outWarned) {
-            world.notices.post("Out of hull patches: warp is refused until a station yard repairs the leak",
+            ctx.notices.post("Out of hull patches: warp is refused until a station yard repairs the leak",
                     NoticeLog.Kind.WARNING);
             outWarned = true;
         } else if (episode && leaks == 0 && !venting) {
             // Every leak patched (or mended) and the air has stopped going: say so once
-            world.notices.post("Leak patched, and warp is clear. The hull needs a yard for full repairs", NoticeLog.Kind.INFO);
+            ctx.notices.post("Leak patched, and warp is clear. The hull needs a yard for full repairs", NoticeLog.Kind.INFO);
             episode = false;
         }
         if (grid.patchKits > 0) outWarned = false;
@@ -74,7 +75,7 @@ public final class DamageControl {
     private void reportIncidents(ShipGridComponent grid) {
         for (DamageStates.Incident i : grid.incidents) {
             String text = describe(i);
-            world.notices.post(text, i.kind == DamageStates.Incident.Kind.BURST || i.fire
+            ctx.notices.post(text, i.kind == DamageStates.Incident.Kind.BURST || i.fire
                     ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
         }
         grid.incidents.clear();
@@ -109,7 +110,7 @@ public final class DamageControl {
     }
 
     private ShipGridComponent grid() {
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         return player == null ? null : player.getComponent(ShipGridComponent.class);
     }
 

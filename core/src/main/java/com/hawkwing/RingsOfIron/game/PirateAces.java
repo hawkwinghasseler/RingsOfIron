@@ -1,11 +1,14 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.defs.CombatDefs;
@@ -15,12 +18,17 @@ import com.ringsofiron.combatsys.modding.Loadouts;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.function.LongSupplier;
 import java.util.Set;
+import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * Named pirate aces (round 3, enemies). A pirate becomes one when it gets away from a fight with
@@ -74,6 +82,12 @@ public final class PirateAces {
      */
     public static boolean promote(GameWorld world, Entity ship, HostileComponent h, Collection<HostileComponent> all,
             double difficulty, boolean grudge) {
+        return promote(world.engine, world.combatDefs, () -> world.events.seed, ship, h, all, difficulty, grudge);
+    }
+
+    /** {@link #promote(GameWorld, Entity, HostileComponent, Collection, double, boolean)}, refitting from {@code defs} on the career's {@code seed}. */
+    static boolean promote(GameEngine engine, CombatDefs defs, LongSupplier seed, Entity ship, HostileComponent h,
+            Collection<HostileComponent> all, double difficulty, boolean grudge) {
         if (!h.isPirate() || h.moored() || h.ace || alive(all) >= MAX_ACES) return false;
         h.ace = true;
         h.grudge = grudge;
@@ -86,14 +100,14 @@ public final class PirateAces {
             marker.label = h.displayName + marker.label.substring(was.length());
         }
         // The career's seed too, so two careers' aces take different refits (round 6)
-        Random rng = new Random(NewGame.mix(world.events.seed, h.displayName.hashCode() * 31L + h.plunders + h.escapes));
-        LoadoutDef refit = Loadouts.pick(world.combatDefs, h.shipId, difficulty, true, rng);
-        if (refit != null && Loadouts.apply(ship, refit, world.combatDefs) > 0) h.loadout = refit.id;
+        Random rng = new Random(NewGame.mix(seed.getAsLong(), h.displayName.hashCode() * 31L + h.plunders + h.escapes));
+        LoadoutDef refit = Loadouts.pick(defs, h.shipId, difficulty, true, rng);
+        if (refit != null && Loadouts.apply(ship, refit, defs) > 0) h.loadout = refit.id;
         h.firepower = HostileTraffic.firepower(ship);
         // An ace's crew keep everyone's order: resetting first made the aces harder (round 10)
         com.ringsofiron.aicrew.ShipTaskBoardComponent board = ship.getComponent(com.ringsofiron.aicrew.ShipTaskBoardComponent.class);
         if (board != null) board.resetsPowerFirst = false;
-        for (CrewMemberComponent c : crewOf(world, ship)) {
+        for (CrewMemberComponent c : crewOf(engine, ship)) {
             // Into the crew's record too, which the crew career turns back into the def
             CrewRecord r = c.record();
             r.gunnery = Math.max(r.gunnery, ACE_SKILL);
@@ -112,6 +126,12 @@ public final class PirateAces {
      * it outguns them enough, as any pirate does. Returns its uuid, or null when none was promoted.
      */
     public static String gunshipAce(GameWorld world, java.util.Map<String, HostileComponent> all, double difficulty) {
+        return gunshipAce(world.engine, world.combatDefs, () -> world.events.seed, all, difficulty);
+    }
+
+    /** {@link #gunshipAce(GameWorld, java.util.Map, double)}, as {@link #promote(GameEngine, CombatDefs, LongSupplier, Entity, HostileComponent, Collection, double, boolean)} promotes. */
+    static String gunshipAce(GameEngine engine, CombatDefs defs, LongSupplier seed, java.util.Map<String, HostileComponent> all,
+            double difficulty) {
         String best = null;
         for (java.util.Map.Entry<String, HostileComponent> e : all.entrySet()) {
             HostileComponent h = e.getValue();
@@ -119,8 +139,8 @@ public final class PirateAces {
             if (h.ace && !h.partDropped) return null;
             if (!h.ace && (best == null || e.getKey().compareTo(best) < 0)) best = e.getKey();
         }
-        Entity ship = best == null ? null : world.engine.getEntity(best);
-        if (ship == null || !promote(world, ship, all.get(best), all.values(), difficulty, false)) return null;
+        Entity ship = best == null ? null : engine.getEntity(best);
+        if (ship == null || !promote(engine, defs, seed, ship, all.get(best), all.values(), difficulty, false)) return null;
         return best;
     }
 
@@ -129,21 +149,27 @@ public final class PirateAces {
      * board already does; it stands until the day turns, when the day's boards take it up.
      */
     public static void postBounty(GameWorld world, String uuid) {
-        if (world.contracts == null || uuid == null) return;
-        double now = world.engine.getSimSeconds();
+        postBounty(world.engine, world.macroSim, world.standing, world.contracts, uuid);
+    }
+
+    /** {@link #postBounty(GameWorld, String)}, on {@code contracts}' boards at {@code macroSim}'s stations. */
+    static void postBounty(GameEngine engine, MacroSimulation macroSim, FactionStanding standing, ContractBoard contracts,
+            String uuid) {
+        if (contracts == null || uuid == null) return;
+        double now = engine.getSimSeconds();
         double dayEnds = (Math.floor(now / ContractBoard.DAY) + 1) * ContractBoard.DAY;
-        for (com.ringsofiron.macrosim.economy.EconomyNode node : world.macroSim.stations()) {
-            Entity station = world.engine.getEntity(node.stationUuid);
+        for (com.ringsofiron.macrosim.economy.EconomyNode node : macroSim.stations()) {
+            Entity station = engine.getEntity(node.stationUuid);
             if (station == null) continue;
             boolean listed = false;
-            for (Contract c : world.contracts.offers(node.stationUuid)) listed |= uuid.equals(c.targetUuid);
+            for (Contract c : contracts.offers(node.stationUuid)) listed |= uuid.equals(c.targetUuid);
             if (listed) continue;
-            int giver = world.standing.factionOf(station);
-            for (Contract c : world.contracts.bounties(node, giver)) {
+            int giver = standing.factionOf(station);
+            for (Contract c : contracts.bounties(node, giver)) {
                 if (!uuid.equals(c.targetUuid)) continue;
                 c.stationUuid = node.stationUuid;
                 c.deadline = dayEnds;
-                world.contracts.postEvent(c);
+                contracts.postEvent(c);
             }
         }
     }
@@ -184,8 +210,8 @@ public final class PirateAces {
         return best == null ? null : best.id;
     }
 
-    private static Iterable<CrewMemberComponent> crewOf(GameWorld world, Entity ship) {
-        ImmutableArray<Entity> crew = world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW);
+    private static Iterable<CrewMemberComponent> crewOf(GameEngine engine, Entity ship) {
+        ImmutableArray<Entity> crew = engine.getEcsEngine().getEntitiesFor(CrewService.CREW);
         List<CrewMemberComponent> out = new ArrayList<>();
         for (Entity e : crew) {
             if (e.getComponent(GridPositionComponent.class).ship == ship) out.add(e.getComponent(CrewMemberComponent.class));

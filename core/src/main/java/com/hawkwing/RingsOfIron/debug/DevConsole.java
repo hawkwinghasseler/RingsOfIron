@@ -93,7 +93,14 @@ public final class DevConsole {
         this.actions = new DebugActions(world, tools != null ? tools : new WorldDebug(world));
         this.console = reuse != null ? reuse : new ScriptConsole(DevConsole.class.getClassLoader());
         console.addStarImports("com.badlogic.ashley.core", "com.hawkwing.RingsOfIron.game", "com.hawkwing.RingsOfIron.debug",
-                "com.ringsofiron.aicrew", "com.ringsofiron.interiorgrid");
+                "com.hawkwing.RingsOfIron.app",
+                "com.ringsofiron.aicrew", "com.ringsofiron.interiorgrid",
+                // Packages that took classes out of game in the refactor, so scripts still reach them
+                "com.hawkwing.RingsOfIron.render", "com.hawkwing.RingsOfIron.wiring", "com.ringsofiron.coreengine",
+                "com.ringsofiron.coreengine.input", "com.ringsofiron.uihud", "com.ringsofiron.macrosim.bubble",
+                "com.ringsofiron.macrosim.economy", "com.ringsofiron.orbital.math", "com.ringsofiron.aicrew.pilot",
+                "com.ringsofiron.audiospatial.systems", "com.ringsofiron.shipsystems", "com.ringsofiron.career",
+                "com.ringsofiron.shipops");
         console.addImports("com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause");
         console.setFormatter(DevConsole::format);
         console.setScriptDir(scriptDir != null ? scriptDir : defaultScriptDir());
@@ -604,7 +611,7 @@ public final class DevConsole {
                     + (c.bleedOut > 0f ? ", bleeds out in " + Math.round(c.bleedOut) + " s" : "") + ", " + c.activity;
         }
         if (o instanceof DebugTarget || o instanceof Tile || o instanceof CharSequence) return String.valueOf(o);
-        return org.codehaus.groovy.runtime.InvokerHelper.inspect(o);
+        return org.codehaus.groovy.runtime.FormatHelper.inspect(o);
     }
 
     /** A value's name for an error line. */

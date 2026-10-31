@@ -6,6 +6,8 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
@@ -131,7 +133,7 @@ class BaseDefenceTest {
         Entity other = world.missiles.launch(dart, world.engine.getEntity(world.pirateBase.uuid()), null, game.player,
                 at.x, at.y + 3_000, 0, -100, (float) -Math.PI / 2);
         run(1);
-        CombatThreats threats = new CombatThreats(world);
+        CombatThreats threats = new CombatThreats(world.context);
         var frame = new com.ringsofiron.uihud.providers.ThreatProvider.ThreatFrame();
         threats.collect(frame);
         assertTrue(frame.incoming() >= 2, "both darts inbound, with any the defence has fired");

@@ -23,6 +23,9 @@ import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
 
 import java.util.List;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * Freighters macro-sim brings into the bubble while they sit at a station. On rails a docked
@@ -47,18 +50,24 @@ public class StationTraffic implements BubbleTransitionListener {
 
     private final ComponentMapper<DockingPortsComponent> portsMapper = ComponentMapper.getFor(DockingPortsComponent.class);
     private final ComponentMapper<ShipGridComponent> gridMapper = ComponentMapper.getFor(ShipGridComponent.class);
-    private final GameWorld world;
+    private final GameEngine engine;
+    private final PhysicsManager physics;
+    private final MacroSimulation macroSim;
+    private final DockingSystem docking;
     private final StateVector station = new StateVector();
     private final Vector2 ship = new Vector2();
     private boolean occupied;
 
-    public StationTraffic(GameWorld world) {
-        this.world = world;
+    public StationTraffic(GameEngine engine, PhysicsManager physics, MacroSimulation macroSim, DockingSystem docking) {
+        this.engine = engine;
+        this.physics = physics;
+        this.macroSim = macroSim;
+        this.docking = docking;
     }
 
     @Override
     public void onEnterBubble(String uuid, List<RailsModel.Burn> cancelledBurns, double t) {
-        Entity freighter = world.engine.getEntity(uuid);
+        Entity freighter = engine.getEntity(uuid);
         if (freighter == null || freighter.getComponent(FreighterComponent.class) == null) return;
         PhysicsBodyComponent pb = freighter.getComponent(PhysicsBodyComponent.class);
         if (pb == null || pb.body == null) return;
@@ -73,7 +82,7 @@ public class StationTraffic implements BubbleTransitionListener {
             moveClear(freighter, pb.body, at);
             return;
         }
-        world.docking.dockInPlace(freighter, 0, at, port);
+        docking.dockInPlace(freighter, 0, at, port);
         freighter.remove(NpcPilotComponent.class);
         // Berthed, so it flies itself off when it has somewhere to go (FreighterTraffic)
         freighter.add(BerthingSystem.berthed(at, 0, port));
@@ -93,10 +102,10 @@ public class StationTraffic implements BubbleTransitionListener {
     /** The station whose hull {@code body} came into the bubble inside of, or null. */
     private Entity stationInside(Body body, double t) {
         PhysicsManager.getPosition(body, ship);
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(STATIONS)) {
+        for (Entity e : engine.getEcsEngine().getEntitiesFor(STATIONS)) {
             String id = e.getComponent(UuidComponent.class).id;
-            if (world.macroSim.station(id) == null) continue;
-            world.macroSim.relativeToAnchor(id, t, station);
+            if (macroSim.station(id) == null) continue;
+            macroSim.relativeToAnchor(id, t, station);
             if (Math.hypot(station.x - ship.x, station.y - ship.y) < reach(e)) return e;
         }
         return null;
@@ -161,7 +170,7 @@ public class StationTraffic implements BubbleTransitionListener {
     private boolean spotFree(Body self, float x, float y) {
         float h = SPACING * 0.5f;
         occupied = false;
-        world.physics.queryAABB(x - h, y - h, x + h, y + h, fixture -> {
+        physics.queryAABB(x - h, y - h, x + h, y + h, fixture -> {
             if (fixture.getBody() == self) return true;
             occupied = true;
             return false;

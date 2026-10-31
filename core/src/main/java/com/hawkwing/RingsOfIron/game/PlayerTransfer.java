@@ -1,16 +1,21 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.macrosim.fleet.RoutePlanner;
 import com.ringsofiron.macrosim.fleet.TransferPlanner;
 import com.ringsofiron.macrosim.rails.RailsModel;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
 
+import com.ringsofiron.shipsystems.PropellantFeed;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import com.ringsofiron.orbital.rails.RailsUniverse;
+import com.ringsofiron.macrosim.MacroSimulation;
+import java.util.function.Function;
 
 /**
  * "Plan to target": burns to take the player's ship to its {@link NavTarget}, from the same
@@ -54,7 +59,10 @@ public class PlayerTransfer {
         }
     }
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final RailsUniverse universe;
+    private final MacroSimulation macroSim;
+    private final Function<Entity, com.ringsofiron.interiorgrid.ShipGridComponent.MassProperties> shipMass;
     private final NavTarget target;
     private final PlayerOrbitInfo orbits;
     private Proposal proposal;
@@ -65,9 +73,12 @@ public class PlayerTransfer {
     /** True while the autopilot flies to {@code uuid} and so accepts the rest of a leg itself. */
     public java.util.function.Predicate<String> autopilotFliesTo = uuid -> false;
 
-    public PlayerTransfer(GameWorld world, NavTarget target, PlayerOrbitInfo orbits,
+    public PlayerTransfer(GameContext ctx, RailsUniverse universe, MacroSimulation macroSim, Function<Entity, com.ringsofiron.interiorgrid.ShipGridComponent.MassProperties> shipMass, NavTarget target, PlayerOrbitInfo orbits,
                           java.util.function.Function<Action, String> keys) {
-        this.world = world;
+        this.ctx = ctx;
+        this.universe = universe;
+        this.macroSim = macroSim;
+        this.shipMass = shipMass;
         this.target = target;
         this.orbits = orbits;
         this.keys = keys;
@@ -84,14 +95,14 @@ public class PlayerTransfer {
         if (uuid == null) return "No navigation target (" + keys.apply(Action.NAV_TARGET) + " picks one)";
         Entity e = target.entity();
         String name = target.name();
-        if (world.universe.orbit(e) == null) return name + " is in the bubble with you: fly there, or order the helm to approach ("
+        if (universe.orbit(e) == null) return name + " is in the bubble with you: fly there, or order the helm to approach ("
                 + keys.apply(Action.HELM_APPROACH) + ")";
         KeplerOrbit k = orbits.currentConic();
         Entity parent = orbits.parent();
         if (k == null || parent == null) return "No orbit to plan from";
-        String parentUuid = world.universe.uuidOf(parent);
-        double now = world.universe.now();
-        Proposal p = plan(world.macroSim.rails(), parentUuid, k, uuid, name, now, now + LEAD);
+        String parentUuid = universe.uuidOf(parent);
+        double now = universe.now();
+        Proposal p = plan(macroSim.rails(), parentUuid, k, uuid, name, now, now + LEAD);
         setLeg(null, null);
         if (p == null) return "No transfer to " + name + " from this orbit";
         if (p.burns.isEmpty()) return "You are already with " + name;
@@ -101,8 +112,8 @@ public class PlayerTransfer {
 
     /** "Not enough propellant: 1,030 m/s left. ", or nothing when the tanks cover the plan's burns. */
     String shortfall(Proposal p) {
-        Entity ship = world.getPlayer();
-        com.ringsofiron.interiorgrid.ShipGridComponent.MassProperties m = ship == null ? null : world.shipMass(ship);
+        Entity ship = ctx.player();
+        com.ringsofiron.interiorgrid.ShipGridComponent.MassProperties m = ship == null ? null : shipMass.apply(ship);
         double left = m == null ? Double.POSITIVE_INFINITY : PropellantFeed.deltaVLeft(ship, m.mass);
         if (!(left < p.totalDeltaV)) return "";
         return String.format(java.util.Locale.ROOT, "Not enough propellant: %,.0f m/s left. ", left);
@@ -163,26 +174,26 @@ public class PlayerTransfer {
      * once the ship is in the next sphere of influence with no burns left.
      */
     public void update(BurnPlanner planner) {
-        if (proposal != null && world.engine.getEntity(proposal.targetUuid) == null) proposal = null;
-        Entity ship = world.getPlayer();
+        if (proposal != null && ctx.engine.getEntity(proposal.targetUuid) == null) proposal = null;
+        Entity ship = ctx.player();
         TransferLegComponent leg = ship == null ? null : ship.getComponent(TransferLegComponent.class);
         if (leg == null || leg.continueIn == null) return;
-        if (leg.continueTo == null || world.engine.getEntity(leg.continueTo) == null) {
+        if (leg.continueTo == null || ctx.engine.getEntity(leg.continueTo) == null) {
             setLeg(null, null);
             return;
         }
         KeplerOrbit k = orbits.currentConic();
         Entity parent = orbits.parent();
-        if (k == null || parent == null || !leg.continueIn.equals(world.universe.uuidOf(parent))) return;
+        if (k == null || parent == null || !leg.continueIn.equals(universe.uuidOf(parent))) return;
         if (planner.nodes() != null && planner.nodes().nodes.size > 0) return;
         String to = leg.continueTo;
         setLeg(null, null);
-        double now = world.universe.now();
-        RailsModel rails = world.macroSim.rails();
+        double now = universe.now();
+        RailsModel rails = macroSim.rails();
         StateVector s = k.stateAt(now);
         RoutePlanner.Route route;
         try {
-            route = RoutePlanner.afterCrossing(rails, world.universe.uuidOf(parent),
+            route = RoutePlanner.afterCrossing(rails, universe.uuidOf(parent),
                     new com.ringsofiron.macrosim.rails.StateVector(s.x, s.y, s.vx, s.vy), to, now, now + SETTLE);
         } catch (RuntimeException ex) {
             route = null;
@@ -206,7 +217,7 @@ public class PlayerTransfer {
      * there; kept on the player's ship ({@link TransferLegComponent}) so it is saved.
      */
     private void setLeg(String continueIn, String continueTo) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (ship == null) return;
         TransferLegComponent leg = ship.getComponent(TransferLegComponent.class);
         if (leg == null) {
@@ -219,7 +230,7 @@ public class PlayerTransfer {
 
     /** "To Shackleton Ice: 2 burns, 3,140 m/s, arrives in 4.2 d" */
     public String describe(Proposal p) {
-        double in = p.arrivalTime - world.universe.now();
+        double in = p.arrivalTime - universe.now();
         return String.format(java.util.Locale.ROOT, "To %s: %d %s, %,.0f m/s, %s %s", p.targetName, p.burns.size(),
                 p.burns.size() == 1 ? "burn" : "burns", p.totalDeltaV,
                 p.nextParent == null ? "arrives in" : "then on from there; about", RailsTrafficMap.formatEta(in));

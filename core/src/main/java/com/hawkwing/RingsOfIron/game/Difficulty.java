@@ -1,6 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.career.RankLadder;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -8,6 +10,7 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.moddingdata.components.DefRefComponent;
 import com.ringsofiron.moddingdata.defs.ShipDef;
+import com.ringsofiron.moddingdata.ModContext;
 
 /**
  * How hard the game pushes back (GDD section 5): rises with the player's rank and their net worth,
@@ -54,14 +57,17 @@ public final class Difficulty {
      * flies a pirate gunship ({@link PirateAces#gunshipAce}).
      */
     public static boolean fliesAtLeast(GameWorld world, String shipId) {
-        Entity player = world.getPlayer();
+        return fliesAtLeast(world.standing, world.getPlayer(), world.getContent(), shipId);
+    }
+
+    /** {@link #fliesAtLeast(GameWorld, String)}, for {@code player}'s ship under {@code standing}'s ranks and the loaded {@code content}. */
+    public static boolean fliesAtLeast(FactionStanding standing, Entity player, ModContext content, String shipId) {
         DefRefComponent ref = player == null ? null : player.getComponent(DefRefComponent.class);
-        var content = world.getContent();
         if (ref == null || content == null) return false;
         ShipDef mine = content.defs.get("ship", ref.defId, ShipDef.class);
         ShipDef theirs = content.defs.get("ship", shipId, ShipDef.class);
         if (mine == null || theirs == null) return false;
-        RankLadder ranks = world.standing.ranks();
+        RankLadder ranks = standing.ranks();
         int a = ranks.chassisSize(mine.chassis), b = ranks.chassisSize(theirs.chassis);
         return a >= 0 && b >= 0 && a >= b;
     }
@@ -74,7 +80,12 @@ public final class Difficulty {
 
     /** The player's difficulty now. */
     public static double of(GameWorld world) {
-        return of(world.standing.record().rank, netWorth(world.getPlayer()));
+        return of(world.standing, world.getPlayer());
+    }
+
+    /** The difficulty for {@code player}'s ship at the rank {@code standing} records. */
+    public static double of(FactionStanding standing, Entity player) {
+        return of(standing.record().rank, netWorth(player));
     }
 
     /** Credits aboard {@code ship} plus what the ship is worth. */

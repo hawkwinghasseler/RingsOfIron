@@ -1,6 +1,8 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
 import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.uihud.providers.ShipyardProvider;
 
 import java.util.Locale;
@@ -10,26 +12,30 @@ import java.util.Locale;
  * priced after the trade-in, and the prize in tow when a station's tugs can take it in.
  */
 public class ShipyardWork implements ShipyardProvider {
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final FactionStanding standing;
+    private final Shipyard shipyard;
 
-    public ShipyardWork(GameWorld world) {
-        this.world = world;
+    public ShipyardWork(GameContext ctx, FactionStanding standing, Shipyard shipyard) {
+        this.ctx = ctx;
+        this.standing = standing;
+        this.shipyard = shipyard;
     }
 
     @Override
     public void collect(Yard out) {
-        Shipyard yard = world.shipyard;
-        Entity ship = world.getPlayer();
+        Shipyard yard = shipyard;
+        Entity ship = ctx.player();
         Entity station = yard.dockedStation();
         if (ship != null && station != null && yard.sellsShips(station)) {
-            out.stationName = PlayerDocking.name(station);
+            out.stationName = ShipNames.name(station);
             out.current = String.format(Locale.ROOT, "Your %s: trade-in %,.0f cr (condition %.0f%%).  %s", yard.name(ship),
-                    Shipyard.tradeIn(ship), 100 * Shipyard.condition(ship), world.standing.describeRank());
+                    Shipyard.tradeIn(ship), 100 * Shipyard.condition(ship), standing.describeRank());
             for (Shipyard.Listing l : yard.listings(station)) {
                 Ship s = new Ship();
                 s.id = l.id;
                 s.name = l.name;
-                s.seller = world.standing.factions().name(l.seller);
+                s.seller = standing.factions().name(l.seller);
                 double cost = yard.cost(l, ship);
                 s.terms = String.format(Locale.ROOT, "%,.0f cr, %s", l.price, cost >= 0
                         ? String.format(Locale.ROOT, "%,.0f cr after the trade-in", cost)
@@ -41,10 +47,10 @@ public class ShipyardWork implements ShipyardProvider {
         }
         Entity prize = yard.prize();
         if (prize != null && yard.prizeStation() != null) {
-            out.prize = yard.name(prize) + " (taken), off " + PlayerDocking.name(yard.prizeStation());
+            out.prize = yard.name(prize) + " (taken), off " + ShipNames.name(yard.prizeStation());
             out.sellTerms = String.format(Locale.ROOT, "%+,.0f cr", Shipyard.prizeValue(prize));
             out.turnInTerms = String.format(Locale.ROOT, "%+.0f standing with the %s", yard.prizeStanding(prize),
-                    world.standing.factions().name(world.standing.sponsor()));
+                    standing.factions().name(standing.sponsor()));
             String sell = yard.prizeRefusal(false), turnIn = yard.prizeRefusal(true);
             out.sellLocked = sell == null ? "" : sell;
             out.turnInLocked = turnIn == null ? "" : turnIn;
@@ -53,16 +59,16 @@ public class ShipyardWork implements ShipyardProvider {
 
     @Override
     public String buy(String id) {
-        return world.shipyard.buy(id);
+        return shipyard.buy(id);
     }
 
     @Override
     public String sellPrize() {
-        return world.shipyard.sellPrize();
+        return shipyard.sellPrize();
     }
 
     @Override
     public String turnInPrize() {
-        return world.shipyard.turnInPrize();
+        return shipyard.turnInPrize();
     }
 }

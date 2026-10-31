@@ -28,7 +28,7 @@ final class DockLinks {
     }
 
     /** Links the two ports' openings (again, if they were) and opens each door its side agreed to. */
-    static void join(DockingSystem.Link link, Entity a, Body ba, ShipGridComponent ga,
+    static void join(LatchLink link, Entity a, Body ba, ShipGridComponent ga,
                      Entity b, Body bb, ShipGridComponent gb) {
         unjoin(link, ga, gb, false);
         MountFootprint ma = mount(ga, link.pa), mb = mount(gb, link.pb);
@@ -59,7 +59,7 @@ final class DockLinks {
     }
 
     /** Takes the links away; with {@code shut}, both port doors close too. Either grid may be null. */
-    static void unjoin(DockingSystem.Link link, ShipGridComponent ga, ShipGridComponent gb, boolean shut) {
+    static void unjoin(LatchLink link, ShipGridComponent ga, ShipGridComponent gb, boolean shut) {
         for (GridLink l : link.gridLinks) l.unjoin();
         link.gridLinks.clear();
         if (!shut) return;

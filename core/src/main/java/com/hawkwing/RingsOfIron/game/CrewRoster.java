@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.CrewDef;
@@ -13,6 +14,8 @@ import com.ringsofiron.uihud.providers.CrewProvider;
 
 import java.util.List;
 import java.util.Locale;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * ui-hud's crew window from the player's crew ({@link CrewCareer}), the docked station's hiring
@@ -26,21 +29,37 @@ public class CrewRoster implements CrewProvider {
      */
     static final String MEDIC_NOTE = String.format(Locale.ROOT, " (%.1fx care", 1f / CrewDef.UNTRAINED_CARE);
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crewService;
+    private final MacroSimulation macroSim;
+    private final FactionStanding standing;
+    private final CrewCareer crewCareer;
+    private final CrewHiring crewHiring;
+    private final CrewMedical medical;
+    private final Prisoners prisoners;
+    private final Spacewalks spacewalks;
 
-    public CrewRoster(GameWorld world) {
-        this.world = world;
+    public CrewRoster(GameContext ctx, CrewService crewService, MacroSimulation macroSim, FactionStanding standing, CrewCareer crewCareer, CrewHiring crewHiring, CrewMedical medical, Prisoners prisoners, Spacewalks spacewalks) {
+        this.ctx = ctx;
+        this.crewService = crewService;
+        this.macroSim = macroSim;
+        this.standing = standing;
+        this.crewCareer = crewCareer;
+        this.crewHiring = crewHiring;
+        this.medical = medical;
+        this.prisoners = prisoners;
+        this.spacewalks = spacewalks;
     }
 
     @Override
     public void collect(CrewSheet out) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (ship == null) return;
         out.shipName = shipName(ship);
-        Entity station = world.crewHiring.hiringStation();
-        List<Entity> crew = world.crewCareer.ownCrew(ship);
+        Entity station = crewHiring.hiringStation();
+        List<Entity> crew = crewCareer.ownCrew(ship);
         for (Entity e : crew) {
-            CrewMemberComponent c = world.crew.crew(e);
+            CrewMemberComponent c = crewService.crew(e);
             CrewRecord r = c.record();
             Member m = out.addMember();
             m.id = id(e);
@@ -53,33 +72,33 @@ public class CrewRoster implements CrewProvider {
             m.wage = r.wage > 0 ? String.format(Locale.ROOT, "%,.0f cr/wk", r.wage) : "Service";
             m.history = CrewCareer.history(r);
             m.dismissable = station != null;
-            m.evaAction = world.spacewalks.orderFor(e);
+            m.evaAction = spacewalks.orderFor(e);
         }
-        for (Entity e : world.prisoners.aboard(ship)) {
-            CrewMemberComponent c = world.crew.crew(e);
+        for (Entity e : prisoners.aboard(ship)) {
+            CrewMemberComponent c = crewService.crew(e);
             Prisoner p = out.addPrisoner();
             p.id = id(e);
             p.name = c.name;
-            String faction = world.standing.factions().name(c.faction);
+            String faction = standing.factions().name(c.faction);
             p.detail = (faction == null ? "Unknown" : faction) + ", " + CrewHiring.roleName(c.role).toLowerCase(Locale.ROOT);
-            String option = world.prisoners.option(e);
+            String option = prisoners.option(e);
             p.option = option == null ? "" : Character.toUpperCase(option.charAt(0)) + option.substring(1);
-            p.offersToJoin = world.prisoners.offersToJoin(e);
+            p.offersToJoin = prisoners.offersToJoin(e);
             p.condition = CrewMedical.condition(c);
         }
-        Entity taken = world.prisoners.takenAlongside();
-        out.prisonersAlongside = taken != null && !world.prisoners.aboard(taken).isEmpty();
-        out.suits = world.medical.suitsLine();
-        out.eva = world.spacewalks.holdLine();
+        Entity taken = prisoners.takenAlongside();
+        out.prisonersAlongside = taken != null && !prisoners.aboard(taken).isEmpty();
+        out.suits = medical.suitsLine();
+        out.eva = spacewalks.holdLine();
         out.summary = String.format(Locale.ROOT, "%d / %d berths, %,.0f cr/wk in wages, %d medical stores",
-                world.crewHiring.aboard(ship), CrewHiring.berths(ship), world.crewCareer.weeklyWages(ship), world.medical.stores());
+                crewHiring.aboard(ship), CrewHiring.berths(ship), crewCareer.weeklyWages(ship), medical.stores());
         if (station != null) {
             String uuid = station.getComponent(UuidComponent.class).id;
-            var node = world.macroSim.station(uuid);
+            var node = macroSim.station(uuid);
             out.stationName = node == null || node.displayName == null ? "Station" : node.displayName;
             boolean medic = false;
-            for (Entity e : crew) medic |= world.crew.crew(e).role == CrewRole.MEDIC;
-            for (CrewHiring.Candidate c : world.crewHiring.pool(uuid)) {
+            for (Entity e : crew) medic |= crewService.crew(e).role == CrewRole.MEDIC;
+            for (CrewHiring.Candidate c : crewHiring.pool(uuid)) {
                 Hire h = out.addHire();
                 h.key = c.key;
                 h.name = c.name;
@@ -92,7 +111,7 @@ public class CrewRoster implements CrewProvider {
 
     @Override
     public String hire(String key) {
-        String why = world.crewHiring.hire(key);
+        String why = crewHiring.hire(key);
         return why == null ? "Hired" : why;
     }
 
@@ -100,30 +119,30 @@ public class CrewRoster implements CrewProvider {
     public String dismiss(long id) {
         Entity e = find(id);
         if (e == null) return "No longer aboard";
-        String name = world.crew.crew(e).name;
-        String why = world.crewHiring.dismiss(e);
+        String name = crewService.crew(e).name;
+        String why = crewHiring.dismiss(e);
         return why == null ? name + " leaves the ship" : why;
     }
 
     @Override
     public String toggleSuits() {
-        return world.medical.toggleSuits();
+        return medical.toggleSuits();
     }
 
     @Override
     public String toggleEva() {
-        return world.spacewalks.toggleHold();
+        return spacewalks.toggleHold();
     }
 
     @Override
     public String evaOrder(long id) {
         Entity e = find(id);
-        return e == null ? "No longer aboard" : world.spacewalks.order(e);
+        return e == null ? "No longer aboard" : spacewalks.order(e);
     }
 
     @Override
     public String takePrisoners() {
-        String why = world.prisoners.takeAboard();
+        String why = prisoners.takeAboard();
         return why == null ? "Prisoners brought aboard" : why;
     }
 
@@ -131,7 +150,7 @@ public class CrewRoster implements CrewProvider {
     public String settlePrisoner(long id) {
         Entity e = find(id);
         if (e == null) return "No longer aboard";
-        String why = world.prisoners.settle(e);
+        String why = prisoners.settle(e);
         return why == null ? "Done" : why;
     }
 
@@ -139,7 +158,7 @@ public class CrewRoster implements CrewProvider {
     public String recruit(long id) {
         Entity e = find(id);
         if (e == null) return "No longer aboard";
-        String why = world.prisoners.recruit(e);
+        String why = prisoners.recruit(e);
         return why == null ? "They join the crew" : why;
     }
 
@@ -148,7 +167,7 @@ public class CrewRoster implements CrewProvider {
     }
 
     private Entity find(long id) {
-        ImmutableArray<Entity> all = world.crew.crewEntities();
+        ImmutableArray<Entity> all = crewService.crewEntities();
         for (int i = 0; i < all.size(); i++) if (id(all.get(i)) == id) return all.get(i);
         return null;
     }
@@ -156,8 +175,8 @@ public class CrewRoster implements CrewProvider {
     /** The ship type's name from data, else "ship". */
     private String shipName(Entity ship) {
         DefRefComponent ref = ship.getComponent(DefRefComponent.class);
-        if (ref != null && ref.defId != null && world.getContent() != null) {
-            ShipDef def = world.getContent().defs.get(ref.defType, ref.defId, ShipDef.class);
+        if (ref != null && ref.defId != null && ctx.content() != null) {
+            ShipDef def = ctx.content().defs.get(ref.defType, ref.defId, ShipDef.class);
             if (def != null && def.name != null && !def.name.isEmpty()) return def.name;
         }
         return "ship";

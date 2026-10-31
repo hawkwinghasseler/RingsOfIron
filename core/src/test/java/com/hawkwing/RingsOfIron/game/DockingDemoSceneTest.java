@@ -2,8 +2,12 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.shipops.DoorForcing;
+import com.ringsofiron.shipops.StationCrew;
+import com.ringsofiron.shipops.StationYard;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.ForceMethod;
 import org.junit.jupiter.api.AfterEach;
@@ -457,7 +461,7 @@ class DockingDemoSceneTest {
     @Test
     void theYardWindowListsTheDamageAndTheHardpoints() {
         demo.load(DockingDemoScene.Scene.YARD);
-        YardWork yard = new YardWork(demo.world);
+        YardWork yard = new YardWork(demo.world.context, demo.world.docking, demo.world.combatDefs, demo.world.yard, demo.world.fieldRefits, demo.world.furnishings);
         com.ringsofiron.uihud.providers.YardProvider.YardBoard board = new com.ringsofiron.uihud.providers.YardProvider.YardBoard();
         yard.collect(board);
         assertTrue(board.isOpen(), "docked at a yard");

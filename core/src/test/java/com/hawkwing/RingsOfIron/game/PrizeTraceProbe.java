@@ -10,6 +10,9 @@ import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.ShipNames;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -64,7 +67,7 @@ class PrizeTraceProbe {
             if (d.owner != game.player || !struckAt.containsKey(d.target)) return;
             log("DETONATION at struck " + name(d.target) + " aimedAt=" + name(d.aimedAt));
         });
-        gun = new PlayerGunnery(world, game.player);
+        gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         if (bounty) bounty();
         else if ("career".equals(System.getenv("PRIZE_TRACE_MODE"))) career();
         else window();
@@ -241,7 +244,7 @@ class PrizeTraceProbe {
         if (h != null) return h.displayName;
         if (e.getComponent(MissileComponent.class) != null) return "a missile from " + name(e.getComponent(MissileComponent.class).launcher);
         if (e == game.player) return "us";
-        return PlayerDocking.name(e);
+        return ShipNames.name(e);
     }
 
     private long range(Entity e) {

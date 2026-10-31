@@ -17,13 +17,14 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
-import com.hawkwing.RingsOfIron.game.DeckView;
+import com.hawkwing.RingsOfIron.render.DeckView;
+import com.ringsofiron.shipops.ShipNames;
 import com.hawkwing.RingsOfIron.render.DeckRenderer;
 import com.hawkwing.RingsOfIron.render.ExteriorRenderer;
 import com.hawkwing.RingsOfIron.game.DockingDemoScene;
-import com.hawkwing.RingsOfIron.game.DoorForcing;
+import com.ringsofiron.shipops.DoorForcing;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
-import com.hawkwing.RingsOfIron.game.StationCrew;
+import com.ringsofiron.shipops.StationCrew;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.EdgeWall;
@@ -378,7 +379,7 @@ public class DockingDemo extends ApplicationAdapter {
             font.setColor(Color.YELLOW);
             Entity aboard = demo.aboard();
             font.draw(batch, "Deck view: WASD walks" + (aboard != null && aboard != demo.player
-                    ? ", you're aboard " + PlayerDocking.name(aboard) : "") + "  (V to fly)", x, y - 6f);
+                    ? ", you're aboard " + ShipNames.name(aboard) : "") + "  (V to fly)", x, y - 6f);
             font.setColor(Color.GRAY);
         }
         font.draw(batch, "W/S thrust  A/D turn  Z/C strafe  G arm port + clearance  H next port  U undock"

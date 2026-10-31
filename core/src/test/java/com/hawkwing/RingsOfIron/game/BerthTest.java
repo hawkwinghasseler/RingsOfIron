@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.shipops.StationYard;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -79,7 +81,7 @@ class BerthTest {
         run(60);
         String said = world.yard.orderRepairs(game.player, highport);
         assertTrue(world.yard.repairing(game.player), said);
-        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> {});
+        PlayerDocking docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, s -> {});
         assertTrue(docking.undock().startsWith("Undocked from Highport"), "U undocks");
         assertFalse(world.yard.repairing(game.player), "undocking on purpose calls the work off at once");
         assertTrue(yardSaid("Undocked: the yard work is called off"));

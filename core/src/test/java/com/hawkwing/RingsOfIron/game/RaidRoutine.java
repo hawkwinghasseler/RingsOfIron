@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -81,7 +82,7 @@ final class RaidRoutine {
             }
         }
         Entity player = game.player;
-        PlayerGunnery gun = new PlayerGunnery(world, player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, player);
         int[] fired = new int[1], hits = new int[1], gunFired = new int[1], gunHits = new int[1];
         world.combatEvents.shots.add((sig, shot) -> {
             if (ships.contains(shot.shooter)) fired[0]++;

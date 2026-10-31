@@ -5,13 +5,18 @@ import com.badlogic.ashley.utils.ImmutableArray;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.moddingdata.defs.FactionDef;
 
+import com.ringsofiron.shipops.BoardedComponent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * What the player does with the crews of ships they take ({@link Boarding} holds them aboard the
@@ -42,32 +47,42 @@ public class Prisoners {
     /** Morale of an outlaw who joins. */
     public static final float JOIN_MORALE = 0.5f;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
+    private final DockingSystem docking;
+    private final MacroSimulation macroSim;
+    private final FactionStanding standing;
+    private final CrewHiring crewHiring;
 
-    Prisoners(GameWorld world) {
-        this.world = world;
+    Prisoners(GameContext ctx, CrewService crew, DockingSystem docking, MacroSimulation macroSim, FactionStanding standing, CrewHiring crewHiring) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.docking = docking;
+        this.macroSim = macroSim;
+        this.standing = standing;
+        this.crewHiring = crewHiring;
     }
 
     /** Prisoners held aboard {@code ship}: crew of other factions kept there. */
     public List<Entity> aboard(Entity ship) {
         List<Entity> out = new ArrayList<>();
         if (ship == null) return out;
-        ImmutableArray<Entity> all = world.crew.crewEntities();
+        ImmutableArray<Entity> all = crew.aboard(ship);
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
-            CrewMemberComponent c = world.crew.crew(e);
+            CrewMemberComponent c = crew.crew(e);
             // Survivors of a rescue are carried, not held
-            if (c.held && c.isAlive() && world.crew.position(e).ship == ship && e.getComponent(SurvivorComponent.class) == null) out.add(e);
+            if (c.held && c.isAlive() && e.getComponent(SurvivorComponent.class) == null) out.add(e);
         }
         return out;
     }
 
     /** The taken ship the player's ship is latched to, or null. */
     public Entity takenAlongside() {
-        Entity ship = world.getPlayer();
-        Entity other = ship == null ? null : world.docking.dockedTo(ship);
+        Entity ship = ctx.player();
+        Entity other = ship == null ? null : docking.dockedTo(ship);
         BoardedComponent b = other == null ? null : other.getComponent(BoardedComponent.class);
-        if (b == null || !b.taken || b.by == null || b.by.get(world.engine.getUuidRegistry()) != ship) return null;
+        if (b == null || !b.taken || b.by == null || b.by.get(ctx.engine.getUuidRegistry()) != ship) return null;
         return other;
     }
 
@@ -77,16 +92,16 @@ public class Prisoners {
         if (taken == null) return "Latch onto a ship you have taken first";
         List<Entity> held = aboard(taken);
         if (held.isEmpty()) return "No one is held aboard it";
-        Entity ship = world.getPlayer();
-        int room = CrewHiring.berths(ship) - world.crewHiring.aboard(ship);
+        Entity ship = ctx.player();
+        int room = CrewHiring.berths(ship) - crewHiring.aboard(ship);
         if (room <= 0) return "No berth free for prisoners";
         int moved = 0;
         for (Entity e : held) {
             if (moved >= room) break;
-            int[] tile = world.crewHiring.freeTile(ship);
+            int[] tile = crewHiring.freeTile(ship);
             if (tile == null) break;
-            world.crew.releaseTask(e);
-            GridPositionComponent p = world.crew.position(e);
+            crew.releaseTask(e);
+            GridPositionComponent p = crew.position(e);
             p.stop();
             p.crossing = null;
             p.setShip(ship);
@@ -95,23 +110,23 @@ public class Prisoners {
         }
         BoardedComponent b = taken.getComponent(BoardedComponent.class);
         b.prisoners = Math.max(0, b.prisoners - moved);
-        world.notices.post(moved + (moved == 1 ? " prisoner" : " prisoners") + " brought aboard"
+        ctx.notices.post(moved + (moved == 1 ? " prisoner" : " prisoners") + " brought aboard"
                 + (moved < held.size() ? ": no berths for the rest" : ""));
         return null;
     }
 
     /** The station the player is docked at with clearance, or null. */
     private Entity station() {
-        Entity ship = world.getPlayer();
-        if (ship == null || !world.docking.dockedWithClearance(ship)) return null;
-        Entity s = world.docking.dockedTo(ship);
+        Entity ship = ctx.player();
+        if (ship == null || !docking.dockedWithClearance(ship)) return null;
+        Entity s = docking.dockedTo(ship);
         UuidComponent u = s == null ? null : s.getComponent(UuidComponent.class);
-        return u == null || world.macroSim.station(u.id) == null ? null : s;
+        return u == null || macroSim.station(u.id) == null ? null : s;
     }
 
     /** Whether prisoners of {@code faction} may be handed over to the sponsor: outlaws, or a faction it fights. */
     public boolean wanted(int faction) {
-        FactionStanding s = world.standing;
+        FactionStanding s = standing;
         FactionDef def = s.factions().def(faction);
         if (def == null) return false;
         return def.hostileToAll || s.factions().atWar(s.sponsor(), faction);
@@ -121,9 +136,9 @@ public class Prisoners {
     public String option(Entity e) {
         Entity station = station();
         if (station == null) return null;
-        int here = world.standing.factionOf(station);
-        int theirs = world.crew.crew(e).faction;
-        if (here == world.standing.sponsor() && wanted(theirs)) return "hand over";
+        int here = standing.factionOf(station);
+        int theirs = crew.crew(e).faction;
+        if (here == standing.sponsor() && wanted(theirs)) return "hand over";
         if (here == theirs) return "ransom";
         return "release";
     }
@@ -133,7 +148,7 @@ public class Prisoners {
      * on success, else why not.
      */
     public String settleAll() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (station() == null) return "Dock at a station to give up prisoners";
         List<Entity> held = aboard(ship);
         if (held.isEmpty()) return "No prisoners aboard";
@@ -143,12 +158,12 @@ public class Prisoners {
 
     /** Hands over, ransoms or releases prisoner {@code e}. Null on success, else why not. */
     public String settle(Entity e) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         String how = option(e);
         if (how == null) return "Dock at a station to give up prisoners";
         if (!aboard(ship).contains(e)) return "Not held aboard";
-        CrewMemberComponent c = world.crew.crew(e);
-        FactionStanding s = world.standing;
+        CrewMemberComponent c = crew.crew(e);
+        FactionStanding s = standing;
         TraderComponent account = ship.getComponent(TraderComponent.class);
         String who = s.factions().name(c.faction);
         double pay = 0;
@@ -166,10 +181,10 @@ public class Prisoners {
                 break;
         }
         if (account != null) account.credits += pay;
-        world.crew.releaseTask(e);
-        world.engine.getEcsEngine().removeEntity(e);
+        crew.releaseTask(e);
+        ctx.engine.getEcsEngine().removeEntity(e);
         String verb = how.equals("hand over") ? "handed over" : how.equals("ransom") ? "ransomed" : "released";
-        world.notices.post(String.format(Locale.ROOT, "%s (%s) %s%s", c.name, who == null ? "unknown" : who, verb,
+        ctx.notices.post(String.format(Locale.ROOT, "%s (%s) %s%s", c.name, who == null ? "unknown" : who, verb,
                 pay > 0 ? String.format(Locale.ROOT, ": +%,.0f cr", pay) : ""));
         return null;
     }
@@ -181,12 +196,12 @@ public class Prisoners {
      * Returns the credits paid, which the caller adds.
      */
     public double handOverWithPrize(Entity prize, Entity station) {
-        FactionStanding s = world.standing;
+        FactionStanding s = standing;
         boolean sponsors = station != null && s.factionOf(station) == s.sponsor();
         double pay = 0;
         int wantedCount = 0;
         for (Entity e : aboard(prize)) {
-            if (!sponsors || !wanted(world.crew.crew(e).faction)) continue;
+            if (!sponsors || !wanted(crew.crew(e).faction)) continue;
             pay += HANDOVER_PAY;
             wantedCount++;
         }
@@ -196,18 +211,18 @@ public class Prisoners {
 
     /** Whether prisoner {@code e} offers to join the player's crew: some outlaws do. */
     public boolean offersToJoin(Entity e) {
-        CrewMemberComponent c = world.crew.crew(e);
-        FactionDef def = c == null ? null : world.standing.factions().def(c.faction);
+        CrewMemberComponent c = crew.crew(e);
+        FactionDef def = c == null ? null : standing.factions().def(c.faction);
         if (def == null || !def.hostileToAll) return false;
         return Math.floorMod((c.name + c.role).hashCode(), JOIN_ODDS) == 0;
     }
 
     /** Takes prisoner {@code e}, who offered, into the player's crew. Null on success, else why not. */
     public String recruit(Entity e) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (!aboard(ship).contains(e)) return "Not held aboard";
         if (!offersToJoin(e)) return "They won't serve under you";
-        CrewMemberComponent c = world.crew.crew(e);
+        CrewMemberComponent c = crew.crew(e);
         c.held = false;
         c.faction = FactionStanding.PLAYER;
         c.setHome(ship);
@@ -216,7 +231,7 @@ public class Prisoners {
         r.morale = JOIN_MORALE;
         r.wage = CrewCareer.wageFor(c.role, r);
         r.applyTo(c);
-        world.notices.post(String.format(Locale.ROOT, "%s joins your crew for %,.0f cr a week", c.name, r.wage));
+        ctx.notices.post(String.format(Locale.ROOT, "%s joins your crew for %,.0f cr a week", c.name, r.wage));
         return null;
     }
 }

@@ -36,7 +36,7 @@ final class PortSeals {
      * difference and nobody is crossing. {@code crossing} says whether someone is walking through
      * a pair of linked openings.
      */
-    static void update(DockingSystem.Link link, ShipGridComponent ga, ShipGridComponent gb,
+    static void update(LatchLink link, ShipGridComponent ga, ShipGridComponent gb,
                        Predicate<GridLink> crossing, float dt) {
         if (link.gridLinks.size == 0) return;
         boolean busy = false;

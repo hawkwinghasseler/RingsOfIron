@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.hawkwing.RingsOfIron.render.NavOverlay;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import java.nio.file.Path;
@@ -44,7 +45,8 @@ class NavigationDisplayTest {
     void aMoonStationsOrbitIsDrawnAroundTheMoon() {
         world.nav.target.select(game.lunarMine);
         OrbitPathProvider.OrbitPath path = new OrbitPathProvider.OrbitPath();
-        assertTrue(new PlayerOrbitPath(world, world.burns).getPlayerPath(path));
+        assertTrue(new PlayerOrbitPath(world.context, world.physics, world.universe, world.macroSim, world.pirateBase, world.nav,
+                world.burns).getPlayerPath(path));
         assertTrue(path.targetOrbit.size > 0, "the mine's orbit, though it goes round the Moon");
         // Its middle is the Moon, where the map draws it
         Entity moon = world.universe.parentOf(world.engine.getEntity(game.lunarMine));
@@ -67,7 +69,8 @@ class NavigationDisplayTest {
         int burns = world.burns.nodes().nodes.size;
         assertTrue(burns >= 2, burns + " burns");
         OrbitPathProvider.OrbitPath path = new OrbitPathProvider.OrbitPath();
-        assertTrue(new PlayerOrbitPath(world, world.burns).getPlayerPath(path));
+        assertTrue(new PlayerOrbitPath(world.context, world.physics, world.universe, world.macroSim, world.pirateBase, world.nav,
+                world.burns).getPlayerPath(path));
         assertEquals(burns, path.nodeLabels.size, "a label by each burn on the map");
         assertTrue(path.nodeLabels.get(1).startsWith("2: "), path.nodeLabels.get(1));
         List<String> lines = world.nav.readout();

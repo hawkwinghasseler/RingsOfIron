@@ -12,10 +12,12 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.CrewState;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.combatsys.components.WeaponMountComponent;
 import com.ringsofiron.combatsys.components.WeaponsComponent;
 import com.ringsofiron.combatsys.defs.WeaponDef;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
@@ -23,6 +25,12 @@ import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.Boarding;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.SalvagedComponent;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.StationYard;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.ForceMethod;
@@ -58,7 +66,7 @@ class BoardingSalvageTest {
         game = GameScenario.start(world, assets, assets.resolve("no-mods-here"));
         // The raider flies for a faction of its own, with two crewmen aboard
         CrewFactory.ensureBoard(game.raider).faction = RAIDERS;
-        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         for (int i = 0; i < 2; i++) {
             int[] t = floor.get(floor.size() - 1 - i);
             raiderCrew.add(CrewFactory.spawn(world.crew, game.raider, "Raider " + i, CrewRole.CREWMAN, RAIDERS, t[0], t[1]));
@@ -163,7 +171,7 @@ class BoardingSalvageTest {
         }
         world.update(FRAME);
         parkAlongside(game.raider, 0.6f);
-        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> { });
+        PlayerDocking docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, s -> { });
         try {
             assertEquals("Port armed", docking.toggleArm());
             assertTrue(runUntil(30, () -> world.docking.dockedTo(game.player) == game.raider), "latched");
@@ -196,7 +204,7 @@ class BoardingSalvageTest {
         world.disablement.set(game.raider, DisabledComponent.Reason.SURRENDERED);
         world.update(FRAME);
         parkAlongside(game.raider, 0.6f);
-        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> { });
+        PlayerDocking docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, s -> { });
         try {
             assertEquals("Raider (surrendered) opens its port to you; port armed", docking.toggleArm());
             assertTrue(runUntil(30, () -> world.docking.dockedTo(game.player) == game.raider), "latched");
@@ -221,7 +229,7 @@ class BoardingSalvageTest {
         }
         world.update(FRAME);
         parkAlongside(game.raider, 0.6f);
-        PlayerDocking docking = new PlayerDocking(world, () -> game.player, s -> { });
+        PlayerDocking docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, s -> { });
         try {
             assertEquals("Port armed", docking.toggleArm());
             assertTrue(runUntil(30, () -> world.docking.dockedTo(game.player) == game.raider), "latched");

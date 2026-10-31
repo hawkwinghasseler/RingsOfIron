@@ -2,16 +2,19 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
-import com.hawkwing.RingsOfIron.shell.KeyBindings;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.RoutePlanner;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
+import com.ringsofiron.orbital.math.ClosestApproach;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.warp.DropOutSource;
 
+import com.ringsofiron.shipsystems.PropellantFeed;
+import com.ringsofiron.uihud.HintRegistry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -47,7 +50,7 @@ public class Navigation extends EntitySystem implements DropOutSource {
     /** Flies an accepted transfer under time warp and hands over to the helm to dock on arrival. */
     public final Autopilot autopilot;
     /** What the player's keys are called, for messages naming them; the screen points it at its bindings. */
-    public Function<Action, String> keyNames = a -> KeyBindings.keyName(a.defaultKey);
+    public Function<Action, String> keyNames = Action::defaultKeyName;
 
     private final GameWorld world;
     private final PlayerOrbitInfo orbits;
@@ -59,11 +62,14 @@ public class Navigation extends EntitySystem implements DropOutSource {
     private Navigation(GameWorld world) {
         this.world = world;
         orbits = new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer);
-        sightings = new PirateSightings(world);
-        target = new NavTarget(world, sightings);
-        transfer = new PlayerTransfer(world, target, orbits, this::key);
-        helm = new HelmOrders(world, target, this::key);
-        autopilot = new Autopilot(world, this, this::key);
+        sightings = new PirateSightings(world.context, world.physics, world.universe, world.macroSim, world.contracts);
+        target = new NavTarget(world.context, world.physics, world.universe, world.macroSim, world.contracts, world.pirateBase,
+                sightings);
+        transfer = new PlayerTransfer(world.context, world.universe, world.macroSim, world::shipMass, target, orbits, this::key);
+        helm = new HelmOrders(world.context, world.physics, world.universe, world.docking, world.berthing, world.bridge,
+                world.combatEvents, target, this::key);
+        autopilot = new Autopilot(world.context, () -> world.getCrash() != null, world.universe, world.orbitalEvents,
+                world.timeWarp, world.docking, world.burns, world.hostiles, this, this::key);
     }
 
     PlayerOrbitInfo orbits() {
@@ -84,6 +90,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
         registerHints(world.hints, () -> nav.transfer.proposal() != null);
         // The low-propellant warning keeps quiet while there is enough to get home
         world.warnings.returnPropellantKg = nav::returnPropellantKg;
+        // The navigation target is the craft boarded on EVA, when it is in reach
+        world.boarding.preferred = nav.target::entity;
         return nav;
     }
 

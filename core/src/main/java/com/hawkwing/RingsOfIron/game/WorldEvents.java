@@ -3,6 +3,10 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.career.Factions;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.macrosim.economy.CommodityType;
 import com.ringsofiron.macrosim.economy.EconomyNode;
@@ -16,6 +20,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import com.ringsofiron.orbital.rails.RailsUniverse;
+import com.ringsofiron.macrosim.MacroSimulation;
+import java.util.function.BooleanSupplier;
 
 /**
  * Things that happen in the world on their own, each with jobs on the boards (GDD section 4). At
@@ -90,7 +97,16 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         public double at;
     }
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final BooleanSupplier crashed;
+    private final RailsUniverse universe;
+    private final MacroSimulation macroSim;
+    private final FactionStanding standing;
+    private final FactionTension tension;
+    private final ContractBoard contracts;
+    private final Derelicts derelicts;
+    private final HostileTraffic hostiles;
+    private final Shipyard shipyard;
     /** Sets which events a career sees; saved. */
     public long seed = DEFAULT_SEED;
     /** The last day rolled for; -1 before the first look. */
@@ -98,10 +114,19 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
     private final List<Event> log = new ArrayList<>();
     private final List<Replacement> replacements = new ArrayList<>();
 
-    WorldEvents(GameWorld world) {
-        this.world = world;
-        world.engine.getSerializationService().addParticipant(this);
-        world.macroSim.hostiles().addListener(this);
+    WorldEvents(GameContext ctx, BooleanSupplier crashed, RailsUniverse universe, MacroSimulation macroSim, FactionStanding standing, FactionTension tension, ContractBoard contracts, Derelicts derelicts, HostileTraffic hostiles, Shipyard shipyard) {
+        this.ctx = ctx;
+        this.crashed = crashed;
+        this.universe = universe;
+        this.macroSim = macroSim;
+        this.standing = standing;
+        this.tension = tension;
+        this.contracts = contracts;
+        this.derelicts = derelicts;
+        this.hostiles = hostiles;
+        this.shipyard = shipyard;
+        ctx.engine.getSerializationService().addParticipant(this);
+        macroSim.hostiles().addListener(this);
     }
 
     /** Events so far, oldest first, at most {@link #LOG}. */
@@ -118,13 +143,13 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
 
     /** Rolls the day's event once the day turns, and brings in replacements that are due. Call after the engine's update. */
     void update() {
-        if (world.getPlayer() == null || world.getCrash() != null) return;
-        double now = world.engine.getSimSeconds();
+        if (ctx.player() == null || crashed.getAsBoolean()) return;
+        double now = ctx.engine.getSimSeconds();
         for (Replacement r : new ArrayList<>(replacements)) {
             if (now < r.at) continue;
             replacements.remove(r);
-            if (world.macroSim.station(r.station) == null) continue;
-            world.macroSim.addFreighter(r.name, r.capacity, 20_000, r.station);
+            if (macroSim.station(r.station) == null) continue;
+            macroSim.addFreighter(r.name, r.capacity, 20_000, r.station);
             post(r.name + " is back on the lanes, a new hull out of " + stationName(r.station));
         }
         long day = (long) Math.floor(now / DAY);
@@ -172,11 +197,11 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
     private boolean shortage(long day, Random rnd) {
         List<EconomyNode[]> pairs = new ArrayList<>();
         List<String> goods = new ArrayList<>();
-        for (EconomyNode short_ : world.macroSim.stations()) {
+        for (EconomyNode short_ : macroSim.stations()) {
             if (!friendly(short_.stationUuid)) continue;
-            for (CommodityType c : world.macroSim.economy().catalog().commodities()) {
-                if (c.unitVolume <= 0 || !world.macroSim.market().stationBuys(short_, c.id) || short_.stock(c.id) <= 1) continue;
-                for (EconomyNode from : world.macroSim.stations()) {
+            for (CommodityType c : macroSim.economy().catalog().commodities()) {
+                if (c.unitVolume <= 0 || !macroSim.market().stationBuys(short_, c.id) || short_.stock(c.id) <= 1) continue;
+                for (EconomyNode from : macroSim.stations()) {
                     if (from == short_ || !friendly(from.stationUuid) || from.available(c.id) < 10) continue;
                     pairs.add(new EconomyNode[]{short_, from});
                     goods.add(c.id);
@@ -192,18 +217,18 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         Event e = record(Kind.SHORTAGE, day, node.stationUuid, commodity, null,
                 stationName(node.stationUuid) + " is short of " + what);
         int posted = 0;
-        for (EconomyNode from : world.macroSim.stations()) {
+        for (EconomyNode from : macroSim.stations()) {
             if (from == node || !friendly(from.stationUuid) || from.available(commodity) < 10) continue;
             Contract c = urgentDelivery(from, node, commodity, e.text);
-            if (c != null && world.contracts.postEvent(c)) posted++;
+            if (c != null && contracts.postEvent(c)) posted++;
         }
         post(e.text + (posted > 0 ? ": urgent deliveries are posted" : ""));
         return true;
     }
 
     private Contract urgentDelivery(EconomyNode from, EconomyNode to, String commodity, String why) {
-        CommodityType type = world.macroSim.economy().catalog().commodity(commodity);
-        TraderComponent trader = world.getPlayer().getComponent(TraderComponent.class);
+        CommodityType type = macroSim.economy().catalog().commodity(commodity);
+        TraderComponent trader = ctx.player().getComponent(TraderComponent.class);
         if (type == null || trader == null || trader.cargoCapacity <= 0) return null;
         double qty = Math.floor(Math.min(from.available(commodity), trader.cargoCapacity / type.unitVolume));
         if (qty < 1) return null;
@@ -220,7 +245,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         c.targetName = stationName(to.stationUuid);
         c.reward = Math.round(Math.max(ContractBoard.DELIVERY_MIN_FEE, ContractBoard.DELIVERY_FEE_SHARE * qty * c.unitPrice));
         c.standing = 5;
-        c.deadline = world.engine.getSimSeconds() + DAY * SHORTAGE_DAYS;
+        c.deadline = ctx.engine.getSimSeconds() + DAY * SHORTAGE_DAYS;
         c.reason = why;
         return c;
     }
@@ -228,11 +253,11 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
     /** Raiders come to work a station's lanes, and it posts their defence. */
     private boolean raid(long day, Random rnd) {
         List<EconomyNode> targets = new ArrayList<>();
-        for (EconomyNode n : world.macroSim.stations()) if (friendly(n.stationUuid)) targets.add(n);
+        for (EconomyNode n : macroSim.stations()) if (friendly(n.stationUuid)) targets.add(n);
         if (targets.isEmpty()) return false;
         EconomyNode node = targets.get(rnd.nextInt(targets.size()));
         int count = 1 + rnd.nextInt(2);
-        List<String> raiders = world.hostiles.raid(node.stationUuid, count);
+        List<String> raiders = hostiles.raid(node.stationUuid, count);
         if (raiders.isEmpty()) return false;
         Event e = record(Kind.RAID, day, node.stationUuid, null, null,
                 raiders.size() + (raiders.size() == 1 ? " raider is" : " raiders are") + " working "
@@ -245,18 +270,18 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         c.targetNames = new String[n];
         c.marks = new int[n];
         for (int i = 0; i < n; i++) {
-            HostileComponent h = world.macroSim.hostiles().get(raiders.get(i));
+            HostileComponent h = macroSim.hostiles().get(raiders.get(i));
             c.targetNames[i] = h == null || h.displayName == null ? "a raider" : h.displayName;
         }
         c.targetUuid = c.targets[0];
         c.targetName = c.targetNames[0];
         c.destinationUuid = node.stationUuid;
         c.destinationName = stationName(node.stationUuid);
-        c.reward = Math.round(ContractBoard.DEFEND_PAY * n * Difficulty.of(world));
+        c.reward = Math.round(ContractBoard.DEFEND_PAY * n * Difficulty.of(standing, ctx.player()));
         c.standing = 4 + 3 * n;
-        c.deadline = world.engine.getSimSeconds() + DAY * RAID_DAYS;
+        c.deadline = ctx.engine.getSimSeconds() + DAY * RAID_DAYS;
         c.reason = e.text;
-        world.contracts.postEvent(c);
+        contracts.postEvent(c);
         post(e.text + ": " + c.destinationName + " asks for help");
         strain(node.stationUuid, RAID_STRAIN, e.text);
         return true;
@@ -266,28 +291,28 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
     private boolean freighterLost(long day, Random rnd) {
         for (Event e : log) if (e.kind == Kind.FREIGHTER_LOST && day - e.day < LOST_GAP_DAYS) return false;
         List<String> candidates = new ArrayList<>();
-        for (var entry : world.macroSim.freighters().all().entrySet()) {
+        for (var entry : macroSim.freighters().all().entrySet()) {
             FreighterComponent f = entry.getValue();
-            Entity e = world.engine.getEntity(entry.getKey());
+            Entity e = ctx.engine.getEntity(entry.getKey());
             boolean flying = f.state == FreighterComponent.State.TO_DELIVERY || f.state == FreighterComponent.State.TO_PICKUP;
-            if (!flying || e == null || world.universe.orbit(e) == null || contracted(entry.getKey())) continue;
+            if (!flying || e == null || universe.orbit(e) == null || contracted(entry.getKey())) continue;
             candidates.add(entry.getKey());
         }
         if (candidates.isEmpty()) return false;
         String uuid = candidates.get(rnd.nextInt(candidates.size()));
-        Entity ship = world.engine.getEntity(uuid);
-        FreighterComponent f = world.macroSim.freighters().get(uuid);
+        Entity ship = ctx.engine.getEntity(uuid);
+        FreighterComponent f = macroSim.freighters().get(uuid);
         String name = f.displayName == null ? "A hauler" : f.displayName;
-        String home = f.destinationUuid != null && world.macroSim.station(f.destinationUuid) != null ? f.destinationUuid
+        String home = f.destinationUuid != null && macroSim.station(f.destinationUuid) != null ? f.destinationUuid
                 : f.dockedAtUuid;
         String post = friendly(f.destinationUuid) ? f.destinationUuid : friendly(f.dockedAtUuid) ? f.dockedAtUuid : null;
         if (post == null) post = nearestFriendly();
         if (post == null) return false;
         int survivors = 2 + rnd.nextInt(4);
-        Derelicts.Derelict pod = world.derelicts.castOff(ship, Derelicts.Kind.POD, name + "'s pod", survivors, null, 0, rnd);
+        Derelicts.Derelict pod = derelicts.castOff(ship, Derelicts.Kind.POD, name + "'s pod", survivors, null, 0, rnd);
         Derelicts.Derelict wreck = null;
         if (f.cargoCommodity != null && f.cargoQuantity >= 1) {
-            wreck = world.derelicts.castOff(ship, Derelicts.Kind.WRECK, "Wreck of " + name, 0, f.cargoCommodity,
+            wreck = derelicts.castOff(ship, Derelicts.Kind.WRECK, "Wreck of " + name, 0, f.cargoCommodity,
                     holdable(f.cargoCommodity, f.cargoQuantity), rnd);
         }
         if (pod == null) return false;
@@ -295,16 +320,16 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         r.name = name;
         r.capacity = f.capacity;
         r.station = home == null ? post : home;
-        r.at = world.engine.getSimSeconds() + DAY * REPLACE_DAYS;
+        r.at = ctx.engine.getSimSeconds() + DAY * REPLACE_DAYS;
         replacements.add(r);
         // With its crew and systems, which would otherwise go on working aboard a ship that is gone
-        world.shipyard.retire(ship);
+        shipyard.retire(ship);
         Event e = record(Kind.FREIGHTER_LOST, day, post, wreck == null ? null : wreck.commodity, null,
                 "Contact lost with " + name + "; pirates are suspected");
-        Contract rescue = world.contracts.offerFor(pod, post, e.text);
-        if (rescue != null) world.contracts.postEvent(rescue);
-        Contract recovery = wreck == null ? null : world.contracts.offerFor(wreck, post, e.text);
-        if (recovery != null) world.contracts.postEvent(recovery);
+        Contract rescue = contracts.offerFor(pod, post, e.text);
+        if (rescue != null) contracts.postEvent(rescue);
+        Contract recovery = wreck == null ? null : contracts.offerFor(wreck, post, e.text);
+        if (recovery != null) contracts.postEvent(recovery);
         post(e.text + ". " + stationName(post) + " posts a rescue" + (recovery == null ? "" : " and a recovery"));
         strain(post, LOST_STRAIN, e.text);
         return true;
@@ -312,7 +337,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
 
     /** A rival faction flexes: the sponsor posts shows of force out to its stations, and bounties if they are at war. */
     private boolean tension(long day, Random rnd) {
-        FactionStanding s = world.standing;
+        FactionStanding s = standing;
         int sponsor = s.sponsor();
         List<Integer> rivals = new ArrayList<>();
         for (int i = 0; i < s.factions().all().size(); i++) {
@@ -340,12 +365,12 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
             c.tier = 1;
             c.reward = ContractBoard.PATROL_PAY * ContractBoard.FAR_PAY * 2;
             c.standing = 8;
-            c.deadline = world.engine.getSimSeconds() + DAY * (ContractBoard.FAR_DAYS + TENSION_DAYS);
+            c.deadline = ctx.engine.getSimSeconds() + DAY * (ContractBoard.FAR_DAYS + TENSION_DAYS);
             c.reason = e.text + ": a show of force";
-            if (world.contracts.postEvent(c)) posted++;
+            if (contracts.postEvent(c)) posted++;
         }
         if (s.factions().atWar(sponsor, rival)) {
-            for (var entry : world.macroSim.hostiles().all().entrySet()) {
+            for (var entry : macroSim.hostiles().all().entrySet()) {
                 HostileComponent h = entry.getValue();
                 if (h.isPirate() || !s.factions().id(rival).equals(h.faction)) continue;
                 Contract c = new Contract();
@@ -354,15 +379,15 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
                 c.targetUuid = entry.getKey();
                 c.targetName = (h.displayName == null ? "a ship" : h.displayName) + " of the " + rivalName;
                 c.tier = 1;
-                c.reward = Math.round(ContractBoard.BOUNTY_PAY * 2 * Difficulty.of(world));
+                c.reward = Math.round(ContractBoard.BOUNTY_PAY * 2 * Difficulty.of(standing, ctx.player()));
                 c.standing = 9;
-                c.deadline = world.engine.getSimSeconds() + DAY * TENSION_DAYS;
+                c.deadline = ctx.engine.getSimSeconds() + DAY * TENSION_DAYS;
                 c.reason = e.text;
-                if (world.contracts.postEvent(c)) posted++;
+                if (contracts.postEvent(c)) posted++;
             }
         }
         post(e.text + (posted > 0 ? ": the " + s.factions().name(sponsor) + " posts patrols" : ""));
-        world.tension.raise(sponsor, rival, FLEX_STRAIN, e.text);
+        tension.raise(sponsor, rival, FLEX_STRAIN, e.text);
         return true;
     }
 
@@ -370,25 +395,25 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
 
     @Override
     public void plundered(String hostile, String freighter, String commodity, double quantity, double t) {
-        FreighterComponent f = world.macroSim.freighters().get(freighter);
+        FreighterComponent f = macroSim.freighters().get(freighter);
         // A hauler robbed on its way somewhere strains that station's owner with the other sides
         if (f != null && friendly(f.destinationUuid)) strain(f.destinationUuid, ROBBED_STRAIN, null);
         Random rnd = new Random(seed ^ freighter.hashCode() * 0x9E3779B97F4A7C15L ^ (long) t);
         if (rnd.nextDouble() >= POD_CHANCE) return;
-        Entity ship = world.engine.getEntity(freighter);
-        HostileComponent h = world.macroSim.hostiles().get(hostile);
+        Entity ship = ctx.engine.getEntity(freighter);
+        HostileComponent h = macroSim.hostiles().get(hostile);
         if (ship == null || f == null) return;
         String post = friendly(f.destinationUuid) ? f.destinationUuid : nearestFriendly();
         if (post == null) return;
         String name = f.displayName == null ? "a hauler" : f.displayName;
-        Derelicts.Derelict pod = world.derelicts.castOff(ship, Derelicts.Kind.POD, name + "'s pod", 1 + rnd.nextInt(3),
+        Derelicts.Derelict pod = derelicts.castOff(ship, Derelicts.Kind.POD, name + "'s pod", 1 + rnd.nextInt(3),
                 null, 0, rnd);
         if (pod == null) return;
         Event e = record(Kind.POD, (long) Math.floor(t / DAY), post, commodity, null,
                 (h == null || h.displayName == null ? "Pirates" : h.displayName) + " robbed " + name
                         + "; some of its crew took to a pod");
-        Contract c = world.contracts.offerFor(pod, post, e.text);
-        if (c != null) world.contracts.postEvent(c);
+        Contract c = contracts.offerFor(pod, post, e.text);
+        if (c != null) contracts.postEvent(c);
         post(e.text);
     }
 
@@ -399,21 +424,21 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
      * stations by {@code amount}; {@code why} for the notice if a pair runs high.
      */
     private void strain(String station, float amount, String why) {
-        FactionStanding s = world.standing;
-        int owner = s.factionOf(world.engine.getEntity(station));
+        FactionStanding s = standing;
+        int owner = s.factionOf(ctx.engine.getEntity(station));
         FactionDef own = s.factions().def(owner);
         if (own == null || own.hostileToAll) return;
         for (int i = 0; i < s.factions().all().size(); i++) {
             int other = Factions.FIRST + i;
             FactionDef def = s.factions().def(other);
             if (other == owner || def == null || def.hostileToAll || stationsOf(other).isEmpty()) continue;
-            world.tension.raise(owner, other, amount, why);
+            tension.raise(owner, other, amount, why);
         }
     }
 
     /** Tells the player: a world event is worth noticing, a pod after a robbery is news. */
     private void post(String text) {
-        world.notices.post(text, text.contains("robbed") || text.contains("back on the lanes") ? NoticeLog.Kind.INFO
+        ctx.notices.post(text, text.contains("robbed") || text.contains("back on the lanes") ? NoticeLog.Kind.INFO
                 : NoticeLog.Kind.IMPORTANT);
     }
 
@@ -421,7 +446,7 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
         Event e = new Event();
         e.kind = kind;
         e.day = day;
-        e.at = world.engine.getSimSeconds();
+        e.at = ctx.engine.getSimSeconds();
         e.station = station;
         e.commodity = commodity;
         e.faction = faction;
@@ -433,27 +458,27 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
 
     /** True if {@code uuid} is a station of a faction that posts jobs (not one hostile to all). */
     private boolean friendly(String uuid) {
-        if (uuid == null || world.macroSim.station(uuid) == null) return false;
-        FactionDef def = world.standing.factions().def(world.standing.factionOf(world.engine.getEntity(uuid)));
+        if (uuid == null || macroSim.station(uuid) == null) return false;
+        FactionDef def = standing.factions().def(standing.factionOf(ctx.engine.getEntity(uuid)));
         return def != null && !def.hostileToAll;
     }
 
     private String nearestFriendly() {
-        for (EconomyNode n : world.macroSim.stations()) if (friendly(n.stationUuid)) return n.stationUuid;
+        for (EconomyNode n : macroSim.stations()) if (friendly(n.stationUuid)) return n.stationUuid;
         return null;
     }
 
     private List<String> stationsOf(int faction) {
         List<String> out = new ArrayList<>();
-        for (EconomyNode n : world.macroSim.stations()) {
-            if (world.standing.factionOf(world.engine.getEntity(n.stationUuid)) == faction) out.add(n.stationUuid);
+        for (EconomyNode n : macroSim.stations()) {
+            if (standing.factionOf(ctx.engine.getEntity(n.stationUuid)) == faction) out.add(n.stationUuid);
         }
         return out;
     }
 
     /** True if a contract the player holds is about the freighter {@code uuid}. */
     private boolean contracted(String uuid) {
-        for (Contract c : world.contracts.active()) {
+        for (Contract c : contracts.active()) {
             if (uuid.equals(c.targetUuid)) return true;
             for (String t : c.targets) if (uuid.equals(t)) return true;
         }
@@ -462,23 +487,23 @@ public class WorldEvents implements SaveParticipant, HostileTrafficController.Li
 
     /** Of {@code quantity} units, what the player's hold could carry home; the rest goes down with the hull. */
     private double holdable(String commodity, double quantity) {
-        CommodityType type = world.macroSim.economy().catalog().commodity(commodity);
-        TraderComponent trader = world.getPlayer() == null ? null : world.getPlayer().getComponent(TraderComponent.class);
+        CommodityType type = macroSim.economy().catalog().commodity(commodity);
+        TraderComponent trader = ctx.player() == null ? null : ctx.player().getComponent(TraderComponent.class);
         if (type == null || type.unitVolume <= 0 || trader == null || trader.cargoCapacity <= 0) return Math.floor(quantity);
         return Math.max(1, Math.floor(Math.min(quantity, trader.cargoCapacity / type.unitVolume)));
     }
 
     private String factionId(String station) {
-        return world.standing.factions().id(world.standing.factionOf(world.engine.getEntity(station)));
+        return standing.factions().id(standing.factionOf(ctx.engine.getEntity(station)));
     }
 
     private String stationName(String uuid) {
-        EconomyNode n = uuid == null ? null : world.macroSim.station(uuid);
+        EconomyNode n = uuid == null ? null : macroSim.station(uuid);
         return n == null || n.displayName == null ? "the station" : n.displayName;
     }
 
     private String commodityName(String id) {
-        CommodityType c = world.macroSim.economy().catalog().commodity(id);
+        CommodityType c = macroSim.economy().catalog().commodity(id);
         return c == null || c.displayName == null ? id : c.displayName;
     }
 

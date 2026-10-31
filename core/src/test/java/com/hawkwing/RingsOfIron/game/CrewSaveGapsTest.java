@@ -11,7 +11,9 @@ import com.badlogic.gdx.utils.JsonWriter;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.coreengine.SimClock;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.stationsdocking.StationComponent;
@@ -65,7 +67,7 @@ class CrewSaveGapsTest {
 
     /** A crewman of {@code faction} held aboard the player's ship. */
     private Entity prisoner(String name, int faction, int tile) {
-        int[] t = GameScenario.floorTiles(game.player.getComponent(ShipGridComponent.class)).get(tile);
+        int[] t = FloorTiles.of(game.player.getComponent(ShipGridComponent.class)).get(tile);
         Entity p = CrewFactory.spawn(world.crew, game.player, name, CrewRole.CREWMAN, faction, t[0], t[1]);
         world.crew.crew(p).held = true;
         return p;

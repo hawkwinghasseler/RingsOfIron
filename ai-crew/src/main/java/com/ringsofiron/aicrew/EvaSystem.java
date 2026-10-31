@@ -222,28 +222,36 @@ public class EvaSystem extends FixedLogicSystem {
     /** What happens to crew on EVA, for notices. */
     public final Signal<EvaEvent> events = new Signal<>();
 
-    private final CrewService service;
+    final CrewService service;
     private final ComponentMapper<EvaComponent> evaM = ComponentMapper.getFor(EvaComponent.class);
     private ImmutableArray<Entity> crew, ships;
     private final Map<ShipGridComponent, HullSurface> hulls = new WeakHashMap<>();
-    private final ShipFrame frame = new ShipFrame();
+    final ShipFrame frame = new ShipFrame();
     /** For queries from outside the tick, so they never disturb {@link #frame}. */
     private final ShipFrame query = new ShipFrame();
-    private final EvaEvent event = new EvaEvent();
+    final EvaEvent event = new EvaEvent();
     private final Array<Entity> ending = new Array<>(), leaving = new Array<>();
     /** Each ship's pull from its tethers this tick: fx, fy, and the sums of fx*x, fy*y... kept as force and point. */
-    private final ObjectMap<Body, float[]> pulls = new ObjectMap<>();
-    private final Vector2 v2 = new Vector2();
-    private final float[] a = new float[4], b = new float[4], q = new float[4];
+    final ObjectMap<Body, float[]> pulls = new ObjectMap<>();
+    final Vector2 v2 = new Vector2();
+    final float[] a = new float[4], b = new float[4], q = new float[4];
     /** The main engines' exhaust of the ship of the crew member being stepped, and one for queries. */
-    private final EngineExhaust exhaust = new EngineExhaust(), probe = new EngineExhaust();
+    final EngineExhaust exhaust = new EngineExhaust(), probe = new EngineExhaust();
     /** An engine of that ship burning this step; the exhaust's push on them, newtons in the world frame. */
-    private boolean burning;
-    private float pushX, pushY;
-    private final int[] tile = new int[2];
+    boolean burning;
+    float pushX, pushY;
+    final int[] tile = new int[2];
     private float scan;
-    private PhysicsManager physics;
+    PhysicsManager physics;
     private final Listener<WorldShiftEvent> shifts = (signal, e) -> shift(e);
+    final EvaCrossing crossings = new EvaCrossing(this);
+    final HullHold hullHold = new HullHold(this);
+    final HullCrawl crawling = new HullCrawl(this);
+    final EvaFlight flight = new EvaFlight(this);
+    final EvaTether tether = new EvaTether(this);
+    final RopeSwing ropeSwing = new RopeSwing(this);
+    final EvaTow tow = new EvaTow(this);
+    final ExhaustScorch scorching = new ExhaustScorch(this);
 
     public EvaSystem(CrewService service) {
         super(11, (float) SimClock.TICK_SECONDS);
@@ -381,65 +389,7 @@ public class EvaSystem extends FixedLogicSystem {
      * they are not outside or {@code port} is not one of {@code target}'s.
      */
     public boolean cross(Entity e, Entity target, MountFootprint port, boolean breaking) {
-        EvaComponent eva = of(e);
-        GridPositionComponent p = service.position(e);
-        ShipGridComponent from = p == null ? null : service.grid(p.ship), to = service.grid(target);
-        if (eva == null || !eva.outside() || from == null || to == null || port == null) return false;
-        int index = to.mounts.indexOf(port, true);
-        if (index < 0) return false;
-        frame.read(p.ship, from);
-        if (!eva.worldValid) initWorld(eva);
-        if (eva.portMount != null && eva.portMount.airlock != null) eva.portMount.airlock.release(e);
-        if (eva.phase == EvaComponent.Phase.ON_HULL) {
-            // Off with the hull point's motion and a push away from it
-            frame.toWorld(eva.rx, eva.ry, a);
-            frame.velocityAt(a[0], a[1], b);
-            eva.wx = a[0];
-            eva.wy = a[1];
-            eva.vx = b[0];
-            eva.vy = b[1];
-        }
-        eva.phase = EvaComponent.Phase.FREE;
-        eva.tethered = false;
-        eva.rope = null;
-        eva.reelLocked = false;
-        eva.tension = 0f;
-        eva.hop = false;
-        eva.path.clear();
-        eva.stepDone = 0f;
-        eva.strain = 0f;
-        eva.slideX = eva.slideY = 0f;
-        eva.hullVValid = false;
-        eva.fell = false;
-        eva.regrab = REGRAB_SECONDS;
-        eva.port = index;
-        eva.portMount = port;
-        eva.crossing = true;
-        eva.breaking = breaking;
-        eva.forcedIn = false;
-        eva.returning = true;
-        eva.outOfReach = false;
-        eva.crossTo = null;
-        eva.crossPort = null;
-        Entity left = p.ship;
-        // They still work for the craft they leave, which counts as home by where they stand
-        CrewMemberComponent c = service.crew(e);
-        if (c.home == null) c.setHome(left);
-        p.setShip(target);
-        frame.read(target, to);
-        frame.toTiles(eva.wx, eva.wy, a);
-        eva.rx = a[0];
-        eva.ry = a[1];
-        frame.velocityAt(eva.wx, eva.wy, b);
-        frame.vecToTiles(eva.vx - b[0], eva.vy - b[1], c4);
-        eva.rvx = c4[0];
-        eva.rvy = c4[1];
-        eva.frameBody = frame.body;
-        eva.shipVValid = false;
-        p.x = eva.rx;
-        p.y = eva.ry;
-        emit(EvaEvent.Kind.CROSSING, e, left, 0f);
-        return true;
+        return crossings.cross(e, target, port, breaking);
     }
 
     /**
@@ -499,7 +449,7 @@ public class EvaSystem extends FixedLogicSystem {
         EvaComponent eva = of(e);
         if (eva == null) return;
         if (eva.portMount != null && eva.portMount.airlock != null) eva.portMount.airlock.release(e);
-        if (eva.towing != null) letGoOf(e, eva);
+        if (eva.towing != null) tow.letGoOf(e, eva);
         EvaComponent holder = of(eva.heldBy);
         if (holder != null && holder.towing == e) holder.towing = null;
         e.remove(EvaComponent.class);
@@ -662,12 +612,12 @@ public class EvaSystem extends FixedLogicSystem {
 
     /** True if anyone but the airlock's user stands in its chamber. */
     private boolean crowded(Entity ship, Airlock lock) {
-        ImmutableArray<Entity> all = service.crewEntities();
-        for (int i = 0; i < all.size(); i++) {
-            Entity e = all.get(i);
+        ImmutableArray<Entity> aboard = service.aboard(ship);
+        for (int i = 0; i < aboard.size(); i++) {
+            Entity e = aboard.get(i);
             if (e == lock.user()) continue;
             GridPositionComponent p = service.position(e);
-            if (p.ship != ship || p.walkway != null || outside(e)) continue;
+            if (p.walkway != null || outside(e)) continue;
             // A shipmate brought in by the user comes through the cycle with them
             EvaComponent eva = of(e);
             if (eva != null && eva.heldBy != null && eva.heldBy == lock.user()) continue;
@@ -753,7 +703,7 @@ public class EvaSystem extends FixedLogicSystem {
         eva.airSeen = c.suitAir;
         eva.cargo = c.crate == null ? 0f : c.crate.mass;
         burning = exhaust.read(p.ship, grid);
-        scorch(e, eva, c, p, dt);
+        scorching.scorch(e, eva, c, p, dt);
         if (eva.heldBy != null) {
             EvaComponent holder = of(eva.heldBy);
             if (holder != null && holder.towing == e) {
@@ -764,16 +714,16 @@ public class EvaSystem extends FixedLogicSystem {
             eva.heldBy = null;
         }
         if (eva.phase == EvaComponent.Phase.ON_HULL) {
-            if (conscious) hold(e, eva, c, p, grid, hull, dt);
-            else letGo(e, eva, p, 0f);
+            if (conscious) hullHold.hold(e, eva, c, p, grid, hull, dt);
+            else hullHold.letGo(e, eva, p, 0f);
         }
-        if (eva.phase == EvaComponent.Phase.FREE) fly(e, eva, c, grid, hull, dt);
+        if (eva.phase == EvaComponent.Phase.FREE) flight.fly(e, eva, c, grid, hull, dt);
         if (eva.phase == EvaComponent.Phase.FREE && !eva.tethered) adrift(e, eva, c, p, grid, hull, dt);
-        if (eva.tethered && port != null) rope(e, eva, c, p, grid, hull, port, dt);
-        else if (eva.rope != null && port != null) reelIn(eva, hull, port, dt);
+        if (eva.tethered && port != null) tether.rope(e, eva, c, p, grid, hull, port, dt);
+        else if (eva.rope != null && port != null) tether.reelIn(eva, hull, port, dt);
         else eva.rope = null;
         toShipFrame(eva, p);
-        if (eva.towing != null) carry(e, eva, conscious);
+        if (eva.towing != null) tow.carry(e, eva, conscious);
         if (port == null || lock == null) {
             if (!eva.tethered) driftCheck(e, eva, p);
             return;
@@ -786,7 +736,7 @@ public class EvaSystem extends FixedLogicSystem {
         if (eva.forcedIn && atDoor && eva.returning) {
             if (doorOpen(grid, port)) {
                 stepIn(e, eva, p);
-                if (eva.towing != null) inWith(eva);
+                if (eva.towing != null) tow.inWith(eva);
             } else {
                 // Shut again on them from inside: forced again
                 eva.forcedIn = false;
@@ -795,37 +745,10 @@ public class EvaSystem extends FixedLogicSystem {
         } else if (!eva.breaking && (atDoor && eva.returning || reeledIn)) {
             if (lock.claim(e, true) && lock.isOut()) {
                 stepIn(e, eva, p);
-                if (eva.towing != null) inWith(eva);
+                if (eva.towing != null) tow.inWith(eva);
             }
         }
         if (!eva.tethered) driftCheck(e, eva, p);
-    }
-
-    /**
-     * The exhaust of their ship's main engines on {@code eva} this step, if they are in it ({@link
-     * EngineExhaust}): its push, for {@link #hold} and {@link #fly}; its burn; and said so when it
-     * first catches them.
-     */
-    private void scorch(Entity e, EvaComponent eva, CrewMemberComponent c, GridPositionComponent p, float dt) {
-        float push = burning ? exhaust.push(eva.rx, eva.ry, c4) : 0f;
-        eva.exhaust = push;
-        pushX = pushY = 0f;
-        if (push <= 0f) {
-            eva.scorched = false;
-            return;
-        }
-        // Along the ship's axes, into the world's
-        pushX = (frame.cos * c4[0] - frame.sin * c4[1]) * push;
-        pushY = (frame.sin * c4[0] + frame.cos * c4[1]) * push;
-        if (push > EngineExhaust.BURN_FROM) {
-            if (!eva.scorched && c.state != CrewState.DEAD) {
-                eva.scorched = true;
-                emit(EvaEvent.Kind.EXHAUST, e, p.ship, push);
-            }
-            service.applyDamage(e, EngineExhaust.burn(push) * dt, CrewDamageSink.DamageCause.FIRE);
-        } else if (push < EngineExhaust.BURN_FROM * 0.5f) {
-            eva.scorched = false;
-        }
     }
 
     /**
@@ -841,21 +764,7 @@ public class EvaSystem extends FixedLogicSystem {
         if (probe.burns(eva.rx, eva.ry)) return true;
         if (!eva.tethered || eva.rope == null) return false;
         query.read(p.ship, grid);
-        return probe.burnsThrough(ropeInTiles(eva.rope, query));
-    }
-
-    private final float[] qa = new float[2];
-    private float[] ropeScratch = new float[2 * ROPE_SEGMENTS + 2];
-
-    /** {@code rope}, world meters, in {@code f}'s tiles, into a scratch array. */
-    private float[] ropeInTiles(float[] rope, ShipFrame f) {
-        if (ropeScratch.length != rope.length) ropeScratch = new float[rope.length];
-        for (int i = 0; i < rope.length; i += 2) {
-            f.toTiles(rope[i], rope[i + 1], qa);
-            ropeScratch[i] = qa[0];
-            ropeScratch[i + 1] = qa[1];
-        }
-        return ropeScratch;
+        return probe.burnsThrough(tether.ropeInTiles(eva.rope, query));
     }
 
     /**
@@ -974,74 +883,6 @@ public class EvaSystem extends FixedLogicSystem {
         return m + MASS + (o == null ? 0f : o.cargo);
     }
 
-    /** {@code e} takes hold of {@code other}, adrift, to bring them in. */
-    private void takeInTow(Entity e, EvaComponent eva, Entity other, EvaComponent o) {
-        eva.chase = null;
-        eva.towing = other;
-        o.heldBy = e;
-        o.stranded = false;
-        // Their two speeds made one, momentum kept
-        float m = MASS + eva.cargo, mo = MASS + o.cargo;
-        eva.vx = (eva.vx * m + o.vx * mo) / (m + mo);
-        eva.vy = (eva.vy * m + o.vy * mo) / (m + mo);
-        GridPositionComponent op = service.position(other);
-        event.by = e;
-        emit(EvaEvent.Kind.TAKEN_IN_TOW, other, op == null ? null : op.ship, o.adrift);
-        event.by = null;
-        o.adrift = 0f;
-    }
-
-    /** Keeps the shipmate {@code eva} has in tow beside them, or lets go of them if they can't hold on. */
-    private void carry(Entity e, EvaComponent eva, boolean conscious) {
-        Entity other = eva.towing;
-        EvaComponent o = of(other);
-        GridPositionComponent op = service.position(other);
-        if (!conscious || o == null || op == null || o.heldBy != e || !o.outside()) {
-            letGoOf(e, eva);
-            return;
-        }
-        // Beside them, on the side away from the ship's middle
-        float dx = eva.wx - frame.cx, dy = eva.wy - frame.cy;
-        float d = (float) Math.sqrt(dx * dx + dy * dy);
-        float ux = d > 1e-3f ? dx / d : 1f, uy = d > 1e-3f ? dy / d : 0f;
-        o.phase = EvaComponent.Phase.FREE;
-        o.wx = eva.wx + ux * TOW_GAP;
-        o.wy = eva.wy + uy * TOW_GAP;
-        o.vx = eva.vx;
-        o.vy = eva.vy;
-        o.worldValid = true;
-        o.frameBody = frame.body;
-        o.facing = eva.facing;
-        toShipFrame(o, op);
-    }
-
-    /** Lets go of whoever {@code eva} has in tow: adrift again where they are. */
-    private void letGoOf(Entity e, EvaComponent eva) {
-        EvaComponent o = of(eva.towing);
-        if (o != null && o.heldBy == e) o.heldBy = null;
-        eva.towing = null;
-    }
-
-    /** Takes the shipmate {@code eva} has in tow into the chamber with them, stepping in. */
-    private void inWith(EvaComponent eva) {
-        Entity other = eva.towing;
-        EvaComponent o = of(other);
-        GridPositionComponent op = service.position(other);
-        if (o == null || op == null) {
-            eva.towing = null;
-            return;
-        }
-        o.port = eva.port;
-        o.portMount = eva.portMount;
-        o.phase = EvaComponent.Phase.RETURNING;
-        o.rope = null;
-        o.worldValid = false;
-        o.path.clear();
-        op.stop();
-        DockingPortLayout.chamberTile(eva.portMount, tile);
-        op.setTile(tile[0], tile[1]);
-    }
-
     private void leftBehind(Entity e) {
         GridPositionComponent p = service.position(e);
         Entity ship = p == null ? null : p.ship;
@@ -1055,602 +896,15 @@ public class EvaSystem extends FixedLogicSystem {
     // On the hull
     // -----------------------------------------------------------------------
 
-    /** A tick on the hull: crawls on toward the goal (or hops), and holds on if the hull's motion allows. */
-    private void hold(Entity e, EvaComponent eva, CrewMemberComponent c, GridPositionComponent p, ShipGridComponent grid,
-                      HullSurface hull, float dt) {
-        float fromX = eva.rx, fromY = eva.ry;
-        // Off on a hop, or out to a shipmate adrift: the jetpack takes over from the hull point's motion
-        if (eva.chase != null || crawl(eva, c, hull, dt)) {
-            eva.slideX = eva.slideY = 0f;
-            eva.path.clear();
-            frame.toWorld(eva.rx, eva.ry, a);
-            frame.velocityAt(a[0], a[1], b);
-            eva.wx = a[0];
-            eva.wy = a[1];
-            eva.vx = b[0];
-            eva.vy = b[1];
-            eva.phase = EvaComponent.Phase.FREE;
-            eva.hullVValid = false;
-            return;
-        }
-        // Just caught hold short of the hug point: they pull themselves over to it
-        if (eva.slideX != 0f || eva.slideY != 0f) {
-            float len = (float) Math.sqrt(eva.slideX * eva.slideX + eva.slideY * eva.slideY);
-            float ease = CRAWL_SPEED / hull.tileSize() * dt;
-            float k = len > ease ? (len - ease) / len : 0f;
-            eva.slideX *= k;
-            eva.slideY *= k;
-            eva.rx += eva.slideX;
-            eva.ry += eva.slideY;
-        }
-        eva.rvx = (eva.rx - fromX) / dt;
-        eva.rvy = (eva.ry - fromY) / dt;
-        frame.toWorld(eva.rx, eva.ry, a);
-        frame.velocityAt(a[0], a[1], b);
-        // What keeps them with the hull point: its acceleration times their mass, less what their line
-        // pulls. The hull pushing them along its outward normal does that part itself; the rest, a pull
-        // away from it or a drag along it, their hold has to give.
-        float fx = 0f, fy = 0f, mass = mass(eva);
-        if (eva.hullVValid) {
-            fx = mass * (b[0] - eva.hullVx) / dt;
-            fy = mass * (b[1] - eva.hullVy) / dt;
-        }
-        if (eva.tethered && eva.tension > 0f && eva.rope != null) {
-            int n = eva.rope.length;
-            float dx = eva.rope[n - 4] - a[0], dy = eva.rope[n - 3] - a[1];
-            float d = (float) Math.sqrt(dx * dx + dy * dy);
-            if (d > 1e-4f) {
-                fx -= eva.tension * dx / d;
-                fy -= eva.tension * dy / d;
-            }
-        }
-        // And what an engine's exhaust pushes them with
-        fx -= pushX;
-        fy -= pushY;
-        float need = (float) Math.sqrt(fx * fx + fy * fy);
-        if (hull.surface(eva.rx, eva.ry, q)) {
-            frame.vecToWorld(q[2], q[3], c4);
-            float len = (float) Math.sqrt(c4[0] * c4[0] + c4[1] * c4[1]);
-            float nx = c4[0] / len, ny = c4[1] / len;
-            float fn = fx * nx + fy * ny;
-            float tx = fx - fn * nx, ty = fy - fn * ny, pull = Math.min(0f, fn);
-            need = (float) Math.sqrt(tx * tx + ty * ty + pull * pull);
-        }
-        eva.hullVx = b[0];
-        eva.hullVy = b[1];
-        eva.hullVValid = true;
-        frame.vecToWorld(eva.rvx, eva.rvy, c4);
-        eva.wx = a[0];
-        eva.wy = a[1];
-        eva.vx = b[0] + c4[0];
-        eva.vy = b[1] + c4[1];
-        // Past their grip the strain builds, and their spare grip eases it: a jolt that would take more
-        // than GRIP_SLIP seconds of their full grip, or a pull well past it for a moment, tears them off
-        eva.strain = Math.max(0f, eva.strain + (need - GRIP) * dt);
-        if (eva.strain > GRIP * GRIP_SLIP) letGo(e, eva, p, need / mass);
-    }
-
-    private final float[] c4 = new float[2];
-
-    private void letGo(Entity e, EvaComponent eva, GridPositionComponent p, float accel) {
-        eva.phase = EvaComponent.Phase.FREE;
-        eva.slideX = eva.slideY = 0f;
-        eva.hop = false;
-        eva.path.clear();
-        eva.stepDone = 0f;
-        eva.strain = 0f;
-        eva.hullVValid = false;
-        eva.fell = true;
-        eva.regrab = REGRAB_SECONDS;
-        emit(EvaEvent.Kind.LOST_GRIP, e, p.ship, accel);
-    }
-
-    /**
-     * Crawls {@code eva} along the ring toward their goal for {@code dt}. True if they push off on a
-     * jetpack hop instead.
-     */
-    private boolean crawl(EvaComponent eva, CrewMemberComponent c, HullSurface hull, float dt) {
-        eva.burnWait = false;
-        if (!eva.hasGoal() || !hull.isRing(eva.goalX, eva.goalY) || !hull.isRing(eva.ringX, eva.ringY)) {
-            eva.path.clear();
-            if (eva.hasGoal() && !hull.isRing(eva.goalX, eva.goalY)) eva.outOfReach = true;
-            settle(eva, hull);
-            return false;
-        }
-        int[] last = eva.path.size > 0 ? eva.path.peek() : null;
-        boolean fresh = last == null || last[0] != eva.goalX || last[1] != eva.goalY || eva.pathHull != hull;
-        if (fresh && (eva.ringX != eva.goalX || eva.ringY != eva.goalY)) {
-            if (!hull.path(eva.ringX, eva.ringY, eva.goalX, eva.goalY, eva.path)) {
-                eva.outOfReach = true;
-                settle(eva, hull);
-                return false;
-            }
-            eva.pathHull = hull;
-            eva.stepDone = 0f;
-            if (wantsHop(eva, c, hull)) {
-                eva.hop = true;
-                eva.path.clear();
-                return true;
-            }
-        }
-        if (eva.path.size == 0) {
-            settle(eva, hull);
-            return false;
-        }
-        // The line run out and stretched: no further this way
-        if (eva.lineOut >= LINE_MAX - 0.01f && eva.stretch > 0.05f) {
-            eva.outOfReach = true;
-            return false;
-        }
-        float budget = CRAWL_SPEED / hull.tileSize() * dt * c.woundPace();
-        while (budget > 0f && eva.path.size > 0) {
-            int[] next = eva.path.first();
-            hull.hug(eva.ringX, eva.ringY, v2);
-            float ax = v2.x, ay = v2.y;
-            hull.hug(next[0], next[1], v2);
-            // Not on into the exhaust of an engine burning: they hold where they are till it stops
-            if (burning && exhaust.burns(v2.x, v2.y) && !exhaust.burns(eva.rx, eva.ry)) {
-                eva.burnWait = true;
-                return false;
-            }
-            float len = Math.max(1e-3f, v2.dst(ax, ay));
-            float left = len * (1f - eva.stepDone);
-            eva.facing = (float) Math.atan2(v2.y - ay, v2.x - ax);
-            if (budget >= left) {
-                budget -= left;
-                eva.ringX = next[0];
-                eva.ringY = next[1];
-                eva.path.removeIndex(0);
-                eva.stepDone = 0f;
-                eva.crawled += left;
-            } else {
-                eva.stepDone += budget / len;
-                eva.crawled += budget;
-                budget = 0f;
-            }
-        }
-        if (eva.path.size == 0) {
-            settle(eva, hull);
-        } else {
-            int[] next = eva.path.first();
-            hull.hug(eva.ringX, eva.ringY, v2);
-            float ax = v2.x, ay = v2.y;
-            hull.hug(next[0], next[1], v2);
-            eva.rx = ax + (v2.x - ax) * eva.stepDone;
-            eva.ry = ay + (v2.y - ay) * eva.stepDone;
-        }
-        return false;
-    }
-
-    /** Puts {@code eva} at their ring tile's hug point. */
-    private void settle(EvaComponent eva, HullSurface hull) {
-        if (!hull.isRing(eva.ringX, eva.ringY)) return;
-        hull.hug(eva.ringX, eva.ringY, v2);
-        eva.rx = v2.x;
-        eva.ry = v2.y;
-        eva.stepDone = 0f;
-    }
-
-    /** True if the way to the goal is better flown: clear, much shorter, and the pack can spare it. */
-    private boolean wantsHop(EvaComponent eva, CrewMemberComponent c, HullSurface hull) {
-        if (c.suitKind != Suit.Kind.EVA || c.suitJet < JET_RESERVE + 2f * HOP_SPEED + 1f || eva.noHops) return false;
-        hull.hug(eva.ringX, eva.ringY, v2);
-        float ax = v2.x, ay = v2.y;
-        hull.hug(eva.goalX, eva.goalY, v2);
-        float straight = v2.dst(ax, ay);
-        return eva.path.size - straight >= HOP_SAVES && hull.clear(ax, ay, v2.x, v2.y);
-    }
+    final float[] c4 = new float[2];
 
     // -----------------------------------------------------------------------
     // Off the hull
     // -----------------------------------------------------------------------
 
-    /** A tick off the hull: the line's pull and the jetpack, then the hull in the way. */
-    private void fly(Entity e, EvaComponent eva, CrewMemberComponent c, ShipGridComponent grid, HullSurface hull, float dt) {
-        float fx = 0f, fy = 0f;
-        // The line pulls along its last segment, toward the reel
-        if (eva.tethered && eva.tension > 0f && eva.rope != null) {
-            int n = eva.rope.length;
-            float dx = eva.rope[n - 4] - eva.wx, dy = eva.rope[n - 3] - eva.wy;
-            float d = (float) Math.sqrt(dx * dx + dy * dy);
-            if (d > 1e-4f) {
-                fx += eva.tension * dx / d;
-                fy += eva.tension * dy / d;
-            }
-        }
-        float mass = mass(eva);
-        // The bubble's tidal gravity: the ship falls the same way, so it tells only on one adrift far off
-        if (physics != null) {
-            physics.getTidalField().accelAt(eva.wx, eva.wy, v2);
-            fx += v2.x * mass;
-            fy += v2.y * mass;
-        }
-        // An engine's exhaust
-        fx += pushX;
-        fy += pushY;
-        boolean conscious = c.isConscious();
-        int[] target = null;
-        eva.jetting = false;
-        eva.climbing = false;
-        eva.waiting = false;
-        eva.shortOfFuel = !eva.tethered && (!conscious || !c.suited || c.suitKind != Suit.Kind.EVA || c.suitJet <= 0f);
-        boolean canJet = conscious && c.suited && c.suitKind == Suit.Kind.EVA && c.suitJet > 0f;
-        // Out to a shipmate adrift: while they are still there to take hold of
-        EvaComponent chased = of(eva.chase);
-        if (chased != null && (!canJet || !chased.outside() || chased.heldBy != null || !chased.worldValid)) chased = null;
-        if (chased == null) eva.chase = null;
-        if (canJet && chased == null) {
-            target = eva.hop && eva.hasGoal() && hull.isRing(eva.goalX, eva.goalY) ? new int[]{eva.goalX, eva.goalY}
-                    : hull.nearest(eva.rx, eva.ry);
-        } else if (conscious && eva.tethered && chased == null) {
-            eva.climbing = true;
-        }
-        if (target != null || chased != null) {
-            if (chased != null) {
-                a[0] = chased.wx;
-                a[1] = chased.wy;
-                b[0] = chased.vx;
-                b[1] = chased.vy;
-            } else {
-                hull.hug(target[0], target[1], v2);
-                frame.toWorld(v2.x, v2.y, a);
-                frame.velocityAt(a[0], a[1], b);
-            }
-            float rx = a[0] - eva.wx, ry = a[1] - eva.wy;
-            float rvx = eva.vx - b[0], rvy = eva.vy - b[1];
-            float dist = (float) Math.sqrt(rx * rx + ry * ry);
-            float maxA = JET_THRUST / mass;
-            // Far out with no line, faster than a hop, or the way back would outlast their air; out from
-            // the hull on a line, no faster than the reel pays out without locking; across to another
-            // craft, briskly
-            float cruise = eva.crossing ? CROSS_SPEED : eva.tethered ? HOP_SPEED : Math.max(HOP_SPEED, Math.min(CRUISE_MAX, dist / CRUISE_SECONDS));
-            if (chased != null) cruise = Math.min(cruise, REEL_LOCK_SPEED * 0.8f);
-            float speed = Math.min(cruise, (float) Math.sqrt(2f * maxA * 0.6f * dist));
-            float wantX = dist > 0.05f ? rx / dist * speed : 0f, wantY = dist > 0.05f ? ry / dist * speed : 0f;
-            float ax = (wantX - rvx) * 1.5f, ay = (wantY - rvy) * 1.5f;
-            if (!eva.tethered) {
-                // Only if the pack can bring them back from here, and the ship isn't drawing away under
-                // thrust the pack can't match: chasing it would only empty the pack
-                float need = (float) Math.sqrt((wantX - rvx) * (wantX - rvx) + (wantY - rvy) * (wantY - rvy)) + speed + JET_SPARE;
-                float shipA = (float) Math.sqrt(eva.shipAx * eva.shipAx + eva.shipAy * eva.shipAy);
-                eva.shortOfFuel = need > c.suitJet;
-                eva.waiting = eva.shortOfFuel || shipA > maxA * CHASE_SHARE;
-                if (eva.waiting) ax = ay = 0f;
-            }
-            float am = (float) Math.sqrt(ax * ax + ay * ay);
-            if (am > maxA) {
-                ax *= maxA / am;
-                ay *= maxA / am;
-                am = maxA;
-            }
-            // The pack's delta-v is reckoned on its wearer alone: a shipmate in tow doubles what it takes
-            float spend = am * dt * mass / MASS;
-            if (spend > c.suitJet) {
-                float k = c.suitJet / spend;
-                ax *= k;
-                ay *= k;
-                spend = c.suitJet;
-            }
-            c.suitJet = Math.max(0f, c.suitJet - spend);
-            fx += ax * mass;
-            fy += ay * mass;
-            eva.jetting = spend > 0f;
-            if (eva.jetting) {
-                frame.vecToTiles(ax, ay, c4);
-                float jet = (float) Math.sqrt(c4[0] * c4[0] + c4[1] * c4[1]);
-                eva.jetX = c4[0] / jet;
-                eva.jetY = c4[1] / jet;
-            }
-            if (!eva.waiting) eva.facing = (float) Math.atan2(ry, rx) - frame.angle;
-            float rel = (float) Math.sqrt(rvx * rvx + rvy * rvy);
-            if (chased != null) {
-                // There and slow enough: they take hold of them
-                if (dist < TAKE_HOLD && rel < GRAB_SPEED) takeInTow(e, eva, eva.chase, chased);
-                target = null;
-            }
-            // There, slow enough to take hold, and the hull not dragging past their grip
-            if (target != null && dist < 0.3f && rel < GRAB_SPEED && eva.regrab <= 0f && hull.surface(v2.x, v2.y, q)) {
-                frame.vecToWorld(q[2], q[3], c4);
-                float len = (float) Math.sqrt(c4[0] * c4[0] + c4[1] * c4[1]);
-                if (canHold(eva, a[0], a[1], c4[0] / len, c4[1] / len)) {
-                    grab(e, eva, target[0], target[1], hull);
-                    return;
-                }
-            }
-        }
-        eva.vx += fx / mass * dt;
-        eva.vy += fy / mass * dt;
-        eva.wx += eva.vx * dt;
-        eva.wy += eva.vy * dt;
-        contact(e, eva, c, grid, hull);
-    }
-
-    /** The hull in the way: stops the speed into it and some along it, hurts past {@link #HURT_SPEED}, and is caught hold of if slow. */
-    private void contact(Entity e, EvaComponent eva, CrewMemberComponent c, ShipGridComponent grid, HullSurface hull) {
-        frame.toTiles(eva.wx, eva.wy, a);
-        float qx = a[0], qy = a[1];
-        float r = RADIUS / grid.tileSize;
-        float px, py, nx, ny;
-        if (hull.solid((int) Math.floor(qx), (int) Math.floor(qy))) {
-            if (!hull.pushOut(qx, qy, b)) return;
-            px = b[0];
-            py = b[1];
-            nx = px - qx;
-            ny = py - qy;
-            float len = (float) Math.sqrt(nx * nx + ny * ny);
-            if (len < 1e-5f) return;
-            nx /= len;
-            ny /= len;
-            px += nx * r;
-            py += ny * r;
-        } else {
-            if (!hull.surface(qx, qy, b)) return;
-            float dx = qx - b[0], dy = qy - b[1];
-            if (dx * dx + dy * dy >= r * r) return;
-            nx = b[2];
-            ny = b[3];
-            px = b[0] + nx * r;
-            py = b[1] + ny * r;
-        }
-        frame.toWorld(px, py, a);
-        eva.wx = a[0];
-        eva.wy = a[1];
-        frame.vecToWorld(nx, ny, c4);
-        float len = (float) Math.sqrt(c4[0] * c4[0] + c4[1] * c4[1]);
-        float nwx = c4[0] / len, nwy = c4[1] / len;
-        frame.velocityAt(eva.wx, eva.wy, b);
-        float rvx = eva.vx - b[0], rvy = eva.vy - b[1];
-        float vn = rvx * nwx + rvy * nwy;
-        if (vn < 0f) {
-            float impact = -vn;
-            rvx -= vn * nwx;
-            rvy -= vn * nwy;
-            // Friction along the hull, up to half the blow
-            float vt = (float) Math.sqrt(rvx * rvx + rvy * rvy);
-            if (vt > 1e-5f) {
-                float k = Math.max(0f, vt - 0.5f * impact) / vt;
-                rvx *= k;
-                rvy *= k;
-            }
-            eva.vx = b[0] + rvx;
-            eva.vy = b[1] + rvy;
-            if (impact > HURT_SPEED) service.applyDamage(e, (impact - HURT_SPEED) * HURT_PER_MPS, CrewDamageSink.DamageCause.IMPACT);
-        }
-        float rel = (float) Math.sqrt(rvx * rvx + rvy * rvy);
-        if (c.isConscious() && eva.regrab <= 0f && eva.chase == null && rel < GRAB_SPEED && canHold(eva, eva.wx, eva.wy, nwx, nwy)) {
-            int[] ring = hull.nearest(px, py);
-            if (ring != null) grab(e, eva, ring[0], ring[1], hull);
-        }
-    }
-
-    /**
-     * True if a crew member could keep hold of the hull at world point ({@code wx}, {@code wy}), its
-     * outward normal ({@code nx}, {@code ny}): the force that would keep them moving with it, but for
-     * the hull's push, within their grip. Their line doesn't count: it pulls one way and then another
-     * as they swing, so nobody can lean on it to take hold. A hull dragging harder than that past them
-     * (a hard burn still going) can't be caught; they hang on the line until it eases.
-     */
-    private boolean canHold(EvaComponent eva, float wx, float wy, float nx, float ny) {
-        float rx = wx - frame.cx, ry = wy - frame.cy, w2 = frame.omega * frame.omega, mass = mass(eva);
-        float fx = mass * (eva.shipAx - eva.shipAlpha * ry - w2 * rx);
-        float fy = mass * (eva.shipAy + eva.shipAlpha * rx - w2 * ry);
-        float fn = fx * nx + fy * ny;
-        float tx = fx - fn * nx, ty = fy - fn * ny, pull = Math.min(0f, fn);
-        return tx * tx + ty * ty + pull * pull <= GRIP * GRIP;
-    }
-
-    private void grab(Entity e, EvaComponent eva, int x, int y, HullSurface hull) {
-        eva.phase = EvaComponent.Phase.ON_HULL;
-        eva.ringX = x;
-        eva.ringY = y;
-        eva.path.clear();
-        eva.stepDone = 0f;
-        eva.hop = false;
-        eva.strain = 0f;
-        eva.hullVValid = false;
-        eva.jetting = false;
-        eva.climbing = false;
-        // Where they took hold, short of the ring tile's hug point
-        frame.toTiles(eva.wx, eva.wy, a);
-        settle(eva, hull);
-        eva.slideX = a[0] - eva.rx;
-        eva.slideY = a[1] - eva.ry;
-        eva.rx = a[0];
-        eva.ry = a[1];
-        if (eva.fell) {
-            eva.fell = false;
-            emit(EvaEvent.Kind.CAUGHT_HULL, e, service.position(e).ship, eva.adrift);
-        }
-        eva.adrift = 0f;
-        eva.stranded = false;
-    }
-
     // -----------------------------------------------------------------------
     // The tether
     // -----------------------------------------------------------------------
-
-    /** A tick of the line: the rope's shape, the reel, the pull, and a snap. */
-    private void rope(Entity e, EvaComponent eva, CrewMemberComponent c, GridPositionComponent p, ShipGridComponent grid,
-                      HullSurface hull, MountFootprint port, float dt) {
-        int n = ROPE_SEGMENTS;
-        reel(port, a);
-        frame.toWorld(a[0], a[1], b);
-        float ax = b[0], ay = b[1];
-        if (eva.rope == null) layRope(eva, ax, ay);
-        float[] r = eva.rope;
-        swing(r, eva.ropePrev, ax, ay, true, eva.wx, eva.wy, Math.max(0.05f, eva.lineOut) / n, hull, dt);
-        float length = 0f;
-        for (int i = 0; i < n; i++) {
-            float dx = r[2 * i + 2] - r[2 * i], dy = r[2 * i + 3] - r[2 * i + 1];
-            length += (float) Math.sqrt(dx * dx + dy * dy);
-        }
-        // Through the exhaust of an engine burning, it burns through
-        if (burning && exhaust.burnsThrough(ropeInTiles(eva.rope, frame))) {
-            eva.tethered = false;
-            eva.tension = 0f;
-            eva.reelLocked = false;
-            emit(EvaEvent.Kind.TETHER_BURNED, e, p.ship, 0f);
-            return;
-        }
-        float stretch = length - eva.lineOut;
-        float straight = (float) Math.sqrt((eva.wx - ax) * (eva.wx - ax) + (eva.wy - ay) * (eva.wy - ay));
-        // The reel: pays out as the line is drawn, unless drawn too fast (it locks), and takes up slack;
-        // or winds in one who can't climb, while their weight on the line is no more than its motor pulls
-        boolean winched = eva.phase == EvaComponent.Phase.FREE && (eva.climbing || !c.isConscious());
-        if (stretch > 0f && !eva.reelLocked && !winched && eva.lineOut < LINE_MAX) {
-            // Locks on a line snatched out by one going faster than it pays out: not on one pushed out
-            // slowly (a hop, a push off to a shipmate), whose rope only shivers as it lifts off the hull
-            frame.velocityAt(eva.wx, eva.wy, c4);
-            float rel = (float) Math.sqrt((eva.vx - c4[0]) * (eva.vx - c4[0]) + (eva.vy - c4[1]) * (eva.vy - c4[1]));
-            if (eva.phase == EvaComponent.Phase.FREE && stretch / dt > REEL_LOCK_SPEED && rel > REEL_LOCK_SPEED && eva.lineOut > 1f) {
-                eva.reelLocked = true;
-            } else {
-                float out = Math.min(stretch, LINE_MAX - eva.lineOut);
-                eva.lineOut += out;
-                stretch -= out;
-            }
-        }
-        if (winched) {
-            if (eva.tension < WINCH_PULL) eva.lineOut = Math.max(0.3f, eva.lineOut - (c.isConscious() ? CLIMB_SPEED : REEL_SPEED) * dt);
-        } else if (!eva.reelLocked && stretch < 0f && eva.lineOut > straight + SLACK) {
-            eva.lineOut = Math.max(straight + SLACK, eva.lineOut - TAKE_UP_SPEED * dt);
-        }
-        if (eva.reelLocked) {
-            eva.slackTime = stretch < 0f ? eva.slackTime + dt : 0f;
-            if (eva.slackTime > 0.5f || eva.phase == EvaComponent.Phase.ON_HULL) {
-                eva.reelLocked = false;
-                eva.slackTime = 0f;
-            }
-        }
-        // Its pull: the stretch, and the line's own damping as it stretches; it parts once the stretch
-        // alone has been past what it is rated for long enough
-        float before = eva.stretchF;
-        eva.stretchF += (stretch - eva.stretchF) * Math.min(1f, dt / STRETCH_TAU);
-        float tension = 0f, elastic = 0f;
-        if (eva.stretchF > 0f) {
-            float rate = (eva.stretchF - Math.max(0f, before)) / dt;
-            elastic = LINE_K * eva.stretchF;
-            tension = Math.max(0f, elastic + LINE_C * rate);
-        }
-        eva.stretch = stretch;
-        eva.tension = tension;
-        eva.lineStrain = Math.max(0f, eva.lineStrain + (elastic - LINE_RATED) * dt);
-        if (eva.lineStrain > LINE_GIVE) {
-            eva.tethered = false;
-            eva.tension = 0f;
-            eva.reelLocked = false;
-            emit(EvaEvent.Kind.TETHER_SNAPPED, e, p.ship, tension);
-            return;
-        }
-        // The same pull on the ship, at the reel, along the line's first segment
-        if (tension > 0f && frame.body != null) {
-            float dx = r[2] - r[0], dy = r[3] - r[1];
-            float d = (float) Math.sqrt(dx * dx + dy * dy);
-            if (d > 1e-4f) {
-                float[] f = pulls.get(frame.body);
-                if (f == null) pulls.put(frame.body, f = new float[4]);
-                f[0] += tension * dx / d;
-                f[1] += tension * dy / d;
-                f[2] = ax;
-                f[3] = ay;
-            }
-        }
-    }
-
-    /**
-     * Moves rope {@code r} on by {@code dt} ({@code prev}: its points a step ago): the free points
-     * swing on, losing some of their motion relative to the hull beside them; the first goes with the
-     * reel at ({@code ax}, {@code ay}) and, if {@code held}, the last with the crew member at ({@code
-     * ex}, {@code ey}). Then no segment is let stay longer than {@code rest}, and the rope is pushed
-     * out of the hull.
-     */
-    private void swing(float[] r, float[] prev, float ax, float ay, boolean held, float ex, float ey, float rest,
-                       HullSurface hull, float dt) {
-        int n = r.length / 2 - 1, free = held ? 2 * n : 2 * n + 2;
-        for (int i = 2; i < free; i += 2) {
-            float x = r[i], y = r[i + 1];
-            frame.velocityAt(x, y, c4);
-            float vx = x - prev[i], vy = y - prev[i + 1];
-            float sx = c4[0] * dt, sy = c4[1] * dt;
-            vx = sx + (vx - sx) * ROPE_KEEP;
-            vy = sy + (vy - sy) * ROPE_KEEP;
-            prev[i] = x;
-            prev[i + 1] = y;
-            r[i] = x + vx;
-            r[i + 1] = y + vy;
-        }
-        prev[0] = r[0];
-        prev[1] = r[1];
-        r[0] = ax;
-        r[1] = ay;
-        if (held) {
-            prev[2 * n] = r[2 * n];
-            prev[2 * n + 1] = r[2 * n + 1];
-            r[2 * n] = ex;
-            r[2 * n + 1] = ey;
-        }
-        for (int it = 0; it < ROPE_ITERATIONS; it++) {
-            // Sweeping from each end in turn, so a pull at either end travels the length of the rope
-            for (int step = 0; step < n; step++) {
-                int i = it % 2 == 0 ? step : n - 1 - step;
-                int j = 2 * i, k = j + 2;
-                float dx = r[k] - r[j], dy = r[k + 1] - r[j + 1];
-                float d = (float) Math.sqrt(dx * dx + dy * dy);
-                if (d <= rest || d < 1e-6f) continue;
-                float wa = i == 0 ? 0f : 1f, wb = held && i == n - 1 ? 0f : 1f;
-                if (wa + wb == 0f) continue;
-                float move = (d - rest) / d / (wa + wb);
-                r[j] += dx * move * wa;
-                r[j + 1] += dy * move * wa;
-                r[k] -= dx * move * wb;
-                r[k + 1] -= dy * move * wb;
-            }
-            // Out of the hull
-            if (it >= ROPE_ITERATIONS - 3) {
-                for (int i = 2; i < free; i += 2) {
-                    frame.toTiles(r[i], r[i + 1], q);
-                    if (!hull.pushOut(q[0], q[1], b)) continue;
-                    frame.toWorld(b[0], b[1], q);
-                    r[i] = q[0];
-                    r[i + 1] = q[1];
-                }
-            }
-        }
-    }
-
-    /**
-     * A tick of a parted line: it parted at the crew member's clip, so the whole of it is left on the
-     * reel, its loose end free, and the reel's spring winds it in; gone once it is.
-     */
-    private void reelIn(EvaComponent eva, HullSurface hull, MountFootprint port, float dt) {
-        eva.lineOut -= TAKE_UP_SPEED * dt;
-        if (eva.lineOut <= 0.1f) {
-            eva.rope = null;
-            return;
-        }
-        reel(port, a);
-        frame.toWorld(a[0], a[1], b);
-        swing(eva.rope, eva.ropePrev, b[0], b[1], false, 0f, 0f, eva.lineOut / ROPE_SEGMENTS, hull, dt);
-    }
-
-    /** Lays the rope straight from the reel to the crew member, at rest relative to the hull. */
-    private void layRope(EvaComponent eva, float ax, float ay) {
-        int n = ROPE_SEGMENTS;
-        eva.rope = new float[2 * n + 2];
-        eva.ropePrev = new float[2 * n + 2];
-        float straight = (float) Math.sqrt((eva.wx - ax) * (eva.wx - ax) + (eva.wy - ay) * (eva.wy - ay));
-        if (eva.lineOut < straight) eva.lineOut = Math.min(LINE_MAX, straight + SLACK);
-        for (int i = 0; i <= n; i++) {
-            float t = i / (float) n;
-            float x = ax + (eva.wx - ax) * t, y = ay + (eva.wy - ay) * t;
-            eva.rope[2 * i] = x;
-            eva.rope[2 * i + 1] = y;
-            frame.velocityAt(x, y, c4);
-            eva.ropePrev[2 * i] = x - c4[0] * STEP;
-            eva.ropePrev[2 * i + 1] = y - c4[1] * STEP;
-        }
-        eva.stretch = eva.stretchF = 0f;
-    }
 
     static final float STEP = (float) SimClock.TICK_SECONDS;
 
@@ -1659,7 +913,7 @@ public class EvaSystem extends FixedLogicSystem {
     // -----------------------------------------------------------------------
 
     /** World-frame state from the ship-frame state saved (or set when they stepped out). */
-    private void initWorld(EvaComponent eva) {
+    void initWorld(EvaComponent eva) {
         frame.toWorld(eva.rx, eva.ry, a);
         frame.velocityAt(a[0], a[1], b);
         frame.vecToWorld(eva.rvx, eva.rvy, c4);
@@ -1673,7 +927,7 @@ public class EvaSystem extends FixedLogicSystem {
     }
 
     /** The ship-frame state from the world-frame one, and the crew member's place on deck. */
-    private void toShipFrame(EvaComponent eva, GridPositionComponent p) {
+    void toShipFrame(EvaComponent eva, GridPositionComponent p) {
         if (eva.phase == EvaComponent.Phase.FREE) {
             frame.toTiles(eva.wx, eva.wy, a);
             eva.rx = a[0];
@@ -1689,7 +943,7 @@ public class EvaSystem extends FixedLogicSystem {
 
     private void shift(WorldShiftEvent s) {
         if (crew == null) return;
-        float dx = (float) s.deltaX, dy = (float) s.deltaY, dvx = (float) s.deltaVx, dvy = (float) s.deltaVy;
+        float dx = s.deltaX, dy = s.deltaY, dvx = s.deltaVx, dvy = s.deltaVy;
         for (int i = 0; i < crew.size(); i++) {
             EvaComponent eva = evaM.get(crew.get(i));
             if (eva == null) continue;
@@ -1712,7 +966,7 @@ public class EvaSystem extends FixedLogicSystem {
         }
     }
 
-    private void emit(EvaEvent.Kind kind, Entity e, Entity ship, float amount) {
+    void emit(EvaEvent.Kind kind, Entity e, Entity ship, float amount) {
         event.kind = kind;
         event.crew = e;
         event.ship = ship;
@@ -1722,71 +976,4 @@ public class EvaSystem extends FixedLogicSystem {
         event.ship = null;
     }
 
-    /**
-     * A ship's place and motion in the physics world's frame, meters and radians; the identity at
-     * rest for a ship with no body.
-     */
-    static final class ShipFrame {
-        float x, y, angle, cos = 1f, sin, cx, cy, vx, vy, omega, ox, oy, tile = 1f;
-        Body body;
-
-        void read(Entity ship, ShipGridComponent grid) {
-            ox = grid.gridOriginLocal.x;
-            oy = grid.gridOriginLocal.y;
-            tile = grid.tileSize;
-            PhysicsBodyComponent pb = ship == null ? null : ship.getComponent(PhysicsBodyComponent.class);
-            body = pb == null ? null : pb.body;
-            if (body == null) {
-                x = y = angle = sin = cx = cy = vx = vy = omega = 0f;
-                cos = 1f;
-                return;
-            }
-            Vector2 p = body.getPosition();
-            x = p.x * PhysicsManager.METERS_PER_UNIT;
-            y = p.y * PhysicsManager.METERS_PER_UNIT;
-            angle = body.getAngle();
-            cos = (float) Math.cos(angle);
-            sin = (float) Math.sin(angle);
-            Vector2 c = body.getWorldCenter();
-            cx = c.x * PhysicsManager.METERS_PER_UNIT;
-            cy = c.y * PhysicsManager.METERS_PER_UNIT;
-            Vector2 v = body.getLinearVelocity();
-            vx = v.x * PhysicsManager.METERS_PER_UNIT;
-            vy = v.y * PhysicsManager.METERS_PER_UNIT;
-            omega = body.getAngularVelocity();
-        }
-
-        /** Tile point (tx, ty) in the world, meters: {@code out = {x, y}}. */
-        void toWorld(float tx, float ty, float[] out) {
-            float lx = ox + tx * tile, ly = oy + ty * tile;
-            out[0] = x + cos * lx - sin * ly;
-            out[1] = y + sin * lx + cos * ly;
-        }
-
-        /** World point (wx, wy), meters, in tiles: {@code out = {x, y}}. */
-        void toTiles(float wx, float wy, float[] out) {
-            float dx = wx - x, dy = wy - y;
-            float lx = cos * dx + sin * dy, ly = -sin * dx + cos * dy;
-            out[0] = (lx - ox) / tile;
-            out[1] = (ly - oy) / tile;
-        }
-
-        /** The ship's velocity at world point (wx, wy), m/s: {@code out = {vx, vy}}. */
-        void velocityAt(float wx, float wy, float[] out) {
-            out[0] = vx - omega * (wy - cy);
-            out[1] = vy + omega * (wx - cx);
-        }
-
-        /** A ship-frame vector in tiles as a world one in meters. */
-        void vecToWorld(float tx, float ty, float[] out) {
-            out[0] = (cos * tx - sin * ty) * tile;
-            out[1] = (sin * tx + cos * ty) * tile;
-        }
-
-        /** A world vector in meters as a ship-frame one in tiles. */
-        void vecToTiles(float wx, float wy, float[] out) {
-            out[0] = (cos * wx + sin * wy) / tile;
-            out[1] = (-sin * wx + cos * wy) / tile;
-        }
-    }
 }

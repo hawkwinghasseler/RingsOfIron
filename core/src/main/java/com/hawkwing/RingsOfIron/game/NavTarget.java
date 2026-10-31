@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.Family;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.macrosim.economy.EconomyNode;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
@@ -9,6 +10,7 @@ import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 
@@ -16,6 +18,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.orbital.rails.RailsUniverse;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * The player's navigation target: any station, a craft in the bubble, or a known ship on the rails
@@ -27,22 +32,32 @@ import java.util.Set;
 public class NavTarget {
     private static final Family MARKED = Family.all(HudMarkerComponent.class, PhysicsBodyComponent.class).get();
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final PhysicsManager physics;
+    private final RailsUniverse universe;
+    private final MacroSimulation macroSim;
+    private final ContractBoard contracts;
+    private final PirateBase pirateBase;
     private final PirateSightings sightings;
     private final double[] trueState = new double[4];
     private final StateVector scratch = new StateVector();
 
-    public NavTarget(GameWorld world, PirateSightings sightings) {
-        this.world = world;
+    public NavTarget(GameContext ctx, PhysicsManager physics, RailsUniverse universe, MacroSimulation macroSim, ContractBoard contracts, PirateBase pirateBase, PirateSightings sightings) {
+        this.ctx = ctx;
+        this.physics = physics;
+        this.universe = universe;
+        this.macroSim = macroSim;
+        this.contracts = contracts;
+        this.pirateBase = pirateBase;
         this.sightings = sightings;
     }
 
     /** The target's uuid, or null for none or one that is gone. */
     public String uuid() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         NavTargetComponent t = ship == null ? null : ship.getComponent(NavTargetComponent.class);
         if (t == null || t.uuid == null) return null;
-        if (world.engine.getEntity(t.uuid) == null) {
+        if (ctx.engine.getEntity(t.uuid) == null) {
             t.uuid = null;
             return null;
         }
@@ -52,14 +67,14 @@ public class NavTarget {
     /** The target's entity, or null. */
     public Entity entity() {
         String uuid = uuid();
-        return uuid == null ? null : world.engine.getEntity(uuid);
+        return uuid == null ? null : ctx.engine.getEntity(uuid);
     }
 
     /** Sets the target (null clears it). Returns what to tell the player. */
     public String select(String uuid) {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (ship == null) return "No ship";
-        if (uuid != null && (uuid.equals(world.universe.uuidOf(ship)) || world.engine.getEntity(uuid) == null)) {
+        if (uuid != null && (uuid.equals(universe.uuidOf(ship)) || ctx.engine.getEntity(uuid) == null)) {
             return "Can't target that";
         }
         NavTargetComponent t = ship.getComponent(NavTargetComponent.class);
@@ -86,25 +101,25 @@ public class NavTarget {
      */
     public List<String> candidates() {
         Set<String> out = new LinkedHashSet<>();
-        for (Contract c : world.contracts.active()) {
+        for (Contract c : contracts.active()) {
             String w = c.waypointUuid();
-            if (w != null && world.engine.getEntity(w) != null) out.add(w);
+            if (w != null && ctx.engine.getEntity(w) != null) out.add(w);
         }
         List<String> others = new ArrayList<>();
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(MARKED)) {
-            if (e == world.getPlayer() || e.getComponent(StationComponent.class) != null) continue;
-            String uuid = world.universe.uuidOf(e);
+        for (Entity e : ctx.engine.getEcsEngine().getEntitiesFor(MARKED)) {
+            if (e == ctx.player() || e.getComponent(StationComponent.class) != null) continue;
+            String uuid = universe.uuidOf(e);
             if (uuid == null) continue;
-            if (world.macroSim.hostiles().get(uuid) != null) out.add(uuid);
+            if (macroSim.hostiles().get(uuid) != null) out.add(uuid);
             else others.add(uuid);
         }
         out.addAll(others);
         out.addAll(sightings.known());
-        for (EconomyNode s : world.macroSim.stations()) if (!world.pirateBase.hidden(s.stationUuid)) out.add(s.stationUuid);
-        out.addAll(world.macroSim.freighters().all().keySet());
-        Entity ship = world.getPlayer();
-        if (ship != null) out.remove(world.universe.uuidOf(ship));
-        out.removeIf(u -> world.engine.getEntity(u) == null);
+        for (EconomyNode s : macroSim.stations()) if (!pirateBase.hidden(s.stationUuid)) out.add(s.stationUuid);
+        out.addAll(macroSim.freighters().all().keySet());
+        Entity ship = ctx.player();
+        if (ship != null) out.remove(universe.uuidOf(ship));
+        out.removeIf(u -> ctx.engine.getEntity(u) == null);
         return new ArrayList<>(out);
     }
 
@@ -116,20 +131,20 @@ public class NavTarget {
 
     /** What the player calls a station or craft by uuid. */
     public String name(String uuid) {
-        EconomyNode station = world.macroSim.station(uuid);
+        EconomyNode station = macroSim.station(uuid);
         if (station != null && station.displayName != null) return station.displayName;
-        FreighterComponent f = world.macroSim.freighters().get(uuid);
+        FreighterComponent f = macroSim.freighters().get(uuid);
         if (f != null && f.displayName != null) return f.displayName;
-        HostileComponent h = world.macroSim.hostiles().get(uuid);
+        HostileComponent h = macroSim.hostiles().get(uuid);
         if (h != null && h.displayName != null) return h.displayName;
-        Entity e = world.engine.getEntity(uuid);
-        return e == null ? "?" : PlayerDocking.name(e);
+        Entity e = ctx.engine.getEntity(uuid);
+        return e == null ? "?" : ShipNames.name(e);
     }
 
     /** True while the target is on the rails rather than flying in the bubble. */
     public boolean onRails() {
         Entity e = entity();
-        return e != null && world.universe.orbit(e) != null;
+        return e != null && universe.orbit(e) != null;
     }
 
     /**
@@ -144,24 +159,24 @@ public class NavTarget {
     /** As {@link #stateAt}, for any craft {@code e}. */
     public boolean stateOf(Entity e, Entity frame, double t, StateVector out) {
         if (e == null || frame == null) return false;
-        if (world.universe.orbit(e) != null) {
-            world.universe.stateInFrame(e, frame, t, out);
+        if (universe.orbit(e) != null) {
+            universe.stateInFrame(e, frame, t, out);
             return true;
         }
         PhysicsBodyComponent pb = e.getComponent(PhysicsBodyComponent.class);
-        String anchor = world.physics.getAnchorParentUuid();
+        String anchor = physics.getAnchorParentUuid();
         if (pb == null || pb.body == null || anchor == null) return false;
-        Entity parent = world.universe.entity(anchor);
-        CelestialBodyComponent body = parent == null ? null : world.universe.celestial(parent);
+        Entity parent = universe.entity(anchor);
+        CelestialBodyComponent body = parent == null ? null : universe.celestial(parent);
         if (body == null) return false;
-        world.physics.getTrueState(pb.body, trueState);
+        physics.getTrueState(pb.body, trueState);
         scratch.set(trueState[0], trueState[1], trueState[2], trueState[3]);
-        double now = world.universe.now();
+        double now = universe.now();
         if (t != now) KeplerOrbit.fromState(scratch, body.mu, now).stateAt(t, scratch);
         if (frame != parent) {
             // Into another body's frame through both bodies' absolute states
-            StateVector p = world.universe.absoluteState(parent, t, new StateVector());
-            StateVector f = world.universe.absoluteState(frame, t, new StateVector());
+            StateVector p = universe.absoluteState(parent, t, new StateVector());
+            StateVector f = universe.absoluteState(frame, t, new StateVector());
             scratch.set(scratch.x + p.x - f.x, scratch.y + p.y - f.y, scratch.vx + p.vx - f.vx, scratch.vy + p.vy - f.vy);
         }
         out.set(scratch.x, scratch.y, scratch.vx, scratch.vy);

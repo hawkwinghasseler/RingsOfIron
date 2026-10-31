@@ -1,10 +1,15 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
 import com.badlogic.ashley.core.Entity;
+import com.hawkwing.RingsOfIron.wiring.PlayerShipStatus;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 
 import java.util.Locale;
+import java.util.function.Supplier;
+import java.util.function.BooleanSupplier;
 
 /**
  * The distress beacon: a ship that can no longer get itself home, disabled or out of propellant,
@@ -20,17 +25,27 @@ public final class DistressBeacon {
     /** ...and this much standing with the sponsor. */
     public static final float STANDING_COST = 3f;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final BooleanSupplier crashed;
+    private final Supplier<Entity> playerStation;
+    private final Rescue rescue;
+    private final FactionStanding standing;
+    private final FlightWarnings warnings;
     private final PlayerShipStatus status;
 
-    DistressBeacon(GameWorld world) {
-        this.world = world;
-        this.status = new PlayerShipStatus(world::getPlayer);
+    DistressBeacon(GameContext ctx, BooleanSupplier crashed, Supplier<Entity> playerStation, Rescue rescue, FactionStanding standing, FlightWarnings warnings) {
+        this.ctx = ctx;
+        this.crashed = crashed;
+        this.playerStation = playerStation;
+        this.rescue = rescue;
+        this.standing = standing;
+        this.warnings = warnings;
+        this.status = new PlayerShipStatus(ctx::player);
     }
 
     /** True when the player's ship can't get home by itself: disabled, or propellant below the low mark. */
     public boolean stranded() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (ship == null) return false;
         if (ShipDisablement.reason(ship) != null) return true;
         ShipStatusProvider.ShipStatus s = status.getShipStatus();
@@ -39,18 +54,18 @@ public final class DistressBeacon {
 
     /** Why the beacon can't be called now, or null when it can. */
     public String refusal() {
-        Entity ship = world.getPlayer();
-        if (ship == null || world.getCrash() != null) return "there is no ship to tow";
-        if (world.playerStation() != null) return "you are docked at a station";
-        if (world.rescue.pending()) return "the pods are away";
+        Entity ship = ctx.player();
+        if (ship == null || crashed.getAsBoolean()) return "there is no ship to tow";
+        if (playerStation.get() != null) return "you are docked at a station";
+        if (rescue.pending()) return "the pods are away";
         if (!stranded()) return "your ship can still fly home";
-        if (world.warnings.inbound() > 0) return "missiles are inbound; no tug will come into that";
+        if (warnings.inbound() > 0) return "missiles are inbound; no tug will come into that";
         return null;
     }
 
     /** What the tow will cost, credits. */
     public double fee() {
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         return ship == null ? 0 : Math.round(Difficulty.shipValue(ship) * FEE_SHARE);
     }
 
@@ -58,13 +73,13 @@ public final class DistressBeacon {
     public String call() {
         String refused = refusal();
         if (refused != null) return "Can't call a tow: " + refused;
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         double fee = fee();
-        String failed = world.rescue.tow(ship);
+        String failed = rescue.tow(ship);
         if (failed != null) return "Can't call a tow: " + failed;
         TraderComponent account = ship.getComponent(TraderComponent.class);
         if (account != null) account.credits -= fee;
-        world.standing.change(world.standing.sponsor(), -STANDING_COST);
+        standing.change(standing.sponsor(), -STANDING_COST);
         return String.format(Locale.ROOT, "Towed in: the tow cost %,.0f cr and %.0f standing", fee, STANDING_COST);
     }
 }

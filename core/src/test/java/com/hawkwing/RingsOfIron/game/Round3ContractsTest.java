@@ -3,6 +3,7 @@ package com.hawkwing.RingsOfIron.game;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.macrosim.economy.TradeOrder;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
@@ -156,7 +157,7 @@ class Round3ContractsTest {
         world.update(FRAME);
         assertTrue(world.derelicts.marker(pod).getComponent(HudMarkerComponent.class).label.endsWith(ContractBoard.MARKER_SUFFIX));
         var frame = new com.ringsofiron.uihud.providers.TrafficMapProvider.TrafficFrame();
-        new RailsTrafficMap(world).collect(frame);
+        new RailsTrafficMap(world.context, world.physics, world.universe, world.macroSim, world.nav, world.contracts, world.derelicts, world.pirateBase, world.tension).collect(frame);
         boolean shown = false;
         for (var contact : frame.contacts) shown |= "Test pod".equals(contact.name) && contact.objective;
         assertTrue(shown);
@@ -429,7 +430,7 @@ class Round3ContractsTest {
         if (e.station.equals(game.highport)) {
             assertTrue(game.dockAtHighport());
             MissionProvider.MissionBoard out = new MissionProvider.MissionBoard();
-            new ContractMissions(world).collect(out);
+            new ContractMissions(world.context, world.docking, world.macroSim, world.standing, world.tension, world.contracts).collect(out);
             boolean noted = false;
             for (MissionProvider.Job j : out.offers) noted |= e.text.equals(j.note);
             assertTrue(noted);

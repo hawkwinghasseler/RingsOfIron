@@ -18,6 +18,7 @@ import com.ringsofiron.interiorgrid.crew.Suit;
 public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
 
     @Override
+    @SuppressWarnings("rawtypes") // Json.Serializer's own signature
     public void write(Json json, ShipGridComponent grid, Class knownType) {
         json.writeObjectStart();
         json.writeValue("width", grid.width);
@@ -207,6 +208,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
     }
 
     @Override
+    @SuppressWarnings("rawtypes") // Json.Serializer's own signature
     public ShipGridComponent read(Json json, JsonValue data, Class type) {
         int w = data.getInt("width"), h = data.getInt("height");
         float tileSize = data.getFloat("tileSize");

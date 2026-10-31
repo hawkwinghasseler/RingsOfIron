@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.events.OrbitalEventSystem;
 import com.ringsofiron.orbital.math.KeplerOrbit;
@@ -26,11 +27,6 @@ public class BurnPlanner {
     private final Supplier<Entity> player;
     private final PlayerOrbitInfo orbits;
     private ManeuverNodeComponent.Node selected;
-
-    public BurnPlanner(GameWorld world) {
-        this(world.universe, world.orbitalEvents, world::getPlayer,
-                new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
-    }
 
     public BurnPlanner(RailsUniverse universe, OrbitalEventSystem events, Supplier<Entity> player, PlayerOrbitInfo orbits) {
         this.universe = universe;

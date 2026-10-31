@@ -9,7 +9,6 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
-import com.hawkwing.RingsOfIron.game.DeckView;
 import com.hawkwing.RingsOfIron.game.GameWorld;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
@@ -84,12 +83,12 @@ final class Spacewalkers {
         for (int i = 0; i < crateParts.size; i++) {
             crate(shapes, ox + crates.get(2 * i) * s, oy + crates.get(2 * i + 1) * s, 0f, crateParts.get(i), s);
         }
-        ImmutableArray<Entity> all = crew.crewEntities();
-        for (int i = 0; i < all.size(); i++) {
-            Entity e = all.get(i);
+        ImmutableArray<Entity> aboard = crew.aboard(ship);
+        for (int i = 0; i < aboard.size(); i++) {
+            Entity e = aboard.get(i);
             EvaComponent eva = EvaSystem.of(e);
+            if (eva == null || !eva.outside()) continue;
             GridPositionComponent pos = crew.position(e);
-            if (eva == null || !eva.outside() || pos == null || pos.ship != ship) continue;
             crew.eva.ropeTiles(e, rope);
             if (rope.size >= 4) {
                 curve(rope, curve);

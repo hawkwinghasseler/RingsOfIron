@@ -1,4 +1,3 @@
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-core'
 
 dependencies {
@@ -13,21 +12,25 @@ dependencies {
   api project(':audio-spatial')
   api project(':modding-data')
   api project(':stations-docking')
+  api project(':ship-ops')
+  api project(':career')
+  api project(':ship-systems')
 
-  api "com.badlogicgames.gdx-controllers:gdx-controllers-core:$gdxControllersVersion"
-  api "com.badlogicgames.gdx:gdx-ai:$aiVersion"
   api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
-  api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
-  api "com.badlogicgames.box2dlights:box2dlights:$box2dlightsVersion"
-  api "org.apache.groovy:groovy-all:$groovyVersion"
   api "com.badlogicgames.ashley:ashley:$ashleyVersion"
+  // Used inside core only: no public type of core's names them
+  implementation "com.badlogicgames.gdx-controllers:gdx-controllers-core:$gdxControllersVersion"
+  implementation "com.badlogicgames.gdx:gdx-ai:$aiVersion"
+  implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+  implementation "com.badlogicgames.box2dlights:box2dlights:$box2dlightsVersion"
+  implementation "org.apache.groovy:groovy-all:$groovyVersion"
 
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
   }
 
-  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testImplementation "org.junit.jupiter:junit-jupiter"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
   testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
   testRuntimeOnly "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
@@ -59,6 +62,8 @@ test {
   if (project.hasProperty('surveyStart')) systemProperty 'enemy.survey.start', project.property('surveyStart')
   if (project.hasProperty('enemyDebug')) systemProperty 'enemy.debug', 'true'
   if (project.hasProperty('enemyProbe')) systemProperty 'enemy.probe', project.property('enemyProbe')
+  // ./gradlew :core:test --tests '*SystemOrderTest' -PpinSystemOrder rewrites src/test/resources/system-order.txt from the wired game
+  if (project.hasProperty('pinSystemOrder')) systemProperty 'pin.systemOrder', 'true'
   // A failing test says why in the CI log, not only in the report (the build logs at quiet, see gradle.properties)
   testLogging {
     showStandardStreams = project.hasProperty('enemySurvey') || project.hasProperty('enemyDebug') || project.hasProperty('enemyProbe')

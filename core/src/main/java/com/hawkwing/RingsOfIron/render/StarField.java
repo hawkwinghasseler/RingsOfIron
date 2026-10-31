@@ -66,8 +66,7 @@ public final class StarField {
         float halfH = camera.viewportHeight * camera.zoom / metersPerPixel / 2f;
         int i0 = (int) Math.floor(-halfW / CELL) - 1, i1 = (int) Math.ceil(halfW / CELL);
         int j0 = (int) Math.floor(-halfH / CELL) - 1, j1 = (int) Math.ceil(halfH / CELL);
-        Gdx.gl.glEnable(GL20.GL_BLEND);
-        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        GlPass.alphaBlend();
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         for (int i = i0; i <= i1; i++) {
             for (int j = j0; j <= j1; j++) {

@@ -106,6 +106,16 @@ CI runs only `./gradlew build test` and the smoke tests. A test there loads or b
 
 Tests that play long stretches (a career played through, a replay played twice, a trip flown at every warp rate) are tagged `@Tag("slow")` and are tools for a person to run by hand, like the scripted career seeds (`-PcareerSeeds`): neither `build`, `test` nor CI runs them.
 
+### Refactoring guardrails
+
+Three checks keep a refactor from changing the game silently. Each runs in `build` or the CI smoke run:
+
+- `SystemOrderTest` (core) lists the engine's systems, the physics step listeners and the save participants in run order and compares them with `core/src/test/resources/system-order.txt`. A reorder shows up as a diff of that file; when one is meant, `./gradlew :core:test --tests '*SystemOrderTest' -PpinSystemOrder` rewrites it.
+- `ArchitectureTest` (core) fails when game code uses the shell, render, debug or libGDX graphics packages, when a module uses one that is not below it (or core), or when a new class takes the whole `GameWorld`. Today's exceptions are allow-lists in the test; one that goes away must be taken off, so the lists only shrink.
+- The smoke run (`xvfb-run -a ./gradlew :lwjgl3:smokeTest`) saves and continues a career and checks the same entities, ships and crew come back, opens each station panel and the map, and has the ship editor erase a tile, save and load the chassis again. Five of its screenshots (menu, HUD in flight, crew window, deck, editor) are compared with `lwjgl3/golden/`; one more than 2% off fails, leaving the shot and a diff in `lwjgl3/build/smoke-golden/`. `-PupdateGolden` rewrites them when a change to the picture is meant.
+
+Before merging a refactoring phase, also run `./gradlew slowTest`, which plays careers and replays twice; CI does not run it.
+
 Balance targets (how long a fight lasts, what a prize pays, whether the career earns the gunship in play or wins the raid) are not checked by the build or CI, since they were tuned on the scripted career rather than on people. They are tagged `@Tag("playtest")` and run only with `./gradlew :core:playtestBenchmark` (or `tests/Balance benchmarks.bat`), which writes a table of each target against what the game gave to `core/build/playtest/`. `documentation/playtest/Balance benchmarks.md` has the checklist a tester works through when playing the same moments by hand.
 
 The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a texture atlas when a run task needs it, so nothing generated is committed. See `documentation/art/Design.md`.
@@ -125,6 +135,9 @@ The art in `assets/art` is SVG. The `art-pipeline` module rasterizes it into a t
 | `ui-hud` | The HUD, minimap, consoles, trade window and the map |
 | `audio-spatial` | Positional sound with wall and door muffling |
 | `modding-data` | TOML/JSON data loading, mods and Groovy mod scripts |
+| `ship-systems` | Propellant feed, engine and RCS thrust, tank mass, weapon power, transit clearance and burns on rails |
+| `career` | Factions, standing, rank, the service record and budget, contracts and the new-game choices |
+| `ship-ops` | After the fight and in the yard: disabling, boarding, salvage, abandoning ship, forcing doors, cargo loading and station yards |
 | `art-pipeline` | Rasterizes the SVG art into the game's texture atlas |
 | `core` | The game itself, the demos and the ship editor, wiring the modules together |
 | `lwjgl3` | Desktop launchers |

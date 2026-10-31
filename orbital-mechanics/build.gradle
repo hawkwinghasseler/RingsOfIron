@@ -1,12 +1,11 @@
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-orbital-mechanics'
 
 // Pure orbital math and rails simulation. No Box2D here: physics-exterior and macro-sim both build on it.
 dependencies {
   api project(':core-engine')
 
-  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
-  testImplementation "org.junit.jupiter:junit-jupiter-params:5.11.4"
+  testImplementation "org.junit.jupiter:junit-jupiter"
+  testImplementation "org.junit.jupiter:junit-jupiter-params"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 

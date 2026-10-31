@@ -1,4 +1,3 @@
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-macro-sim'
 
 dependencies {
@@ -8,7 +7,8 @@ dependencies {
   api project(':modding-data')
   api project(':orbital-mechanics')
 
-  testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+  testImplementation testFixtures(project(':physics-exterior'))
+  testImplementation "org.junit.jupiter:junit-jupiter"
   testRuntimeOnly "org.junit.platform:junit-platform-launcher"
   // Box2D's native library, so the physics gateway can be tested against a real world.
   testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"

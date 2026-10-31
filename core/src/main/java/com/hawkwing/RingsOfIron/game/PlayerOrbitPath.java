@@ -1,11 +1,13 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
+import com.ringsofiron.coreengine.input.Action;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
+import com.ringsofiron.orbital.math.ClosestApproach;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
@@ -13,6 +15,9 @@ import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.rails.RailsUniverse;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import java.util.function.DoubleSupplier;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * ui-hud's orbit map from orbital-mechanics: the player's conic now and after its planned burns,
@@ -39,18 +44,24 @@ public class PlayerOrbitPath implements OrbitPathProvider {
     private final BurnPlanner planner;
     private final DoubleSupplier clock;
     private final RailsUniverse universe;
-    private GameWorld world;
+    /** With navigation: what the map marks besides the player's path (stations, the target). */
     private Navigation nav;
+    private GameEngine engine;
+    private MacroSimulation macroSim;
+    private PirateBase pirateBase;
     private final Array<Entity> children = new Array<>();
     private final StateVector s = new StateVector();
     private final MapTrajectory trajectory;
     private final StringBuilder summary = new StringBuilder();
     private final double[] off = new double[2];
 
-    public PlayerOrbitPath(GameWorld world, BurnPlanner planner) {
-        this(world.universe, new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), planner);
-        this.world = world;
-        this.nav = world.nav;
+    public PlayerOrbitPath(GameContext ctx, PhysicsManager physics, RailsUniverse universe, MacroSimulation macroSim,
+                           PirateBase pirateBase, Navigation nav, BurnPlanner planner) {
+        this(universe, new PlayerOrbitInfo(universe, physics, ctx::player), planner);
+        this.engine = ctx.engine;
+        this.macroSim = macroSim;
+        this.pirateBase = pirateBase;
+        this.nav = nav;
     }
 
     public PlayerOrbitPath(RailsUniverse universe, PlayerOrbitInfo orbits, BurnPlanner planner) {
@@ -257,10 +268,10 @@ public class PlayerOrbitPath implements OrbitPathProvider {
     private void navigation(KeplerOrbit k, double now, CelestialBodyComponent body, OrbitPath out) {
         Entity parent = orbits.parent();
         String targetUuid = nav.target.uuid();
-        for (com.ringsofiron.macrosim.economy.EconomyNode station : world.macroSim.stations()) {
-            Entity e = world.engine.getEntity(station.stationUuid);
+        for (com.ringsofiron.macrosim.economy.EconomyNode station : macroSim.stations()) {
+            Entity e = engine.getEntity(station.stationUuid);
             if (e == null || universe.parentOf(e) != parent || station.stationUuid.equals(targetUuid)
-                    || world.pirateBase.hidden(station.stationUuid)) continue;
+                    || pirateBase.hidden(station.stationUuid)) continue;
             universe.stateInFrame(e, parent, now, s);
             MapMarker m = out.addMarker();
             m.name = station.displayName == null ? "" : station.displayName;

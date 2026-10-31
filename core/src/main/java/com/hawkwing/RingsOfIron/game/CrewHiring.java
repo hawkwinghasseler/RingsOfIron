@@ -10,17 +10,26 @@ import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.career.FactionStanding;
+import com.ringsofiron.career.NewGame;
+import com.ringsofiron.coreengine.Resettable;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.moddingdata.defs.FactionDef;
 
+import com.ringsofiron.shipops.AbandonShip;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.TreeSet;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.macrosim.MacroSimulation;
+import java.util.function.ToLongFunction;
 
 /**
  * Hiring and dismissing crew while docked. Each station of a faction (not an outlaw's) has a small
@@ -67,12 +76,24 @@ public class CrewHiring implements SaveParticipant, Resettable {
         }
     }
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
+    private final DockingSystem docking;
+    private final MacroSimulation macroSim;
+    private final FactionStanding standing;
+    private final CrewCareer crewCareer;
+    private final ToLongFunction<String> stationDice;
     /** Candidates already hired, by key. */
     private final TreeSet<String> hired = new TreeSet<>();
 
-    CrewHiring(GameWorld world) {
-        this.world = world;
+    CrewHiring(GameContext ctx, CrewService crew, DockingSystem docking, MacroSimulation macroSim, FactionStanding standing, CrewCareer crewCareer, ToLongFunction<String> stationDice) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.docking = docking;
+        this.macroSim = macroSim;
+        this.standing = standing;
+        this.crewCareer = crewCareer;
+        this.stationDice = stationDice;
     }
 
     /** Forgets who has been hired, for a load: a save without hires has none. */
@@ -83,20 +104,20 @@ public class CrewHiring implements SaveParticipant, Resettable {
 
     /** The station the player's ship is docked at with clearance, if it hires; else null. */
     public Entity hiringStation() {
-        Entity player = world.getPlayer();
-        if (player == null || !world.docking.dockedWithClearance(player)) return null;
-        Entity station = world.docking.dockedTo(player);
+        Entity player = ctx.player();
+        if (player == null || !docking.dockedWithClearance(player)) return null;
+        Entity station = docking.dockedTo(player);
         UuidComponent u = station == null ? null : station.getComponent(UuidComponent.class);
-        if (u == null || world.macroSim.station(u.id) == null) return null;
-        FactionDef def = world.standing.factions().def(world.standing.factionOf(station));
+        if (u == null || macroSim.station(u.id) == null) return null;
+        FactionDef def = standing.factions().def(standing.factionOf(station));
         return def == null || def.hostileToAll ? null : station;
     }
 
     /** The crew on offer at {@code stationUuid} today, those already hired left out. */
     public List<Candidate> pool(String stationUuid) {
-        long day = (long) Math.floor(world.engine.getSimSeconds() / DAY);
+        long day = (long) Math.floor(ctx.engine.getSimSeconds() / DAY);
         List<Candidate> out = new ArrayList<>();
-        for (Candidate c : post(stationUuid, world.stationDice(stationUuid), day)) if (!hired.contains(c.key)) out.add(c);
+        for (Candidate c : post(stationUuid, stationDice.applyAsLong(stationUuid), day)) if (!hired.contains(c.key)) out.add(c);
         return out;
     }
 
@@ -146,7 +167,7 @@ public class CrewHiring implements SaveParticipant, Resettable {
         Candidate c = null;
         for (Candidate o : pool(uuid)) if (o.key.equals(key)) c = o;
         if (c == null) return "They have found another berth";
-        Entity ship = world.getPlayer();
+        Entity ship = ctx.player();
         if (aboard(ship) >= berths(ship)) return "No berth free: " + berths(ship) + " aboard already";
         TraderComponent account = ship.getComponent(TraderComponent.class);
         if (account == null || account.credits < c.signing) {
@@ -154,25 +175,25 @@ public class CrewHiring implements SaveParticipant, Resettable {
         }
         int[] tile = freeTile(ship);
         if (tile == null) return "No room aboard";
-        Entity e = CrewFactory.spawn(world.crew, ship, c.name, c.role, FactionStanding.PLAYER, tile[0], tile[1]);
-        CrewMemberComponent m = world.crew.crew(e);
+        Entity e = CrewFactory.spawn(crew, ship, c.name, c.role, FactionStanding.PLAYER, tile[0], tile[1]);
+        CrewMemberComponent m = crew.crew(e);
         m.record = c.record;
         c.record.applyTo(m);
         account.credits -= c.signing;
         hired.add(c.key);
-        world.notices.post(String.format(Locale.ROOT, "%s (%s) signs on for %,.0f cr a week", c.name, roleName(c.role), c.record.wage));
+        ctx.notices.post(String.format(Locale.ROOT, "%s (%s) signs on for %,.0f cr a week", c.name, roleName(c.role), c.record.wage));
         return null;
     }
 
     /** Lets {@code e}, one of the player's crew, go at the station. Null on success, else why not. */
     public String dismiss(Entity e) {
         if (hiringStation() == null) return "Dock at a station to let crew go";
-        Entity ship = world.getPlayer();
-        if (!world.crewCareer.ownCrew(ship).contains(e)) return "Not one of your crew";
-        CrewMemberComponent c = world.crew.crew(e);
-        world.crew.releaseTask(e);
-        world.engine.getEcsEngine().removeEntity(e);
-        world.notices.post(c.name + " leaves the ship");
+        Entity ship = ctx.player();
+        if (!crewCareer.ownCrew(ship).contains(e)) return "Not one of your crew";
+        CrewMemberComponent c = crew.crew(e);
+        crew.releaseTask(e);
+        ctx.engine.getEcsEngine().removeEntity(e);
+        ctx.notices.post(c.name + " leaves the ship");
         return null;
     }
 
@@ -184,26 +205,26 @@ public class CrewHiring implements SaveParticipant, Resettable {
     /** People aboard {@code ship} who take a berth: its own crew, the player and prisoners, alive. */
     public int aboard(Entity ship) {
         int n = 0;
-        ImmutableArray<Entity> all = world.crew.crewEntities();
+        ImmutableArray<Entity> all = crew.crewEntities();
         for (int i = 0; i < all.size(); i++) {
             Entity e = all.get(i);
-            CrewMemberComponent c = world.crew.crew(e);
+            CrewMemberComponent c = crew.crew(e);
             if (!c.isAlive()) continue;
-            if (world.crew.homeOf(e) == ship || (c.held && world.crew.position(e).ship == ship)) n++;
+            if (crew.homeOf(e) == ship || (c.held && crew.position(e).ship == ship)) n++;
         }
         return n;
     }
 
     /** An open deck tile of {@code ship} with no one standing on it, else any open deck tile; null if it has none. */
     int[] freeTile(Entity ship) {
-        List<int[]> floor = GameScenario.floorTiles(ship.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(ship.getComponent(ShipGridComponent.class));
         if (floor.isEmpty()) return null;
-        ImmutableArray<Entity> all = world.crew.crewEntities();
+        ImmutableArray<Entity> all = crew.aboard(ship);
         for (int[] t : floor) {
             boolean taken = false;
             for (int i = 0; i < all.size() && !taken; i++) {
-                GridPositionComponent p = world.crew.position(all.get(i));
-                taken = p.ship == ship && p.tileX() == t[0] && p.tileY() == t[1];
+                GridPositionComponent p = crew.position(all.get(i));
+                taken = p.tileX() == t[0] && p.tileY() == t[1];
             }
             if (!taken) return t;
         }
@@ -223,7 +244,7 @@ public class CrewHiring implements SaveParticipant, Resettable {
     @Override
     public void write(Json json) {
         // Only today's pools matter: older hires can't be offered again
-        long day = (long) Math.floor(world.engine.getSimSeconds() / DAY);
+        long day = (long) Math.floor(ctx.engine.getSimSeconds() / DAY);
         List<String> keep = new ArrayList<>();
         for (String k : hired) if (dayOf(k) >= day) keep.add(k);
         json.writeValue("hired", keep.toArray(new String[0]), String[].class);

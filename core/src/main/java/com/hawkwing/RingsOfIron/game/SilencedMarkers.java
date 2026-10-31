@@ -7,6 +7,8 @@ import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.macrosim.MacroSimulation;
 
 /**
  * Round 10 (part 6): a fallen base's gun platforms read "(silenced)" in grey on the HUD, as a struck
@@ -15,14 +17,18 @@ import java.util.Map;
  */
 public final class SilencedMarkers {
     public static final String SUFFIX = " (silenced)";
-    private final GameWorld world;
+    private final GameEngine engine;
+    private final MacroSimulation macroSim;
+    private final PirateBase pirateBase;
     /** The batteries greyed, with the label each had before. */
     private final Map<Entity, String> greyed = new HashMap<>();
 
-    public SilencedMarkers(GameWorld world) {
-        this.world = world;
+    public SilencedMarkers(GameEngine engine, MacroSimulation macroSim, PirateBase pirateBase) {
+        this.engine = engine;
+        this.macroSim = macroSim;
+        this.pirateBase = pirateBase;
         // A battery gone from the engine comes back from its pool as a new entity, which would be skipped as greyed
-        world.engine.getEcsEngine().addEntityListener((EntityRemovalListener) greyed::remove);
+        engine.getEcsEngine().addEntityListener((EntityRemovalListener) greyed::remove);
     }
 
     /** Once a frame. */
@@ -30,7 +36,7 @@ public final class SilencedMarkers {
         for (Iterator<Map.Entry<Entity, String>> it = greyed.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<Entity, String> g = it.next();
             HostileComponent h = g.getKey().getComponent(HostileComponent.class);
-            if (h != null && world.pirateBase.silenced(h.displayName)) continue;
+            if (h != null && pirateBase.silenced(h.displayName)) continue;
             HudMarkerComponent marker = g.getKey().getComponent(HudMarkerComponent.class);
             if (marker != null && marker.label.endsWith(SUFFIX)) {
                 marker.label = g.getValue();
@@ -38,17 +44,17 @@ public final class SilencedMarkers {
             }
             it.remove();
         }
-        if (world.pirateBase.standing()) return;
-        for (String name : world.pirateBase.guns()) {
-            if (!world.pirateBase.silenced(name)) continue;
-            for (var e : world.macroSim.hostiles().all().entrySet()) {
+        if (pirateBase.standing()) return;
+        for (String name : pirateBase.guns()) {
+            if (!pirateBase.silenced(name)) continue;
+            for (var e : macroSim.hostiles().all().entrySet()) {
                 if (!name.equals(e.getValue().displayName)) continue;
-                Entity ship = world.engine.getEntity(e.getKey());
+                Entity ship = engine.getEntity(e.getKey());
                 HudMarkerComponent marker = ship == null ? null : ship.getComponent(HudMarkerComponent.class);
                 if (marker == null || greyed.containsKey(ship)) continue;
                 greyed.put(ship, marker.label);
                 if (!marker.label.endsWith(SUFFIX)) marker.label += SUFFIX;
-                marker.color.set(ShipDisablement.DISABLED_COLOR);
+                marker.color.set(HudMarkerComponent.DISABLED_COLOR);
             }
         }
     }

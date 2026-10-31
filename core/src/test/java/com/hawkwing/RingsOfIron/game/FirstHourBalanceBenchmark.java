@@ -7,8 +7,11 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.Contract;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
@@ -105,7 +108,7 @@ class FirstHourBalanceBenchmark {
         assertTrue(game.raiderHostile());
 
         // The player locks it and holds the guns from 4 km in, with a missile whenever one is loaded
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(game.raider);
         float openedFire = -1f;
         boolean heldOut = true;

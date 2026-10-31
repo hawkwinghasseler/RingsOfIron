@@ -8,9 +8,11 @@ import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewRole;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
 import com.ringsofiron.coreengine.components.TransformComponent;
@@ -34,6 +36,9 @@ import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.interiorgrid.MountFootprint;
+import com.ringsofiron.shipops.ShipCargo;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.StationCrew;
 import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
@@ -188,7 +193,7 @@ public class GameScenario {
         Bridge.install(player);
 
         ShipGridComponent grid = player.getComponent(ShipGridComponent.class);
-        List<int[]> floor = floorTiles(grid);
+        List<int[]> floor = FloorTiles.of(grid);
         // The player starts seated at the helm, so the game opens on the ship from outside
         int[] seat = besideHelm(player, floor);
         avatar = seat == null ? null : CrewFactory.spawnPlayer(world.crew, player, "You", seat[0], seat[1]);
@@ -253,7 +258,7 @@ public class GameScenario {
             }
         });
         // A freighter at a station when it comes into the bubble is latched to a port there.
-        world.macroSim.bubble().addListener(new StationTraffic(world));
+        world.macroSim.bubble().addListener(new StationTraffic(world.engine, world.physics, world.macroSim, world.docking));
         // Stations are marked while they are in the bubble.
         world.engine.getEcsEngine().addEntityListener(
                 Family.all(StationComponent.class, KinematicTransientComponent.class).get(), new EntityListener() {
@@ -417,7 +422,7 @@ public class GameScenario {
     private void seatAtHelm() {
         Bridge.install(player);
         if (avatar == null) return;
-        int[] seat = besideHelm(player, floorTiles(player.getComponent(ShipGridComponent.class)));
+        int[] seat = besideHelm(player, FloorTiles.of(player.getComponent(ShipGridComponent.class)));
         GridPositionComponent at = avatar.getComponent(GridPositionComponent.class);
         if (seat == null || at == null || at.ship != player) return;
         at.stop();
@@ -506,6 +511,8 @@ public class GameScenario {
 
     /** Why {@link #quickLoad} failed, and what state it left the game in. */
     public static final class LoadFailedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
         /** True when the game was rebuilt (from the snapshot, or part loaded): its entities are new ones. */
         public final boolean replaced;
         /** True when the game is as it was before the load: never touched, or put back from the snapshot. */
@@ -755,18 +762,4 @@ public class GameScenario {
         return best;
     }
 
-    /** Open deck tiles clear of mounted systems, scanning from the middle row outwards. */
-    static List<int[]> floorTiles(ShipGridComponent grid) {
-        List<int[]> out = new java.util.ArrayList<>();
-        if (grid == null) return out;
-        for (int dy = 0; dy < grid.height; dy++) {
-            int y = grid.height / 2 + ((dy % 2 == 0) ? dy / 2 : -(dy / 2 + 1));
-            if (y < 0 || y >= grid.height) continue;
-            for (int x = 0; x < grid.width; x++) {
-                Tile t = grid.getTile(x, y);
-                if (t != null && t.isFloor() && t.isOpen() && t.mount == null) out.add(new int[]{x, y});
-            }
-        }
-        return out;
-    }
 }

@@ -24,6 +24,9 @@ import com.ringsofiron.moddingdata.defs.ChassisDef;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.KinematicTransientComponent;
+import com.ringsofiron.shipops.HoldTransfer;
+import com.ringsofiron.shipops.StationCrew;
+import com.ringsofiron.shipops.StationYard;
 import com.ringsofiron.stationsdocking.DockingData;
 import com.ringsofiron.coreengine.EntityRef;
 import com.ringsofiron.stationsdocking.BerthingComponent;
@@ -138,7 +141,7 @@ public class DockingDemoScene {
         port(player, 0).active = next == Scene.ACTIVE;
         int[] home = insidePort(player, 0);
         avatar = CrewFactory.spawnPlayer(world.crew, player, "You", home[0], home[1]);
-        docking = new PlayerDocking(world, () -> player, message -> notice = message);
+        docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> player, message -> notice = message);
 
         switch (next) {
             case PASSIVE:

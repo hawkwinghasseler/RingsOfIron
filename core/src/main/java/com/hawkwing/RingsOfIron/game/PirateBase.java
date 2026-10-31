@@ -1,20 +1,26 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
-import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.coreengine.SaveParticipant;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.shipops.StationCrew;
 import java.util.ArrayList;
 import java.util.List;
+import com.ringsofiron.macrosim.MacroSimulation;
+import java.util.function.Supplier;
+import com.ringsofiron.combatsys.systems.MissileGuidanceSystem;
 
 /**
  * The pirates' hidden base: a station of the hostile-to-all faction on an eccentric high orbit,
@@ -93,7 +99,15 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
      */
     public static final boolean DEFENDERS_STRIKE_AT_FALL = true;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
+    private final MacroSimulation macroSim;
+    private final FactionStanding standing;
+    private final ContractBoard contracts;
+    private final HostileTraffic hostiles;
+    private final ShipDisablement disablement;
+    private final MissileGuidanceSystem missiles;
+    private final Supplier<FactionTension> tension;
     private String uuid;
     private double establishedAt = Double.NaN;
     private boolean found;
@@ -117,8 +131,16 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private final StateVector a = new StateVector();
     private final StateVector b = new StateVector();
 
-    PirateBase(GameWorld world) {
-        this.world = world;
+    PirateBase(GameContext ctx, CrewService crew, MacroSimulation macroSim, FactionStanding standing, ContractBoard contracts, HostileTraffic hostiles, ShipDisablement disablement, MissileGuidanceSystem missiles, Supplier<FactionTension> tension) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.macroSim = macroSim;
+        this.standing = standing;
+        this.contracts = contracts;
+        this.hostiles = hostiles;
+        this.disablement = disablement;
+        this.missiles = missiles;
+        this.tension = tension;
     }
 
     /** Makes the station {@code uuid} the pirates' base, standing and unfound, from sim second {@code now}. */
@@ -175,7 +197,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     public void reveal(String how) {
         if (uuid == null || found) return;
         found = true;
-        world.notices.post(how == null ? "Pirate base located: " + name() + ", now on the traffic map"
+        ctx.notices.post(how == null ? "Pirate base located: " + name() + ", now on the traffic map"
                 : how + ": " + name() + " is on the traffic map", NoticeLog.Kind.IMPORTANT);
     }
 
@@ -189,8 +211,8 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         found = true;
         // Round 8: its darts in flight go ballistic, so the missile warning clears with the fall
         // (round 7's window: the warning stayed up about a minute after it struck)
-        for (String name : defenders) world.missiles.goBallistic(shipNamed(name));
-        for (String name : guns) world.missiles.goBallistic(shipNamed(name));
+        for (String name : defenders) missiles.goBallistic(shipNamed(name));
+        for (String name : guns) missiles.goBallistic(shipNamed(name));
         if (DEFENDERS_STRIKE_AT_FALL) strikeDefenders();
         defenders.clear();
         scrambleDue = false;
@@ -201,10 +223,10 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
             HostileComponent h = hostileNamed(name);
             if (h != null) h.targetUuid = null;
         }
-        world.notices.post(name() + " has fallen" + (why == null ? "" : ": " + why), NoticeLog.Kind.IMPORTANT);
-        world.tension.easeAll(FALL_RELIEF);
+        ctx.notices.post(name() + " has fallen" + (why == null ? "" : ": " + why), NoticeLog.Kind.IMPORTANT);
+        tension.get().easeAll(FALL_RELIEF);
         // The boards offer what its fall opens (a Captain's operation) at once
-        world.contracts.worldChanged();
+        contracts.worldChanged();
     }
 
     /**
@@ -218,14 +240,14 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
             String id = uuidOf(name);
             // Struck earlier, the base's call to arms set it on the player again (part 6's window:
             // `hostiles` read struck raiders 20 and 21 as hunting the player): it lets go
-            HostileComponent h = id == null ? null : world.macroSim.hostiles().get(id);
+            HostileComponent h = id == null ? null : macroSim.hostiles().get(id);
             if (h != null && h.surrendered && h.huntingPlayer()) h.targetUuid = null;
-            Entity e = id == null ? null : world.engine.getEntity(id);
+            Entity e = id == null ? null : ctx.engine.getEntity(id);
             if (e == null || e.getComponent(PhysicsBodyComponent.class) == null
-                    || !world.macroSim.bubble().inBubble().contains(id)) continue;
+                    || !macroSim.bubble().inBubble().contains(id)) continue;
             DisabledComponent.Reason why = ShipDisablement.reason(e);
             if (why != null && why.sticky()) continue;
-            world.disablement.set(e, DisabledComponent.Reason.SURRENDERED);
+            disablement.set(e, DisabledComponent.Reason.SURRENDERED);
             // Guns cold at once, not at traffic's next look: it is a prize now
             var sensor = e.getComponent(com.ringsofiron.combatsys.components.SensorComponent.class);
             if (sensor != null) sensor.lockedTarget = null;
@@ -241,16 +263,16 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         if (uuid == null || standing()) return;
         fallen = false;
         found = true;
-        establishedAt = world.macroSim.now();
+        establishedAt = macroSim.now();
         strainedSeconds = 0;
         defenders.clear();
         scrambleDue = false;
         clearWave();
-        Entity station = world.engine.getEntity(uuid);
-        int pirates = world.standing.factions().index(HostileTraffic.PIRATES);
-        if (station != null && pirates >= 0 && !anyPirateAboard()) StationCrew.spawnCrew(world.crew, station, pirates);
-        if (station != null) world.standing.factions().crewHabits(world.crew.board(station));
-        world.notices.post("Raiders have moved back into " + name() + ": the pirates have a base again", NoticeLog.Kind.IMPORTANT);
+        Entity station = ctx.engine.getEntity(uuid);
+        int pirates = standing.factions().index(HostileTraffic.PIRATES);
+        if (station != null && pirates >= 0 && !anyPirateAboard()) StationCrew.spawnCrew(crew, station, pirates);
+        if (station != null) standing.factions().crewHabits(crew.board(station));
+        ctx.notices.post("Raiders have moved back into " + name() + ": the pirates have a base again", NoticeLog.Kind.IMPORTANT);
     }
 
     /** Days the fallen base has spent with the factions strained, towards rising again. */
@@ -260,12 +282,12 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
 
     /** While it lies fallen, counts the time any pair of lawful factions runs high, and rises once it is enough. */
     private void strain() {
-        double now = world.macroSim.now();
+        double now = macroSim.now();
         double since = Double.isNaN(lastStrainLook) ? 0 : Math.max(0, now - lastStrainLook);
         lastStrainLook = now;
         if (uuid == null || standing()) return;
-        if (world.tension.anyHigh()) strainedSeconds += since;
-        if (strainedSeconds >= world.tension.tuning().baseRisesAfterDays * 86_400) rise();
+        if (tension.get().anyHigh()) strainedSeconds += since;
+        if (strainedSeconds >= tension.get().tuning().baseRisesAfterDays * 86_400) rise();
     }
 
     /**
@@ -309,7 +331,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
             HostileComponent h = hostileNamed(name);
             if (h != null) h.targetUuid = null;
         }
-        world.notices.post("The raid on " + name() + " is lost: it still stands", NoticeLog.Kind.IMPORTANT);
+        ctx.notices.post("The raid on " + name() + " is lost: it still stands", NoticeLog.Kind.IMPORTANT);
     }
 
     /** True while a defender it scrambled is still in the fight: in the bubble, not beaten and not driven off. */
@@ -320,8 +342,8 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
 
     private boolean fighting(String name) {
         String id = uuidOf(name);
-        Entity e = id == null ? null : world.engine.getEntity(id);
-        if (e == null || !world.macroSim.bubble().inBubble().contains(id) || FirstPlay.beaten(world, e)) return false;
+        Entity e = id == null ? null : ctx.engine.getEntity(id);
+        if (e == null || !macroSim.bubble().inBubble().contains(id) || FirstPlay.beaten(ctx.engine, e)) return false;
         // Broken off and running (a wingman goes when its leader is beaten) is driven off: on seed 12
         // the last defender fled with its leader and, still in the bubble, kept the base from striking
         HostileComponent h = e.getComponent(HostileComponent.class);
@@ -332,26 +354,26 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     private boolean anyDefenderLeft() {
         for (String name : defenders) {
             String id = uuidOf(name);
-            Entity e = id == null ? null : world.engine.getEntity(id);
-            if (e != null && !FirstPlay.beaten(world, e)) return true;
+            Entity e = id == null ? null : ctx.engine.getEntity(id);
+            if (e != null && !FirstPlay.beaten(ctx.engine, e)) return true;
         }
         return false;
     }
 
     private HostileComponent hostileNamed(String name) {
         String id = uuidOf(name);
-        return id == null ? null : world.macroSim.hostiles().get(id);
+        return id == null ? null : macroSim.hostiles().get(id);
     }
 
     /** The ship of the hostile named {@code name}, or null if none flies now. */
     private Entity shipNamed(String name) {
         String id = uuidOf(name);
-        return id == null ? null : world.engine.getEntity(id);
+        return id == null ? null : ctx.engine.getEntity(id);
     }
 
     /** The uuid of the hostile named {@code name}, or null if none flies now. */
     private String uuidOf(String name) {
-        for (var e : world.macroSim.hostiles().all().entrySet()) if (name.equals(e.getValue().displayName)) return e.getKey();
+        for (var e : macroSim.hostiles().all().entrySet()) if (name.equals(e.getValue().displayName)) return e.getKey();
         return null;
     }
 
@@ -368,43 +390,43 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         }
         if (!scrambleDue) return;
         scrambleDue = false;
-        if (!standing() || world.getPlayer() == null) return;
+        if (!standing() || ctx.player() == null) return;
         StateVector at = new StateVector();
-        if (!offset(world.macroSim.now(), at)) return;
-        int n = defendersFor(Difficulty.of(world));
-        List<String> wing = launchOrder(world.hostiles.raid(uuid, n));
+        if (!offset(macroSim.now(), at)) return;
+        int n = defendersFor(Difficulty.of(standing, ctx.player()));
+        List<String> wing = launchOrder(hostiles.raid(uuid, n));
         if (wing.isEmpty()) return;
         defenders.clear();
         clearWave();
         for (String id : wing) {
-            HostileComponent h = world.macroSim.hostiles().get(id);
+            HostileComponent h = macroSim.hostiles().get(id);
             if (h == null) continue;
             h.targetUuid = HostileComponent.PLAYER;
             defenders.add(h.displayName);
         }
         // The rest fly as a wing: the second leads it
         for (int i = 2; i < wing.size(); i++) {
-            HostileComponent h = world.macroSim.hostiles().get(wing.get(i));
+            HostileComponent h = macroSim.hostiles().get(wing.get(i));
             if (h != null) h.wingOf = wing.get(1);
         }
         launch(wing.subList(0, 1));
         for (int i = 1; i < wing.size(); i++) waiting.add(defenders.get(i));
-        if (!waiting.isEmpty()) waveAt = world.macroSim.now() + SECOND_WAVE_SECONDS;
+        if (!waiting.isEmpty()) waveAt = macroSim.now() + SECOND_WAVE_SECONDS;
         if (guns.isEmpty()) {
-            for (String id : world.hostiles.moorGuns(uuid, BATTERIES, BATTERY_SPACING)) {
-                HostileComponent h = world.macroSim.hostiles().get(id);
+            for (String id : hostiles.moorGuns(uuid, BATTERIES, BATTERY_SPACING)) {
+                HostileComponent h = macroSim.hostiles().get(id);
                 if (h != null) guns.add(h.displayName);
             }
         }
         boolean manned = false;
         for (String name : guns) {
             HostileComponent h = hostileNamed(name);
-            Entity e = h == null ? null : world.engine.getEntity(uuidOf(name));
-            if (e == null || FirstPlay.beaten(world, e)) continue;
+            Entity e = h == null ? null : ctx.engine.getEntity(uuidOf(name));
+            if (e == null || FirstPlay.beaten(ctx.engine, e)) continue;
             h.targetUuid = HostileComponent.PLAYER;
             manned = true;
         }
-        world.notices.post(String.format(java.util.Locale.ROOT, "%s scrambles %d raider%s against you%s", name(), wing.size(),
+        ctx.notices.post(String.format(java.util.Locale.ROOT, "%s scrambles %d raider%s against you%s", name(), wing.size(),
                 wing.size() == 1 ? "" : "s", manned ? ", and its guns open up" : ""), NoticeLog.Kind.WARNING);
     }
 
@@ -415,11 +437,11 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     List<String> launchOrder(List<String> wing) {
         List<String> out = new ArrayList<>(wing);
         java.util.Comparator<String> light = java.util.Comparator.comparingDouble(id -> {
-            HostileComponent h = world.macroSim.hostiles().get(id);
+            HostileComponent h = macroSim.hostiles().get(id);
             return h == null ? 0 : h.firepower;
         });
         out.sort(light.thenComparing(id -> {
-            HostileComponent h = world.macroSim.hostiles().get(id);
+            HostileComponent h = macroSim.hostiles().get(id);
             return h == null || h.displayName == null ? "" : h.displayName;
         }));
         if (out.size() > 1 && railgun(out.get(0))) {
@@ -435,7 +457,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
 
     /** True if the ship {@code id} carries a railgun. */
     private boolean railgun(String id) {
-        Entity e = world.engine.getEntity(id);
+        Entity e = ctx.engine.getEntity(id);
         var weapons = e == null ? null : e.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class);
         if (weapons == null) return false;
         for (var m : weapons.mounts) if (m.def != null && m.def.id != null && m.def.id.startsWith("railgun")) return true;
@@ -447,24 +469,24 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         List<String> ids = new ArrayList<>();
         for (String name : waiting) {
             String id = uuidOf(name);
-            if (id != null && !world.macroSim.bubble().inBubble().contains(id)) ids.add(id);
+            if (id != null && !macroSim.bubble().inBubble().contains(id)) ids.add(id);
         }
         clearWave();
         if (!standing() || ids.isEmpty()) return;
-        if (launch(ids)) world.notices.post(String.format(java.util.Locale.ROOT, "%s launches %d more raider%s", name(),
+        if (launch(ids)) ctx.notices.post(String.format(java.util.Locale.ROOT, "%s launches %d more raider%s", name(),
                 ids.size(), ids.size() == 1 ? "" : "s"), NoticeLog.Kind.WARNING);
     }
 
     /** Launches {@code ids} from the base's side, a little apart, where the bubble takes them in at once. */
     private boolean launch(List<String> ids) {
-        double now = world.macroSim.now();
+        double now = macroSim.now();
         StateVector at = new StateVector();
         if (!offset(now, at)) return false;
-        String parent = world.macroSim.gateway().anchorParentUuid();
+        String parent = macroSim.gateway().anchorParentUuid();
         for (int i = 0; i < ids.size(); i++) {
             double angle = 2 * Math.PI * i / ids.size();
-            StateVector s = world.macroSim.gateway().anchorStateAt(now, new StateVector());
-            world.macroSim.rails().attach(ids.get(i), parent, s.set(s.x + at.x + LAUNCH_OFFSET * Math.cos(angle),
+            StateVector s = macroSim.gateway().anchorStateAt(now, new StateVector());
+            macroSim.rails().attach(ids.get(i), parent, s.set(s.x + at.x + LAUNCH_OFFSET * Math.cos(angle),
                     s.y + at.y + LAUNCH_OFFSET * Math.sin(angle), s.vx, s.vy), now);
         }
         return true;
@@ -473,13 +495,13 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
     /** Raiders beyond the difficulty's that the base keeps now: one more each {@link #GROWTH_DAYS} it stands. */
     public int extraRaiders() {
         if (!standing() || Double.isNaN(establishedAt)) return 0;
-        double days = (world.macroSim.now() - establishedAt) / 86_400;
+        double days = (macroSim.now() - establishedAt) / 86_400;
         return (int) Math.min(MAX_EXTRA, Math.floor(days / GROWTH_DAYS));
     }
 
     /** The base's name, for notices. */
     public String name() {
-        var node = uuid == null ? null : world.macroSim.station(uuid);
+        var node = uuid == null ? null : macroSim.station(uuid);
         return node == null || node.displayName == null ? "The pirate base" : node.displayName;
     }
 
@@ -491,7 +513,7 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         since = 0f;
         strain();
         // A station stays on the rails; close by, the bubble shows it as a kinematic transient
-        look(world.macroSim.bubble().inBubble().contains(uuid) || world.macroSim.bubble().fastPasses().contains(uuid));
+        look(macroSim.bubble().inBubble().contains(uuid) || macroSim.bubble().fastPasses().contains(uuid));
     }
 
     /**
@@ -505,15 +527,15 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
         if (here && standing() && !anyPirateAboard()) fall("no pirate is left alive aboard");
         if (!here || !standing()) return;
         double range = playerRange();
-        if (!waiting.isEmpty() && (world.macroSim.now() >= waveAt || !leadDefenderFighting())) waveDue = true;
+        if (!waiting.isEmpty() && (macroSim.now() >= waveAt || !leadDefenderFighting())) waveDue = true;
         // Round 7: the fight drifts (a real-window raid ended 30 km off, the base still in the bubble),
         // so the base strikes wherever the player is once it is here and its defence is beaten
         // The player beaten, the raid is lost: the defence leaves them drifting as winners, not
         // driven off (round 7, real window: the frigate's reactor went down and Rustwake struck to
         // it). The wing is forgotten, and none scrambles against a beaten ship, so a raid flown
         // again meets a new one
-        Entity player = world.getPlayer();
-        if (player != null && ShipDisablement.isDisabled(player) && FirstPlay.beaten(world, player)) {
+        Entity player = ctx.player();
+        if (player != null && ShipDisablement.isDisabled(player) && FirstPlay.beaten(ctx.engine, player)) {
             raidLost();
             return;
         }
@@ -541,42 +563,41 @@ public class PirateBase extends EntitySystem implements SaveParticipant {
 
     /** Meters from the player's ship, in the bubble, to the base; infinite if the ship is not in the bubble. */
     private double playerRange() {
-        Entity player = world.getPlayer();
+        Entity player = ctx.player();
         PhysicsBodyComponent b = player == null ? null : player.getComponent(PhysicsBodyComponent.class);
         StateVector at = new StateVector();
-        if (b == null || b.body == null || !offset(world.macroSim.now(), at)) return Double.POSITIVE_INFINITY;
+        if (b == null || b.body == null || !offset(macroSim.now(), at)) return Double.POSITIVE_INFINITY;
         var p = PhysicsManager.getPosition(b.body, new com.badlogic.gdx.math.Vector2());
         return Math.hypot(at.x - p.x, at.y - p.y);
     }
 
     /** The base's place in the bubble at sim second {@code t}: its rails state less the anchor's. False if it is elsewhere. */
     private boolean offset(double t, StateVector out) {
-        var rails = world.macroSim.rails();
-        if (!rails.isOnRails(uuid) || !rails.parentOf(uuid).equals(world.macroSim.gateway().anchorParentUuid())) return false;
+        var rails = macroSim.rails();
+        if (!rails.isOnRails(uuid) || !rails.parentOf(uuid).equals(macroSim.gateway().anchorParentUuid())) return false;
         rails.stateAt(uuid, t, out);
-        world.macroSim.gateway().anchorStateAt(t, b);
+        macroSim.gateway().anchorStateAt(t, b);
         out.set(out.x - b.x, out.y - b.y, out.vx - b.vx, out.vy - b.vy);
         return true;
     }
 
     /** True if the player is within {@link #DETECT_RANGE} of the base, both round the same body. */
     private boolean near() {
-        var rails = world.macroSim.rails();
-        if (!rails.isOnRails(uuid) || !rails.parentOf(uuid).equals(world.macroSim.gateway().anchorParentUuid())) return false;
-        double now = world.macroSim.now();
+        var rails = macroSim.rails();
+        if (!rails.isOnRails(uuid) || !rails.parentOf(uuid).equals(macroSim.gateway().anchorParentUuid())) return false;
+        double now = macroSim.now();
         rails.stateAt(uuid, now, a);
-        world.macroSim.gateway().anchorStateAt(now, b);
+        macroSim.gateway().anchorStateAt(now, b);
         return Math.hypot(a.x - b.x, a.y - b.y) < DETECT_RANGE;
     }
 
     private boolean anyPirateAboard() {
-        Entity station = world.engine.getEntity(uuid);
+        Entity station = ctx.engine.getEntity(uuid);
         if (station == null) return true;
-        int pirates = world.standing.factions().index(HostileTraffic.PIRATES);
-        for (Entity e : world.engine.getEcsEngine().getEntitiesFor(CrewService.CREW)) {
-            GridPositionComponent at = e.getComponent(GridPositionComponent.class);
+        int pirates = standing.factions().index(HostileTraffic.PIRATES);
+        for (Entity e : crew.aboard(station)) {
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
-            if (at != null && at.ship == station && c != null && c.faction == pirates && c.isAlive()) return true;
+            if (c != null && c.faction == pirates && c.isAlive()) return true;
         }
         return false;
     }

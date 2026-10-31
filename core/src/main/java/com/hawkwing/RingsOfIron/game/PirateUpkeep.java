@@ -10,7 +10,9 @@ import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 
+import com.ringsofiron.shipops.ShipDisablement;
 import java.util.Map;
+import com.ringsofiron.coreengine.GameEngine;
 
 /**
  * Pirates' upkeep on the rails (round 8). Round 7 made a hostile with dry tanks give up in a fight,
@@ -36,12 +38,12 @@ public final class PirateUpkeep {
      */
     public static final double STEP = 60;
 
-    private final GameWorld world;
+    private final GameEngine engine;
     /** The last step boundary refuelled, as rails time; NaN until it first runs (saved by {@link HostileTraffic}). */
     double last = Double.NaN;
 
-    PirateUpkeep(GameWorld world) {
-        this.world = world;
+    PirateUpkeep(GameEngine engine) {
+        this.engine = engine;
     }
 
     /** Refuels every pirate off on the rails for each whole step passed since the last call. */
@@ -54,7 +56,7 @@ public final class PirateUpkeep {
         for (Map.Entry<String, HostileComponent> e : hostiles.entrySet()) {
             HostileComponent h = e.getValue();
             if (!h.isPirate() || h.moored()) continue;
-            Entity ship = world.engine.getEntity(e.getKey());
+            Entity ship = engine.getEntity(e.getKey());
             if (ship == null || !idle(ship)) continue;
             for (int i = 0; i < steps; i++) if (refuel(ship, STEP) <= 0) break;
         }

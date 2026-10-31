@@ -50,7 +50,7 @@ class ExteriorPickTest {
     void aClickOnAShipPicksIt() {
         assertNotNull(game.raider);
         Vector2 raider = at(game.raider);
-        assertSame(game.raider, new ExteriorPick(world).at(raider.x, raider.y, 0.5f, game.player));
+        assertSame(game.raider, new ExteriorPick(world.engine, world.physics, world.docking).at(raider.x, raider.y, 0.5f, game.player));
     }
 
     @Test
@@ -58,9 +58,9 @@ class ExteriorPickTest {
         Vector2 raider = at(game.raider);
         // Zoomed far out (20 m a pixel), a click a few pixels off the raider still picks it
         float mpp = 20f;
-        assertSame(game.raider, new ExteriorPick(world).at(raider.x + 5f * mpp, raider.y, mpp, game.player));
+        assertSame(game.raider, new ExteriorPick(world.engine, world.physics, world.docking).at(raider.x + 5f * mpp, raider.y, mpp, game.player));
         // Zoomed in, the same miss in meters picks nothing there
-        assertNotSame(game.raider, new ExteriorPick(world).at(raider.x + 100f, raider.y + 100f, 0.1f, game.player));
+        assertNotSame(game.raider, new ExteriorPick(world.engine, world.physics, world.docking).at(raider.x + 100f, raider.y + 100f, 0.1f, game.player));
     }
 
     @Test
@@ -68,9 +68,9 @@ class ExteriorPickTest {
         Entity station = world.engine.getEntity(game.highport);
         assertNotNull(station);
         Vector2 port = at(station);
-        assertSame(station, new ExteriorPick(world).at(port.x, port.y, 0.5f, game.player));
+        assertSame(station, new ExteriorPick(world.engine, world.physics, world.docking).at(port.x, port.y, 0.5f, game.player));
         Vector2 me = at(game.player);
-        Entity picked = new ExteriorPick(world).at(me.x, me.y, 0.05f, game.player);
+        Entity picked = new ExteriorPick(world.engine, world.physics, world.docking).at(me.x, me.y, 0.05f, game.player);
         assertNotSame(game.player, picked);
     }
 }

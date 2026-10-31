@@ -13,6 +13,8 @@ import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.shipops.ShipDisablement;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -219,7 +221,7 @@ class SurrenderHoldsTest {
         assertEquals(DisabledComponent.Reason.SURRENDERED, ShipDisablement.reason(ship));
 
         // The player's own trigger still fires on it, and that brings it back
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(ship);
         for (int i = 0; i < 5 / FRAME && atPrize.get() == 0; i++) {
             gun.fireGuns();
@@ -236,7 +238,7 @@ class SurrenderHoldsTest {
         String id = pirate();
         world.macroSim.hostiles().get(id).targetUuid = HostileComponent.PLAYER;
         Entity ship = bringIn(id, 2_500, 0);
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(ship);
         run(3);
         for (SubsystemComponent s : turrets(ship)) s.health = 0f;
@@ -276,7 +278,7 @@ class SurrenderHoldsTest {
 
         // The trigger still fires on one: aimed fire is the player's choice. The nearest, since the
         // trigger only fires a gun that can reach what it is aimed at
-        PlayerGunnery gun = new PlayerGunnery(world, game.player);
+        PlayerGunnery gun = new PlayerGunnery(world.bridge, world.combatDefs, world.sensors, world.weaponControl, world.missiles, game.player);
         gun.setTarget(nearest(batteries));
         for (int i = 0; i < 5 / FRAME && atBattery.get() == 0; i++) {
             gun.fireGuns();

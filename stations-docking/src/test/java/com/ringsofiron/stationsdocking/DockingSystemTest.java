@@ -280,7 +280,7 @@ class DockingSystemTest {
         float tilt = 0f;
         for (int i = 0; i < 60 * 20 && port(a).state == DockingPort.State.IDLE; i++) {
             game.stepTicks(1);
-            tilt = Math.max(tilt, Math.abs(DockingSystem.tiltOf(port(a))));
+            tilt = Math.max(tilt, Math.abs(CollarHeads.tiltOf(port(a))));
         }
         assertEquals(DockingPort.State.CAPTURED, port(a).state);
         assertTrue(tilt > 1f * MathUtils.degreesToRadians, "the head tilted to meet the port: " + tilt);

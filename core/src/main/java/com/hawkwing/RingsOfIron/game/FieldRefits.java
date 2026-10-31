@@ -24,10 +24,14 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 
+import com.ringsofiron.shipops.Salvage;
+import com.ringsofiron.shipops.StationYard;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.combatsys.defs.CombatDefs;
 
 /**
  * Mounting a salvaged weapon from a ship's hold on one of its hardpoints away from a yard: work
@@ -54,16 +58,20 @@ public final class FieldRefits {
     /** The mounting time the progress shown is reckoned against. */
     private static final float MOUNT_TIME = new CrewDef().mountTime;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
+    private final CombatDefs combatDefs;
     private final ImmutableArray<Entity> ships;
     /** The job of each order, while it stands. */
     private final Map<Order, Mount> jobs = new IdentityHashMap<>();
     private final Vector2 hug = new Vector2();
 
-    public FieldRefits(GameWorld world) {
-        this.world = world;
-        ships = world.engine.getEcsEngine().getEntitiesFor(SHIPS);
-        world.crew.eva.events.add((signal, e) -> {
+    public FieldRefits(GameContext ctx, CrewService crew, CombatDefs combatDefs) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.combatDefs = combatDefs;
+        ships = ctx.engine.getEcsEngine().getEntitiesFor(SHIPS);
+        crew.eva.events.add((signal, e) -> {
             if (e.kind == EvaEvent.Kind.LEFT_BEHIND) lostWith(e.crew);
         });
     }
@@ -74,7 +82,7 @@ public final class FieldRefits {
      */
     public String order(Entity ship, int hardpoint, String weaponId) {
         WeaponsComponent mounts = ship.getComponent(WeaponsComponent.class);
-        WeaponDef def = world.combatDefs.weapons.get(weaponId);
+        WeaponDef def = combatDefs.weapons.get(weaponId);
         if (mounts == null || hardpoint < 0 || hardpoint >= mounts.mounts.size) return "No such hardpoint";
         CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
         String part = StationYard.PART + weaponId;
@@ -134,7 +142,7 @@ public final class FieldRefits {
     public String progress(Entity ship, int hardpoint) {
         Order o = order(ship, hardpoint);
         if (o == null) return "";
-        WeaponDef def = world.combatDefs.weapons.get(o.weapon);
+        WeaponDef def = combatDefs.weapons.get(o.weapon);
         String name = def == null ? o.weapon : def.displayName();
         String who = carrierName(o);
         switch (o.stage) {
@@ -151,7 +159,7 @@ public final class FieldRefits {
                         ? said + "; the " + mount.def.displayName() + " is out of action" : said;
             }
             default: {
-                WeaponDef old = world.combatDefs.weapons.get(o.old);
+                WeaponDef old = combatDefs.weapons.get(o.old);
                 return name + " mounted: " + who + " is bringing the old " + (old == null ? o.old : old.displayName()) + " in";
             }
         }
@@ -162,7 +170,7 @@ public final class FieldRefits {
         FieldRefitComponent refits = ship.getComponent(FieldRefitComponent.class);
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
         if (refits == null || grid == null) return;
-        HullSurface hull = world.crew.eva.hull(grid);
+        HullSurface hull = crew.eva.hull(grid);
         int[] tile = new int[2];
         for (Order o : refits.orders) {
             Mount job = jobs.get(o);
@@ -209,17 +217,17 @@ public final class FieldRefits {
             if (o.carrier != crew || o.stage != Stage.CARRIED && o.stage != Stage.BRINGING_OLD) continue;
             FieldRefitComponent refits = job.ship.getComponent(FieldRefitComponent.class);
             if (refits != null) refits.orders.remove(o);
-            if (job.ship != world.getPlayer()) continue;
-            CrewMemberComponent c = world.crew.crew(crew);
-            WeaponDef def = world.combatDefs.weapons.get(o.stage == Stage.CARRIED ? o.weapon : o.old);
+            if (job.ship != ctx.player()) continue;
+            CrewMemberComponent c = this.crew.crew(crew);
+            WeaponDef def = combatDefs.weapons.get(o.stage == Stage.CARRIED ? o.weapon : o.old);
             String name = def == null ? "part" : def.displayName();
-            world.notices.post((o.stage == Stage.CARRIED ? "The salvaged " : "The old ") + name + " was lost with "
+            ctx.notices.post((o.stage == Stage.CARRIED ? "The salvaged " : "The old ") + name + " was lost with "
                     + (c == null ? "them" : c.name), NoticeLog.Kind.WARNING);
         }
     }
 
     private String carrierName(Order o) {
-        CrewMemberComponent c = o.carrier == null ? null : world.crew.crew(o.carrier);
+        CrewMemberComponent c = o.carrier == null ? null : crew.crew(o.carrier);
         return c == null ? "the crew" : c.name;
     }
 
@@ -265,7 +273,7 @@ public final class FieldRefits {
         }
 
         WeaponDef def() {
-            return world.combatDefs.weapons.get(order.weapon);
+            return combatDefs.weapons.get(order.weapon);
         }
 
         boolean alive() {
@@ -294,8 +302,8 @@ public final class FieldRefits {
             switch (order.stage) {
                 case HOLD:
                     if (hold != null && hold.amount(StationYard.PART + order.weapon) >= 1 - EPS) return true;
-                    if (ship == world.getPlayer()) {
-                        world.notices.post("No salvaged " + def().displayName() + " left in the hold: the mounting on "
+                    if (ship == ctx.player()) {
+                        ctx.notices.post("No salvaged " + def().displayName() + " left in the hold: the mounting on "
                                 + FieldRefits.where(mount()) + " is called off", NoticeLog.Kind.WARNING);
                     }
                     return false;
@@ -306,7 +314,7 @@ public final class FieldRefits {
                     if (hold != null) {
                         hold.load(StationYard.PART + (old ? order.old : order.weapon), 1, Salvage.CRATE_VOLUME, Salvage.CRATE_MASS);
                     }
-                    CrewMemberComponent c = order.carrier == null ? null : world.crew.crew(order.carrier);
+                    CrewMemberComponent c = order.carrier == null ? null : crew.crew(order.carrier);
                     if (c != null && c.crate != null && c.crate.job == this) c.crate = null;
                     order.carrier = null;
                     if (old) return false;
@@ -320,7 +328,7 @@ public final class FieldRefits {
 
         /** Nobody has the crate in hand: its carrier gone, or aboard and down, or no longer holding it. */
         private boolean astray() {
-            CrewMemberComponent c = order.carrier == null ? null : world.crew.crew(order.carrier);
+            CrewMemberComponent c = order.carrier == null ? null : crew.crew(order.carrier);
             if (c == null || c.crate == null || c.crate.job != this) return true;
             return !c.isConscious() && EvaSystem.of(order.carrier) == null;
         }
@@ -334,7 +342,7 @@ public final class FieldRefits {
                     return true;
                 case CARRIED: {
                     // Only for the one taking it out: put down, it goes back in the hold first
-                    CrewMemberComponent c = order.carrier == null ? null : world.crew.crew(order.carrier);
+                    CrewMemberComponent c = order.carrier == null ? null : crew.crew(order.carrier);
                     return c != null && c.crate != null && c.crate.job == this && c.task instanceof OutsideTask
                             && ((OutsideTask) c.task).job == this && c.task.isActive();
                 }
@@ -400,8 +408,8 @@ public final class FieldRefits {
                     order.carrier = null;
                 }
             }
-            if (!inHold && ship == world.getPlayer()) {
-                world.notices.post("No room in the hold for " + crate.name + ": the crew cast it off", NoticeLog.Kind.WARNING);
+            if (!inHold && ship == ctx.player()) {
+                ctx.notices.post("No room in the hold for " + crate.name + ": the crew cast it off", NoticeLog.Kind.WARNING);
             }
         }
 
@@ -413,9 +421,9 @@ public final class FieldRefits {
         @Override
         public void work(Entity worker, float seconds) {
             WeaponMountComponent mount = mount();
-            if (order.worked <= 0f && seconds > 0f && mount != null && mount.def != null && def() != null && ship == world.getPlayer()) {
-                CrewMemberComponent c = worker == null ? null : world.crew.crew(worker);
-                world.notices.post(String.format(Locale.ROOT, "%s is unbolting the %s on %s: it is out of action till the %s is on",
+            if (order.worked <= 0f && seconds > 0f && mount != null && mount.def != null && def() != null && ship == ctx.player()) {
+                CrewMemberComponent c = worker == null ? null : crew.crew(worker);
+                ctx.notices.post(String.format(Locale.ROOT, "%s is unbolting the %s on %s: it is out of action till the %s is on",
                         c == null ? "The crew" : c.name, mount.def.displayName(), FieldRefits.where(mount), def().displayName()),
                         NoticeLog.Kind.INFO);
             }
@@ -436,7 +444,7 @@ public final class FieldRefits {
             // A launcher comes out loaded, as from a yard
             mount.ammo = -1;
             system.health = Math.min(system.health, StationYard.USED_CONDITION);
-            CrewMemberComponent c = worker == null ? null : world.crew.crew(worker);
+            CrewMemberComponent c = worker == null ? null : crew.crew(worker);
             FieldRefitComponent refits = ship.getComponent(FieldRefitComponent.class);
             String said = String.format(Locale.ROOT, "%s mounted the salvaged %s on %s", c == null ? "The crew have" : c.name + " has",
                     def.displayName(), FieldRefits.where(mount));
@@ -455,7 +463,7 @@ public final class FieldRefits {
                         Salvage.CRATE_VOLUME, (float) Salvage.CRATE_MASS, this);
                 said += ", and is bringing the old " + old.displayName() + " in to the hold";
             }
-            if (ship == world.getPlayer()) world.notices.post(said, NoticeLog.Kind.INFO);
+            if (ship == ctx.player()) ctx.notices.post(said, NoticeLog.Kind.INFO);
         }
 
         @Override

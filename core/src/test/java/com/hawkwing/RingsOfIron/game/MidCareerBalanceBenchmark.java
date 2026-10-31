@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.career.Contract;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.defs.LoadoutDef;
 import com.ringsofiron.combatsys.modding.Loadouts;
 import java.nio.file.Path;

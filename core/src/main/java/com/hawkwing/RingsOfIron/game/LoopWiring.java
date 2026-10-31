@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.career.FactionStanding;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.signals.Signal;
 import com.ringsofiron.coreengine.components.PlayerControllerComponent;
@@ -36,7 +37,8 @@ public final class LoopWiring {
     /** Standing with the sponsor a rescue costs. Placeholder number. */
     public static final float RESCUE_COST = 5f;
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final FactionStanding standing;
     /** Each ship the player is credited with beating, once. */
     public final Signal<Entity> beaten = new Signal<>();
     /** Sim time of the player's last hit on each ship, by uuid. */
@@ -44,13 +46,14 @@ public final class LoopWiring {
     /** Ships already counted, by uuid, so a ship that comes back and is beaten again counts once. */
     private final Set<String> credited = new HashSet<>();
 
-    private LoopWiring(GameWorld world) {
-        this.world = world;
+    private LoopWiring(GameContext ctx, FactionStanding standing) {
+        this.ctx = ctx;
+        this.standing = standing;
     }
 
     /** Wires {@code world}'s systems to its career. Call once all of them exist. */
     public static LoopWiring install(GameWorld world) {
-        LoopWiring w = new LoopWiring(world);
+        LoopWiring w = new LoopWiring(world.context, world.standing);
         world.hostiles.difficulty = () -> Difficulty.of(world);
         world.boarding.outlaw = faction -> {
             FactionDef def = world.standing.factions().def(faction);
@@ -82,10 +85,10 @@ public final class LoopWiring {
 
     /** The best ship of {@link #REQUISITION} the player's rank allows; the starter corvette always. */
     public String bestRequisition() {
-        int rank = world.standing.record().rank;
+        int rank = standing.record().rank;
         for (String id : REQUISITION) {
-            if (world.getContent() != null && !world.getContent().defs.has("ship", id)) continue;
-            if (world.standing.ranks().mayRequisition(rank, id)) return id;
+            if (ctx.content() != null && !ctx.content().defs.has("ship", id)) continue;
+            if (standing.ranks().mayRequisition(rank, id)) return id;
         }
         return GameScenario.PLAYER_SHIP;
     }
@@ -95,7 +98,7 @@ public final class LoopWiring {
         if (owner.getComponent(PlayerControllerComponent.class) == null) return;
         if (target.getComponent(StationComponent.class) != null) return;
         String uuid = uuidOf(target);
-        if (uuid != null) lastHit.put(uuid, world.engine.getSimSeconds());
+        if (uuid != null) lastHit.put(uuid, ctx.engine.getSimSeconds());
     }
 
     private void beaten(Entity ship) {
@@ -103,9 +106,9 @@ public final class LoopWiring {
         String uuid = uuidOf(ship);
         if (uuid == null || credited.contains(uuid)) return;
         Double at = lastHit.get(uuid);
-        if (at == null || world.engine.getSimSeconds() - at > CREDIT_SECONDS) return;
+        if (at == null || ctx.engine.getSimSeconds() - at > CREDIT_SECONDS) return;
         credited.add(uuid);
-        world.standing.onShipDestroyed(ship);
+        standing.onShipDestroyed(ship);
         beaten.dispatch(ship);
     }
 

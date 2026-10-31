@@ -10,11 +10,15 @@ import com.ringsofiron.aicrew.CrewFactory;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.coreengine.components.UuidComponent;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipops.Boarding;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.providers.CrewProvider;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -146,7 +150,7 @@ class CrewCareerTest {
         int berths = CrewHiring.berths(game.player);
         assertTrue(berths >= CrewHiring.MIN_BERTHS);
         assertEquals(4, world.crewHiring.aboard(game.player), "the player and three crew to start");
-        int[] t = GameScenario.floorTiles(game.player.getComponent(ShipGridComponent.class)).get(0);
+        int[] t = FloorTiles.of(game.player.getComponent(ShipGridComponent.class)).get(0);
         while (world.crewHiring.aboard(game.player) < berths) {
             CrewFactory.spawn(world.crew, game.player, "Extra", CrewRole.CREWMAN, FactionStanding.PLAYER, t[0], t[1]);
         }
@@ -289,7 +293,7 @@ class CrewCareerTest {
     /** Two pirate crewmen aboard the raider, one who will offer to join and one who won't. */
     private List<Entity> pirateCrew() {
         int pirates = world.standing.factions().index(GameScenario.PIRATES);
-        List<int[]> floor = GameScenario.floorTiles(game.raider.getComponent(ShipGridComponent.class));
+        List<int[]> floor = FloorTiles.of(game.raider.getComponent(ShipGridComponent.class));
         List<Entity> out = new ArrayList<>();
         boolean joiner = false, other = false;
         for (int i = 0; out.size() < 2; i++) {
@@ -366,7 +370,7 @@ class CrewCareerTest {
     void prisonersOfAFactionAtPeaceAreRansomedAtItsStationOrReleased() {
         docked();
         int selene = world.standing.factions().index("selene");
-        int[] t = GameScenario.floorTiles(game.player.getComponent(ShipGridComponent.class)).get(0);
+        int[] t = FloorTiles.of(game.player.getComponent(ShipGridComponent.class)).get(0);
         Entity p = CrewFactory.spawn(world.crew, game.player, "Miner", CrewRole.CREWMAN, selene, t[0], t[1]);
         world.crew.crew(p).held = true;
         // Highport is no Selene station, and Selene are no one the Patrol fights: only release
@@ -382,7 +386,7 @@ class CrewCareerTest {
     @Test
     void theRosterShowsCrewHiresAndPrisoners() {
         docked();
-        CrewRoster roster = new CrewRoster(world);
+        CrewRoster roster = new CrewRoster(world.context, world.crew, world.macroSim, world.standing, world.crewCareer, world.crewHiring, world.medical, world.prisoners, world.spacewalks);
         CrewProvider.CrewSheet sheet = new CrewProvider.CrewSheet();
         roster.collect(sheet);
         assertTrue(sheet.isOpen());

@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipops.CargoLoading;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.EntitySystem;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
@@ -10,12 +11,18 @@ import com.ringsofiron.macrosim.bubble.BubbleTransitionListener;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.macrosim.fleet.FreighterController;
 import com.ringsofiron.macrosim.rails.RailsModel;
+import com.ringsofiron.shipops.CargoOrdersComponent;
 import com.ringsofiron.stationsdocking.BerthingComponent;
 import com.ringsofiron.stationsdocking.BerthingSystem;
 import com.ringsofiron.stationsdocking.StationComponent;
 
 import java.util.List;
 import java.util.Set;
+import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.coreengine.GameEngine;
+import com.ringsofiron.macrosim.MacroSimulation;
+import java.util.function.Supplier;
+import com.ringsofiron.orbital.warp.TimeWarpController;
 
 /**
  * macro-sim's freighters in the bubble, docking and leaving under their own power. One flying to a
@@ -38,16 +45,26 @@ public class FreighterTraffic extends EntitySystem implements BubbleTransitionLi
     /** Units of difference between its bays and its cargo too small to carry. */
     static final double TOO_FEW = 0.5;
 
-    private final GameWorld world;
+    private final GameEngine engine;
+    private final MacroSimulation macroSim;
+    private final DockingSystem docking;
+    private final BerthingSystem berthing;
+    private final TimeWarpController timeWarp;
+    private final Supplier<CargoLoading> cargo;
     private float since = CHECK_SECONDS;
 
-    public FreighterTraffic(GameWorld world) {
-        this.world = world;
-        world.berthing.listener = new BerthingSystem.BerthingListener() {
+    public FreighterTraffic(GameEngine engine, MacroSimulation macroSim, DockingSystem docking, BerthingSystem berthing, TimeWarpController timeWarp, Supplier<CargoLoading> cargo) {
+        this.engine = engine;
+        this.macroSim = macroSim;
+        this.docking = docking;
+        this.berthing = berthing;
+        this.timeWarp = timeWarp;
+        this.cargo = cargo;
+        berthing.listener = new BerthingSystem.BerthingListener() {
             @Override
             public void berthed(Entity craft, Entity station) {
                 String id = uuid(craft), at = uuid(station);
-                if (id != null && at != null) world.macroSim.freighters().berthedInBubble(id, at);
+                if (id != null && at != null) macroSim.freighters().berthedInBubble(id, at);
             }
 
             @Override
@@ -55,10 +72,10 @@ public class FreighterTraffic extends EntitySystem implements BubbleTransitionLi
             }
         };
         // Coming in to berth when warp collapses the bubble, it arrives in the warp
-        world.timeWarp.changes.add((signal, change) -> {
+        timeWarp.changes.add((signal, change) -> {
             if (!change.rails) return;
-            for (String id : world.macroSim.bubble().inBubble()) {
-                world.macroSim.freighters().arriveFromBubble(id, world.engine.getSimSeconds());
+            for (String id : macroSim.bubble().inBubble()) {
+                macroSim.freighters().arriveFromBubble(id, engine.getSimSeconds());
             }
         });
     }
@@ -68,12 +85,12 @@ public class FreighterTraffic extends EntitySystem implements BubbleTransitionLi
         since += deltaTime;
         if (since < CHECK_SECONDS) return;
         since = 0f;
-        for (String id : world.macroSim.bubble().inBubble()) {
-            Entity e = world.engine.getEntity(id);
+        for (String id : macroSim.bubble().inBubble()) {
+            Entity e = engine.getEntity(id);
             FreighterComponent f = e == null ? null : e.getComponent(FreighterComponent.class);
             if (f == null || f.state != FreighterComponent.State.IN_BUBBLE) continue;
             BerthingComponent b = e.getComponent(BerthingComponent.class);
-            Entity docked = world.docking.dockedTo(e);
+            Entity docked = docking.dockedTo(e);
             Entity to = stationInBubble(f.destinationUuid);
             carry(e, f, docked);
             if (b == null) {
@@ -82,11 +99,11 @@ public class FreighterTraffic extends EntitySystem implements BubbleTransitionLi
                 if (docked != null && f.destinationUuid != null && !f.destinationUuid.equals(uuid(docked))
                         && b.time > FreighterController.UNDOCK_DELAY
                         && (!loading(e) || b.time > FreighterController.UNDOCK_DELAY + MOST_LOADING)) {
-                    world.cargo.callOff(e);
-                    world.berthing.depart(e);
-                    world.macroSim.freighters().undockedInBubble(id);
+                    cargo.get().callOff(e);
+                    berthing.depart(e);
+                    macroSim.freighters().undockedInBubble(id);
                 }
-            } else if (b.phase == BerthingComponent.Phase.DEPART && to != null && !to.equals(b.station.get(world.engine.getUuidRegistry()))
+            } else if (b.phase == BerthingComponent.Phase.DEPART && to != null && !to.equals(b.station.get(engine.getUuidRegistry()))
                     && "Leaving".equals(b.status)) {
                 // Clear of the last station, and the next one is in the bubble too
                 berth(e, to);
@@ -102,8 +119,8 @@ public class FreighterTraffic extends EntitySystem implements BubbleTransitionLi
     private void carry(Entity freighter, FreighterComponent f, Entity docked) {
         CargoHoldComponent hold = freighter.getComponent(CargoHoldComponent.class);
         if (hold == null) return;
-        if (docked == null || !world.cargo.canCarry(freighter, docked)) {
-            if (!loading(freighter)) FreighterShips.stow(world, freighter);
+        if (docked == null || !cargo.get().canCarry(freighter, docked)) {
+            if (!loading(freighter)) FreighterShips.stow(macroSim, freighter);
             return;
         }
         CargoOrdersComponent orders = freighter.getComponent(CargoOrdersComponent.class);
@@ -114,7 +131,7 @@ public class FreighterTraffic extends EntitySystem implements BubbleTransitionLi
             double want = k.equals(f.cargoCommodity) ? f.cargoQuantity : 0;
             double have = hold.amount(k) + (orders == null ? 0 : orders.pending(at, k));
             double diff = want - have;
-            if (Math.abs(diff) > TOO_FEW) world.cargo.order(freighter, docked, k, Math.abs(diff), diff > 0);
+            if (Math.abs(diff) > TOO_FEW) cargo.get().order(freighter, docked, k, Math.abs(diff), diff > 0);
         }
     }
 
@@ -135,8 +152,8 @@ public class FreighterTraffic extends EntitySystem implements BubbleTransitionLi
 
     /** The station with this uuid, if it is in the bubble. */
     private Entity stationInBubble(String uuid) {
-        Entity s = uuid == null ? null : world.engine.getEntity(uuid);
-        return s != null && s.getComponent(StationComponent.class) != null && world.docking.bodyOf(s) != null ? s : null;
+        Entity s = uuid == null ? null : engine.getEntity(uuid);
+        return s != null && s.getComponent(StationComponent.class) != null && docking.bodyOf(s) != null ? s : null;
     }
 
     @Override
@@ -146,12 +163,12 @@ public class FreighterTraffic extends EntitySystem implements BubbleTransitionLi
 
     @Override
     public void onExitBubble(String uuid, double t) {
-        Entity e = world.engine.getEntity(uuid);
+        Entity e = engine.getEntity(uuid);
         if (e == null) return;
         e.remove(BerthingComponent.class);
         // On the rails it holds what it carries; whatever was still to be carried is done with
-        world.cargo.callOff(e);
-        FreighterShips.stow(world, e);
+        cargo.get().callOff(e);
+        FreighterShips.stow(macroSim, e);
     }
 
     private static String uuid(Entity e) {

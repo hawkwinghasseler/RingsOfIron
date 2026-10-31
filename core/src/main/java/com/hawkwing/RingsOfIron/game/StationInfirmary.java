@@ -1,5 +1,6 @@
 package com.hawkwing.RingsOfIron.game;
 
+import com.ringsofiron.shipops.StationYard;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
@@ -8,10 +9,13 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.TaskRules;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.stationsdocking.StationComponent;
 
 import java.util.Locale;
+import com.ringsofiron.stationsdocking.DockingSystem;
 
 /**
  * A station's infirmary treats the player's seriously and critically wounded, and anyone knocked
@@ -40,22 +44,26 @@ public final class StationInfirmary {
     /** Credits for bringing a critical, serious or light wound down a level. */
     static final double CRITICAL_PRICE = 300, SERIOUS_PRICE = 150, LIGHT_PRICE = 50;
 
-    private final GameWorld world;
+    private final GameContext ctx;
     private final CrewService crew;
+    private final DockingSystem docking;
+    private final StationYard yard;
     private double last = Double.NaN;
 
-    public StationInfirmary(GameWorld world) {
-        this.world = world;
-        this.crew = world.crew;
+    public StationInfirmary(GameContext ctx, CrewService crew, DockingSystem docking, StationYard yard) {
+        this.ctx = ctx;
+        this.crew = crew;
+        this.docking = docking;
+        this.yard = yard;
     }
 
     /** Once a sim tick ({@link GameWorld#tickManagers}). */
     public void update() {
-        double now = world.engine.getSimSeconds();
+        double now = ctx.engine.getSimSeconds();
         float dt = Double.isNaN(last) ? 0f : (float) Math.max(0, now - last);
         last = now;
-        Entity ship = world.getPlayer();
-        Entity station = ship == null ? null : world.docking.dockedTo(ship);
+        Entity ship = ctx.player();
+        Entity station = ship == null ? null : docking.dockedTo(ship);
         if (station == null || station.getComponent(StationComponent.class) == null) return;
         if (!crew.friendlyTo(FactionStanding.PLAYER, station)) return;
         ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
@@ -77,7 +85,7 @@ public final class StationInfirmary {
     private void treat(Entity e, CrewMemberComponent c, Entity station, float dt) {
         if (c.wound == Wound.CRITICAL && !c.stabilised) {
             c.stabilised = true;
-            world.notices.post(c.name + " is taken into " + PlayerDocking.name(station) + "'s infirmary", NoticeLog.Kind.INFO);
+            ctx.notices.post(c.name + " is taken into " + ShipNames.name(station) + "'s infirmary", NoticeLog.Kind.INFO);
         }
         float left = dt * CrewDef.MEDBAY_CARE;
         while (c.wound != Wound.NONE && !c.isConscious() && left > 0f) {
@@ -95,17 +103,17 @@ public final class StationInfirmary {
         GridPositionComponent p = crew.position(e);
         if (!c.wound.disabling() && !c.isConscious() && TaskRules.isSafe(crew.grid(p.ship), p.tileX(), p.tileY())) {
             crew.heal(e, c.def.maxHealth);
-            world.notices.post(c.name + " is back on their feet after " + PlayerDocking.name(station) + "'s infirmary",
+            ctx.notices.post(c.name + " is back on their feet after " + ShipNames.name(station) + "'s infirmary",
                     NoticeLog.Kind.INFO);
         }
     }
 
     private void bill(Entity station, CrewMemberComponent c, Wound was) {
-        TraderComponent trader = world.getPlayer().getComponent(TraderComponent.class);
-        double price = price(was) * world.yard.priceFactor.applyAsDouble(station);
+        TraderComponent trader = ctx.player().getComponent(TraderComponent.class);
+        double price = price(was) * yard.priceFactor.applyAsDouble(station);
         if (trader != null) trader.credits = Math.max(0, trader.credits - price);
-        world.notices.post(String.format(Locale.ROOT, "%s's infirmary treated %s's %s wound: %.0f cr",
-                PlayerDocking.name(station), c.name, was.name().toLowerCase(Locale.ROOT), price), NoticeLog.Kind.INFO);
+        ctx.notices.post(String.format(Locale.ROOT, "%s's infirmary treated %s's %s wound: %.0f cr",
+                ShipNames.name(station), c.name, was.name().toLowerCase(Locale.ROOT), price), NoticeLog.Kind.INFO);
     }
 
     /** Credits for bringing {@code wound} down a level. */

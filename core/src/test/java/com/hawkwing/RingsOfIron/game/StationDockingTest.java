@@ -73,7 +73,7 @@ class StationDockingTest {
     @Test
     void thePlayerDocksAtHighportTradesAndUndocks() {
         TradeProvider.TradeBoard board = new TradeProvider.TradeBoard();
-        MarketTrade market = new MarketTrade(world);
+        MarketTrade market = new MarketTrade(world.context, world.docking, world.macroSim, world.cargo, world.cargoSettlement, world.salvage);
         int stationPort = nearestPort(MountFootprint.MountSize.S);
         parkBeside(stationPort, 1.5f);
         market.collect(board);
@@ -121,7 +121,7 @@ class StationDockingTest {
     void loadersCarryWhatThePlayerBuysAcrossTheDock() {
         assertTrue(world.cargo.loaders(highport) >= 2, "Highport has dock hands");
         TradeProvider.TradeBoard board = new TradeProvider.TradeBoard();
-        MarketTrade market = new MarketTrade(world);
+        MarketTrade market = new MarketTrade(world.context, world.docking, world.macroSim, world.cargo, world.cargoSettlement, world.salvage);
         int stationPort = nearestPort(MountFootprint.MountSize.S);
         parkBeside(stationPort, 1.5f);
         world.docking.arm(game.player, 0);
@@ -187,7 +187,7 @@ class StationDockingTest {
         assertEquals(0, world.cargo.loaders(highport));
 
         TradeProvider.TradeBoard board = new TradeProvider.TradeBoard();
-        MarketTrade market = new MarketTrade(world);
+        MarketTrade market = new MarketTrade(world.context, world.docking, world.macroSim, world.cargo, world.cargoSettlement, world.salvage);
         parkBeside(nearestPort(MountFootprint.MountSize.S), 1.5f);
         world.docking.arm(game.player, 0);
         world.docking.requestClearance(game.player, 0);
@@ -257,7 +257,7 @@ class StationDockingTest {
     @Test
     void theScreensDockingKeysArmAskAndUndock() {
         java.util.List<String> notices = new java.util.ArrayList<>();
-        PlayerDocking keys = new PlayerDocking(world, () -> game.player, notices::add);
+        PlayerDocking keys = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, notices::add);
         int stationPort = nearestPort(MountFootprint.MountSize.S);
         parkBeside(stationPort, 1.5f);
         world.update(FRAME);

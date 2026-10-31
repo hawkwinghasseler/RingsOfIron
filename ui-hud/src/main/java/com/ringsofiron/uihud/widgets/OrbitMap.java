@@ -156,7 +156,7 @@ public class OrbitMap extends Widget {
         super.act(delta);
         path.clear();
         // A hidden map (the small one under the full-screen map, or in the deck view) asks for nothing
-        hasPath = provider != null && ancestorsVisible() && provider.getPlayerPath(path);
+        hasPath = provider != null && ascendantsVisible() && provider.getPlayerPath(path);
         if (caption != null) caption.setText(hasPath ? path.caption : "No orbit");
     }
 

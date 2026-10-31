@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
+import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,7 +62,7 @@ class HostileLabelTest {
         List<String> guns = world.pirateBase.guns();
         assertFalse(guns.isEmpty(), "the base manned its guns");
         for (String name : guns) assertEquals(HostileLabel.FIT, HostileLabel.of(world, ship(name)), name + " while the base stands");
-        SilencedMarkers markers = new SilencedMarkers(world);
+        SilencedMarkers markers = new SilencedMarkers(world.engine, world.macroSim, world.pirateBase);
         markers.update();
         String label = ship(guns.get(0)).getComponent(HudMarkerComponent.class).label;
         assertFalse(label.endsWith(SilencedMarkers.SUFFIX), "red and unmarked while the base stands");
@@ -74,7 +75,7 @@ class HostileLabelTest {
             HudMarkerComponent marker = ship(name).getComponent(HudMarkerComponent.class);
             assertTrue(marker.label.endsWith(SilencedMarkers.SUFFIX), marker.label);
             assertFalse(marker.label.endsWith(SilencedMarkers.SUFFIX + SilencedMarkers.SUFFIX), marker.label);
-            assertEquals(ShipDisablement.DISABLED_COLOR, marker.color);
+            assertEquals(HudMarkerComponent.DISABLED_COLOR, marker.color);
         }
         world.pirateBase.rise();
         markers.update();

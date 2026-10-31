@@ -8,10 +8,13 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.pilot.NpcPilotComponent;
 import com.ringsofiron.aicrew.pilot.PilotBurn;
+import com.ringsofiron.career.NewGame;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.macrosim.fleet.FreighterComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.shipops.ShipNames;
+import com.ringsofiron.shipsystems.TransitClearance;
 import com.ringsofiron.stationsdocking.BerthingComponent;
 import com.ringsofiron.stationsdocking.DockingEvent;
 import java.nio.file.Path;
@@ -74,7 +77,7 @@ class TransitClearanceTest {
 
         List<String> torn = new ArrayList<>();
         world.docking.events.add((sig, e) -> {
-            if (e.kind == DockingEvent.Kind.TORN) torn.add(PlayerDocking.name(e.vessel) + " / " + PlayerDocking.name(e.other));
+            if (e.kind == DockingEvent.Kind.TORN) torn.add(ShipNames.name(e.vessel) + " / " + ShipNames.name(e.other));
         });
         float nearest = Float.MAX_VALUE;
         Vector2 a = new Vector2(), b = new Vector2();

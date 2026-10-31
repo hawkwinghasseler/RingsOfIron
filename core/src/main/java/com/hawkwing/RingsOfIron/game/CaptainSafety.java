@@ -1,7 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
-import com.hawkwing.RingsOfIron.shell.KeyBindings.Action;
+import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
@@ -11,7 +11,9 @@ import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SuitLockers;
 import com.ringsofiron.interiorgrid.crew.Suit;
+import com.ringsofiron.uihud.HintRegistry;
 import com.ringsofiron.uihud.systems.InteractPromptSystem;
+import com.ringsofiron.aicrew.CrewService;
 
 /**
  * The player's own figure in a holed ship (round 6 part 1). The crew's behaviour tree suits them up
@@ -47,7 +49,8 @@ public final class CaptainSafety {
     /** Notice text once the figure's suit is filled. */
     public static final String SUIT_FILLED = "Your suit is filled from the ship's oxygen";
 
-    private final GameWorld world;
+    private final GameContext ctx;
+    private final CrewService crew;
     /** Seconds spent putting the suit on or taking it off, or filling it. */
     private float suiting, filling;
     /** What the figure is doing at a suit locker, and the locker. */
@@ -60,9 +63,10 @@ public final class CaptainSafety {
     private boolean warned;
     private double last = Double.NaN;
 
-    public CaptainSafety(GameWorld world) {
-        this.world = world;
-        world.hints.register(HintRegistry.Context.DECK, "walk to air (losing air here)", 3,
+    public CaptainSafety(GameContext ctx, CrewService crew) {
+        this.ctx = ctx;
+        this.crew = crew;
+        ctx.hints.register(HintRegistry.Context.DECK, "walk to air (losing air here)", 3,
                 Action.THRUST, Action.TURN_LEFT, Action.REVERSE, Action.TURN_RIGHT).onlyWhen(this::inThinAir);
     }
 
@@ -78,7 +82,7 @@ public final class CaptainSafety {
             public String prompt() {
                 Furnishing f = usable();
                 if (f == null) return null;
-                CrewMemberComponent c = world.crew.crew(avatar());
+                CrewMemberComponent c = crew.crew(avatar());
                 return c.suited ? "hang up your " + c.suitKind.noun
                         : f.type.holds == Suit.Kind.EVA ? "get into an EVA suit" : "put on a pressure suit";
             }
@@ -87,7 +91,7 @@ public final class CaptainSafety {
             public float distance2() {
                 Furnishing f = usable();
                 if (f == null) return Float.MAX_VALUE;
-                GridPositionComponent p = world.crew.position(avatar());
+                GridPositionComponent p = crew.position(avatar());
                 return SuitLockers.front(f, front).dst2(p.x, p.y);
             }
 
@@ -95,7 +99,7 @@ public final class CaptainSafety {
             public void act() {
                 Furnishing f = usable();
                 if (f == null) return;
-                boolean on = !world.crew.crew(avatar()).suited;
+                boolean on = !crew.crew(avatar()).suited;
                 startAt(on ? AtLocker.ON : AtLocker.OFF, f);
             }
         };
@@ -104,10 +108,10 @@ public final class CaptainSafety {
     /** The locker within the figure's reach that E would use now, or null: none, or busy at one. */
     private Furnishing usable() {
         Entity e = avatar();
-        CrewMemberComponent c = e == null ? null : world.crew.crew(e);
+        CrewMemberComponent c = e == null ? null : crew.crew(e);
         if (c == null || !c.isConscious() || c.held || !c.wearsSuits() || atLocker != AtLocker.NONE) return null;
-        GridPositionComponent p = world.crew.position(e);
-        ShipGridComponent grid = world.crew.grid(p.ship);
+        GridPositionComponent p = crew.position(e);
+        ShipGridComponent grid = crew.grid(p.ship);
         if (grid == null || p.walkway != null) return null;
         if (!c.suited) return lockerWithSuit(grid, p, true);
         return TaskRules.isSafe(grid, p.tileX(), p.tileY()) ? SuitLockers.within(grid, p.x, p.y, f -> SuitLockers.hasRoom(f, c.suitKind)) : null;
@@ -160,16 +164,16 @@ public final class CaptainSafety {
 
     /** The player's figure, or null. */
     Entity avatar() {
-        for (Entity e : world.crew.crewEntities()) if (e.getComponent(PlayerAvatarComponent.class) != null) return e;
+        for (Entity e : crew.crewEntities()) if (e.getComponent(PlayerAvatarComponent.class) != null) return e;
         return null;
     }
 
     /** True while the player's figure stands, unsuited or suited, on air not fit to breathe. */
     public boolean inThinAir() {
         Entity e = avatar();
-        if (e == null || !world.crew.crew(e).isConscious()) return false;
-        GridPositionComponent p = world.crew.position(e);
-        ShipGridComponent grid = p == null ? null : world.crew.grid(p.ship);
+        if (e == null || !crew.crew(e).isConscious()) return false;
+        GridPositionComponent p = crew.position(e);
+        ShipGridComponent grid = p == null ? null : crew.grid(p.ship);
         return grid != null && !TaskRules.isBreathable(grid, p.tileX(), p.tileY());
     }
 
@@ -195,7 +199,7 @@ public final class CaptainSafety {
      */
     private void showProgress() {
         Entity e = avatar();
-        CrewMemberComponent c = e == null ? null : world.crew.crew(e);
+        CrewMemberComponent c = e == null ? null : crew.crew(e);
         if (c == null) return;
         if (atLocker != AtLocker.NONE && locker != null) {
             Suit.Kind kind = atLocker == AtLocker.ON ? locker.type.holds : c.suitKind;
@@ -211,25 +215,25 @@ public final class CaptainSafety {
     }
 
     private void step() {
-        double now = world.engine.getSimSeconds();
+        double now = ctx.engine.getSimSeconds();
         // A time skip (a tow home, a jump in warp) is not time spent putting a suit on or filling it
         float dt = Double.isNaN(last) ? 0f : (float) Math.min(MAX_STEP, Math.max(0, now - last));
         last = now;
         Entity e = avatar();
-        CrewMemberComponent c = e == null ? null : world.crew.crew(e);
+        CrewMemberComponent c = e == null ? null : crew.crew(e);
         if (c == null || !c.isConscious() || c.held || !c.wearsSuits()) {
             suiting = 0f;
             atLocker = AtLocker.NONE;
             warned = false;
             return;
         }
-        GridPositionComponent p = world.crew.position(e);
-        ShipGridComponent grid = world.crew.grid(p.ship);
+        GridPositionComponent p = crew.position(e);
+        ShipGridComponent grid = crew.grid(p.ship);
         if (grid == null) return;
         boolean thin = !TaskRules.isBreathable(grid, p.tileX(), p.tileY());
         fillSuit(e, c, p, grid, thin, dt);
         fillAtConsole(e, c, dt);
-        if (thin && !warned) world.notices.post(c.suited ? THIN_AIR : NO_SUIT, NoticeLog.Kind.WARNING);
+        if (thin && !warned) ctx.notices.post(c.suited ? THIN_AIR : NO_SUIT, NoticeLog.Kind.WARNING);
         warned = thin;
         stepAtLocker(c, p, grid, dt);
     }
@@ -260,6 +264,6 @@ public final class CaptainSafety {
         CrewTasks.drawSuitOxygen(at, c.suitKind);
         c.suitAir = c.suitCapacity();
         filling = 0f;
-        world.notices.post(SUIT_FILLED, NoticeLog.Kind.INFO);
+        ctx.notices.post(SUIT_FILLED, NoticeLog.Kind.INFO);
     }
 }

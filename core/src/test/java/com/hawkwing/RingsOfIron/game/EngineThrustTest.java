@@ -11,6 +11,7 @@ import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.physicsexterior.components.ThrusterComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.shipsystems.EngineThrust;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;

@@ -24,6 +24,7 @@ import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.DamageStates;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -153,7 +154,7 @@ public final class WorldDebug implements PhysicsManager.StepListener {
     /** Open deck with nobody on it, scanning from the middle row out, or null. */
     public int[] freeTile(Entity ship) {
         Array<Entity> here = new Array<>();
-        for (int[] t : GameScenario.floorTiles(grid(ship))) {
+        for (int[] t : FloorTiles.of(grid(ship))) {
             here.clear();
             world.crew.occupantsAt(ship, t[0], t[1], here);
             if (here.size == 0) return t;
@@ -190,10 +191,7 @@ public final class WorldDebug implements PhysicsManager.StepListener {
     /** Everyone aboard {@code ship}, alive or dead, in the order they joined the world. */
     public List<Entity> crewAboard(Entity ship) {
         List<Entity> out = new ArrayList<>();
-        for (Entity e : world.crew.crewEntities()) {
-            GridPositionComponent p = world.crew.position(e);
-            if (p != null && p.ship == ship) out.add(e);
-        }
+        for (Entity e : world.crew.aboard(ship)) out.add(e);
         return out;
     }
 
