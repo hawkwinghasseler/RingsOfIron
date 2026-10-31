@@ -8,6 +8,7 @@ import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.EvaComponent;
 import com.ringsofiron.aicrew.EvaSystem;
+import com.ringsofiron.aicrew.HullStripTask;
 import com.ringsofiron.aicrew.OutsideTask;
 import com.ringsofiron.aicrew.RetrieveTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
@@ -317,7 +318,9 @@ public final class EvaTasks {
             case REPAIR_RCS: return "repairing an RCS thruster on EVA";
             case PATCH_HULL: return "plating a holed hull tile on EVA";
             case RETRIEVE: return "fetching a shipmate adrift on EVA";
-            default: return t instanceof OutsideTask ? ((OutsideTask) t).job.doing() + " on EVA" : "working on EVA";
+            default:
+                if (t instanceof HullStripTask) return ((HullStripTask) t).job.doing() + " on EVA";
+                return t instanceof OutsideTask ? ((OutsideTask) t).job.doing() + " on EVA" : "working on EVA";
         }
     }
 
@@ -327,7 +330,9 @@ public final class EvaTasks {
             case REPAIR_RCS: return "an RCS thruster";
             case PATCH_HULL: return "a holed hull tile";
             case RETRIEVE: return "a shipmate adrift";
-            default: return t instanceof OutsideTask ? ((OutsideTask) t).job.where() : "the job";
+            default:
+                if (t instanceof HullStripTask) return ((HullStripTask) t).job.where();
+                return t instanceof OutsideTask ? ((OutsideTask) t).job.where() : "the job";
         }
     }
 
@@ -429,6 +434,12 @@ public final class EvaTasks {
     /** What {@code a} calls {@code craft}, on their way to it: "their ship", or "the other craft". */
     static String craft(CrewAgent a, Entity craft) {
         return craft == a.service.homeOf(a.entity) ? "their ship" : "the other craft";
+    }
+
+    /** The work on another craft's hull {@code a} holds, or null. */
+    static HullStripTask stripOrder(CrewAgent a) {
+        CrewTask t = a.crew.task;
+        return t instanceof HullStripTask && t.isActive() && t.claimedBy == a.entity ? (HullStripTask) t : null;
     }
 
     /** The boarding order {@code a} holds, or null. */

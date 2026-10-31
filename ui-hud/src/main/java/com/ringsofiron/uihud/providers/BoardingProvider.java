@@ -39,6 +39,8 @@ public interface BoardingProvider {
         /** "", "marked", "stripping 40%", "carrying it home"... */
         public String status = "";
         public boolean marked;
+        /** Whether it can be marked (or unmarked) now: false for a part already off, or one out of reach from here. */
+        public boolean toggleable = true;
     }
 
     final class Cargo {
@@ -57,7 +59,7 @@ public interface BoardingProvider {
         public String boardRefusal = "";
         /** Why the party can't storm it now, or empty if it can. */
         public String stormRefusal = "";
-        /** Not latched to it: the party goes over on EVA. */
+        /** Not latched to it: the party goes over on EVA, and parts on its hull are stripped on EVA. */
         public boolean byEva;
         /** A boarding party is on its way or aboard. */
         public boolean boarding;

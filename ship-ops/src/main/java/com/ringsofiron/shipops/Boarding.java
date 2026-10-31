@@ -176,6 +176,15 @@ public class Boarding extends EntitySystem {
         return best;
     }
 
+    /**
+     * True if {@code ship}, latched to nothing, stands off near enough {@code other} (a ship, not a
+     * station) for its crew to cross to it on EVA, drifting slowly enough from it.
+     */
+    public boolean alongside(Entity ship, Entity other) {
+        return ship != null && other != null && craft != null && docking.dockedTo(ship) == null && crew.eva != null
+                && inReach(ship, other);
+    }
+
     /** True if {@code other} is a ship {@code ship}'s crew could cross to on EVA; leaves the separation in {@link #sep}. */
     private boolean inReach(Entity ship, Entity other) {
         if (other == ship || other.getComponent(StationComponent.class) != null || other.getComponent(ShipGridComponent.class) == null
@@ -262,9 +271,9 @@ public class Boarding extends EntitySystem {
     }
 
     /**
-     * Takes {@code target} for {@code ship} at once if it is disabled, latched to it and no one
-     * aboard fights for it (a wreck with its crew dead, say). Returns true if it is now taken by
-     * {@code ship}.
+     * Takes {@code target} for {@code ship} at once if it is disabled, latched to it (or standing
+     * off alongside it, {@link #alongside}) and no one aboard fights for it (a wreck with its crew
+     * dead, say). Returns true if it is now taken by {@code ship}.
      */
     public boolean takeUndefended(Entity ship, Entity target) {
         if (!canTakeUndefended(ship, target)) return false;
@@ -279,7 +288,7 @@ public class Boarding extends EntitySystem {
      * check only, which changes nothing.
      */
     public boolean canTakeUndefended(Entity ship, Entity target) {
-        if (target == null || target(ship) != target) return false;
+        if (target == null || target(ship) != target && !alongside(ship, target)) return false;
         BoardedComponent b = BOARDED_M.get(target);
         if (b != null && b.taken) return b.by.get(uuids) == ship;
         return ShipDisablement.isDisabled(target) && defenders(target) == 0;

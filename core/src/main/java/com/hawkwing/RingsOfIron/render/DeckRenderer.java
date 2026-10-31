@@ -394,11 +394,14 @@ public final class DeckRenderer {
                     continue;
                 }
                 style.underCrew(shapes, e, c, l.x, l.y, s, figures);
-                // A part's crate in the arms of one aboard whose figure doesn't hold it: in a suit (the
-                // carrying art has none), at work in a pose with no carrying art, or with no art at all
-                if (c.crate != null && !EvaSystem.outside(e)
+                // A crate in the arms of one aboard whose figure doesn't hold it: in a suit (the carrying
+                // art has none), at work in a pose with no carrying art, or with no art at all (where the
+                // dot shows a load of goods itself, but not a part's crate)
+                String carried = c.crate != null ? c.crate.commodity
+                        : c.load != null && figures ? c.load.task.job.commodity() : null;
+                if (carried != null && !EvaSystem.outside(e)
                         && (c.suited || !figures || !deckArt.carries(style.figure(e, c), ArtNames.CrewPose.of(c)))) {
-                    spacewalkers.crate(shapes, l.x, l.y, c.crate.commodity, s);
+                    spacewalkers.crate(shapes, l.x, l.y, carried, s);
                 }
                 if (!posed && (c.wound != Wound.NONE || c.state != CrewState.CONSCIOUS)) {
                     // Without the art, the disc shows the wound and that they are down
