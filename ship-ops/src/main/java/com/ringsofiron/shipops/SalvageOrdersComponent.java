@@ -1,7 +1,9 @@
 package com.ringsofiron.shipops;
 
 import com.badlogic.ashley.core.Component;
+import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.aicrew.CarryTask;
+import com.ringsofiron.aicrew.HullStripTask;
 import com.ringsofiron.aicrew.YardTask;
 import com.ringsofiron.coreengine.EntityRef;
 
@@ -28,7 +30,15 @@ public class SalvageOrdersComponent implements Component {
 
         public transient YardTask task;
         public transient CarryTask trip;
+        /** Work across on EVA, standing off alongside the craft: the part off its hull and home. */
+        public transient HullStripTask eva;
         public transient boolean inHand;
+        /** Who has its crate in hand on the way home from an EVA, or null. */
+        public transient Entity carrier;
+        /** Latched on, no one can get to it from inside the craft (a part on its hull, say): it waits. */
+        public transient boolean unreachable;
+        /** Standing off alongside, it is inside the hull where no one on EVA can get at it: it waits. */
+        public transient boolean inside;
 
         public Strip() {
         }

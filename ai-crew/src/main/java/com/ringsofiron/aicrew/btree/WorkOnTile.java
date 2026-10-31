@@ -15,6 +15,7 @@ public class WorkOnTile extends CrewLeaf {
         a.crew.activity = "going to " + t.job.what();
         CrewAgent.Travel go = a.travel(t.ship, CrewTasks.near(a, t.ship, t.x, t.y, t.w, t.h));
         if (go == CrewAgent.Travel.UNREACHABLE) {
+            t.job.unreachable(a.entity);
             a.abandonUnreachable();
             return Status.FAILED;
         }

@@ -33,6 +33,11 @@ public abstract class CrewTask {
         MOUNT_PART,
         /** Go out on EVA on a line to a crew member adrift and bring them back in: never at battle stations. */
         RETRIEVE,
+        /**
+         * Cross on EVA to another craft standing off nearby, take a part off its hull and bring it home
+         * to the hold: never at battle stations.
+         */
+        STRIP_HULL,
         /** Reset a system or conduit a short circuit faulted, so it carries power again. */
         RESET_SHORT,
         /** Shut a leaking tank's valve so it stops leaking. */
@@ -56,7 +61,8 @@ public abstract class CrewTask {
 
         /** True for work done outside the hull, on EVA. */
         public boolean isEva() {
-            return this == REPAIR_RCS || this == PATCH_HULL || this == FREE_COLLAR || this == MOUNT_PART || this == RETRIEVE;
+            return this == REPAIR_RCS || this == PATCH_HULL || this == FREE_COLLAR || this == MOUNT_PART || this == RETRIEVE
+                    || this == STRIP_HULL;
         }
     }
 

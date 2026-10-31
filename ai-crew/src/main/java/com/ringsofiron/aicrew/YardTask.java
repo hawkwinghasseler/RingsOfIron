@@ -29,6 +29,10 @@ public class YardTask extends CrewTask {
         default float progress() {
             return -1f;
         }
+
+        /** {@code worker} found no way to the tile from where they are, and gives the work up for now. */
+        default void unreachable(Entity worker) {
+        }
     }
 
     /** The craft the tile is on. */

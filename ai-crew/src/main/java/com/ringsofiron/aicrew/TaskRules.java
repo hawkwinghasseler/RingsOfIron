@@ -63,6 +63,8 @@ public final class TaskRules {
                 return HullPlating.plateable(grid, task.x, task.y);
             case FREE_COLLAR: case MOUNT_PART:
                 return ((OutsideTask) task).job.isOpen();
+            case STRIP_HULL:
+                return ((HullStripTask) task).job.isOpen();
             case RETRIEVE:
                 return crew.eva != null && crew.eva.retrievable(((RetrieveTask) task).castaway);
             case MAN_CONSOLE: {
