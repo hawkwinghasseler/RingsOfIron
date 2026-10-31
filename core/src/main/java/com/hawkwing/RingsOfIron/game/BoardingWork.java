@@ -38,7 +38,9 @@ public class BoardingWork implements BoardingProvider {
     public void collect(BoardingBoard out) {
         Entity ship = ctx.player(), craft = boarding.boardable(ship);
         if (craft == null) return;
-        out.byEva = !docking.docked(ship, craft);
+        boolean docked = docking.docked(ship, craft);
+        boolean alongside = !docked && boarding.alongside(ship, craft);
+        out.byEva = !docked;
         out.craftName = Boarding.name(craft);
         BoardedComponent b = Boarding.of(craft);
         boolean ours = b != null && b.by != null && b.by.get(ctx.engine.getUuidRegistry()) == ship;
@@ -50,15 +52,18 @@ public class BoardingWork implements BoardingProvider {
         out.stormRefusal = noStorm == null ? "" : noStorm;
         out.salvage = ours && b.taken;
         if (!out.salvage) {
-            out.salvageRefusal = out.byEva ? (refused != null ? refused : "Board it on EVA, or latch on to it to strip it")
-                    : ShipDisablement.isDisabled(craft)
-                    ? "Take it to strip it: send the boarding party across, or strip a ship no one defends"
-                    : "";
-            if (out.byEva) return;
-            // No one aboard defends it: marking a part to strip takes it
-            if (!ShipDisablement.isDisabled(craft) || boarding.defenders(craft) > 0) return;
+            boolean disabled = ShipDisablement.isDisabled(craft);
+            // No one aboard defends it: marking a part to strip takes it, latched on or alongside
+            if (!disabled || boarding.defenders(craft) > 0 || out.byEva && !alongside) {
+                out.salvageRefusal = !disabled ? (out.byEva && refused != null ? refused : "")
+                        : boarding.defenders(craft) > 0
+                        ? "Take it to strip it: send the boarding party across, or strip a ship no one defends"
+                        : "Stand off alongside it to strip its hull on EVA, or latch on to it";
+                return;
+            }
             out.salvage = true;
         }
+        if (out.byEva && !alongside) out.salvageRefusal = "Stand off alongside it to strip its hull on EVA";
         for (Salvage.Part p : salvage.parts(craft)) {
             Part row = out.addPart();
             row.x = p.system.footprint.originX;
@@ -67,7 +72,13 @@ public class BoardingWork implements BoardingProvider {
             row.value = p.price * Salvage.SALE_SHARE;
             SalvageOrdersComponent.Strip s = salvage.strip(ship, craft, row.x, row.y);
             row.marked = s != null;
-            row.status = s == null ? "" : status(craft, s);
+            if (s != null) {
+                row.status = salvage.status(ship, craft, s);
+                row.toggleable = Salvage.cancellable(s);
+            } else if (out.byEva && !salvage.onHull(craft, row.x, row.y)) {
+                row.status = "inside the hull: latch on to strip it";
+                row.toggleable = false;
+            }
         }
         // Parts already off and on their way home
         SalvageOrdersComponent orders = ship.getComponent(SalvageOrdersComponent.class);
@@ -81,10 +92,12 @@ public class BoardingWork implements BoardingProvider {
                 row.name = salvage.partName(s.part);
                 row.value = salvage.salePrice(s.part);
                 row.marked = true;
-                row.status = status(craft, s);
+                row.status = salvage.status(ship, craft, s);
+                row.toggleable = false;
             }
         }
-        CargoHoldComponent hold = craft.getComponent(CargoHoldComponent.class);
+        // Cargo goes across a dock only
+        CargoHoldComponent hold = docked ? craft.getComponent(CargoHoldComponent.class) : null;
         CargoOrdersComponent cargo = ship.getComponent(CargoOrdersComponent.class);
         if (hold != null) {
             Set<String> held = new TreeSet<>();
@@ -108,12 +121,6 @@ public class BoardingWork implements BoardingProvider {
         }
         DisabledComponent.Reason r = ShipDisablement.reason(craft);
         return r == null ? "Fit to fight" : "Disabled: " + r.label;
-    }
-
-    private String status(Entity craft, SalvageOrdersComponent.Strip s) {
-        if (s.off) return s.inHand ? "carrying it home" : "off, waiting to be carried home";
-        float done = salvage.progress(craft, s);
-        return done > 0 ? String.format(Locale.ROOT, "stripping %.0f%%", 100 * done) : "marked";
     }
 
     @Override

@@ -123,7 +123,7 @@ public class BoardingWindow extends Window {
 
     private String layoutKey() {
         StringBuilder sb = new StringBuilder(board.salvage ? "S" : "-").append(board.salvageRefusal);
-        for (Part p : board.parts) sb.append('|').append(p.x).append(',').append(p.y).append(p.status).append(p.marked);
+        for (Part p : board.parts) sb.append('|').append(p.x).append(',').append(p.y).append(p.status).append(p.marked).append(p.toggleable);
         for (Cargo c : board.cargo) sb.append('|').append(c.commodity).append(Math.round(c.units)).append(Math.round(c.onOrder));
         return sb.toString();
     }
@@ -148,7 +148,7 @@ public class BoardingWindow extends Window {
             TextButton b = button(p.marked ? "Leave it" : "Strip", () -> {
                 if (provider != null) say(provider.toggleStrip(x, y));
             });
-            b.setDisabled(p.marked && !p.status.startsWith("marked") && !p.status.startsWith("stripping"));
+            b.setDisabled(!p.toggleable);
             rows.add(b).left().row();
         }
         if (board.cargo.size > 0) {

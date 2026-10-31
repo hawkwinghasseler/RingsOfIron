@@ -7,6 +7,7 @@ import com.ringsofiron.aicrew.BoardTask;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.EvaComponent;
 import com.ringsofiron.aicrew.EvaSystem;
+import com.ringsofiron.aicrew.HullStripTask;
 import com.ringsofiron.aicrew.OutsideTask;
 import com.ringsofiron.aicrew.RetrieveTask;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
@@ -207,6 +208,23 @@ public class Spacewalk extends CrewLeaf {
                 }
             }
         }
+        if (eva.crossTo == null && a.pos.ship != home && !eva.breaking) {
+            // Over on another craft's hull for a part off it: the work there, then home with it
+            HullStripTask strip = EvaTasks.stripOrder(a);
+            if (strip != null && strip.craft == a.pos.ship && c.crate == null) {
+                eva.salvaging = true;
+                Status s = stripping(a, c, eva, system, strip);
+                if (s != null) return s;
+            }
+            if (eva.salvaging) {
+                if (EvaTasks.stripOrder(a) != null) a.service.releaseTask(a.entity);
+                if (!homeward(a, eva, system, home)) {
+                    c.activity = "adrift";
+                    return Status.RUNNING;
+                }
+                eva.salvaging = false;
+            }
+        }
         if (eva.crossTo != null) {
             Entity to = eva.crossTo;
             if (!system.launchTile(a.entity, to, tile)) return Status.RUNNING;
@@ -220,7 +238,8 @@ public class Spacewalk extends CrewLeaf {
                 c.activity = "jetting across to " + EvaTasks.craft(a, to);
                 return Status.RUNNING;
             }
-            c.activity = moving(eva, "crawling over the hull to cross to " + EvaTasks.craft(a, to));
+            c.activity = moving(eva, (c.crate != null ? "carrying " + c.crate.name + " over the hull" : "crawling over the hull")
+                    + " to cross to " + EvaTasks.craft(a, to));
             return Status.RUNNING;
         }
         EvaSystem.doorRing(eva.portMount, tile);
@@ -241,8 +260,60 @@ public class Spacewalk extends CrewLeaf {
             return Status.RUNNING;
         }
         if (eva.phase == EvaComponent.Phase.FREE && !eva.fell) c.activity = "jetting across to " + EvaTasks.craft(a, a.pos.ship);
-        else c.activity = moving(eva, "crawling along the hull to the airlock");
+        else c.activity = moving(eva, c.crate != null ? "bringing " + c.crate.name + " back in" : "crawling along the hull to the airlock");
         return Status.RUNNING;
+    }
+
+    /**
+     * A step of work on the hull of the craft they crossed to ({@link HullStripTask}): along it to
+     * the work, the work there, and once it is done, the part's crate in hand. Null when they are to
+     * head back across home: the work done, called off (by battle stations, the player, or its poster),
+     * out of reach, or their air down to {@link EvaTasks#AIR_MARGIN} and the work left.
+     */
+    private Status stripping(CrewAgent a, CrewMemberComponent c, EvaComponent eva, EvaSystem system, HullStripTask t) {
+        ShipGridComponent grid = a.grid();
+        HullSurface hull = system.hull(grid);
+        ShipTaskBoardComponent board = a.board();
+        boolean sent = c.evaOrder == CrewMemberComponent.EvaOrder.OUT;
+        boolean called = board == null || board.battleStations && !sent || !EvaTasks.mayGoOut(a);
+        if (!called && (eva.outOfReach || !t.job.workTile(hull, tile))) {
+            // No way along this hull to it
+            a.ignore(t, EvaTasks.NO_ROUTE);
+            called = true;
+        }
+        eva.outOfReach = false;
+        if (workingOn != t) {
+            workingOn = t;
+            work = t.job.worked();
+        }
+        float seconds = t.job.seconds(c.def);
+        if (!called) called = c.suitAir < EvaTasks.AIR_MARGIN + (seconds - work) / Math.max(0.05f, c.workPace());
+        if (called || !t.job.isOpen()) {
+            workingOn = null;
+            work = 0f;
+            return null;
+        }
+        eva.returning = false;
+        eva.goalX = tile[0];
+        eva.goalY = tile[1];
+        if (!eva.atGoal()) {
+            c.activity = moving(eva, "crawling along the hull of the other craft to " + t.job.where());
+            return Status.RUNNING;
+        }
+        float dt = a.dt * c.workPace();
+        work += dt;
+        t.job.work(a.entity, dt);
+        c.record().pendingWork += dt; // engineering experience
+        c.activity = EvaTasks.doing(t);
+        c.showProgress(work, seconds);
+        if (work < seconds) return Status.RUNNING;
+        CrewMemberComponent.Crate crate = t.job.takeOff(a.entity);
+        if (board != null) board.complete(t);
+        c.task = null;
+        c.crate = crate;
+        workingOn = null;
+        work = 0f;
+        return null;
     }
 
     /** Sets {@code eva} to go back across home from where they are; false if there is no way in there. */

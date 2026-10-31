@@ -24,6 +24,7 @@ import com.ringsofiron.interiorgrid.crew.CrewTask;
  *                                           Sequence( IsTaskKind(YARD), SuitUp, WorkOnTile, CompleteTask ),
  *                                           Sequence( IsTaskKind(FORCE_DOOR), ForceDoor, CompleteTask ),
  *                                           Sequence( IsTaskKind(BOARD), Board, CompleteTask ),
+ *                                           Sequence( IsTaskKind(STRIP_HULL), CrossToStrip ),
  *                                           Sequence( IsEvaJob, FetchPart, SuitUpForEva, GoOutside ),
  *                                           Sequence( IsTaskKind(not RESCUE, CARRY, YARD, FORCE_DOOR, BOARD
  *                                                     or work outside), SuitUp,
@@ -59,6 +60,7 @@ public final class CrewBehaviorTrees {
                         new CompleteTask()),
                 new Sequence<>(new IsTaskKind(CrewTask.Kind.BOARD), new Board(),
                         new CompleteTask()),
+                new Sequence<>(new IsTaskKind(CrewTask.Kind.STRIP_HULL), new CrossToStrip()),
                 new Sequence<>(new IsEvaJob(), new FetchPart(), new SuitUpForEva(),
                         new GoOutside()),
                 new Sequence<>(new IsTaskKind(CrewTask.Kind.RESCUE, true), new IsEvaJob(true),

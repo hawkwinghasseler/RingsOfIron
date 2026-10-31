@@ -95,6 +95,11 @@ public class EvaComponent implements Component {
     /** The door is forced open: they go straight into the chamber without a cycle. */
     public boolean forcedIn;
     /**
+     * Over on another craft's hull to take a part off it ({@link HullStripTask}): they work there
+     * rather than go in, and once the work is done or called off, head back across home.
+     */
+    public boolean salvaging;
+    /**
      * The craft they push off for once out of the airlock and over to the side of the hull facing it,
      * and the port they go in by there; null on an EVA that stays on the hull. Not saved: a load ends
      * a trip out before it leaves the hull.

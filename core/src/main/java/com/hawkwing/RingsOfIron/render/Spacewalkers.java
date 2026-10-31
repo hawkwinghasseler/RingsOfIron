@@ -71,7 +71,7 @@ final class Spacewalkers {
 
     /**
      * Inside a filled batch moved to {@code ship}'s pose (its local meters): the crates clipped on at
-     * its hardpoints, the tethers of its crew outside and the crates they carry, and their jetpacks'
+     * its hardpoints and those of parts stripped off it waiting by their mounts, the tethers of its crew outside and the crates they carry, and their jetpacks'
      * puffs, new ones blown off those firing over {@code delta}.
      */
     void draw(ShapeRenderer shapes, GameWorld world, Entity ship, ShipGridComponent g, float delta) {
@@ -80,6 +80,8 @@ final class Spacewalkers {
         crates.clear();
         crateParts.clear();
         world.fieldRefits.cratesOutside(ship, crates, crateParts);
+        // Parts stripped off it, waiting by their mounts to be carried home
+        if (world.salvage != null) world.salvage.cratesWaiting(ship, crates, crateParts);
         for (int i = 0; i < crateParts.size; i++) {
             crate(shapes, ox + crates.get(2 * i) * s, oy + crates.get(2 * i + 1) * s, 0f, crateParts.get(i), s);
         }
