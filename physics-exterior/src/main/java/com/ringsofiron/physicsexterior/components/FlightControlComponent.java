@@ -41,6 +41,30 @@ public class FlightControlComponent implements Component {
      * spinning about the weld, and rotation assist works against the pair's spin. Runtime only.
      */
     public transient com.badlogic.gdx.physics.box2d.Body towing;
+    /**
+     * A planned burn that fired by itself, as one impulse ({@code BubbleBurnSystem}), shown as the
+     * engines and RCS that would have flown it: its direction in the ship's frame as a forward and
+     * a strafe (a unit vector), for {@link #impulseLeft} more sim seconds. Only what the flames
+     * show; nothing more is pushed. Counted down by the flight control system. Runtime only.
+     */
+    public transient float impulseForward, impulseStrafe, impulseLeft;
+
+    /** Shows a burn that fired at once along ({@code forward}, {@code strafe}) in the ship's frame for {@code seconds}. */
+    public void showImpulse(float forward, float strafe, float seconds) {
+        impulseForward = forward;
+        impulseStrafe = strafe;
+        impulseLeft = seconds;
+    }
+
+    /** {@link #forward} as the flames show it: the stick, or a burn fired as an impulse if harder. */
+    public float shownForward() {
+        return impulseLeft > 0f && Math.abs(impulseForward) > Math.abs(forward) ? impulseForward : forward;
+    }
+
+    /** {@link #strafe} as the flames show it: the stick, or a burn fired as an impulse if harder. */
+    public float shownStrafe() {
+        return impulseLeft > 0f && Math.abs(impulseStrafe) > Math.abs(strafe) ? impulseStrafe : strafe;
+    }
 
     public void clear() {
         forward = 0f;
