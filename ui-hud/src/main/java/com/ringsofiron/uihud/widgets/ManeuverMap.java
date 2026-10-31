@@ -494,7 +494,7 @@ public class ManeuverMap extends Table {
     private float[] nodeScreen(int i) {
         FloatArray nodes = map.getPath().nodes;
         if (i < 0 || i * 2 + 1 >= nodes.size) return null;
-        return new float[]{map.screenX(nodes.get(i * 2)), map.screenY(nodes.get(i * 2 + 1))};
+        return new float[]{map.pathScreenX(nodes.get(i * 2)), map.pathScreenY(nodes.get(i * 2 + 1))};
     }
 
     /** Handle {@code h}'s direction from the selected burn, a unit vector on screen, or null. */

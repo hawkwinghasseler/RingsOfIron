@@ -61,10 +61,23 @@ public interface OrbitPathProvider {
     }
 
     /**
-     * Plain data for one frame's map. Points are x,y pairs in meters from the parent body's center,
-     * sampled evenly in anomaly so the curve stays smooth near periapsis.
+     * Plain data for one frame's map. Points (the float arrays) are x,y pairs in meters from the
+     * {@link #originX origin}, sampled evenly in anomaly so the curve stays smooth near periapsis, and
+     * more finely where they cross the map's {@link #viewScale view}. Single positions (the ship, the
+     * marks, markers and bodies) are doubles in meters from the parent body's center.
      */
     final class OrbitPath {
+        /**
+         * What the map shows, set by the map before it asks and kept by {@link #clear}: the point at its
+         * middle, meters from the body's center, its meters per pixel (0: not known), and the pixels from
+         * its middle to its corners. A provider samples the curves finely where they cross it.
+         */
+        public double viewX, viewY, viewScale, viewReach;
+        /**
+         * Where the points are measured from, meters from the body's center: the view's middle when
+         * there is one, so floats keep their precision zoomed in far from the body; else the body.
+         */
+        public double originX, originY;
         public String bodyName = "";
         public double bodyRadius;
         public double shipX, shipY;
@@ -147,6 +160,7 @@ public interface OrbitPathProvider {
         }
 
         public void clear() {
+            originX = originY = 0;
             bodyName = "";
             bodyRadius = 0;
             shipX = shipY = 0;

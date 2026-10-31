@@ -5,7 +5,7 @@ import com.badlogic.gdx.utils.Array;
 /**
  * Traffic outside the player's bubble for the map view: stations and haulers on rails, and the
  * bodies they orbit. Implemented in the game wiring from macro-sim's rails snapshot, so ui-hud does
- * not depend on macro-sim. Called on the render thread a few times a second while the map is open.
+ * not depend on macro-sim. Called on the render thread every frame while the map is open.
  */
 public interface TrafficMapProvider {
 
