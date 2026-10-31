@@ -64,6 +64,7 @@ public class FlightControlSystem extends EntitySystem implements PhysicsManager.
 
     private void applyControls(Body body, ThrusterComponent thruster, FlightControlComponent control, float deltaTime) {
         control.assistTurn = 0f;
+        if (control.impulseLeft > 0f) control.impulseLeft = Math.max(0f, control.impulseLeft - deltaTime);
         if (thruster.isOutOfFuel()) return;
 
         float forward = MathUtils.clamp(control.forward, -1f, 1f);

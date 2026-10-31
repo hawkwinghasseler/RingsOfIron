@@ -9,6 +9,7 @@ import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
+import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
@@ -98,6 +99,24 @@ class BurnsAndCrashesTest {
         assertNull(world.burns.selected(), "fired");
         assertNotNull(game.player.getComponent(PhysicsBodyComponent.class), "still flying in the bubble");
         assertTrue(orbit().apoapsis > 400e3 + 150e3, "apoapsis " + orbit().apoapsis);
+    }
+
+    @Test
+    void aBurnThatFiresByItselfIsShownBurning() {
+        ManeuverNodeComponent.Node n = world.burns.addNode();
+        world.burns.adjust(50, 0);
+        n.time = world.universe.now() + 0.1;
+        FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+        for (int i = 0; i < 30 && world.burns.selected() != null; i++) world.update(FRAME);
+        assertNull(world.burns.selected(), "fired");
+        assertTrue(controls.impulseLeft >= com.ringsofiron.shipsystems.BubbleBurnSystem.MIN_SHOWN - 0.1f, "shown burning for a while");
+        // Along the burn: the main engine for a nose on it, else the RCS
+        float shown = Math.abs(controls.shownForward()) + Math.abs(controls.shownStrafe());
+        assertTrue(shown > 0.99f, "the flames show the burn's direction: " + shown);
+        assertNotNull(world.nav.helm.railsWarpBlockedReason(), "no rails warp with the flames still lit");
+        for (int i = 0; i < 300 && controls.impulseLeft > 0f; i++) world.update(FRAME);
+        assertEquals(0f, controls.impulseLeft, "and they go out");
+        assertNull(world.nav.helm.railsWarpBlockedReason());
     }
 
     @Test

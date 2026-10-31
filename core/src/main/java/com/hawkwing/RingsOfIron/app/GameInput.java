@@ -21,6 +21,7 @@ import com.ringsofiron.shipops.DoorForcing;
 import com.hawkwing.RingsOfIron.game.ExteriorPick;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
+import com.hawkwing.RingsOfIron.game.HelmComponent;
 import com.hawkwing.RingsOfIron.game.HelmOrderComponent;
 import com.hawkwing.RingsOfIron.game.Navigation;
 import com.hawkwing.RingsOfIron.game.NoticeFeeds;
@@ -100,6 +101,11 @@ public final class GameInput {
         return held(action) ? 1f : 0f;
     }
 
+    /** True while the player flies their ship: at its helm, or aboard one nobody else can fly. */
+    private boolean playerFlies() {
+        return world.bridge.playerAtHelm() || game.player.getComponent(HelmComponent.class) == null;
+    }
+
     /** The confirmations asked for run out {@code delta} seconds on. */
     void countDown(float delta) {
         abandonAsked -= delta;
@@ -110,7 +116,7 @@ public final class GameInput {
     void handle(float delta) {
         if (dev.isTyping()) {
             // Keys typed into the developer console fly nothing and fire nothing
-            FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+            FlightControlComponent controls = playerFlies() ? game.player.getComponent(FlightControlComponent.class) : null;
             if (controls != null) controls.forward = controls.turn = controls.strafe = 0f;
             PlayerAvatarComponent walker = game.avatar == null ? null : game.avatar.getComponent(PlayerAvatarComponent.class);
             if (walker != null) walker.moveX = walker.moveY = 0f;
@@ -154,7 +160,10 @@ public final class GameInput {
 
         FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
         PlayerAvatarComponent walker = game.avatar == null ? null : game.avatar.getComponent(PlayerAvatarComponent.class);
-        if (controls != null) {
+        // Only the player's own stick is let go of each frame: the helmsman's (Bridge) is set each
+        // sim tick, and a frame with no tick in it (above 60 fps) would show the ship with its
+        // engines cold, though they burn
+        if (controls != null && playerFlies()) {
             controls.forward = 0f;
             controls.turn = 0f;
             controls.strafe = 0f;

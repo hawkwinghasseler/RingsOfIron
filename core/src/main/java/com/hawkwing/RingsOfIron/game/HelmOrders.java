@@ -215,11 +215,16 @@ public class HelmOrders {
         return "Helm: " + what;
     }
 
-    /** Why rails warp must wait, or null: a burn half flown can't be. */
+    /**
+     * Why rails warp must wait, or null: a burn half flown can't be, nor one that fired by itself
+     * while the engines are still shown burning it (a moment, so the flames don't hang through the warp).
+     */
     public String railsWarpBlockedReason() {
         Entity ship = ctx.player();
         HelmOrderComponent o = ship == null ? null : ship.getComponent(HelmOrderComponent.class);
-        return o != null && o.burning ? "the helm is flying a burn" : null;
+        if (o != null && o.burning) return "the helm is flying a burn";
+        FlightControlComponent controls = ship == null ? null : ship.getComponent(FlightControlComponent.class);
+        return controls != null && controls.impulseLeft > 0f ? "the engines are burning" : null;
     }
 
     /** Once a frame: drops an order nobody has come to fly, or whose target is gone. */

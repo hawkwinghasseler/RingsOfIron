@@ -202,7 +202,7 @@ public final class ExteriorArt {
         if (controls == null || grid == null) return;
         ThrusterComponent thruster = craft.getComponent(ThrusterComponent.class);
         boolean dry = thruster != null && thruster.isOutOfFuel();
-        float throttle = dry ? 0f : MathUtils.clamp(controls.forward, 0f, 1f), angle = body.getAngle();
+        float throttle = dry ? 0f : MathUtils.clamp(controls.shownForward(), 0f, 1f), angle = body.getAngle();
         if (hasEngines(grid)) {
             for (MountFootprint m : grid.mounts) {
                 SubsystemComponent sub = engineIn(m);
@@ -231,7 +231,7 @@ public final class ExteriorArt {
         FlightControlComponent controls = craft.getComponent(FlightControlComponent.class);
         ShipGridComponent grid = craft.getComponent(ShipGridComponent.class);
         if (controls == null || grid == null) return;
-        boolean burning = controls.forward > 0f;
+        boolean burning = controls.shownForward() > 0f;
         if (hasEngines(grid)) {
             float s = grid.tileSize;
             for (MountFootprint m : grid.mounts) {
