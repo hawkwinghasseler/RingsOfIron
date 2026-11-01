@@ -25,6 +25,9 @@ import com.ringsofiron.orbital.components.OrbitComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.StateVector;
+import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.shipsystems.PropellantFeed;
 import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
@@ -44,7 +47,7 @@ import java.util.Locale;
  * <p>The {@code orbit-map} overlay fills the screen with the game's own orbit map ({@link PlayerOrbitPath} into
  * ui-hud's {@link OrbitMap}) at a zoom and focus the menu's buttons set. Scenario-only, over it: every sphere of
  * influence ({@code orbit-soi}) and each other craft's orbit, position and name ({@code orbit-traffic}). Instant
- * burns (maneuver nodes due now, fired by the game's burn systems and paid from the tanks) and a planned flyby of
+ * burns (a debug shortcut: the delta-v added at once, paid from the tanks) and a planned flyby of
  * the Moon are buttons too; the game's own burn planner works as always.
  */
 public final class OrbitScenario implements DebugScenario {
@@ -151,14 +154,28 @@ public final class OrbitScenario implements DebugScenario {
     }
 
     /**
-     * An instant burn by the player, m/s along and out from its orbit: a maneuver node due now, fired by the game
-     * (in the bubble by its burn system, on rails by the orbital events). Rails warp drops to 1x first.
+     * An instant burn by the player, m/s along and out from its orbit: a debug shortcut, not a maneuver (in the
+     * game every planned burn in the bubble is flown with real thrust). Rails warp drops to 1x first, then the
+     * delta-v is added to the ship's true state at once, paid from its tanks as far as they go.
      */
     void burn(double prograde, double radial) {
         Entity player = world.getPlayer();
         if (player == null) return;
         if (world.timeWarp.isRailsWarp()) world.timeWarp.setWarp(1);
-        node(player, now(), prograde, radial);
+        PhysicsBodyComponent pb = player.getComponent(PhysicsBodyComponent.class);
+        String parentUuid = world.physics.getAnchorParentUuid();
+        Entity parent = parentUuid == null ? null : world.universe.entity(parentUuid);
+        CelestialBodyComponent body = parent == null ? null : world.universe.celestial(parent);
+        if (pb == null || pb.body == null || body == null) return;
+        double t = now();
+        double[] state = new double[4];
+        world.physics.getTrueState(pb.body, state);
+        double dv = Math.hypot(prograde, radial);
+        double scale = dv > 0 ? PropellantFeed.payForBurn(player, PhysicsManager.getMass(pb.body), dv) / dv : 1;
+        KeplerOrbit after = KeplerOrbit.fromState(state[0], state[1], state[2], state[3], body.mu, t)
+                .withBurn(t, prograde * scale, radial * scale);
+        StateVector s = after.stateAt(t, tmp);
+        world.physics.setTrueState(pb.body, s.x, s.y, s.vx, s.vy);
     }
 
     /**
@@ -198,7 +215,7 @@ public final class OrbitScenario implements DebugScenario {
         ManeuverNodeComponent nodes = ship.getComponent(ManeuverNodeComponent.class);
         if (nodes == null) ship.add(nodes = new ManeuverNodeComponent());
         nodes.add(time, prograde, radial);
-        // On rails the orbital events fire it; in the bubble the game's burn system does
+        // On rails the orbital events fire it; in the bubble the helm flies it
         if (world.universe.orbit(ship) != null) world.orbitalEvents.orbitChanged(ship);
     }
 

@@ -28,8 +28,8 @@ import java.util.function.Function;
  * what the tanks hold.
  *
  * <p>Warp to burn: rails warp at a level that suits how far off the next burn is, dropping out
- * {@link #WARP_LEAD} before it. While the helm has an order to fly the burns, warp always drops out
- * in time for the helmsman to turn the ship and start the burn.
+ * {@link #WARP_LEAD} before the helm is to turn the ship onto it. Any rails warp drops out there:
+ * every planned burn is flown with real thrust in the bubble ({@link HelmOrders#flyPlannedBurn}).
  */
 public class Navigation extends EntitySystem implements DropOutSource {
     /** Warp to burn stops this long before the burn, sim seconds. */
@@ -142,21 +142,22 @@ public class Navigation extends EntitySystem implements DropOutSource {
     @Override
     public double nextDropOutTime() {
         ManeuverNodeComponent.Node n = nextBurn();
-        if (n == null || !(warpToBurn || helm.mode() == HelmOrderComponent.Mode.FLY_BURNS)) return Double.NaN;
+        // Every planned burn is flown in the bubble: warp always stops in time to turn onto it
+        if (n == null) return Double.NaN;
+        double now = world.universe.now();
         double t = n.time - leadFor(n);
-        if (t < world.universe.now()) {
+        // Past the minute's lead: at the latest where the helm is to turn onto it (rails warp is refused after)
+        if (t < now) t = n.time - helm.burnLead(n);
+        if (t < now) {
             warpToBurn = false;
             return Double.NaN;
         }
         return t;
     }
 
-    /** How long before a burn warp stops: longer when the helmsman is to turn the ship and fly it. */
+    /** How long before a burn warp stops: {@link #WARP_LEAD} before the helm is to turn the ship onto it and fly it. */
     double leadFor(ManeuverNodeComponent.Node n) {
-        if (helm.mode() != HelmOrderComponent.Mode.FLY_BURNS) return WARP_LEAD;
-        double accel = mainEngineAccel();
-        double half = accel > 0 ? Math.hypot(n.prograde, n.radial) / accel / 2 : 0;
-        return WARP_LEAD + HelmOrders.TURN_LEAD + half;
+        return WARP_LEAD + helm.burnLead(n);
     }
 
     public ManeuverNodeComponent.Node nextBurn() {

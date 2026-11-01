@@ -77,7 +77,7 @@ class ArchitectureTest {
                     Set.of("core-engine", "interior-grid", "modding-data", "orbital-mechanics", "physics-exterior")),
             Map.entry("art-pipeline", Set.of()),
             Map.entry("ship-systems",
-                    Set.of("ai-crew", "combat-sys", "core-engine", "interior-grid", "modding-data", "orbital-mechanics", "physics-exterior", "stations-docking")));
+                    Set.of("ai-crew", "combat-sys", "core-engine", "interior-grid", "modding-data", "physics-exterior", "stations-docking")));
 
     /**
      * The top-level coordinators whose constructor still takes the whole GameWorld: the debug tools,

@@ -1,6 +1,5 @@
 package com.hawkwing.RingsOfIron.game;
 
-import com.ringsofiron.shipsystems.BubbleBurnSystem;
 import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.ringsofiron.coreengine.GameEngine;
 import com.ringsofiron.orbital.events.OrbitalEventQueue;
@@ -41,8 +40,7 @@ final class OrbitInstaller {
         timeWarp = new TimeWarpController(engine, bubble, orbitalEvents,
                 universe, encounters, world::getPlayer);
         orbitalEvents.impacts.add((signal, event) -> world.onImpact(event));
-        // Planned burns: the event system fires them on rails, this system in the bubble.
-        engine.addSystem(new BubbleBurnSystem(physics, universe));
+        // Planned burns: the event system fires them on rails; in the bubble the helm flies them (HelmOrders)
         burns = new BurnPlanner(universe, orbitalEvents, world::getPlayer,
                 new PlayerOrbitInfo(universe, physics, world::getPlayer));
     }
