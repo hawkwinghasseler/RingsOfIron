@@ -313,7 +313,7 @@ class NavigationTest {
     }
 
     @Test
-    void warpToBurnStopsAMinuteShort() {
+    void warpToBurnStopsAMinuteBeforeTheHelmTurnsOntoIt() {
         world.burns.addNode();
         world.burns.adjust(5, 0);
         ManeuverNodeComponent.Node n = world.burns.selected();
@@ -324,7 +324,7 @@ class NavigationTest {
         for (int i = 0; i < 60 * 30 && world.timeWarp.isRailsWarp(); i++) world.update(FRAME);
         assertFalse(world.timeWarp.isRailsWarp(), "dropped out");
         double before = n.time - world.universe.now();
-        assertEquals(Navigation.WARP_LEAD, before, 5, "a minute before the burn");
+        assertEquals(world.nav.leadFor(n), before, 5, "a minute before the helm turns onto the burn");
         assertEquals(1, world.burns.nodes().nodes.size, "which has not fired");
     }
 

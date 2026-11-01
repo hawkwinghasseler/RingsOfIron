@@ -22,7 +22,7 @@ import java.util.function.BooleanSupplier;
 /**
  * Flies a planned transfer under time warp, so a trip to the Moon needs no hand on the warp keys:
  * it accepts the plan to the navigation target (planning one if there is none), warps from burn to
- * burn (each fires on time, as every planned burn does, and warp drops there), accepts the capture
+ * burn (warp drops before each, for the helm to turn the ship and fly it), accepts the capture
  * and the rest of the leg once the ship crosses into the next sphere of influence, warps on to the
  * closest approach, and once the target is within {@link HelmOrders#APPROACH_RANGE} hands the ship to
  * the helm to dock there ({@link HelmOrderComponent.Mode#DOCK}), or to approach it if it has no port.
@@ -181,9 +181,9 @@ public class Autopilot implements DropOutSource {
         double next = nextStop(now);
         if (Double.isNaN(next)) return;
         double wait = next - now;
-        // The helmsman flying the burns turns the ship before each: leave warp to Navigation then
+        // The helm turns the ship before each burn and flies it: leave warp to Navigation then
         ManeuverNodeComponent.Node n = nav.nextBurn();
-        if (nav.helm.mode() == HelmOrderComponent.Mode.FLY_BURNS && n != null && n.time - now < nav.leadFor(n) + 5) return;
+        if (n != null && n.time - now < nav.leadFor(n) + 5) return;
         int level = wait > 20 * 86400 ? 1_000_000 : wait > 2 * 86400 ? 100_000 : wait > 3 * 3600 ? 10_000
                 : wait > 600 ? 1_000 : wait > 60 ? 100 : wait > 2 ? TimeWarpController.MAX_PHYSICS_WARP : 1;
         // Rails warp refused for now (a burn being flown, a fire): as fast as the bubble goes meanwhile

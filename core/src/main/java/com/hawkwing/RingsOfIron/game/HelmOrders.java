@@ -40,8 +40,11 @@ import com.ringsofiron.combatsys.events.CombatEvents;
  *
  * <ul>
  *   <li><b>Fly the planned burns</b>: the helmsman turns the ship along the next burn, and fires the main
- *       engine through it, centered on the burn's time, until the delta-v is made. A burn the helmsman
- *       has not started by its time fires by itself, as every planned burn does.</li>
+ *       engine through it, centered on the burn's time, until the delta-v is made. Every planned burn is
+ *       flown this way in the bubble, order or none ({@link #flyPlannedBurn}): by the helmsman, ahead of
+ *       any other order, or with the player at the helm by the flight computer while they keep their
+ *       hands off the stick. Nothing fires by itself: a burn nobody has started by its time is missed,
+ *       and one nobody flies on for {@link #UNFLOWN_LIMIT} is cut short.</li>
  *   <li><b>Match velocity</b> with the navigation target.</li>
  *   <li><b>Hold position</b> where the ship is, relative to the target.</li>
  *   <li><b>Approach</b> the target and hold at a set distance off its hull ({@link #APPROACH_DISTANCES},
@@ -79,6 +82,8 @@ public class HelmOrders {
     static final double BURN_DONE = 0.05;
     /** The main engine fires on a burn only with the nose this close to its direction, radians. */
     static final double BURN_ALIGN = Math.toRadians(5);
+    /** A burn nobody flies on for this long is cut short, sim seconds. */
+    public static final double UNFLOWN_LIMIT = 5;
     /** Dock: a target with no body in the bubble yet is closed on to this far off its hull first, m. */
     static final double DOCK_STANDOFF = 1_000;
 
@@ -99,6 +104,8 @@ public class HelmOrders {
     private final StateVector q = new StateVector();
     /** The ship's true velocity at the last tick of a burn, for measuring what the engine gave. */
     private double lastVx = Double.NaN, lastVy;
+    /** Sim second a planned burn was last looked after ({@link #flyPlannedBurn}); NaN before. */
+    private double lastFlown = Double.NaN;
 
     private final java.util.function.Function<Action, String> keys;
 
@@ -155,7 +162,8 @@ public class HelmOrders {
                     + keys.apply(Action.PLAN_TO_TARGET) + " plans to the target)";
             clear(o);
             o.mode = mode;
-            return "Helm: fly the planned burns" + handOver();
+            // With the player at the helm the flight computer flies them, hands off the stick
+            return "Helm: fly the planned burns";
         }
         String uuid = target.uuid();
         if (uuid == null) return "The helm needs a navigation target for that (" + keys.apply(Action.NAV_TARGET) + " picks one)";
@@ -210,27 +218,44 @@ public class HelmOrders {
             case DOCK: what = "docking at " + who + (o.dockStatus.isEmpty() ? "" : ": " + Character.toLowerCase(o.dockStatus.charAt(0)) + o.dockStatus.substring(1)); break;
             default: return null;
         }
+        if (bridge.playerAtHelm() && o.mode == HelmOrderComponent.Mode.FLY_BURNS) return "Flight computer: " + what;
         if (bridge.playerAtHelm()) return "Helm order (" + what + ") waits: you have the helm (" + keys.apply(Action.VIEW) + " hands it over)";
         if (bridge.helmsman(ctx.player()) == null) return "Helm order (" + what + ") waits for a helmsman";
         return "Helm: " + what;
     }
 
     /**
-     * Why rails warp must wait, or null: a burn half flown can't be, nor one that fired by itself
-     * while the engines are still shown burning it (a moment, so the flames don't hang through the warp).
+     * Why rails warp must wait, or null: a burn half flown can't be, nor one close enough that the
+     * ship must turn onto it ({@link #burnLead}): on the rails it would fire as one impulse.
      */
     public String railsWarpBlockedReason() {
         Entity ship = ctx.player();
         HelmOrderComponent o = ship == null ? null : ship.getComponent(HelmOrderComponent.class);
         if (o != null && o.burning) return "the helm is flying a burn";
-        FlightControlComponent controls = ship == null ? null : ship.getComponent(FlightControlComponent.class);
-        return controls != null && controls.impulseLeft > 0f ? "the engines are burning" : null;
+        ManeuverNodeComponent m = ship == null ? null : ship.getComponent(ManeuverNodeComponent.class);
+        ManeuverNodeComponent.Node n = m == null ? null : m.next();
+        if (n != null && universe.now() >= n.time - burnLead(n)) return "a planned burn is coming up";
+        return null;
+    }
+
+    /**
+     * How long before a planned burn's time the helm starts turning the ship onto it: {@link #TURN_LEAD}
+     * and half the burn, as long as the main engine takes to give its delta-v, s.
+     */
+    public double burnLead(ManeuverNodeComponent.Node n) {
+        Entity ship = ctx.player();
+        ThrusterComponent thruster = ship == null ? null : ship.getComponent(ThrusterComponent.class);
+        PhysicsBodyComponent pb = ship == null ? null : ship.getComponent(PhysicsBodyComponent.class);
+        float mass = pb == null || pb.body == null ? 0f : PhysicsManager.getMass(pb.body);
+        double accel = thruster == null || mass <= 0f ? 0 : thruster.forwardThrust / mass;
+        return TURN_LEAD + (accel > 0 ? Math.hypot(n.prograde, n.radial) / accel / 2 : 0);
     }
 
     /** Once a frame: drops an order nobody has come to fly, or whose target is gone. */
     public void update() {
         Entity ship = ctx.player();
         HelmOrderComponent o = ship == null ? null : ship.getComponent(HelmOrderComponent.class);
+        if (ship != null && universe.orbit(ship) == null) unflown(ship, o);
         if (o == null || o.mode == HelmOrderComponent.Mode.NONE) return;
         if (o.targetUuid != null && ctx.engine.getEntity(o.targetUuid) == null) {
             drop(o, "the target is gone");
@@ -254,15 +279,28 @@ public class HelmOrders {
      * order to fly, leaving the helmsman to hold the heading.
      */
     boolean steer(Entity ship, HelmComponent helm, FlightControlComponent controls, Body body, float dt) {
+        if (body == null) return false;
+        // A planned burn comes first, whatever the order
+        if (flyPlannedBurn(ship, helm, controls, body, dt)) {
+            controls.rotationAssist = true;
+            return true;
+        }
         HelmOrderComponent o = ship.getComponent(HelmOrderComponent.class);
-        if (o == null || o.mode == HelmOrderComponent.Mode.NONE || body == null) return false;
+        if (o == null || o.mode == HelmOrderComponent.Mode.NONE) return false;
+        if (o.mode == HelmOrderComponent.Mode.FLY_BURNS) {
+            ManeuverNodeComponent m = ship.getComponent(ManeuverNodeComponent.class);
+            if (m == null || m.next() == null) {
+                drop(o, null);
+                notices.add("Helm: the planned burns are flown");
+            }
+            return false;
+        }
         if (!trueState(ship)) return false;
         ThrusterComponent thruster = ship.getComponent(ThrusterComponent.class);
         float mass = PhysicsManager.getMass(body);
         if (thruster == null || mass <= 0f) return false;
         double fwd = thruster.forwardThrust / mass, rev = thruster.reverseThrust / mass, lat = thruster.lateralThrust / mass;
         controls.rotationAssist = true;
-        if (o.mode == HelmOrderComponent.Mode.FLY_BURNS) return flyBurns(ship, o, helm, controls, body, thruster, fwd, lat, dt);
 
         Entity other = ctx.engine.getEntity(o.targetUuid);
         if (o.mode == HelmOrderComponent.Mode.DOCK && docking.bodyOf(other) != null) return dock(ship, other, o, controls, dt);
@@ -331,10 +369,23 @@ public class HelmOrders {
         return target.name() + " has no free " + port.size + " port for yours (" + keys.apply(Action.NEXT_PORT) + " picks another of yours)";
     }
 
-    private boolean flyBurns(Entity ship, HelmOrderComponent o, HelmComponent helm, FlightControlComponent controls,
-                             Body body, ThrusterComponent thruster, double fwd, double lat, float dt) {
-        ManeuverNodeComponent m = ship.getComponent(ManeuverNodeComponent.class);
+    /**
+     * Flies the next planned burn one tick with real thrust, whoever has the helm: turns the ship
+     * along it from {@link #TURN_LEAD} before it starts, then fires the main engine through it,
+     * centered on its time, until the delta-v is made. Sets {@code controls} (and the held heading)
+     * and returns true while it does; false, changing nothing, with no burn to see to yet.
+     */
+    public boolean flyPlannedBurn(Entity ship, HelmComponent helm, FlightControlComponent controls, Body body, float dt) {
+        if (body == null || universe.orbit(ship) != null || !trueState(ship)) return false;
+        ThrusterComponent thruster = ship.getComponent(ThrusterComponent.class);
+        float mass = PhysicsManager.getMass(body);
+        if (thruster == null || mass <= 0f) return false;
+        double fwd = thruster.forwardThrust / mass, lat = thruster.lateralThrust / mass;
+        HelmOrderComponent o = order();
         double now = universe.now();
+        // A tick it wasn't flown (the player on the stick): what happened then isn't the burn's
+        if (!(now - lastFlown <= dt * 1.5)) lastVx = Double.NaN;
+        lastFlown = now;
         if (o.burning) {
             // What the engine gave since last tick: the change in velocity less the parent's pull
             if (!Double.isNaN(lastVx)) {
@@ -363,12 +414,9 @@ public class HelmOrders {
                 return true;
             }
         }
+        ManeuverNodeComponent m = ship.getComponent(ManeuverNodeComponent.class);
         ManeuverNodeComponent.Node n = m == null ? null : m.next();
-        if (n == null) {
-            drop(o, null);
-            notices.add("Helm: the planned burns are flown");
-            return false;
-        }
+        if (n == null) return false;
         CelestialBodyComponent c = parentBody();
         if (c == null) return false;
         // The burn as a vector, from the conic the ship is on now
@@ -378,14 +426,15 @@ public class HelmOrders {
         double bx = b[0], by = b[1];
         double dv = Math.hypot(bx, by);
         double start = n.time - dv / Math.max(fwd, 1e-6) / 2;
-        if (now < start - TURN_LEAD || dv < BURN_DONE) {
-            controls.turn = Bridge.holdTurn(body, thruster, helm.heldAngle);
-            return true;
+        if (now < start - TURN_LEAD) return false;
+        if (dv < BURN_DONE) {
+            m.nodes.removeValue(n, true);
+            return false;
         }
         helm.heldAngle = (float) Math.atan2(by, bx);
         controls.turn = Bridge.holdTurn(body, thruster, helm.heldAngle);
         if (now >= start) {
-            // The helmsman flies it: it no longer fires by itself
+            // Under way: the node is now the burn being flown
             m.nodes.removeValue(n, true);
             o.burning = true;
             o.burnX = bx;
@@ -393,6 +442,28 @@ public class HelmOrders {
             lastVx = Double.NaN;
         }
         return true;
+    }
+
+    /**
+     * Once a frame in the bubble: a planned burn nobody started by its time is missed, and one
+     * nobody has flown on for {@link #UNFLOWN_LIMIT} is cut short. Nothing fires by itself.
+     */
+    private void unflown(Entity ship, HelmOrderComponent o) {
+        double now = universe.now();
+        if (Double.isNaN(lastFlown)) lastFlown = now;
+        if (o != null && o.burning) {
+            if (now - lastFlown > UNFLOWN_LIMIT && !bridge.playerAtHelm()) {
+                endBurn(o, String.format(java.util.Locale.ROOT, "Burn cut short: nobody at the helm, %.0f m/s to go",
+                        Math.hypot(o.burnX, o.burnY)));
+            }
+            return;
+        }
+        ManeuverNodeComponent m = ship.getComponent(ManeuverNodeComponent.class);
+        while (m != null && m.next() != null && m.next().time < now) {
+            ManeuverNodeComponent.Node n = m.nodes.removeIndex(0);
+            notices.add(String.format(java.util.Locale.ROOT, "Burn missed: nobody flew the planned %.0f m/s burn in time",
+                    Math.hypot(n.prograde, n.radial)));
+        }
     }
 
     /** Sets forward and strafe for a wanted acceleration (ax, ay) in the parent's frame, m/s². */
@@ -424,9 +495,8 @@ public class HelmOrders {
     }
 
     private void drop(HelmOrderComponent o, String why) {
-        boolean wasBurning = o.burning;
         clear(o);
-        if (why != null) notices.add("Helm order dropped: " + why + (wasBurning ? " (burn cut short)" : ""));
+        if (why != null) notices.add("Helm order dropped: " + why);
     }
 
     private void clear(HelmOrderComponent o) {
@@ -435,10 +505,8 @@ public class HelmOrders {
         o.dockPort = -1;
         o.dockPhase = BerthingComponent.Phase.APPROACH;
         o.dockStatus = "";
-        o.burning = false;
-        o.burnX = o.burnY = 0;
         o.mannedAt = -1;
-        lastVx = Double.NaN;
+        // A planned burn under way goes on: it is no order's
     }
 
     private String handOver() {

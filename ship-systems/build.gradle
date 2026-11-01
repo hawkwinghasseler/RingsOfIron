@@ -6,7 +6,6 @@ dependencies {
   api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
   api "com.badlogicgames.ashley:ashley:$ashleyVersion"
   api project(':core-engine')
-  api project(':orbital-mechanics')
   api project(':physics-exterior')
   api project(':modding-data')
   api project(':interior-grid')

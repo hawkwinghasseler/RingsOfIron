@@ -72,6 +72,8 @@ public class Bridge extends FixedLogicSystem {
 
     /** For testing ({@code -Dview.anywhere=true}): the player has the helm wherever they are, as before seats. */
     public boolean playerAlwaysAtHelm;
+    /** Set by the player's input each frame: they have a hand on the stick, so the flight computer lets it be. */
+    public boolean playerStick;
 
     private final GameContext ctx;
     private final AvatarInteractor avatar;
@@ -310,6 +312,10 @@ public class Bridge extends FixedLogicSystem {
             if (helmFault(ship) != null) controls.clear();
             if (body != null) helm.heldAngle = body.getAngle();
             helm.holding = true;
+            // Hands off the stick, the flight computer flies a planned burn with real thrust
+            if (!playerStick && helmFault(ship) == null && body != null && docking.dockedTo(ship) == null && nav.get() != null) {
+                nav.get().helm.flyPlannedBurn(ship, helm, controls, body, deltaTime);
+            }
             return;
         }
         if (helm.playerHad) {

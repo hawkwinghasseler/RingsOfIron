@@ -163,6 +163,7 @@ public final class GameInput {
         // Only the player's own stick is let go of each frame: the helmsman's (Bridge) is set each
         // sim tick, and a frame with no tick in it (above 60 fps) would show the ship with its
         // engines cold, though they burn
+        world.bridge.playerStick = false;
         if (controls != null && playerFlies()) {
             controls.forward = 0f;
             controls.turn = 0f;
@@ -209,6 +210,7 @@ public final class GameInput {
             controls.forward = amount(Action.THRUST) - amount(Action.REVERSE);
             controls.turn = amount(Action.TURN_LEFT) - amount(Action.TURN_RIGHT);
             controls.strafe = amount(Action.STRAFE_LEFT) - amount(Action.STRAFE_RIGHT);
+            world.bridge.playerStick = controls.forward != 0f || controls.turn != 0f || controls.strafe != 0f;
         }
         if (just(Action.LIGHTS)) toggleLights();
         handAim();

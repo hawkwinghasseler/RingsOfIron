@@ -9,9 +9,10 @@ import com.ringsofiron.orbital.rails.RailsUniverse;
 import java.util.function.Supplier;
 
 /**
- * Plans impulsive burns on the player's ship as orbital-mechanics maneuver nodes. One node at a time
- * is selected for editing. On rails the orbital event system fires each node when it is due (and time
- * warp drops out there); in the bubble {@link BubbleBurnSystem} does.
+ * Plans burns on the player's ship as orbital-mechanics maneuver nodes. One node at a time is
+ * selected for editing. In the bubble the helm flies each with real thrust, centered on its time
+ * ({@link HelmOrders#flyPlannedBurn}), and time warp drops out in time for it; only on the rails
+ * would the orbital event system fire one as an impulse.
  */
 public class BurnPlanner {
     /** How far ahead a new burn goes when none is planned yet, seconds. */

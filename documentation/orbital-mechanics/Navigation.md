@@ -104,3 +104,11 @@ Navigation posts to `world.notices`: dropped orders and cut burns as warnings, t
 
 ## Not built
 - The transfer autopilot flies burns as impulses. It does not fly them on the main engine unless the helm's fly-burns order is also given.
+
+### Every bubble burn flown with real thrust
+Joe: "All maneuvers performed within the physics bubble should be flown with real thrust." `BubbleBurnSystem`, which fired a planned burn in the bubble as one impulse when nobody flew it, is gone.
+- `HelmOrders.flyPlannedBurn` flies the next planned burn whatever the helm's order: turning onto it `TURN_LEAD` before it starts, then the main engine through it, centered on its time. The helmsman flies it ahead of any other order (the order resumes after). With the player at the helm, the flight computer flies it while their hands are off the stick (`Bridge.playerStick`); a key on the stick takes over, and the computer picks up again when it is let go.
+- Nothing fires by itself. A burn nobody has started by its time is missed, with a warning; one nobody flies on for `UNFLOWN_LIMIT` (5 s) with nobody at the helm is cut short.
+- Any rails warp drops out `WARP_LEAD` before the helm is to turn onto the next burn (`Navigation.nextDropOutTime`), and rails warp is refused from then until the burn is flown ("a planned burn is coming up"), so the burn is never fired on the rails as an impulse. The autopilot leaves warp to Navigation near every burn.
+- The "fly burns" order still stands for the helmsman and reports when every burn is flown; a threat dropping an order no longer cuts a burn under way short.
+- `GameInput` lets go of the player ship's stick each frame only while the player flies it, so a frame with no sim tick in it (above 60 fps) no longer draws a burn the helm flies with the engines cold.

@@ -59,7 +59,10 @@ class OrbitScenarioTest {
     /** Steps warp to its top whenever it has dropped, and runs frames until {@code done} or the frames run out. */
     private void warpUntil(java.util.function.BooleanSupplier done, int frames) {
         for (int i = 0; i < frames && !done.getAsBoolean(); i++) {
-            if (world.timeWarp.getWarp() == 1) for (int s = 0; s < 10; s++) WarpNotices.step(world, 1);
+            // Warp goes back up once a burn is flown: the helm flies it at physics warp, with rails warp refused
+            boolean up = world.timeWarp.getWarp() == 1
+                    || (!world.timeWarp.isRailsWarp() && world.engine.getRailsWarpBlockedReason() == null);
+            if (up) for (int s = 0; s < 10; s++) WarpNotices.step(world, 1);
             update();
         }
     }

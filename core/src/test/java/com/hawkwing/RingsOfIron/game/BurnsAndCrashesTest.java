@@ -90,46 +90,66 @@ class BurnsAndCrashesTest {
         assertSame(first, world.burns.selected());
     }
 
+    /** Flies at 10x until the planned burns are flown or missed; true if the engines fired for them. */
+    boolean flyTheBurns(int frames) {
+        boolean fired = false;
+        world.timeWarp.setWarp(10);
+        HelmOrderComponent o = world.nav.helm.order();
+        FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
+        for (int i = 0; i < frames && (world.burns.nodes().nodes.size > 0 || o.burning); i++) {
+            world.update(FRAME);
+            fired |= o.burning && controls.forward > 0f;
+        }
+        world.timeWarp.setWarp(1);
+        return fired;
+    }
+
     @Test
-    void aBurnFiresInTheBubble() {
+    void aPlannedBurnIsFlownWithRealThrustInTheBubble() {
         ManeuverNodeComponent.Node n = world.burns.addNode();
         world.burns.adjust(50, 0);
         n.time = world.universe.now() + 0.5;
-        for (int i = 0; i < 60; i++) world.update(FRAME);
-        assertNull(world.burns.selected(), "fired");
+        assertTrue(world.bridge.playerAtHelm(), "the player has the helm, hands off the stick");
+        world.update(FRAME);
+        assertTrue(world.burns.nodes().nodes.size == 0 && world.nav.helm.order().burning, "the flight computer took it up");
+        assertTrue(flyTheBurns(60 * 120), "on the main engine");
+        assertFalse(world.nav.helm.order().burning, "flown");
         assertNotNull(game.player.getComponent(PhysicsBodyComponent.class), "still flying in the bubble");
         assertTrue(orbit().apoapsis > 400e3 + 150e3, "apoapsis " + orbit().apoapsis);
     }
 
     @Test
-    void aBurnThatFiresByItselfIsShownBurning() {
+    void aBurnNobodyFliesIsMissedNotFired() {
         ManeuverNodeComponent.Node n = world.burns.addNode();
         world.burns.adjust(50, 0);
-        n.time = world.universe.now() + 0.1;
-        FlightControlComponent controls = game.player.getComponent(FlightControlComponent.class);
-        for (int i = 0; i < 30 && world.burns.selected() != null; i++) world.update(FRAME);
-        assertNull(world.burns.selected(), "fired");
-        assertTrue(controls.impulseLeft >= com.ringsofiron.shipsystems.BubbleBurnSystem.MIN_SHOWN - 0.1f, "shown burning for a while");
-        // Along the burn: the main engine for a nose on it, else the RCS
-        float shown = Math.abs(controls.shownForward()) + Math.abs(controls.shownStrafe());
-        assertTrue(shown > 0.99f, "the flames show the burn's direction: " + shown);
-        assertNotNull(world.nav.helm.railsWarpBlockedReason(), "no rails warp with the flames still lit");
-        for (int i = 0; i < 300 && controls.impulseLeft > 0f; i++) world.update(FRAME);
-        assertEquals(0f, controls.impulseLeft, "and they go out");
-        assertNull(world.nav.helm.railsWarpBlockedReason());
+        n.time = world.universe.now() + 0.5;
+        double apoapsis = orbit().apoapsis;
+        world.bridge.playerStick = true;
+        for (int i = 0; i < 60; i++) world.update(FRAME);
+        assertEquals(0, world.burns.nodes().nodes.size, "gone");
+        assertFalse(world.nav.helm.order().burning, "never flown");
+        assertEquals(apoapsis, orbit().apoapsis, 1_000, "and nothing fired by itself");
     }
 
     @Test
-    void aBurnFiresOnRailsAndWarpStopsThere() {
+    void railsWarpStopsInTimeToTurnOntoABurn() {
         ManeuverNodeComponent.Node n = world.burns.addNode();
         world.burns.adjust(50, 0);
         double due = n.time;
         assertTrue(world.timeWarp.setWarp(1_000), world.engine.getRailsWarpBlockedReason());
         for (int i = 0; i < 600 && world.timeWarp.isRailsWarp(); i++) world.update(FRAME);
         assertFalse(world.timeWarp.isRailsWarp(), "dropped out for the burn");
-        assertEquals(due, world.engine.getSimSeconds(), 1.0);
-        assertNull(world.burns.selected(), "fired");
+        assertEquals(due - world.nav.leadFor(n), world.engine.getSimSeconds(), 5.0, "a minute before the helm turns onto it");
+        assertSame(n, world.burns.nodes().next(), "not fired on the rails");
+        // Warped on: it stops again where the helm turns onto the burn, and won't go on from there
+        assertTrue(world.timeWarp.setWarp(1_000));
+        for (int i = 0; i < 600 && world.timeWarp.isRailsWarp(); i++) world.update(FRAME);
+        assertEquals(due - world.nav.helm.burnLead(n), world.engine.getSimSeconds(), 5.0, "where the helm turns onto it");
+        assertSame(n, world.burns.nodes().next(), "still not fired on the rails");
+        assertFalse(world.timeWarp.setWarp(1_000), "no rails warp with a burn coming up");
+        assertTrue(flyTheBurns(60 * 240), "flown on the main engine");
         assertTrue(orbit().apoapsis > 400e3 + 150e3, "apoapsis " + orbit().apoapsis);
+        assertTrue(world.timeWarp.setWarp(1_000), "and rails warp again once it is flown");
     }
 
     @Test
@@ -137,6 +157,8 @@ class BurnsAndCrashesTest {
         world.burns.addNode();
         world.burns.adjust(-300, 0);
         assertTrue(world.timeWarp.setWarp(1_000), world.engine.getRailsWarpBlockedReason());
+        for (int i = 0; i < 600 && world.timeWarp.isRailsWarp(); i++) world.update(FRAME);
+        assertTrue(flyTheBurns(60 * 600), "the deorbit burn flown");
         for (int i = 0; i < 3_000 && world.getCrash() == null; i++) {
             if (!world.timeWarp.isRailsWarp()) world.timeWarp.setWarp(1_000);
             world.update(FRAME);

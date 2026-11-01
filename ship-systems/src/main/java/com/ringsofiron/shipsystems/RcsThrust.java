@@ -140,10 +140,8 @@ public class RcsThrust extends EntitySystem {
         float ly = grid.gridOriginLocal.y + r.nozzleY(exhaust) * grid.tileSize - center.y;
         float torque = lx * fy - ly * fx;
         float out = 0f;
-        // As the flames show it: a planned burn fired as one impulse fires the nozzles that would have flown it
-        float forward = c.shownForward(), strafe = c.shownStrafe();
-        if (forward < 0f && fx < 0f) out = Math.max(out, Math.min(1f, -forward));
-        if (strafe * fy > 0f) out = Math.max(out, Math.min(1f, Math.abs(strafe)));
+        if (c.forward < 0f && fx < 0f) out = Math.max(out, Math.min(1f, -c.forward));
+        if (c.strafe * fy > 0f) out = Math.max(out, Math.min(1f, Math.abs(c.strafe)));
         if (turn * torque > 1e-4f) out = Math.max(out, Math.min(1f, Math.abs(turn)));
         return out;
     }
