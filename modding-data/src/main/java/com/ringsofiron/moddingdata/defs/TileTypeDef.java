@@ -20,7 +20,7 @@ public class TileTypeDef {
     public String name;
     /** The one character chassis rows draw this tile with. */
     public String symbol;
-    /** VOID, FLOOR, CONDUIT, HULL or INTERNAL_WALL. */
+    /** VOID, FLOOR, HULL or INTERNAL_WALL. */
     public String base = "FLOOR";
     /** For walls: LIGHT, MEDIUM or HEAVY. */
     public String weightClass = "MEDIUM";

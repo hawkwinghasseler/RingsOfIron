@@ -81,12 +81,12 @@ class BerthingSystemTest {
     /** A 9 x 5 station at rest at the origin with one active Small port on top (+y). */
     private Entity station() {
         ChassisBlueprintLoader.LoadResult result = ChassisBlueprintLoader.load(new ChassisBlueprint(new String[]{
-                "###DDD###",
+                "#########",
                 "#.......#",
                 "#.......#",
                 "#.......#",
                 "#########",
-        }).tileSize(1f).origin(-4.5f, -2.5f));
+        }).tileSize(1f).origin(-4.5f, -2.5f).mount("docking_port", MountFootprint.MountSize.S, 3, 4));
         Entity e = game.createEntityWithUuid();
         e.add(new TransformComponent());
         e.add(result.grid);

@@ -178,10 +178,8 @@ final class CrushModel {
                 sys.damagePiece(tile, take / hp);
                 crushLoss[idx] += take / hp;
                 crushContents(tile, x, y, take);
-                if (tile.getIntegrity() <= 0f) {
-                    if (!wasBreach && tile.isHullBreach()) sys.addBreach(tile, x, y);
-                    if (tile.isPowerConduit()) sys.grid.gridDirty = true;
-                }
+                sys.damageConduit(x, y, take, false);
+                if (tile.getIntegrity() <= 0f && !wasBreach && tile.isHullBreach()) sys.addBreach(tile, x, y);
                 if (energy <= 1f) break;
             }
             // On into the tile behind
@@ -196,9 +194,8 @@ final class CrushModel {
         return taken;
     }
 
-    /** What it takes to crush a tile from whole to nothing: its hit points, or a conduit's. */
+    /** What it takes to crush a tile from whole to nothing: its hit points. A conduit on it is crushed apart from it. */
     float crushHitPoints(Tile tile) {
-        if (tile.isPowerConduit()) return PenetrationResolver.CONDUIT_HIT_POINTS;
         return sys.materials.get(tile.material, tile.weightClass).hitPoints;
     }
 

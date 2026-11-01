@@ -1,6 +1,7 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.MountFootprint;
 
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
@@ -105,11 +106,12 @@ class CrewWoundTest {
     @Test
     void aSuitRunningLowInAVentedShipIsFilledAtLifeSupport() {
         TestShips s = new TestShips(
-                "##########",
-                "#L.......#",
-                "#L.......#",
+                new ChassisBlueprint("##########",
                 "#........#",
-                "##########");
+                "#........#",
+                "#........#",
+                "##########")
+                .mount("life_support", MountFootprint.MountSize.S, 1, 2));
         for (com.ringsofiron.interiorgrid.Compartment room : s.grid.compartments) {
             room.oxygen = 0;
             room.nitrogen = 0;

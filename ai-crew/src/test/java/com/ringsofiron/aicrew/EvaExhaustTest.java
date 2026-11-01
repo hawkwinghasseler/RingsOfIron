@@ -1,6 +1,7 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.HullSurface;
@@ -29,12 +30,13 @@ class EvaExhaustTest {
 
     void ship() {
         s = new TestShips(
-                "############   ",
-                "#..........#EEE",
-                "#..........#EEE",
+                new ChassisBlueprint("############   ",
+                "#..........#   ",
+                "#..........#   ",
                 "#..........#   ",
                 "############   ",
-                "############   ");
+                "############   ")
+                .mount("engine", MountFootprint.MountSize.M, 12, 3, 3));
         s.grid.placeMount(new MountFootprint(MountFootprint.MountKind.PORT, MountFootprint.MountSize.M, 3, 4, 0));
         assertNotNull(com.ringsofiron.interiorgrid.SuitOutfit.placeLocker(s.grid, com.ringsofiron.interiorgrid.crew.Suit.Kind.EVA, 9, 4, 2));
         controls = new FlightControlComponent();

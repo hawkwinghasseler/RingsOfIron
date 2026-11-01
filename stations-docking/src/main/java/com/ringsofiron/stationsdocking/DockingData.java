@@ -40,11 +40,11 @@ public final class DockingData {
         });
     }
 
-    /** The docking ports on {@code grid}, active where {@code chassis} lists them so. */
+    /** The docking ports on {@code grid}, active where {@code chassis} mounts them so. */
     public static DockingPortsComponent portsFor(ShipGridComponent grid, ChassisDef chassis) {
         List<int[]> active = new ArrayList<>();
-        for (ChassisDef.Port p : chassis.ports) {
-            if (p.active) active.add(new int[]{p.x, p.y});
+        for (ChassisDef.Mount m : chassis.mounts) {
+            if (m.active) active.add(new int[]{m.x, m.y});
         }
         return DockingPortsComponent.fromGrid(grid, active);
     }

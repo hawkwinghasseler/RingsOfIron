@@ -147,7 +147,7 @@ class SerializationServiceTest {
 
     @Test
     void danglingReferenceAndUnknownClassAreReportedNotFatal() {
-        String save = "{\"version\":1,\"tick\":5,\"entities\":[{"
+        String save = "{\"version\":" + SerializationService.FORMAT_VERSION + ",\"tick\":5,\"entities\":[{"
             + "\"com.ringsofiron.coreengine.components.UuidComponent\":{\"id\":\"a\"},"
             + "\"com.ringsofiron.coreengine.SerializationServiceTest$TargetComponent\":{\"target\":\"missing\"},"
             + "\"com.example.mod.GoneComponent\":{\"x\":1}}],\"modules\":{}}";
@@ -206,6 +206,20 @@ class SerializationServiceTest {
         GameEngine engine = new GameEngine();
         assertThrows(SerializationException.class,
             () -> engine.getSerializationService().loadGame("{\"version\":99,\"tick\":0,\"entities\":[]}"));
+    }
+
+    @Test
+    void olderFormatsAreRefused() {
+        GameEngine engine = new GameEngine();
+        for (int version = 0; version < SerializationService.FORMAT_VERSION; version++) {
+            String save = "{\"version\":" + version + ",\"tick\":0,\"entities\":[],\"modules\":{}}";
+            SerializationException e = assertThrows(SerializationException.class,
+                () -> engine.getSerializationService().loadGame(save));
+            assertTrue(e.getMessage().contains("older version of the game"), e.getMessage());
+        }
+        SerializationException unmarked = assertThrows(SerializationException.class,
+            () -> engine.getSerializationService().loadGame("{\"tick\":0,\"entities\":[]}"));
+        assertTrue(unmarked.getMessage().contains("older version of the game"), "a save that names no format is from before formats");
     }
 
     public static class Summary {

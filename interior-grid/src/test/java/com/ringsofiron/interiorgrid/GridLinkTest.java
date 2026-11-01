@@ -13,11 +13,11 @@ class GridLinkTest {
     /** A 3 x 2 room with a Small port on top whose opening is tile (2, 3). */
     private static ShipGridComponent craft() {
         ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(new ChassisBlueprint(new String[]{
-                "#DDD#",
+                "#####",
                 "#...#",
                 "#...#",
                 "#####",
-        }).tileSize(1f));
+        }).tileSize(1f).mount("docking_port", MountFootprint.MountSize.S, 1, 3));
         new GridHazardSystem(1).step(r.grid, DT);
         return r.grid;
     }

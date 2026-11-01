@@ -25,6 +25,7 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 import com.ringsofiron.interiorgrid.WeightClass;
 import com.ringsofiron.moddingdata.defs.MaterialDef;
 import org.junit.jupiter.api.Test;
@@ -335,11 +336,34 @@ class PenetrationResolverTest {
     @Test
     void conduitCanBeSevered() {
         ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.LIGHT);
-        for (int x = 1; x < 7; x++) grid.getTile(x, 2).floorType = Tile.FloorType.POWER_CONDUIT;
+        for (int x = 1; x < 7; x++) grid.setTileConduit(x, 2, new TileConduit());
         grid.gridDirty = false;
-        for (int i = 0; i < 4; i++) shootFromLeft(grid, 2, 2e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
-        assertEquals(0f, grid.getTile(1, 2).getIntegrity(), 1e-6f);
+        resolver.setConduitHitChance(1f); // every round across it strikes it
+        // Each round that strikes it takes FLOOR_RESISTANCE off it: two cut it
+        shootFromLeft(grid, 2, 2e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
+        assertFalse(grid.getTileConduit(1, 2).isCut(), "one round leaves it carrying");
+        assertEquals(1f - PenetrationResolver.FLOOR_RESISTANCE / PenetrationResolver.CONDUIT_HIT_POINTS,
+                grid.getTileConduit(1, 2).integrity, 1e-4f);
+        shootFromLeft(grid, 2, 2e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
+        assertTrue(grid.getTileConduit(1, 2).isCut(), "the second cuts it");
         assertTrue(grid.gridDirty);
+        assertTrue(grid.getTile(1, 2).getIntegrity() > 0f, "the deck under it still stands");
+    }
+
+    @Test
+    void mostRoundsThroughATileMissTheConduitOnIt() {
+        ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.LIGHT);
+        int shots = 2000, struck = 0;
+        RandomXS128 rng = new RandomXS128(7);
+        Vector2 point = new Vector2(grid.gridOriginLocal.x, grid.gridOriginLocal.y + 2.5f * TILE);
+        for (int i = 0; i < shots; i++) {
+            grid.setTileConduit(1, 2, new TileConduit());
+            report.clear();
+            resolver.resolveHit(grid, ship, point, new Vector2(-1, 0), new Vector2(1000, 0), 1e7f, DamageType.KINETIC,
+                    Fuse.contact(), new SpallDef(), 70f, 0.5f, rng, report, result);
+            if (grid.getTileConduit(1, 2).integrity < 1f) struck++;
+        }
+        assertEquals(PenetrationResolver.CONDUIT_HIT_CHANCE, struck / (float) shots, 0.04f, "a cable fills little of its tile");
     }
 
     // ------------------------------------------------------------------

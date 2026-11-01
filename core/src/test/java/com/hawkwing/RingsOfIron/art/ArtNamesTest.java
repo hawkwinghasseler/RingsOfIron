@@ -179,10 +179,7 @@ class ArtNamesTest {
         Tile t = new Tile();
         t.floorType = Tile.FloorType.FLOOR;
         assertArt(ArtNames.floor(t));
-        t.floorType = Tile.FloorType.POWER_CONDUIT;
         for (boolean powered : new boolean[]{true, false}) {
-            t.isPowered = powered;
-            assertArt(ArtNames.floor(t));
             assertArt(ArtNames.conduit(powered));
             assertArt(ArtNames.conduitArm(powered));
         }

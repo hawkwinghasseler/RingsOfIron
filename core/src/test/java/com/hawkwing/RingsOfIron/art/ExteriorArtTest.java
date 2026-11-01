@@ -13,18 +13,19 @@ class ExteriorArtTest {
 
     private final ExteriorArt exterior = new ExteriorArt(null);
 
-    private static ShipGridComponent grid(String... rows) {
-        return ChassisBlueprintLoader.load(new ChassisBlueprint(rows)).grid;
+    private static ShipGridComponent grid(ChassisBlueprint bp) {
+        return ChassisBlueprintLoader.load(bp).grid;
     }
 
     @Test
     void anEngineAftOfTheHullLetsItsExhaustOutAtItsAftEnd() {
         ShipGridComponent grid = grid(
-                "   ######",
-                "EEE#....#",
-                "EEE#....#",
+                new ChassisBlueprint("   ######",
                 "   #....#",
-                "   ######");
+                "   #....#",
+                "   #....#",
+                "   ######")
+                .mount("engine", MountFootprint.MountSize.M, 0, 2, 1));
         MountFootprint m = grid.mounts.first();
         assertEquals(1, m.rotation, "nozzle aft");
         exterior.socket(grid, m);
@@ -36,12 +37,13 @@ class ExteriorArtTest {
     @Test
     void anEngineUnderTheHullLetsItsExhaustOutBelowIt() {
         ShipGridComponent grid = grid(
-                "#####",
+                new ChassisBlueprint("#####",
                 "#...#",
                 "#...#",
                 "#####",
-                "  E  ",
-                "  E  ");
+                "     ",
+                "     ")
+                .mount("engine", MountFootprint.MountSize.S, 2, 0, 2));
         MountFootprint m = grid.mounts.first();
         assertEquals(2, m.rotation, "nozzle down");
         exterior.socket(grid, m);

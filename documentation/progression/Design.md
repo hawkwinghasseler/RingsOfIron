@@ -153,7 +153,7 @@ Hostile traffic (`claude/r2-roster-traffic-z8x44s`) is what the player fights. I
 - **First Play:** a disabled raider counts as beaten.
 
 ## Abandon Ship
-- **Escape pods:** `ESCAPE_POD` is a walkable grid component, `B` in chassis maps. Its seats are 4, 8, 20 or 48 for sizes S to XL. The corvette carries one Small pod and the freighter two.
+- **Escape pods:** `ESCAPE_POD` is a walkable grid component, the built-in `escape_pod`. Its seats are 4, 8, 20 or 48 for sizes S to XL. The corvette carries one Small pod and the freighter two.
 - **Ordering it:** P asks for confirmation, and a second P within 3 seconds orders abandon ship (`AbandonShip.order`). It is refused while docked ("walk off instead"), with no usable pod, or with nobody aboard. P again while abandoning launches the pods now.
 - **Getting to the pods:** the order posts an `EvacuateTask` (priority 1000) per seat, and every crew member drops what they are doing for it. The avatar is never walked to a pod: the player walks there themselves, or stays aboard.
 - **Launch:** a pod launches when it is full, when everyone is in a pod, or 30 seconds after the order. A ship with none of its own crew left aboard becomes ABANDONED.

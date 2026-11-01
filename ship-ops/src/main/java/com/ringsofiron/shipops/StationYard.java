@@ -25,6 +25,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingSystem;
@@ -60,6 +61,8 @@ import java.util.function.DoubleSupplier;
 public class StationYard extends EntitySystem {
     /** Credits per whole point of condition restored, by what is repaired. */
     public static final double HULL_COST = 400, WALL_COST = 150, SYSTEM_COST = 3_000, COLLAR_COST = 5_000;
+    /** Credits per whole point of a power conduit across a tile, which is mended apart from the tile. */
+    public static final double CONDUIT_COST = 400;
     /** A torn collar takes this much more work than a tile. */
     public static final float COLLAR_WORK = 3f;
     /** Work (at a technician's repair rate) to fit one tile of a mount. */
@@ -87,7 +90,7 @@ public class StationYard extends EntitySystem {
 
     /** Something damaged aboard a ship, and how to put it right. */
     public static final class Damage {
-        public enum Kind { HULL, WALL, SYSTEM, COLLAR }
+        public enum Kind { HULL, WALL, SYSTEM, COLLAR, CONDUIT }
 
         public final Kind kind;
         /** The tiles the work covers. */
@@ -97,6 +100,22 @@ public class StationYard extends EntitySystem {
         final EdgeWall wall;
         final SubsystemComponent system;
         final DockingPort port;
+        final TileConduit conduit;
+
+        /** A power conduit across tile (x, y). */
+        Damage(int x, int y, TileConduit conduit) {
+            this.kind = Kind.CONDUIT;
+            this.x = x;
+            this.y = y;
+            this.w = 1;
+            this.h = 1;
+            this.piece = null;
+            this.tile = null;
+            this.wall = null;
+            this.system = null;
+            this.port = null;
+            this.conduit = conduit;
+        }
 
         Damage(Kind kind, int x, int y, int w, int h, HullPiece piece, Tile tile, EdgeWall wall,
                SubsystemComponent system, DockingPort port) {
@@ -110,6 +129,7 @@ public class StationYard extends EntitySystem {
             this.wall = wall;
             this.system = system;
             this.port = port;
+            this.conduit = null;
         }
 
         /** 0 (wrecked) to 1 (sound). */
@@ -121,6 +141,8 @@ public class StationYard extends EntitySystem {
                     return wall.integrity;
                 case SYSTEM:
                     return system.health;
+                case CONDUIT:
+                    return conduit.integrity;
                 default:
                     return port.collarIntegrity;
             }
@@ -135,6 +157,8 @@ public class StationYard extends EntitySystem {
                     return WALL_COST;
                 case SYSTEM:
                     return SYSTEM_COST;
+                case CONDUIT:
+                    return CONDUIT_COST;
                 default:
                     return COLLAR_COST;
             }
@@ -153,6 +177,8 @@ public class StationYard extends EntitySystem {
                     return "repairing a wall";
                 case SYSTEM:
                     return "repairing the " + system.type.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+                case CONDUIT:
+                    return "repairing a power conduit";
                 default:
                     return "refitting a docking collar";
             }
@@ -171,8 +197,11 @@ public class StationYard extends EntitySystem {
                         if (piece != null) piece.patchedAt = 0f;
                         else tile.patchedAt = 0f;
                     }
+                    break;
+                case CONDUIT:
+                    conduit.integrity = after;
                     // A conduit mended whole carries power again, short or no short
-                    if (tile != null && after >= 1f - EPS) tile.shorted = false;
+                    if (after >= 1f - EPS) conduit.shorted = false;
                     break;
                 case WALL:
                     wall.integrity = after;
@@ -201,6 +230,7 @@ public class StationYard extends EntitySystem {
             if (tile != null) return tile;
             if (wall != null) return wall;
             if (system != null) return system;
+            if (conduit != null) return conduit;
             return port;
         }
     }

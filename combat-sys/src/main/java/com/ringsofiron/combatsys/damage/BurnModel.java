@@ -126,14 +126,8 @@ final class BurnModel {
                 return true;
             }
         }
-        if (tile.isPowerConduit() && tile.getIntegrity() > 0f) {
-            // The beam crosses the deck and cuts any conduit in it.
-            sys.damagePiece(tile, energy / PenetrationResolver.CONDUIT_HIT_POINTS);
-            if (tile.getIntegrity() <= 0f) {
-                sys.grid.gridDirty = true;
-                if (sys.report != null) sys.report.structureChanged = true;
-            }
-        }
+        // The beam crosses the deck, and burns into the conduit laid on it if it strikes it
+        sys.strikeConduit(x, y, energy, false);
         return false;
     }
 

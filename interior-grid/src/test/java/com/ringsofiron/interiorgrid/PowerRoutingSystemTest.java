@@ -130,14 +130,16 @@ class PowerRoutingSystemTest {
     }
 
     @Test
-    void aCutGridLeavesSystemsBeyondTheCutWithoutPower() {
+    void aCutConduitLeavesSystemsBeyondTheCutWithoutPower() {
         ship();
         SubsystemComponent helm = system(grid, SubsystemComponent.SubsystemType.HELM);
         assertTrue(helm.isOperational);
-        // The helm is in the right room, reached only through the door and the conduit through the wall
+        // The helm is in the right room, reached only along the conduit run through the wall
         door(grid).bulkheadSealed = true;
-        grid.getTile(9, 5).setIntegrity(0f);
-        grid.getTile(10, 5).setIntegrity(0f);
+        grid.gridDirty = true;
+        engine.update(0f);
+        assertTrue(helm.powered, "a shut door does not stop a conduit");
+        grid.getTileConduit(9, 5).integrity = 0f;
         grid.gridDirty = true;
         engine.update(0f);
         assertFalse(helm.powered);

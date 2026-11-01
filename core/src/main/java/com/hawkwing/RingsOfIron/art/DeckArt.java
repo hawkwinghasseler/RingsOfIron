@@ -18,6 +18,7 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.WallLight;
 import com.ringsofiron.interiorgrid.WallLightLayout;
@@ -113,12 +114,13 @@ public final class DeckArt {
                 tile(batch, ArtNames.floor(t), x0, y0, s);
                 String covering = ArtNames.covering(t.covering);
                 if (covering != null) tile(batch, covering, x0, y0, s);
-                if (!t.isPowerConduit()) continue;
-                // The junction sits on the floor and its covering; under a system, the system hides
+                TileConduit conduit = grid.getTileConduit(x, y);
+                if (conduit == null) continue;
+                // The conduit lies on the floor and its covering; under a system, the system hides
                 // it, so it gives no glow there
                 if (glowing && t.mount != null) continue;
-                tile(batch, ArtNames.conduit(t.isPowered), x0, y0, s);
-                TextureRegion arm = art.region(ArtNames.conduitArm(t.isPowered));
+                tile(batch, ArtNames.conduit(conduit.isPowered), x0, y0, s);
+                TextureRegion arm = art.region(ArtNames.conduitArm(conduit.isPowered));
                 if (arm == null) continue;
                 // 0 up, 1 left, 2 down, 3 right; an arm meets a conduit on the next tile or along the edge
                 if (grid.hasConduitToward(x, y, Side.TOP)) quarter(batch, arm, x0, y0, s, 0);
@@ -184,7 +186,7 @@ public final class DeckArt {
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
-                if (t == null || !t.isPowerConduit() || !t.isOpen()) continue;
+                if (t == null || grid.getTileConduit(x, y) == null || !t.isOpen()) continue;
                 for (Side side : Side.values()) {
                     EdgeConduit c = grid.getConduit(x, y, side);
                     if (c == null) continue;
@@ -499,7 +501,8 @@ public final class DeckArt {
                     tile(batch, "effects/propellant_spill", x0, y0, s);
                 }
                 // A shorted conduit, until the crew reset it
-                if (t.shorted) tile(batch, "effects/short_circuit", x0, y0, s);
+                TileConduit conduit = grid.getTileConduit(x, y);
+                if (conduit != null && conduit.shorted) tile(batch, "effects/short_circuit", x0, y0, s);
                 String fire = ArtNames.fire(t.fireSize());
                 if (fire != null) tile(batch, fire, x0, y0, s);
             }

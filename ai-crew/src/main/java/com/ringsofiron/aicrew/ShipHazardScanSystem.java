@@ -12,6 +12,7 @@ import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 import com.ringsofiron.interiorgrid.crew.ExtinguishTask;
 import com.ringsofiron.interiorgrid.crew.HullPatchTask;
@@ -70,7 +71,8 @@ public class ShipHazardScanSystem extends FixedIteratingSystem {
                 Tile t = grid.tiles[y][x];
                 if (t.isBurning()) board.post(new ExtinguishTask(x, y));
                 else if (t.isHullBreach() && bordersInterior(grid, x, y)) board.post(new SealBreachTask(x, y));
-                if (t.shorted) board.post(new ResetShortTask(x, y));
+                TileConduit conduit = grid.tileConduits[y][x];
+                if (conduit != null && conduit.shorted) board.post(new ResetShortTask(x, y));
             }
         }
         // Work outside: at battle stations it waits on the board (TaskRules#waitsOutFire) for anyone sent out to it

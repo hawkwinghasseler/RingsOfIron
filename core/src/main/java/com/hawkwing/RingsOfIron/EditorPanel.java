@@ -306,7 +306,8 @@ abstract class EditorPanel extends EditorTools {
         } else {
             text(x, y, c.floorTiles + " floor and " + c.wallTiles + " wall tiles, " + c.rooms + " rooms", Color.WHITE);
             y -= LINE;
-            text(x, y, c.systems + " systems, " + c.poweredSystems + " reached by power", Color.WHITE);
+            text(x, y, c.systems + " systems, " + c.poweredSystems + " of the " + c.powerUsers + " that use power on a conduit",
+                    c.poweredSystems < c.powerUsers ? Color.ORANGE : Color.WHITE);
             y -= LINE;
             text(x, y, String.format(Locale.ROOT, "%.1f m3 of cargo bays", c.cargoVolume), Color.WHITE);
             y -= LINE;
@@ -360,7 +361,7 @@ abstract class EditorPanel extends EditorTools {
                 y -= LINE;
                 for (ShipPartCatalog.ComponentType t : cat.components()) {
                     final String id = t.id;
-                    y = swatchRow(x, y, t.color, t.symbol, t.name + "  (" + t.behavior.name().toLowerCase(Locale.ROOT) + ")",
+                    y = swatchRow(x, y, t.color, EditorCanvas.label(t).charAt(0), t.name + "  (" + t.behavior.name().toLowerCase(Locale.ROOT) + ")",
                             id.equals(componentId), () -> componentId = id);
                 }
                 ShipPartCatalog.ComponentType type = cat.component(componentId);

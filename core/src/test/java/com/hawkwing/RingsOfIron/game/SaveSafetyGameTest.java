@@ -29,12 +29,16 @@ import java.util.zip.GZIPInputStream;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * A load that fails leaves the game as it was; every saved component has a stable type id; and saves
- * from before type ids (kept in test resources) still load whole.
+ * A load that fails leaves the game as it was; every saved component has a stable type id; and a
+ * save from an older version of the game (kept in test resources) is refused, leaving the game as it
+ * was.
  */
 class SaveSafetyGameTest {
     static final float FRAME = 1f / 60f;
-    /** Docked at Highport with freighters on the rails, saved by main at b4298fb3 (format 1, class names). */
+    /**
+     * Docked at Highport with freighters on the rails, saved by main at b4298fb3 (format 1, class
+     * names): a save from before the current format, which the game no longer reads.
+     */
     static final String FORMAT1_DOCKED = "/saves/format1-docked-career.json.gz";
 
     Path assets;
@@ -114,33 +118,42 @@ class SaveSafetyGameTest {
     }
 
     @Test
-    void everyComponentTheGameSavesHasAStableTypeId() throws IOException {
-        // A fresh start, and a docked career with freighters out
+    void everyComponentTheGameSavesHasAStableTypeId(@TempDir Path dir) throws IOException {
+        // A fresh start, and docked at Highport with freighters out, saved and loaded back
         assertAllSavedTypesHaveIds();
-        game.quickLoad(fixture(FORMAT1_DOCKED));
+        Entity highport = world.engine.getEntity(game.highport);
+        com.ringsofiron.stationsdocking.DockingPortsComponent ports =
+                highport.getComponent(com.ringsofiron.stationsdocking.DockingPortsComponent.class);
+        int small = -1;
+        for (int i = 0; i < ports.ports.length && small < 0; i++) {
+            if (ports.ports[i].size == com.ringsofiron.interiorgrid.MountFootprint.MountSize.S) small = i;
+        }
+        world.docking.dockInPlace(game.player, 0, highport, small);
+        for (int i = 0; i < 120; i++) world.update(FRAME);
+        assertSame(highport, world.docking.dockedTo(game.player));
+        Path file = dir.resolve("docked.json");
+        Files.writeString(file, world.engine.getSerializationService().saveGame());
+        List<String> warnings = game.quickLoad(new FileHandle(file.toFile()));
+        assertTrue(warnings.isEmpty(), String.valueOf(warnings));
+        assertNotNull(world.docking.dockedTo(game.player), "docked, as it was saved");
         assertAllSavedTypesHaveIds();
     }
 
     @Test
-    void aSaveFromBeforeTypeIdsLoadsWhole() throws IOException {
-        List<String> warnings = game.quickLoad(fixture(FORMAT1_DOCKED));
+    void aSaveFromAnOlderVersionIsRefusedWithTheGameUntouched() throws IOException {
+        Entity player = game.player;
+        int entities = world.engine.getEcsEngine().getEntities().size();
+        long tick = world.engine.getTick();
 
-        assertTrue(warnings.isEmpty(), String.valueOf(warnings));
-        assertNotNull(game.player);
-        assertNotNull(world.docking.dockedTo(game.player), "docked, as it was saved");
-        // Saved again, it is keyed by type ids only, and loads back the same
-        String again = world.engine.getSerializationService().saveGame();
-        JsonValue root = new JsonReader().parse(again);
-        assertEquals(SerializationService.FORMAT_VERSION, root.getInt("version"));
-        TreeSet<String> classNames = new TreeSet<>();
-        for (JsonValue e = root.get("entities").child; e != null; e = e.next) {
-            for (JsonValue c = e.child; c != null; c = c.next) if (c.name.startsWith("com.")) classNames.add(c.name);
-        }
-        assertTrue(classNames.isEmpty(), "saved by class name: " + classNames);
-        int entities = saved(world);
-        world.engine.getSerializationService().loadGame(again);
-        assertTrue(world.engine.getSerializationService().getLastLoadWarnings().isEmpty());
-        assertEquals(entities, saved(world));
+        GameScenario.LoadFailedException e = assertThrows(GameScenario.LoadFailedException.class,
+                () -> game.quickLoad(fixture(FORMAT1_DOCKED)));
+
+        assertTrue(e.getMessage().contains("older version of the game"), e.getMessage());
+        assertTrue(e.restored);
+        assertFalse(e.replaced, "refused before anything was replaced");
+        assertSame(player, game.player);
+        assertEquals(entities, world.engine.getEcsEngine().getEntities().size());
+        assertEquals(tick, world.engine.getTick());
     }
 
     private void assertAllSavedTypesHaveIds() {

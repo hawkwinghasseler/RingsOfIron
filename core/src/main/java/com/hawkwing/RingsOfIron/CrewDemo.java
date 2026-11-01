@@ -185,7 +185,7 @@ public class CrewDemo extends ApplicationAdapter {
             for (int x = 0; x < g.width; x++) {
                 Tile t = g.getTile(x, y);
                 float px = OFF_X + x * TILE_PX, py = OFF_Y + y * TILE_PX;
-                shapes.setColor(tileColor(t));
+                shapes.setColor(tileColor(t, g.getTileConduit(x, y) != null));
                 shapes.rect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
                 if (t.holdsAir()) {
                     // Thin air reads as a blue-black wash
@@ -222,7 +222,7 @@ public class CrewDemo extends ApplicationAdapter {
         shapes.end();
     }
 
-    private Color tileColor(Tile t) {
+    private Color tileColor(Tile t, boolean conduit) {
         if (t.isVoid()) return Color.CLEAR;
         if (t.isHullBreach()) return new Color(0.02f, 0.02f, 0.05f, 1f);
         if (t.bulkheadSealed) return new Color(0.75f, 0.6f, 0.15f, 1f);
@@ -233,7 +233,7 @@ public class CrewDemo extends ApplicationAdapter {
             return new Color(0.25f + 0.5f * (1f - h), 0.3f + 0.3f * h, 0.55f * h + 0.1f, 1f);
         }
         if (t.covering != com.ringsofiron.interiorgrid.FloorCovering.NONE) return new Color(0.33f, 0.2f, 0.2f, 1f);
-        if (t.isPowerConduit()) return new Color(0.22f, 0.24f, 0.18f, 1f);
+        if (conduit) return new Color(0.22f, 0.24f, 0.18f, 1f);
         return new Color(0.2f, 0.21f, 0.24f, 1f);
     }
 

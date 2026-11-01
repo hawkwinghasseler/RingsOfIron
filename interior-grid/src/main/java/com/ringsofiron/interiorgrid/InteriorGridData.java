@@ -117,27 +117,34 @@ public final class InteriorGridData {
     public static ChassisBlueprint toBlueprint(ChassisDef def, ShipPartCatalog catalog) {
         ChassisBlueprint bp = new ChassisBlueprint(def.rows).tileSize(def.tileSize).origin(def.originX, def.originY)
                 .catalog(catalog);
+        int width = bp.width(), height = def.rows.length;
         for (ChassisDef.EdgeWall w : def.edgeWalls) {
-            bp.edgeWalls.add(new ChassisBlueprint.EdgeWallDef(w.x, w.y, Side.valueOf(w.side),
-                    WeightClass.valueOf(w.weightClass), w.material, w.bulkhead));
+            WeightClass weight = WeightClass.valueOf(w.weightClass);
+            for (LayoutRuns.Edge e : LayoutRuns.edges(w.path, width, height)) {
+                bp.edgeWalls.add(new ChassisBlueprint.EdgeWallDef(e.x, e.y, e.side, weight, w.material, false));
+            }
         }
-        for (ChassisDef.EdgeConduit c : def.edgeConduits) bp.edgeConduit(c.x, c.y, Side.valueOf(c.side));
-        for (ChassisDef.Pipe p : def.pipes) {
-            if (p.side == null) bp.pipe(p.x, p.y);
-            else bp.pipe(p.x, p.y, Side.valueOf(p.side));
+        for (ChassisDef.Door d : def.doors) bp.door(d.x, d.y, Side.valueOf(d.side));
+        for (int[][] run : def.conduits) {
+            for (int[] t : LayoutRuns.tiles(run)) bp.conduit(t[0], t[1]);
+        }
+        for (int[][] run : def.edgeConduits) {
+            for (LayoutRuns.Edge e : LayoutRuns.edges(run, width, height)) bp.edgeConduit(e.x, e.y, e.side);
+        }
+        for (int[][] run : def.pipes) {
+            for (int[] t : LayoutRuns.tiles(run)) bp.pipe(t[0], t[1]);
+        }
+        for (int[][] run : def.edgePipes) {
+            for (LayoutRuns.Edge e : LayoutRuns.edges(run, width, height)) bp.pipe(e.x, e.y, e.side);
         }
         for (ChassisDef.HullPiece p : def.hullPieces) {
             bp.hullPiece(new HullPiece(HullPiece.Shape.valueOf(p.shape), p.x, p.y, p.width, p.height, p.rotation,
                     WeightClass.valueOf(p.weightClass), p.material));
         }
         for (ChassisDef.Mount m : def.mounts) {
-            ShipPartCatalog.ComponentType component;
-            if (m.component != null) {
-                component = catalog.component(m.component);
-                if (component == null) throw new IllegalArgumentException("Unknown component '" + m.component + "'");
-            } else {
-                component = catalog.standardComponent(SubsystemComponent.SubsystemType.valueOf(m.type));
-            }
+            if (m.component == null) throw new IllegalArgumentException("A mount needs a component");
+            ShipPartCatalog.ComponentType component = catalog.component(m.component);
+            if (component == null) throw new IllegalArgumentException("Unknown component '" + m.component + "'");
             bp.mount(new MountFootprint(component.mountKind(), MountFootprint.MountSize.valueOf(m.size), m.x, m.y,
                     m.rotation), component);
         }

@@ -10,7 +10,7 @@ import com.ringsofiron.interiorgrid.crew.Suit;
  *
  * Tiles point at shared objects (their compartment, hull piece and mount), which a
  * field-by-field save would duplicate. This writes each thing once: the tiles' own
- * state, the edge walls, hull pieces and mounts, and each compartment's air keyed by one
+ * state, the conduits and pipes on and between them, the edge walls, hull pieces and mounts, and each compartment's air keyed by one
  * of its tiles. Loading places the pieces and mounts again, rebuilds the compartments
  * from the layout and pours each room's saved air back in. Airflow and power are
  * recalculated on the next tick.
@@ -46,7 +46,6 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 json.writeValue("integrity", t.integrity);
                 json.writeValue("sealed", t.bulkheadSealed);
                 if (t.patchedAt > 0f) json.writeValue("patch", t.patchedAt);
-                if (t.shorted) json.writeValue("short", true);
                 json.writeObjectEnd();
             }
         }
@@ -54,6 +53,7 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
 
         writeEdges(json, "edgeH", grid.edgeH);
         writeEdges(json, "edgeV", grid.edgeV);
+        writeTileConduits(json, grid.tileConduits);
         writeConduits(json, "conduitH", grid.conduitH);
         writeConduits(json, "conduitV", grid.conduitV);
         writePipes(json, "pipes", grid.pipes);
@@ -193,6 +193,23 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
         json.writeArrayEnd();
     }
 
+    private static void writeTileConduits(Json json, TileConduit[][] conduits) {
+        json.writeArrayStart("conduits");
+        for (int y = 0; y < conduits.length; y++) {
+            for (int x = 0; x < conduits[y].length; x++) {
+                TileConduit c = conduits[y][x];
+                if (c == null) continue;
+                json.writeObjectStart();
+                json.writeValue("x", x);
+                json.writeValue("y", y);
+                json.writeValue("integrity", c.integrity);
+                if (c.shorted) json.writeValue("short", true);
+                json.writeObjectEnd();
+            }
+        }
+        json.writeArrayEnd();
+    }
+
     private static void writeConduits(Json json, String name, EdgeConduit[][] conduits) {
         json.writeArrayStart(name);
         for (int y = 0; y < conduits.length; y++) {
@@ -241,16 +258,18 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             t.integrity = v.getFloat("integrity");
             t.bulkheadSealed = v.getBoolean("sealed");
             t.patchedAt = v.getFloat("patch", 0f);
-            t.shorted = v.getBoolean("short", false);
         }
-        // Older saves may still carry "crushed" and "dents" (collision crushing and hull warping, since removed); they are ignored
 
         readEdges(data.get("edgeH"), grid.edgeH);
         readEdges(data.get("edgeV"), grid.edgeV);
-        // Saves from before edge conduits have none
+        for (JsonValue c = data.get("conduits").child; c != null; c = c.next) {
+            TileConduit conduit = new TileConduit();
+            conduit.integrity = c.getFloat("integrity");
+            conduit.shorted = c.getBoolean("short", false);
+            grid.tileConduits[c.getInt("y")][c.getInt("x")] = conduit;
+        }
         readConduits(data.get("conduitH"), grid.conduitH);
         readConduits(data.get("conduitV"), grid.conduitV);
-        // Saves from before pipes have none
         readPipes(data.get("pipes"), grid.pipes);
         readPipes(data.get("pipeH"), grid.pipeH);
         readPipes(data.get("pipeV"), grid.pipeV);
@@ -347,12 +366,10 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
     }
 
     private static void readPipes(JsonValue list, Pipe[][] pipes) {
-        if (list == null) return;
         for (JsonValue p = list.child; p != null; p = p.next) pipes[p.getInt("y")][p.getInt("x")] = new Pipe();
     }
 
     private static void readConduits(JsonValue list, EdgeConduit[][] conduits) {
-        if (list == null) return;
         for (JsonValue c = list.child; c != null; c = c.next) conduits[c.getInt("y")][c.getInt("x")] = new EdgeConduit();
     }
 

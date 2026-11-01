@@ -20,6 +20,7 @@ import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 
 
 /**
@@ -54,8 +55,21 @@ public class PenetrationResolver {
     public static final float RICOCHET_SCRAPE = 0.05f;
     /** Joules a round loses crossing one open floor tile (air, fittings, clutter). */
     public static final float FLOOR_RESISTANCE = 2e5f;
-    /** Joules that cut a power conduit from intact to severed. */
+    /**
+     * Joules that cut a power conduit from intact to severed: two rounds that strike it
+     * ({@link #FLOOR_RESISTANCE} each). A conduit across a tile has its own condition: the energy
+     * a tile takes damages the tile and the conduit on it each on their own.
+     */
     public static final float CONDUIT_HIT_POINTS = 4e5f;
+    /**
+     * Chance that a round, a fragment or a beam crossing a tile strikes the conduit laid across it:
+     * a cable run fills about a quarter of a 1 m tile seen edge-on, where a person fills a bit less
+     * than half ({@link #CREW_HIT_CHANCE}). So eight rounds cross its tile, on average, before two
+     * strike it and cut it. Nov 2026: while every round through its tile struck it, with a conduit
+     * under every powered system, two rounds through a corvette's nose turret cut its power with
+     * the turret itself unhurt, and the raider won the scripted first fight from three of six ranges.
+     */
+    public static final float CONDUIT_HIT_CHANCE = 0.25f;
     /** Joules a crew member's body takes out of a round. */
     public static final float CREW_RESISTANCE = 2e3f;
     /** Joules of absorbed energy per health point of crew injury. */
@@ -148,6 +162,8 @@ public class PenetrationResolver {
     CrewDamageBridge crew;
     /** {@link #CREW_HIT_CHANCE}, or 1 for tests that need every round in a person's path to strike them. */
     private float crewHitChance = CREW_HIT_CHANCE;
+    /** {@link #CONDUIT_HIT_CHANCE}, or 1 for tests that need every round across a conduit to strike it. */
+    private float conduitHitChance = CONDUIT_HIT_CHANCE;
 
     // Per-call state (one call at a time).
     ShipGridComponent grid;
@@ -177,6 +193,11 @@ public class PenetrationResolver {
     /** Sets the chance a round crossing a tile strikes each person on it ({@link #CREW_HIT_CHANCE}). */
     public void setCrewHitChance(float chance) {
         this.crewHitChance = chance;
+    }
+
+    /** Sets the chance a round crossing a tile strikes the conduit across it ({@link #CONDUIT_HIT_CHANCE}). */
+    public void setConduitHitChance(float chance) {
+        this.conduitHitChance = chance;
     }
 
     public MaterialTable getMaterials() {
@@ -675,12 +696,43 @@ public class PenetrationResolver {
         float absorbed = Math.min(ray.budget, hp * integrity);
         ray.budget -= absorbed;
         damagePiece(tile, (absorbed + stripped * ARMOR_WEAR) / hp);
+        // A conduit laid over the wall takes what got through its armor, if the round strikes it
+        strikeConduit(x, y, absorbed, true);
         lastAbsorbed = stripped + absorbed;
         ray.absorbed += lastAbsorbed;
     }
 
     void damagePiece(Tile tile, float integrityLoss) {
         tile.setIntegrity(tile.getIntegrity() - integrityLoss);
+    }
+
+    /**
+     * A round, fragment or beam crossing tile (x, y) with {@code joules} for the conduit across
+     * it, if there is one: it strikes the conduit with {@link #CONDUIT_HIT_CHANCE}
+     * ({@link #damageConduit}) and passes it by otherwise.
+     */
+    void strikeConduit(int x, int y, float joules, boolean canShort) {
+        TileConduit conduit = grid.getTileConduit(x, y);
+        if (conduit == null || conduit.isCut() || joules <= 0f) return;
+        if (conduitHitChance < 1f && rng != null && rng.nextFloat() >= conduitHitChance) return;
+        damageConduit(x, y, joules, canShort);
+    }
+
+    /**
+     * {@code joules} into the conduit across tile (x, y), if there is one: it can cut it (power
+     * reroutes at once) or, with {@code canShort}, short it.
+     */
+    void damageConduit(int x, int y, float joules, boolean canShort) {
+        TileConduit conduit = grid.getTileConduit(x, y);
+        if (conduit == null || conduit.isCut() || joules <= 0f) return;
+        float was = conduit.integrity;
+        conduit.integrity = Math.max(0f, was - joules / CONDUIT_HIT_POINTS);
+        if (conduit.isCut()) {
+            grid.gridDirty = true;
+            if (report != null) report.structureChanged = true;
+        } else if (canShort && DamageStates.maybeShortConduit(grid, x, y, was - conduit.integrity, rng) && report != null) {
+            report.shorts.add(pack(x, y));
+        }
     }
 
     /** A ray crossing an open floor tile. */
@@ -711,21 +763,12 @@ public class PenetrationResolver {
             }
         }
 
-        // Deck fittings and conduit.
+        // Deck fittings, and the conduit on the deck if the round strikes it: each takes the hit on
+        // its own condition
         float take = Math.min(ray.budget, FLOOR_RESISTANCE);
         ray.budget -= take;
-        if (tile.isPowerConduit()) {
-            float was = tile.getIntegrity();
-            damagePiece(tile, take / CONDUIT_HIT_POINTS);
-            if (was > 0f && tile.getIntegrity() <= 0f) {
-                grid.gridDirty = true;
-                if (report != null) report.structureChanged = true;
-            } else if (DamageStates.maybeShortConduit(grid, x, y, was - tile.getIntegrity(), rng) && report != null) {
-                report.shorts.add(pack(x, y));
-            }
-        } else {
-            damagePiece(tile, take / materials.get(tile.material, tile.weightClass).hitPoints);
-        }
+        damagePiece(tile, take / materials.get(tile.material, tile.weightClass).hitPoints);
+        strikeConduit(x, y, take, true);
 
         float spent = before - ray.budget;
         ray.absorbed += spent;

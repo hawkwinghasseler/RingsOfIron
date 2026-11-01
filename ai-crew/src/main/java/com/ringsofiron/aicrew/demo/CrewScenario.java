@@ -11,6 +11,7 @@ import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.interiorgrid.ChassisBlueprint;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.CompartmentBuilder;
 import com.ringsofiron.interiorgrid.FloorCovering;
 import com.ringsofiron.interiorgrid.GridHazardSystem;
@@ -38,10 +39,10 @@ public class CrewScenario {
     public static final String[] BLUEPRINT = {
         "#########################",
         "#.......................#",
-        "#.R+++++++++++++++++HH..#",
         "#.......................#",
         "#.......................#",
-        "#.LL....................#",
+        "#.......................#",
+        "#.......................#",
         "#.......................#",
         "#########################"
     };
@@ -75,7 +76,12 @@ public class CrewScenario {
 
     /** @param withCrew false for an empty ship (tests add their own crew) */
     public CrewScenario(boolean withCrew) {
-        ChassisBlueprint bp = new ChassisBlueprint(BLUEPRINT).tileSize(1f);
+        ChassisBlueprint bp = new ChassisBlueprint(BLUEPRINT).tileSize(1f)
+                .mount("life_support", MountFootprint.MountSize.S, 2, 2, 1)
+                .mount("reactor", MountFootprint.MountSize.S, 2, 5)
+                .mount("helm", MountFootprint.MountSize.S, 20, 5, 1)
+                .conduitRun(2, 5, 20, 5)
+                .conduitRun(2, 2, 2, 5);
         for (int y = 1; y <= 6; y++) {
             bp.edgeWall(WALL_A_X, y, Side.LEFT, WeightClass.LIGHT, y == DOOR_A_Y);
             bp.edgeWall(WALL_B_X, y, Side.LEFT, WeightClass.LIGHT, y == DOOR_B_Y);

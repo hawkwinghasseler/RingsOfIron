@@ -23,6 +23,7 @@ import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.SuitLockers;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
 import com.ringsofiron.interiorgrid.crew.Suit;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -331,6 +332,7 @@ public final class DebugActions {
         ShipGridComponent g = gridOf(ship);
         Tile t = tileOf(g, x, y);
         mend(t);
+        mend(g.getTileConduit(x, y));
         SubsystemComponent s = systemOn(t);
         if (s != null) mend(s);
         g.gridDirty = true;
@@ -344,7 +346,10 @@ public final class DebugActions {
     public String repairShip(Entity ship) {
         ShipGridComponent g = gridOf(ship);
         for (int y = 0; y < g.height; y++) {
-            for (int x = 0; x < g.width; x++) mend(g.getTile(x, y));
+            for (int x = 0; x < g.width; x++) {
+                mend(g.getTile(x, y));
+                mend(g.getTileConduit(x, y));
+            }
         }
         for (EdgeWall[][] edges : new EdgeWall[][][]{g.edgeH, g.edgeV}) {
             for (EdgeWall[] row : edges) {
@@ -380,8 +385,13 @@ public final class DebugActions {
         t.setIntegrity(1f);
         t.clearPatch();
         t.extinguish();
-        t.shorted = false;
-        t.shortedFor = 0f;
+    }
+
+    private static void mend(TileConduit c) {
+        if (c == null) return;
+        c.integrity = 1f;
+        c.shorted = false;
+        c.shortedFor = 0f;
     }
 
     private static void mend(SubsystemComponent s) {

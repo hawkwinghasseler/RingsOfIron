@@ -132,7 +132,7 @@ abstract class EditorCanvas extends EditorState {
 
         // Edge walls, thick
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        for (ChassisDef.EdgeWall e : withArt ? java.util.Collections.<ChassisDef.EdgeWall>emptyList() : m.edgeWalls) {
+        for (ChassisModel.EdgeWall e : withArt ? java.util.Collections.<ChassisModel.EdgeWall>emptyList() : m.edgeWalls) {
             Side s = Side.valueOf(e.side);
             if (e.bulkhead) shapes.setColor(0.3f, 0.85f, 0.95f, 1f);
             else shapes.setColor(0.85f, 0.85f, 0.85f, 1f);
@@ -163,9 +163,25 @@ abstract class EditorCanvas extends EditorState {
             shapes.setColor(0.62f, 0.85f, 1f, 0.5f);
             rcsRect(hoverX, hoverY, nearestSide(), rcsKind);
         }
-        // Conduits along edges: a thin amber line, over any wall they run in
+        // Conduits across tiles: an amber dot in the middle, reaching toward each neighbor it joins
         float wire = Math.max(2f, scale * 0.08f);
-        for (ChassisDef.EdgeConduit run : withArt ? java.util.Collections.<ChassisDef.EdgeConduit>emptyList() : m.edgeConduits) {
+        if (!withArt) {
+            shapes.setColor(0.95f, 0.7f, 0.2f, 1f);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    if (!m.conduitAt(x, y)) continue;
+                    shapes.rect(sx(x + 0.38f), sy(y + 0.38f), scale * 0.24f, scale * 0.24f);
+                    for (Side side : Side.values()) {
+                        if (!conduitToward(m, x, y, side)) continue;
+                        float cx = sx(x + 0.5f), cy = sy(y + 0.5f);
+                        if (side.dx != 0) shapes.rect(side.dx > 0 ? cx : cx - scale / 2f, cy - wire / 2f, scale / 2f, wire);
+                        else shapes.rect(cx - wire / 2f, side.dy > 0 ? cy : cy - scale / 2f, wire, scale / 2f);
+                    }
+                }
+            }
+        }
+        // Conduits along edges: a thin amber line, over any wall they run in
+        for (ChassisModel.EdgeConduit run : withArt ? java.util.Collections.<ChassisModel.EdgeConduit>emptyList() : m.edgeConduits) {
             shapes.setColor(0.95f, 0.7f, 0.2f, 1f);
             edgeRect(run.x, run.y, Side.valueOf(run.side), wire);
         }
@@ -179,7 +195,7 @@ abstract class EditorCanvas extends EditorState {
         if (!withArt) {
             shapes.setColor(0.45f, 0.75f, 0.85f, 1f);
             float pw = Math.max(2f, scale * 0.08f);
-            for (ChassisDef.Pipe p : m.pipes) {
+            for (ChassisModel.Pipe p : m.pipes) {
                 if (p.side != null) {
                     edgeRect(p.x, p.y, Side.valueOf(p.side), pw);
                     continue;
@@ -210,7 +226,7 @@ abstract class EditorCanvas extends EditorState {
                 ShipPartCatalog.ComponentType type = cat.component(mount.component);
                 if (f == null || type == null) continue;
                 font.setColor(Color.BLACK);
-                String label = type.symbol + " " + f.size;
+                String label = label(type) + " " + f.size;
                 layout.setText(font, label);
                 font.draw(batch, label, sx(f.originX + f.width() / 2f) - layout.width / 2f,
                         sy(f.originY + f.height() / 2f) + layout.height / 2f);
@@ -254,20 +270,10 @@ abstract class EditorCanvas extends EditorState {
                 float x0 = sx(x), y0 = sy(y);
                 switch (t.base) {
                     case FLOOR:
-                    case CONDUIT:
-                        // A conduit's junction sits on the steel floor and any covering laid over it
-                        boolean conduit = t.base == ShipPartCatalog.TileBase.CONDUIT;
-                        artTile(conduit ? art.region("tiles/floor") : tileArt(t, "tiles/floor"), x0, y0, 0);
+                        artTile(tileArt(t, "tiles/floor"), x0, y0, 0);
                         ChassisDef.Covering cov = m.coveringAt(x, y);
                         String covering = cov == null ? null : ArtNames.covering(FloorCovering.valueOf(cov.covering));
                         if (covering != null) artTile(art.region(covering), x0, y0, 0);
-                        if (!conduit) break;
-                        artTile(tileArt(t, ArtNames.conduit(true)), x0, y0, 0);
-                        TextureRegion arm = art.region(ArtNames.conduitArm(true));
-                        if (conduitToward(m, cat, x, y, Side.TOP)) artTile(arm, x0, y0, 0);
-                        if (conduitToward(m, cat, x, y, Side.LEFT)) artTile(arm, x0, y0, 1);
-                        if (conduitToward(m, cat, x, y, Side.BOTTOM)) artTile(arm, x0, y0, 2);
-                        if (conduitToward(m, cat, x, y, Side.RIGHT)) artTile(arm, x0, y0, 3);
                         break;
                     default:
                         ChassisDef.HullPiece piece = m.hullPieceAt(x, y);
@@ -280,6 +286,20 @@ abstract class EditorCanvas extends EditorState {
                         artTile(wallArt(t, mask), x0, y0, 0);
                         break;
                 }
+            }
+        }
+        // Conduits across tiles, over the floor or wall they lie on and under any system mounted there
+        TextureRegion junction = art.region(ArtNames.conduit(true));
+        TextureRegion arm = art.region(ArtNames.conduitArm(true));
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                if (!m.conduitAt(x, y)) continue;
+                float x0 = sx(x), y0 = sy(y);
+                artTile(junction, x0, y0, 0);
+                if (conduitToward(m, x, y, Side.TOP)) artTile(arm, x0, y0, 0);
+                if (conduitToward(m, x, y, Side.LEFT)) artTile(arm, x0, y0, 1);
+                if (conduitToward(m, x, y, Side.BOTTOM)) artTile(arm, x0, y0, 2);
+                if (conduitToward(m, x, y, Side.RIGHT)) artTile(arm, x0, y0, 3);
             }
         }
         for (ChassisDef.HullPiece p : m.hullPieces) {
@@ -317,7 +337,7 @@ abstract class EditorCanvas extends EditorState {
         WeightClass[][] hEdges = new WeightClass[h + 1][w], vEdges = new WeightClass[h][w + 1];
         String[][] hMaterial = new String[h + 1][w], vMaterial = new String[h][w + 1];
         float t = scale / 4f;
-        for (ChassisDef.EdgeWall e : m.edgeWalls) {
+        for (ChassisModel.EdgeWall e : m.edgeWalls) {
             Side side = Side.valueOf(e.side);
             WeightClass weight = WeightClass.valueOf(e.weightClass);
             boolean horizontal = side == Side.TOP || side == Side.BOTTOM;
@@ -432,7 +452,7 @@ abstract class EditorCanvas extends EditorState {
 
     /**
      * Conduits along edges, over the walls they run in: segments, a joint at each vertex they reach
-     * and a tap where a conduit tile meets one; two stretched conduit arms each without that art.
+     * and a tap where a conduit across a tile meets one; two stretched conduit arms each without that art.
      */
     void drawEdgeConduitArt(ChassisModel m, ShipPartCatalog cat, float t) {
         int w = m.width(), h = m.height();
@@ -441,7 +461,7 @@ abstract class EditorCanvas extends EditorState {
         if (segmentH == null || segmentV == null) {
             TextureRegion arm = art.region(ArtNames.conduitArm(true));
             if (arm == null) return;
-            for (ChassisDef.EdgeConduit c : m.edgeConduits) {
+            for (ChassisModel.EdgeConduit c : m.edgeConduits) {
                 Side side = Side.valueOf(c.side);
                 DeckArt.edgeConduit(batch, arm, sx(c.x + 0.5f + side.dx * 0.5f), sy(c.y + 0.5f + side.dy * 0.5f), scale,
                         side.dy != 0);
@@ -449,7 +469,7 @@ abstract class EditorCanvas extends EditorState {
             return;
         }
         boolean[][] hRuns = new boolean[h + 1][w], vRuns = new boolean[h][w + 1];
-        for (ChassisDef.EdgeConduit c : m.edgeConduits) {
+        for (ChassisModel.EdgeConduit c : m.edgeConduits) {
             Side side = Side.valueOf(c.side);
             int ex = c.x + (side == Side.RIGHT ? 1 : 0), ey = c.y + (side == Side.TOP ? 1 : 0);
             if (side.dy != 0 && ey >= 0 && ey <= h && ex >= 0 && ex < w) {
@@ -471,11 +491,11 @@ abstract class EditorCanvas extends EditorState {
         }
         TextureRegion tap = art.region(ArtNames.edgeConduitTap(true));
         if (tap == null) return;
-        for (ChassisDef.EdgeConduit c : m.edgeConduits) {
+        for (ChassisModel.EdgeConduit c : m.edgeConduits) {
             Side side = Side.valueOf(c.side);
             float cx = sx(c.x + 0.5f + side.dx * 0.5f), cy = sy(c.y + 0.5f + side.dy * 0.5f);
             // On whichever tile beside the edge carries a conduit across it
-            if (conduitAt(m, cat, c.x, c.y) || conduitAt(m, cat, c.x + side.dx, c.y + side.dy)) {
+            if (m.conduitAt(c.x, c.y) || m.conduitAt(c.x + side.dx, c.y + side.dy)) {
                 batch.draw(tap, cx - t / 2f, cy - t / 2f, t, t);
             }
         }
@@ -526,15 +546,19 @@ abstract class EditorCanvas extends EditorState {
         return m.inBounds(x, y) && m.tiles[y][x] == ch;
     }
 
-    /** Whether a conduit on tile (x, y) reaches toward {@code side}: to the next tile's, or one along that edge. */
-    static boolean conduitToward(ChassisModel m, ShipPartCatalog cat, int x, int y, Side side) {
-        return m.edgeConduitAt(x, y, side) != null || conduitAt(m, cat, x + side.dx, y + side.dy);
+    /** Whether a conduit across tile (x, y) reaches toward {@code side}: to the next tile's, or one along that edge. */
+    static boolean conduitToward(ChassisModel m, int x, int y, Side side) {
+        return m.edgeConduitAt(x, y, side) != null || m.conduitAt(x + side.dx, y + side.dy);
     }
 
-    static boolean conduitAt(ChassisModel m, ShipPartCatalog cat, int x, int y) {
-        if (!m.inBounds(x, y)) return false;
-        ShipPartCatalog.TileType t = cat.tileFor(m.tiles[y][x]);
-        return t != null && t.base == ShipPartCatalog.TileBase.CONDUIT;
+    /** A component's short label on the canvas: the first letter of its name. */
+    static String label(ShipPartCatalog.ComponentType type) {
+        return label(type.name, type.id);
+    }
+
+    static String label(String name, String id) {
+        String n = name == null || name.isEmpty() ? id : name;
+        return n.substring(0, 1).toUpperCase(java.util.Locale.ROOT);
     }
 
     /** A one-tile region at a tile's bottom-left corner, turned {@code quarters} about its middle. */
@@ -556,6 +580,7 @@ abstract class EditorCanvas extends EditorState {
             sb.append(" | ").append(type != null ? type.name : mount.component).append(' ').append(mount.size);
             if (ChassisModel.isPort(mount, cat)) sb.append(mount.active ? " (active)" : " (passive)");
         }
+        if (m.conduitAt(x, y)) sb.append(" | power conduit");
         if (m.hullPieceAt(x, y) != null) sb.append(" | hull piece");
         if (m.coveringAt(x, y) != null) sb.append(" | ").append(m.coveringAt(x, y).covering.toLowerCase(Locale.ROOT));
         float bx = m.originX + (x + 0.5f) * m.tileSize, by = m.originY + (y + 0.5f) * m.tileSize;

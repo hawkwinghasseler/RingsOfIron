@@ -31,7 +31,6 @@ class ShipPartCatalogTest {
         defs.define("tile", "carpet", carpet);
         Map<String, Object> core = new LinkedHashMap<>();
         core.put("name", "Fusion core");
-        core.put("symbol", "F");
         core.put("behavior", "REACTOR");
         core.put("sizes", Arrays.asList("M"));
         Map<String, Object> output = new HashMap<>();
@@ -39,7 +38,6 @@ class ShipPartCatalogTest {
         core.put("power_output", output);
         defs.define("component", "fusion_core", core);
         Map<String, Object> scrubber = new LinkedHashMap<>();
-        scrubber.put("symbol", "Z");
         scrubber.put("behavior", "LIFE_SUPPORT");
         scrubber.put("throughput", 2.5);
         defs.define("component", "big_scrubber", scrubber);
@@ -53,13 +51,23 @@ class ShipPartCatalogTest {
         return def;
     }
 
+    private static ChassisDef.Mount mount(String component, String size, int x, int y) {
+        ChassisDef.Mount m = new ChassisDef.Mount();
+        m.component = component;
+        m.size = size;
+        m.x = x;
+        m.y = y;
+        return m;
+    }
+
     @Test
     void builtInsKeepTheirCharacters() {
         ShipPartCatalog c = ShipPartCatalog.builtIn();
         assertEquals(ShipPartCatalog.TileBase.HULL, c.tileFor('#').base);
         assertEquals(WeightClass.HEAVY, c.tileFor('3').weightClass);
-        assertEquals(SubsystemComponent.SubsystemType.REACTOR, c.componentFor('R').behavior);
-        assertNull(c.tileFor('R'));
+        assertEquals(SubsystemComponent.SubsystemType.REACTOR, c.component("reactor").behavior);
+        assertNull(c.tileFor('R'), "letters are not tiles");
+        assertNull(c.tileFor('+'), "nor is a conduit: conduits lie on tiles");
         assertSame(c.component("cargo"), c.standardComponent(SubsystemComponent.SubsystemType.CARGO));
     }
 
@@ -84,9 +92,11 @@ class ShipPartCatalogTest {
         ShipPartCatalog c = ShipPartCatalog.from(defs);
         ChassisDef def = chassis(
                 "######",
-                "#FF.Z#",
-                "#FF.Z#",
+                "#....#",
+                "#....#",
                 "######");
+        def.mounts.add(mount("fusion_core", "M", 1, 1));
+        def.mounts.add(mount("big_scrubber", "S", 4, 1));
         ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(InteriorGridData.toBlueprint(def, c));
         assertEquals(2, r.subsystems.size);
         for (ChassisBlueprintLoader.SubsystemPlacement p : r.subsystems) {
@@ -129,21 +139,30 @@ class ShipPartCatalogTest {
         ShipPartCatalog c = InteriorGridData.catalog(defs);
         assertSame(c, InteriorGridData.catalog(defs));
         Map<String, Object> more = new LinkedHashMap<>();
-        more.put("symbol", "Q");
         more.put("behavior", "CARGO");
         defs.define("component", "crate_rack", more);
         assertNotSame(c, InteriorGridData.catalog(defs));
-        assertNotNull(InteriorGridData.catalog(defs).componentFor('Q'));
+        assertNotNull(InteriorGridData.catalog(defs).component("crate_rack"));
     }
 
     @Test
     void symbolsMustBeUnique() {
         DefRegistry defs = defs();
         Map<String, Object> clash = new LinkedHashMap<>();
-        clash.put("symbol", "R");
+        clash.put("symbol", "c");
         clash.put("base", "FLOOR");
         defs.define("tile", "red_floor", clash);
         assertThrows(IllegalArgumentException.class, () -> ShipPartCatalog.from(defs));
+    }
+
+    @Test
+    void lettersAreFreeForTilesSinceComponentsHaveNone() {
+        DefRegistry defs = defs();
+        Map<String, Object> red = new LinkedHashMap<>();
+        red.put("symbol", "R");
+        red.put("base", "FLOOR");
+        defs.define("tile", "red_floor", red);
+        assertEquals("red_floor", ShipPartCatalog.from(defs).tileFor('R').id);
     }
 
     @Test
@@ -170,7 +189,6 @@ class ShipPartCatalogTest {
         }
         for (ShipPartCatalog.ComponentType t : builtIn.components()) {
             ShipPartCatalog.ComponentType d = data.component(t.id);
-            assertEquals(t.symbol, d.symbol, t.id);
             assertEquals(t.behavior, d.behavior, t.id);
             assertEquals(t.sizes, d.sizes, t.id);
         }

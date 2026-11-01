@@ -11,6 +11,9 @@ import com.badlogic.gdx.utils.Array;
  * A tile can also belong to a multi-tile {@link HullPiece} or lie inside a system
  * {@link MountFootprint}.
  *
+ * Power conduits are not part of a tile: they lie on top of it ({@link TileConduit}) or along its
+ * edges ({@link EdgeConduit}), on the grid's own layers, with a condition of their own.
+ *
  * Every floor is a steel deck plate. A {@link FloorCovering} such as carpet can be laid
  * on top of it; that covering is the fuel a fire burns, along with any {@link Furnishing}s set
  * down on the tile. Air does not live on tiles: it belongs to the tile's {@link Compartment}.
@@ -25,8 +28,7 @@ public class Tile {
 
     public enum FloorType {
         NONE,       // Void/space - impassable and not part of the ship
-        FLOOR,      // Standard walkable steel floor
-        POWER_CONDUIT // A steel floor carrying a power conduit, also walkable
+        FLOOR       // Standard walkable steel floor
     }
 
     /** How big a fire is, for display and crew decisions. */
@@ -79,15 +81,6 @@ public class Tile {
      * pieces share it. See {@link #isPatched(float, float)}.
      */
     public float patchedAt = 0f;
-    /**
-     * A power conduit tile a short circuit has faulted (see {@link DamageStates}): it carries no
-     * power until the crew reset it or a yard repairs it. Saved.
-     */
-    public boolean shorted = false;
-    /** Seconds it has been shorted (see {@link DamageStates#AUTO_RESET}). Not saved: a loaded short starts its wait again. */
-    public float shortedFor = 0f;
-    /** Whether this tile is connected to a powered reactor via power conduits. */
-    public boolean isPowered = false;
 
     /** The compartment whose air fills this tile, or null. Set by {@link CompartmentBuilder}. */
     public Compartment compartment;
@@ -124,10 +117,6 @@ public class Tile {
 
     public boolean isVoid() {
         return floorType == FloorType.NONE && wallType == WallType.NONE;
-    }
-
-    public boolean isPowerConduit() {
-        return floorType == FloorType.POWER_CONDUIT;
     }
 
     /**

@@ -15,14 +15,16 @@ class CargoHoldTest {
     /** A 2x3 cargo bay (6 tiles) aft of a corridor, and a 1x2 one forward. */
     private static final String[] LAYOUT = {
         "########",
-        "#CC....#",
-        "#CC..CC#",
-        "#CC....#",
+        "#......#",
+        "#......#",
+        "#......#",
         "########",
     };
 
     private static ChassisBlueprintLoader.LoadResult ship() {
-        return ChassisBlueprintLoader.load(new ChassisBlueprint(LAYOUT).tileSize(1f).origin(-4f, -2.5f));
+        return ChassisBlueprintLoader.load(new ChassisBlueprint(LAYOUT).tileSize(1f).origin(-4f, -2.5f)
+                .mount("cargo", MountFootprint.MountSize.M, 1, 1)
+                .mount("cargo", MountFootprint.MountSize.S, 5, 2, 1));
     }
 
     private static CargoHoldComponent hold(ChassisBlueprintLoader.LoadResult r) {

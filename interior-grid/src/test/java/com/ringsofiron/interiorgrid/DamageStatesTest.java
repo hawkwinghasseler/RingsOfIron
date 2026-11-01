@@ -85,8 +85,11 @@ class DamageStatesTest {
     void aShortNobodyResetsClearsWhenItsBreakerRecloses() {
         ShipGridComponent grid = ship(new ChassisBlueprint(
                 "##########",
-                "#R++++HH.#",
-                "##########").tileSize(1f));
+                "#........#",
+                "##########")
+                .mount("reactor", MountFootprint.MountSize.S, 1, 1)
+                .mount("helm", MountFootprint.MountSize.S, 6, 1, 1)
+                .conduitRun(1, 1, 6, 1).tileSize(1f));
         SubsystemComponent reactor = system(grid, SubsystemComponent.SubsystemType.REACTOR);
         DamageStates.shortOut(grid, reactor, 1, 1, NEVER);
         DamageStates.shortOut(grid, 3, 1, NEVER);
@@ -95,7 +98,7 @@ class DamageStatesTest {
         assertTrue(reactor.shorted, "still waiting on the crew");
         run(2f);
         assertFalse(reactor.shorted, "reclosed by itself");
-        assertFalse(grid.getTile(3, 1).shorted);
+        assertFalse(grid.getTileConduit(3, 1).shorted);
         assertFalse(DamageStates.awaitingReset(grid, registry));
         assertTrue(system(grid, SubsystemComponent.SubsystemType.HELM).isOperational);
     }
@@ -131,13 +134,16 @@ class DamageStatesTest {
     void aShortedConduitCutsPowerAlongItsRun() {
         ShipGridComponent grid = ship(new ChassisBlueprint(
                 "##########",
-                "#R++++HH.#",
-                "##########").tileSize(1f));
+                "#........#",
+                "##########")
+                .mount("reactor", MountFootprint.MountSize.S, 1, 1)
+                .mount("helm", MountFootprint.MountSize.S, 6, 1, 1)
+                .conduitRun(1, 1, 6, 1).tileSize(1f));
         SubsystemComponent helm = system(grid, SubsystemComponent.SubsystemType.HELM);
         assertTrue(helm.isOperational);
-        grid.getTile(3, 1).setIntegrity(0.7f);
+        grid.getTileConduit(3, 1).integrity = 0.7f;
         assertTrue(DamageStates.maybeShortConduit(grid, 3, 1, 0.3f, ALWAYS));
-        assertTrue(grid.getTile(3, 1).shorted);
+        assertTrue(grid.getTileConduit(3, 1).shorted);
         engine.update(0f);
         assertFalse(helm.powered, "the only way to the helm is cut");
         DamageStates.reset(grid, 3, 1);
@@ -156,7 +162,7 @@ class DamageStatesTest {
 
     @Test
     void aPropellantTankBurstPoolsFuelAndLightsIt() {
-        ShipGridComponent grid = ship(tankRoom("PP"));
+        ShipGridComponent grid = ship(tankRoom("tank"));
         SubsystemComponent tank = system(grid, SubsystemComponent.SubsystemType.TANK);
         double kg = tank.contents;
         assertTrue(kg > 0);
@@ -178,7 +184,7 @@ class DamageStatesTest {
 
     @Test
     void aTankAboveItsThresholdOnlyLeaks() {
-        ShipGridComponent grid = ship(tankRoom("PP"));
+        ShipGridComponent grid = ship(tankRoom("tank"));
         SubsystemComponent tank = system(grid, SubsystemComponent.SubsystemType.TANK);
         tank.health = 0.4f;
         assertFalse(DamageStates.rollBurst(tank, 0.1f, ALWAYS));
@@ -189,7 +195,7 @@ class DamageStatesTest {
 
     @Test
     void aSpillInVacuumBoilsOff() {
-        ShipGridComponent grid = ship(tankRoom("PP"));
+        ShipGridComponent grid = ship(tankRoom("tank"));
         SubsystemComponent tank = system(grid, SubsystemComponent.SubsystemType.TANK);
         Compartment room = grid.compartmentAt(3, 2);
         room.oxygen = room.nitrogen = room.carbonDioxide = 0;
@@ -201,7 +207,7 @@ class DamageStatesTest {
 
     @Test
     void anOxygenTankBurstFloodsItsRoom() {
-        ShipGridComponent grid = ship(tankRoom("OO"));
+        ShipGridComponent grid = ship(tankRoom("oxygen_tank"));
         SubsystemComponent tank = system(grid, SubsystemComponent.SubsystemType.TANK);
         Compartment room = grid.compartmentAt(3, 2);
         double before = room.oxygen;
@@ -212,7 +218,7 @@ class DamageStatesTest {
 
     @Test
     void anIsolatedTankStopsLeakingAndStopsSupplying() {
-        ShipGridComponent grid = ship(tankRoom("OO"));
+        ShipGridComponent grid = ship(tankRoom("oxygen_tank"));
         SubsystemComponent tank = system(grid, SubsystemComponent.SubsystemType.TANK);
         tank.health = 0.4f;
         assertTrue(DamageStates.needsIsolating(tank));
@@ -234,12 +240,19 @@ class DamageStatesTest {
     void shortsAndIsolationSurviveASave() {
         ShipGridComponent grid = ship(new ChassisBlueprint(
                 "##########",
-                "#R++++HH.#",
-                "##########").tileSize(1f));
-        grid.getTile(3, 1).shorted = true;
+                "#........#",
+                "##########")
+                .mount("reactor", MountFootprint.MountSize.S, 1, 1)
+                .mount("helm", MountFootprint.MountSize.S, 6, 1, 1)
+                .conduitRun(1, 1, 6, 1).tileSize(1f));
+        grid.getTileConduit(3, 1).shorted = true;
+        grid.getTileConduit(5, 1).integrity = 0.25f;
         ShipGridComponent back = WallLightSaveTest.roundTrip(grid);
-        assertTrue(back.getTile(3, 1).shorted);
-        assertFalse(back.getTile(4, 1).shorted);
+        assertTrue(back.getTileConduit(3, 1).shorted);
+        assertFalse(back.getTileConduit(4, 1).shorted);
+        assertEquals(0.25f, back.getTileConduit(5, 1).integrity, 1e-6f, "the conduit's own condition");
+        assertEquals(1f, back.getTile(5, 1).getIntegrity(), 1e-6f, "apart from the deck's");
+        assertNull(back.getTileConduit(7, 1), "no conduit where none was laid");
 
         SubsystemComponent helm = system(grid, SubsystemComponent.SubsystemType.HELM);
         helm.shorted = true;
@@ -254,7 +267,7 @@ class DamageStatesTest {
 
     @Test
     void componentsCarryTheirOwnChances() {
-        ShipPartCatalog.ComponentType tank = ShipPartCatalog.builtIn().componentFor('P');
+        ShipPartCatalog.ComponentType tank = ShipPartCatalog.builtIn().component("tank");
         assertNotNull(tank);
         com.ringsofiron.moddingdata.defs.ShipComponentDef d = ShipPartCatalog.toDef(tank);
         d.burstChance = 0.9f;
@@ -273,14 +286,16 @@ class DamageStatesTest {
         assertThrows(IllegalArgumentException.class, () -> ShipPartCatalog.toComponentType(d));
     }
 
-    /** A carpeted room with a reactor and a tank of the given letters (an S slot on its side). */
+    /** A carpeted room with a reactor and a tank of the given component, in an S slot on its side. */
     private static ChassisBlueprint tankRoom(String tank) {
         ChassisBlueprint bp = new ChassisBlueprint(
                 "########",
-                "#R.....#",
-                "#.." + tank + "..#",
                 "#......#",
-                "########").tileSize(1f);
+                "#......#",
+                "#......#",
+                "########").tileSize(1f)
+                .mount("reactor", MountFootprint.MountSize.S, 1, 3)
+                .mount(tank, MountFootprint.MountSize.S, 3, 2, 1);
         bp.covering(FloorCovering.CARPET, 1, 1, 6, 3);
         return bp;
     }

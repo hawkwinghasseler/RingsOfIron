@@ -21,11 +21,12 @@ class DeckLightRigTest {
     static ShipGridComponent room() {
         ChassisBlueprint bp = new ChassisBlueprint(
                 "#########",
-                "#.RR....#",
-                "#.RR....#",
                 "#.......#",
                 "#.......#",
-                "#########");
+                "#.......#",
+                "#.......#",
+                "#########")
+                .mount("reactor", MountFootprint.MountSize.M, 2, 3);
         bp.mounts.add(new ChassisBlueprint.MountDef(
                 new MountFootprint(MountFootprint.MountKind.AUXILIARY, MountFootprint.MountSize.M, 5, 1, 1),
                 SubsystemComponent.SubsystemType.HELM));
@@ -190,10 +191,11 @@ class DeckLightRigTest {
     static ShipGridComponent twoRooms(boolean sealed) {
         ChassisBlueprint bp = new ChassisBlueprint(
                 "##########",
-                "#RR......#",
-                "#RR......#",
                 "#........#",
-                "##########");
+                "#........#",
+                "#........#",
+                "##########")
+                .mount("reactor", MountFootprint.MountSize.M, 1, 2);
         for (int y = 1; y <= 3; y++) bp.edgeWall(5, y, com.ringsofiron.interiorgrid.Side.LEFT,
                 com.ringsofiron.interiorgrid.WeightClass.LIGHT, y == 2);
         ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(bp);

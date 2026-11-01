@@ -7,6 +7,7 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 import com.ringsofiron.interiorgrid.WallLight;
 import com.ringsofiron.interiorgrid.WallLightLayout;
 
@@ -85,7 +86,8 @@ public final class DeckLightRig {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
                 if (t == null) continue;
-                if (conduit != null && t.isPowerConduit() && t.isPowered && t.mount == null) {
+                TileConduit c = grid.getTileConduit(x, y);
+                if (conduit != null && c != null && c.isPowered && t.mount == null) {
                     tile(grid, x, y, conduit, false, 0f, out);
                 }
                 Tile.FireSize fire = t.fireSize();

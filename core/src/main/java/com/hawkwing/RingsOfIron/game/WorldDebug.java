@@ -540,7 +540,7 @@ public final class WorldDebug implements PhysicsManager.StepListener {
             DamageStates.shortOut(grid(ship), s, x, y, world.impacts.rngFor(ship));
             return s.type + " shorted";
         }
-        if (!t.isPowerConduit()) return "No system or conduit there";
+        if (grid(ship).getTileConduit(x, y) == null) return "No system or conduit there";
         DamageStates.shortOut(grid(ship), x, y, world.impacts.rngFor(ship));
         return "Conduit shorted";
     }

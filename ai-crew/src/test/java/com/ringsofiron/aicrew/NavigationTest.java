@@ -7,6 +7,7 @@ import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.aicrew.nav.GridPathfinder;
 import com.ringsofiron.interiorgrid.ChassisBlueprint;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridRayTraversal;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -70,12 +71,12 @@ class NavigationTest {
 
     @Test
     void mountsAreWalkable() {
-        ShipGridComponent g = ChassisBlueprintLoader.load(new String[]{
+        ShipGridComponent g = ChassisBlueprintLoader.load(new ChassisBlueprint(new String[]{
                 "#####",
                 "#...#",
-                "#.R.#",
                 "#...#",
-                "#####"}, 1f).grid;
+                "#...#",
+                "#####"}).tileSize(1f).mount("reactor", MountFootprint.MountSize.S, 2, 2)).grid;
         GridPathfinder pf = new GridPathfinder(g);
         Array<GridNode> path = new Array<>();
         assertTrue(pf.findPath(1, 2, 2, 2, path), "can walk onto the reactor");

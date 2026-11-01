@@ -179,6 +179,11 @@ class EditorHullPiecesTest {
         m.toggleEdgeWall(7, 3, Side.RIGHT, "LIGHT", true);
         m.toggleEdgeWall(7, 4, Side.RIGHT, "LIGHT", false);
         m.toggleEdgeConduit(3, 3, Side.TOP);
+        for (int x = 2; x <= 5; x++) assertTrue(m.toggleConduit(x, 1, catalog));
+        assertTrue(m.toggleConduit(4, 2, catalog));
+        assertTrue(m.togglePipe(6, 3, null, catalog));
+        assertTrue(m.togglePipe(7, 3, null, catalog));
+        assertTrue(m.togglePipe(8, 3, Side.TOP, catalog));
         m.addCovering("CARPET", 8, 2, 10, 5);
         assertNull(m.autoPlaceLights(catalog));
         m.toggleLight(9, 5, Side.TOP);
@@ -206,6 +211,16 @@ class EditorHullPiecesTest {
         assertEquals(written, new String(Files.readAllBytes(file), StandardCharsets.UTF_8));
     }
 
+    private static String runs(List<int[][]> runs) {
+        StringBuilder s = new StringBuilder();
+        for (int[][] run : runs) {
+            s.append('[');
+            for (int[] p : run) s.append(' ').append(p[0]).append(',').append(p[1]);
+            s.append(" ]");
+        }
+        return s.toString();
+    }
+
     /** Everything about a chassis def the game reads, as text to compare. */
     private static String describe(ChassisDef d) {
         StringBuilder s = new StringBuilder();
@@ -216,12 +231,15 @@ class EditorHullPiecesTest {
                     .append(p.width).append('x').append(p.height).append(" r").append(p.rotation).append(' ')
                     .append(p.weightClass).append(' ').append(p.material).append('\n');
         }
-        for (ChassisDef.Mount mt : d.mounts) s.append("mount ").append(mt.type).append(' ').append(mt.component).append(' ').append(mt.size)
-                .append(' ').append(mt.x).append(',').append(mt.y).append(" r").append(mt.rotation).append('\n');
-        for (ChassisDef.Port p : d.ports) s.append("port ").append(p.x).append(',').append(p.y).append(' ').append(p.active).append('\n');
-        for (ChassisDef.EdgeWall w : d.edgeWalls) s.append("edge ").append(w.x).append(',').append(w.y).append(' ').append(w.side)
-                .append(' ').append(w.bulkhead).append('\n');
-        for (ChassisDef.EdgeConduit c : d.edgeConduits) s.append("conduit ").append(c.x).append(',').append(c.y).append(' ').append(c.side).append('\n');
+        for (ChassisDef.Mount mt : d.mounts) s.append("mount ").append(mt.component).append(' ').append(mt.size)
+                .append(' ').append(mt.x).append(',').append(mt.y).append(" r").append(mt.rotation).append(' ').append(mt.active).append('\n');
+        for (ChassisDef.EdgeWall w : d.edgeWalls) s.append("edge ").append(runs(List.<int[][]>of(w.path))).append(' ').append(w.weightClass)
+                .append(' ').append(w.material).append('\n');
+        for (ChassisDef.Door door : d.doors) s.append("door ").append(door.x).append(',').append(door.y).append(' ').append(door.side).append('\n');
+        s.append("conduits ").append(runs(d.conduits)).append('\n');
+        s.append("edge conduits ").append(runs(d.edgeConduits)).append('\n');
+        s.append("pipes ").append(runs(d.pipes)).append('\n');
+        s.append("edge pipes ").append(runs(d.edgePipes)).append('\n');
         for (ChassisDef.Covering c : d.coverings) s.append("cover ").append(c.covering).append(' ').append(c.x).append(',').append(c.y)
                 .append(' ').append(c.width).append('x').append(c.height).append('\n');
         for (ChassisDef.Light l : d.lights) s.append("light ").append(l.x).append(',').append(l.y).append(' ').append(l.side).append('\n');

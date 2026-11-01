@@ -35,10 +35,11 @@ public final class Defs {
 
     /** Every key a chassis section can have, so a rewrite drops the ones no longer used. */
     public static final Set<String> CHASSIS_KEYS = new HashSet<>(Arrays.asList("name", "station", "tile_size",
-            "origin_x", "origin_y", "rows", "mounts", "edge_walls", "edge_conduits", "pipes", "hull_pieces", "coverings", "ports", "lights", "rcs"));
+            "origin_x", "origin_y", "rows", "mounts", "conduits", "edge_conduits", "pipes", "edge_pipes", "edge_walls",
+            "doors", "hull_pieces", "coverings", "lights", "rcs"));
     public static final Set<String> TILE_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "base",
             "weight_class", "material", "covering", "art", "color"));
-    public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
+    public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "behavior",
             "sizes", "color", "power_output", "throughput", "fluid", "capacity", "thrust", "short_chance",
             "burst_threshold", "burst_chance", "efficiency", "casing", "mass", "maker", "description", "price"));
 
@@ -55,43 +56,32 @@ public final class Defs {
         if (!d.mounts.isEmpty()) {
             List<String> mounts = new ArrayList<>();
             for (ChassisDef.Mount m : d.mounts) {
-                String what = m.component != null ? "component" : "type";
-                String id = m.component != null ? m.component : m.type;
-                List<String> kv = new ArrayList<>(Arrays.asList(what, str(id), "size", str(m.size),
+                List<String> kv = new ArrayList<>(Arrays.asList("component", str(m.component), "size", str(m.size),
                         "x", Integer.toString(m.x), "y", Integer.toString(m.y)));
                 if (m.rotation != 0) kv.addAll(Arrays.asList("rotation", Integer.toString(m.rotation)));
+                if (m.active) kv.addAll(Arrays.asList("active", "true"));
                 mounts.add(table(kv.toArray(new String[0])));
             }
             out.add(new Entry("mounts", multiLineArray(mounts)));
         }
-        if (!d.edgeWalls.isEmpty()) {
-            List<String> walls = new ArrayList<>();
-            for (ChassisDef.EdgeWall w : d.edgeWalls) {
-                List<String> kv = new ArrayList<>(Arrays.asList("x", Integer.toString(w.x), "y", Integer.toString(w.y),
-                        "side", str(w.side), "weight_class", str(w.weightClass)));
-                if (w.material != null && !w.material.equals(MaterialTable.DEFAULT_MATERIAL)) {
-                    kv.addAll(Arrays.asList("material", str(w.material)));
-                }
-                if (w.bulkhead) kv.addAll(Arrays.asList("bulkhead", "true"));
-                walls.add(table(kv.toArray(new String[0])));
+        runs(out, "conduits", d.conduits);
+        runs(out, "edge_conduits", d.edgeConduits);
+        runs(out, "pipes", d.pipes);
+        runs(out, "edge_pipes", d.edgePipes);
+        List<String> walls = new ArrayList<>();
+        for (ChassisDef.EdgeWall w : d.edgeWalls) {
+            List<String> kv = new ArrayList<>(Arrays.asList("path", run(w.path), "weight_class", str(w.weightClass)));
+            if (w.material != null && !w.material.equals(MaterialTable.DEFAULT_MATERIAL)) {
+                kv.addAll(Arrays.asList("material", str(w.material)));
             }
-            out.add(new Entry("edge_walls", multiLineArray(walls)));
+            walls.add(table(kv.toArray(new String[0])));
         }
-        if (!d.edgeConduits.isEmpty()) {
-            List<String> conduits = new ArrayList<>();
-            for (ChassisDef.EdgeConduit c : d.edgeConduits) {
-                conduits.add(table("x", Integer.toString(c.x), "y", Integer.toString(c.y), "side", str(c.side)));
-            }
-            out.add(new Entry("edge_conduits", multiLineArray(conduits)));
+        list(out, "edge_walls", walls);
+        List<String> doors = new ArrayList<>();
+        for (ChassisDef.Door door : d.doors) {
+            doors.add(table("x", Integer.toString(door.x), "y", Integer.toString(door.y), "side", str(door.side)));
         }
-        if (!d.pipes.isEmpty()) {
-            List<String> pipes = new ArrayList<>();
-            for (ChassisDef.Pipe p : d.pipes) {
-                pipes.add(p.side == null ? table("x", Integer.toString(p.x), "y", Integer.toString(p.y))
-                        : table("x", Integer.toString(p.x), "y", Integer.toString(p.y), "side", str(p.side)));
-            }
-            out.add(new Entry("pipes", multiLineArray(pipes)));
-        }
+        list(out, "doors", doors);
         if (!d.hullPieces.isEmpty()) {
             List<String> pieces = new ArrayList<>();
             for (ChassisDef.HullPiece p : d.hullPieces) {
@@ -114,13 +104,6 @@ public final class Defs {
             }
             // A single covering stays on one line, as the data files write it
             out.add(new Entry("coverings", coverings.size() == 1 ? "[ " + coverings.get(0) + " ]" : multiLineArray(coverings)));
-        }
-        if (!d.ports.isEmpty()) {
-            List<String> ports = new ArrayList<>();
-            for (ChassisDef.Port p : d.ports) {
-                ports.add(table("x", Integer.toString(p.x), "y", Integer.toString(p.y), "active", Boolean.toString(p.active)));
-            }
-            out.add(new Entry("ports", multiLineArray(ports)));
         }
         if (d.lights != null) {
             List<String> lights = new ArrayList<>();
@@ -152,7 +135,7 @@ public final class Defs {
             out.add(new Entry("weight_class", str(d.weightClass)));
             out.add(new Entry("material", str(d.material)));
         }
-        boolean floor = "FLOOR".equals(d.base) || "CONDUIT".equals(d.base);
+        boolean floor = "FLOOR".equals(d.base);
         if (floor && d.covering != null && !"NONE".equals(d.covering)) out.add(new Entry("covering", str(d.covering)));
         if (d.art != null) out.add(new Entry("art", str(d.art)));
         if (d.color != null) out.add(new Entry("color", str(d.color)));
@@ -164,7 +147,6 @@ public final class Defs {
         if (d.name != null) out.add(new Entry("name", str(d.name)));
         if (d.maker != null) out.add(new Entry("maker", str(d.maker)));
         if (d.description != null) out.add(new Entry("description", str(d.description)));
-        out.add(new Entry("symbol", str(d.symbol)));
         out.add(new Entry("behavior", str(d.behavior)));
         if (!d.sizes.isEmpty()) {
             List<String> sizes = new ArrayList<>();
@@ -193,6 +175,29 @@ public final class Defs {
             if (d.burstChance != null) out.add(new Entry("burst_chance", num(d.burstChance)));
         }
         return out;
+    }
+
+    /** Writes a list of runs, on one line when there is just one. */
+    private static void runs(List<Entry> out, String key, List<int[][]> runs) {
+        List<String> items = new ArrayList<>();
+        for (int[][] r : runs) items.add(run(r));
+        list(out, key, items);
+    }
+
+    /** Writes a list unless it is empty, on one line when it has just one item. */
+    private static void list(List<Entry> out, String key, List<String> items) {
+        if (items.isEmpty()) return;
+        out.add(new Entry(key, items.size() == 1 ? "[ " + items.get(0) + " ]" : multiLineArray(items)));
+    }
+
+    /** A run as {@code [[x, y], [x, y]]}. */
+    public static String run(int[][] points) {
+        StringBuilder b = new StringBuilder("[");
+        for (int i = 0; i < points.length; i++) {
+            if (i > 0) b.append(", ");
+            b.append('[').append(points[i][0]).append(", ").append(points[i][1]).append(']');
+        }
+        return b.append(']').toString();
     }
 
     /** A by-size table such as {@code { S = 1.0, M = 2.0 }}, sizes in order and any others after. */

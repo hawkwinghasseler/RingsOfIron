@@ -1,7 +1,6 @@
-# Ship components: the systems chassis rows draw with a letter (see chassis.toml). Each is
-# built on one subsystem behavior, which fixes its mount kind and what it does. The ship
+# Ship components: the systems a chassis installs, by id, in its mounts (see chassis.toml). Each
+# is built on one subsystem behavior, which fixes its mount kind and what it does. The ship
 # editor (gradlew :lwjgl3:runShipEditor) edits this file.
-#   symbol        one letter, unique across tile types and components
 #   behavior      REACTOR, SHIELD_EMITTER, TURRET_MOUNT (square mounts); LIFE_SUPPORT, HELM,
 #                 WEAPONS, CARGO, AIRLOCK, TANK, ENGINE, ESCAPE_POD (rectangular slots); DOCKING_PORT
 #                 (hull edge). An escape pod seats 4, 8, 20 or 48 by size (S-XL).
@@ -35,54 +34,46 @@
 #   burst_threshold  TANK: health below which a hit can burst it (standard 0.25)
 #   burst_chance  TANK: chance each such hit bursts it (standard: propellant 0.35, oxygen 0.3,
 #                 nitrogen 0.2). See documentation/interior-grid/Design.md, "Damage states".
-# These restate the built-in letters; a component left out keeps its built-in meaning.
+# These restate the built-in components; a component left out keeps its built-in meaning.
 
 [component.reactor]
 name = "Reactor"
-symbol = "R"
 behavior = "REACTOR"
 color = "#e0703a"
 short_chance = 0.08
 
 [component.shield_emitter]
 name = "Shield emitter"
-symbol = "S"
 behavior = "SHIELD_EMITTER"
 color = "#4aa0e0"
 
 [component.turret_mount]
 name = "Turret mount"
-symbol = "T"
 behavior = "TURRET_MOUNT"
 color = "#d04a4a"
 
 [component.life_support]
 name = "Life support"
-symbol = "L"
 behavior = "LIFE_SUPPORT"
 color = "#4ac07a"
 
 [component.helm]
 name = "Helm"
-symbol = "H"
 behavior = "HELM"
 color = "#e0d04a"
 
 [component.weapons]
 name = "Weapons console"
-symbol = "W"
 behavior = "WEAPONS"
 color = "#c06ad0"
 
 [component.cargo]
 name = "Cargo bay"
-symbol = "C"
 behavior = "CARGO"
 color = "#a08050"
 
 [component.airlock]
 name = "Airlock"
-symbol = "A"
 behavior = "AIRLOCK"
 color = "#50c0c0"
 
@@ -98,7 +89,6 @@ color = "#50c0c0"
 name = "Halvorsen HR-40"
 maker = "Halvorsen Propulsion"
 description = "The yard-standard bell-nozzle drive: rated thrust at the standard propellant cost."
-symbol = "E"
 behavior = "ENGINE"
 color = "#6aa8e8"
 price = { S = 12000.0, M = 36000.0, L = 110000.0, XL = 320000.0 }
@@ -109,7 +99,6 @@ price = { S = 12000.0, M = 36000.0, L = 110000.0, XL = 320000.0 }
 name = "Halvorsen HR-25F"
 maker = "Halvorsen Propulsion"
 description = "A long-bell freight drive: well under half the HR-40's thrust, but 15% further on a tank."
-symbol = "Q"
 behavior = "ENGINE"
 color = "#5a8ec0"
 thrust = { S = 5.0e5, M = 1.5e6, L = 5.0e6, XL = 1.5e7 }
@@ -124,7 +113,6 @@ price = { S = 8000.0, M = 24000.0, L = 75000.0, XL = 220000.0 }
 name = "Imbrium Rampart"
 maker = "Imbrium Heavy Foundry"
 description = "A low-rated drive in a medium-hull casing that shrugs off hits; thirsty."
-symbol = "G"
 behavior = "ENGINE"
 color = "#6a9ad8"
 thrust = { S = 5.7e5, M = 1.7e6, L = 5.7e6, XL = 1.7e7 }
@@ -139,7 +127,6 @@ short_chance = 0.02
 name = "Imbrium Bulwark"
 maker = "Imbrium Heavy Foundry"
 description = "A tenth more thrust than the HR-40 in a medium-hull casing that shrugs off hits; thirsty."
-symbol = "K"
 behavior = "ENGINE"
 color = "#7a8fb8"
 thrust = { S = 1.32e6, M = 3.96e6, L = 1.32e7, XL = 3.96e7 }
@@ -154,7 +141,6 @@ short_chance = 0.02
 name = "Aster Lyra 7"
 maker = "Aster Dynamics"
 description = "A vacuum aerospike: 85% of the HR-40's thrust, a third further on a tank, easily shorted."
-symbol = "Y"
 behavior = "ENGINE"
 color = "#8ac8e0"
 thrust = { S = 1.02e6, M = 3.06e6, L = 1.02e7, XL = 3.06e7 }
@@ -166,13 +152,11 @@ short_chance = 0.07
 
 [component.docking_port]
 name = "Docking port"
-symbol = "D"
 behavior = "DOCKING_PORT"
 color = "#e0e0e0"
 
 [component.tank]
 name = "Propellant tank"
-symbol = "P"
 behavior = "TANK"
 color = "#c08a3a"
 fluid = "PROPELLANT"
@@ -181,7 +165,6 @@ burst_chance = 0.35
 
 [component.oxygen_tank]
 name = "Oxygen tank"
-symbol = "O"
 behavior = "TANK"
 color = "#6aa8e0"
 fluid = "OXYGEN"
@@ -190,7 +173,6 @@ burst_chance = 0.3
 
 [component.nitrogen_tank]
 name = "Nitrogen tank"
-symbol = "N"
 behavior = "TANK"
 color = "#8a94a8"
 fluid = "NITROGEN"
@@ -199,6 +181,5 @@ burst_chance = 0.2
 
 [component.escape_pod]
 name = "Escape pod"
-symbol = "B"
 behavior = "ESCAPE_POD"
 color = "#ff7a2a"

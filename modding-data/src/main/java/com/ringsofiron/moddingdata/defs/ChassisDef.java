@@ -4,9 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A ship hull's interior layout, mirroring interior-grid's {@code ChassisBlueprint} field
- * for field. Enum values are their names as strings ({@code "TOP"}, {@code "HEAVY"},
- * {@code "REACTOR"}) so this module does not depend on interior-grid.
+ * A ship hull's interior layout, in layers. Enum values are their names as strings
+ * ({@code "TOP"}, {@code "HEAVY"}) so this module does not depend on interior-grid.
  *
  * <pre>
  * [chassis.corvette]
@@ -16,22 +15,31 @@ import java.util.List;
  * origin_y = -3.0
  * rows = [
  *   "##########",
- *   "#HH....RR#",
+ *   "#........#",
  *   ...
  * ]
- * edge_walls  = [ { x = 4, y = 2, side = "TOP", weight_class = "LIGHT", bulkhead = true } ]
- * edge_conduits = [ { x = 4, y = 2, side = "TOP" } ]
- * pipes       = [ { x = 4, y = 2 }, { x = 4, y = 2, side = "TOP" } ]
- * hull_pieces = [ { shape = "WEDGE", x = 0, y = 0, width = 1, height = 2, rotation = 0, weight_class = "MEDIUM" } ]
- * mounts      = [ { type = "TURRET_MOUNT", size = "S", x = 3, y = 3, rotation = 0 },
- *                 { component = "fusion_core", size = "M", x = 5, y = 1 } ]
- * coverings   = [ { covering = "CARPET", x = 2, y = 1, width = 4, height = 1 } ]
- * ports       = [ { x = 4, y = 5, active = true } ]
- * lights      = [ { x = 2, y = 1, side = "BOTTOM" } ]
- * rcs         = [ { x = 0, y = 4, side = "TOP", kind = "QUAD" }, { x = 7, y = 0, side = "BOTTOM", thrust = 2.0e5 } ]
+ * mounts        = [ { component = "reactor", size = "M", x = 5, y = 1 },
+ *                   { component = "docking_port", size = "S", x = 3, y = 5, active = true } ]
+ * conduits      = [ [[1, 2], [6, 2]], [[6, 2], [6, 4]] ]
+ * edge_conduits = [ [[4, 1], [4, 5]] ]
+ * pipes         = [ [[2, 1], [2, 3]] ]
+ * edge_pipes    = [ [[2, 1], [7, 1]] ]
+ * edge_walls    = [ { path = [[4, 1], [4, 5]], weight_class = "LIGHT" } ]
+ * doors         = [ { x = 3, y = 2, side = "RIGHT" } ]
+ * hull_pieces   = [ { shape = "WEDGE", x = 0, y = 0, width = 1, height = 2, rotation = 0, weight_class = "MEDIUM" } ]
+ * coverings     = [ { covering = "CARPET", x = 2, y = 1, width = 4, height = 1 } ]
+ * lights        = [ { x = 2, y = 1, side = "BOTTOM" } ]
+ * rcs           = [ { x = 0, y = 4, side = "TOP", kind = "QUAD" }, { x = 7, y = 0, side = "BOTTOM", thrust = 2.0e5 } ]
  * </pre>
  * Grid coordinates have (0, 0) at the bottom-left tile and +y up; {@code rows} is written
- * top row first, as it reads.
+ * top row first, as it reads, and holds tile types only.
+ *
+ * <p>Conduits, pipes and walls along edges are written as <em>runs</em>: a list of points, each
+ * step from one to the next straight across or up and down. A run of {@code conduits} or
+ * {@code pipes} goes from tile to tile and lies on every tile it passes. A run of
+ * {@code edge_conduits}, {@code edge_pipes} or {@code edge_walls} goes from corner to corner along
+ * tile edges, where corner (x, y) is the bottom-left corner of tile (x, y), and lies on every edge
+ * it passes. A run of one point is a single tile.
  *
  * <p>A chassis marked {@code station = true} is a station's layout, named by a station type's
  * {@code blueprint}; ships should not use one.
@@ -41,19 +49,26 @@ public class ChassisDef {
     public String name;
     public float tileSize = 1f;
     public float originX, originY;
+    /** Tile types only, one character each, top row first. */
     public String[] rows = new String[0];
-    public List<EdgeWall> edgeWalls = new ArrayList<>();
-    /** Power conduits run along tile edges, which may lie inside walls. */
-    public List<EdgeConduit> edgeConduits = new ArrayList<>();
-    /** Pipes from tanks to the systems that draw on them, across tiles or along their edges. */
-    public List<Pipe> pipes = new ArrayList<>();
-    public List<HullPiece> hullPieces = new ArrayList<>();
+    /** Every system the chassis installs. */
     public List<Mount> mounts = new ArrayList<>();
+    /** Power conduits across tiles, as runs of tile points. */
+    public List<int[][]> conduits = new ArrayList<>();
+    /** Power conduits along tile edges, which may lie inside walls, as runs of corner points. */
+    public List<int[][]> edgeConduits = new ArrayList<>();
+    /** Pipes from tanks to the systems that draw on them across tiles, as runs of tile points. */
+    public List<int[][]> pipes = new ArrayList<>();
+    /** Pipes along tile edges, as runs of corner points. */
+    public List<int[][]> edgePipes = new ArrayList<>();
+    /** Thin walls along tile edges. */
+    public List<EdgeWall> edgeWalls = new ArrayList<>();
+    /** Doors in thin walls, each on one edge an edge wall covers. */
+    public List<Door> doors = new ArrayList<>();
+    public List<HullPiece> hullPieces = new ArrayList<>();
     public List<Covering> coverings = new ArrayList<>();
     /** True for a station's layout. */
     public boolean station;
-    /** Options for docking ports, each naming any tile of the port it applies to. */
-    public List<Port> ports = new ArrayList<>();
     /**
      * Lights hung on walls. Null (no {@code lights} key) leaves them to the game, which works
      * them out from the layout; an empty list means none.
@@ -62,29 +77,18 @@ public class ChassisDef {
     /** RCS thrusters on the outside of the hull; a craft with none keeps its ship's turning and strafing figures. */
     public List<Rcs> rcs = new ArrayList<>();
 
+    /** A run of thin wall along tile edges, of one weight class and material. */
     public static class EdgeWall {
-        public int x, y;
-        /** BOTTOM, TOP, LEFT or RIGHT. */
-        public String side;
+        /** Corner points; see the class comment. */
+        public int[][] path;
         public String weightClass = "MEDIUM";
         public String material = "hull_steel";
-        public boolean bulkhead;
     }
 
-    /** A power conduit along the {@code side} edge of tile (x, y), shared with the tile beyond it. */
-    public static class EdgeConduit {
+    /** A door in the thin wall on the {@code side} edge of tile (x, y). */
+    public static class Door {
         public int x, y;
         /** BOTTOM, TOP, LEFT or RIGHT. */
-        public String side;
-    }
-
-    /**
-     * A pipe across the middle of tile (x, y), or with a {@code side}, along that edge of it
-     * (shared with the tile beyond).
-     */
-    public static class Pipe {
-        public int x, y;
-        /** Null for across the tile; else BOTTOM, TOP, LEFT or RIGHT. */
         public String side;
     }
 
@@ -98,21 +102,17 @@ public class ChassisDef {
         public String material = "hull_steel";
     }
 
+    /** A system: the component installed and the mount it sits in. */
     public static class Mount {
-        /** A SubsystemType name, e.g. REACTOR, for that behavior's built-in component. Its mount kind follows from the type. */
-        public String type;
-        /** A component id, e.g. fusion_core, instead of {@link #type}. */
+        /** A component id, e.g. reactor or fusion_core. */
         public String component;
         /** S, M, L or XL. */
         public String size = "S";
+        /** The mount's bottom-left tile. */
         public int x, y;
+        /** Quarter turns counter-clockwise; for a docking port, engine or escape pod, which way it faces. */
         public int rotation;
-    }
-
-    /** Settings for the docking port that covers tile (x, y). Ports not listed are passive. */
-    public static class Port {
-        public int x, y;
-        /** An active port extends a telescoping latch collar when armed; a passive one only has magnets. */
+        /** Docking ports: an active port extends a telescoping latch collar when armed; a passive one only has magnets. */
         public boolean active;
     }
 
