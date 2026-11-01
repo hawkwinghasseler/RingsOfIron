@@ -422,7 +422,7 @@ blast_damage = 400000.0
 fire_chance = 0.0
 ablation_factor = 1.0
 # per weight class: mass per tile (kg), hit points (J to destroy), armor (penetration removed, J)
-light  = { mass = 800.0,  hit_points = 2.0e6, armor = 1.0e6 }
+light  = { mass = 400.0,  hit_points = 2.0e6, armor = 1.0e6 }
 medium = { mass = 2000.0, hit_points = 5.0e6, armor = 3.0e6 }
 heavy  = { mass = 5000.0, hit_points = 1.2e7, armor = 8.0e6 }
 ```

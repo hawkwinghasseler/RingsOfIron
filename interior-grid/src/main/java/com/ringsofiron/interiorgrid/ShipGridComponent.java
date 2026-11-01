@@ -520,8 +520,24 @@ public class ShipGridComponent implements Component {
     // Mass properties
     // -----------------------------------------------------------------------
 
-    /** Fraction of a full tile's mass that an edge wall of the same class weighs. */
-    public static final float EDGE_WALL_MASS_FRACTION = 0.25f;
+    /**
+     * Fraction of a full tile's mass that an edge wall of the same class weighs: a bulkhead plate
+     * 8 to 12 mm thick across the deck height, 200 kg in medium steel. Mass only; combat keeps its
+     * own share of the tile's hit points and armor.
+     */
+    public static final float EDGE_WALL_MASS_FRACTION = 0.1f;
+    /**
+     * Kilograms one open tile of deck weighs, floor or conduit: about 8 to 10 mm of deck plate over
+     * 1 m^2 with the framing under it and the ceiling services over it. The systems standing on a
+     * tile weigh what they weigh on their own ({@link ComponentMass}).
+     */
+    public static final float DECK_MASS = 150f;
+    /**
+     * Kilograms of power cabling in a metre of conduit, on a conduit tile or along an edge: a main
+     * bus carrying a few MW at about 1 kV (~3,000 A, ~13 kg of copper a metre) with its insulation
+     * and tray. Only the cable; the deck it runs over is {@link #DECK_MASS}.
+     */
+    public static final float CONDUIT_CABLE_MASS = 20f;
 
     /** Structural mass, centre of mass (body-local) and moment of inertia about it. */
     public static class MassProperties {
@@ -531,9 +547,11 @@ public class ShipGridComponent implements Component {
     }
 
     /**
-     * Computes the structural mass properties of the hull, walls and decks from their
-     * weight classes, for feeding the ship's Box2D body. Installed systems are not
-     * included; they carry their own mass.
+     * Computes the structural mass properties of the hull, walls, decks and power cabling, for
+     * feeding the ship's Box2D body. Walls weigh by their material and weight class; open tiles
+     * weigh {@link #DECK_MASS}, plus {@link #CONDUIT_CABLE_MASS} on a conduit, and every edge
+     * conduit adds its cable. An engine's casing tiles weigh nothing here, since the engine
+     * carries its own mass. Installed systems are not included; {@link ComponentMass} adds them.
      */
     public MassProperties computeMassProperties(MaterialTable materials) {
         // Accumulate as point masses: sum m, sum m*p, sum (m*|p|^2 + I_own)
@@ -543,8 +561,14 @@ public class ShipGridComponent implements Component {
             for (int x = 0; x < width; x++) {
                 Tile t = tiles[y][x];
                 if (t.isVoid()) continue;
-                float tm = materials.get(t.material, t.weightClass).mass;
-                if (t.piece != null) tm *= t.piece.fillFraction();
+                float tm;
+                if (t.isWall()) {
+                    if (EngineLayout.isCasing(this, x, y)) continue;
+                    tm = materials.get(t.material, t.weightClass).mass;
+                    if (t.piece != null) tm *= t.piece.fillFraction();
+                } else {
+                    tm = DECK_MASS + (t.isPowerConduit() ? CONDUIT_CABLE_MASS : 0f);
+                }
                 Vector2 p = tileToLocal(x, y);
                 m += tm; mx += tm * p.x; my += tm * p.y;
                 i0 += tm * (p.len2() + tileOwnI);
@@ -552,18 +576,22 @@ public class ShipGridComponent implements Component {
         }
         for (int y = 0; y <= height; y++) {
             for (int x = 0; x < width; x++) {
+                float em = 0f;
                 EdgeWall e = edgeH[y][x];
-                if (e == null) continue;
-                float em = materials.get(e.material, e.weightClass).mass * EDGE_WALL_MASS_FRACTION;
+                if (e != null) em += materials.get(e.material, e.weightClass).mass * EDGE_WALL_MASS_FRACTION;
+                if (conduitH[y][x] != null) em += CONDUIT_CABLE_MASS;
+                if (em == 0f) continue;
                 float px = gridOriginLocal.x + (x + 0.5f) * tileSize, py = gridOriginLocal.y + y * tileSize;
                 m += em; mx += em * px; my += em * py; i0 += em * (px * px + py * py);
             }
         }
         for (int y = 0; y < height; y++) {
             for (int x = 0; x <= width; x++) {
+                float em = 0f;
                 EdgeWall e = edgeV[y][x];
-                if (e == null) continue;
-                float em = materials.get(e.material, e.weightClass).mass * EDGE_WALL_MASS_FRACTION;
+                if (e != null) em += materials.get(e.material, e.weightClass).mass * EDGE_WALL_MASS_FRACTION;
+                if (conduitV[y][x] != null) em += CONDUIT_CABLE_MASS;
+                if (em == 0f) continue;
                 float px = gridOriginLocal.x + x * tileSize, py = gridOriginLocal.y + (y + 0.5f) * tileSize;
                 m += em; mx += em * px; my += em * py; i0 += em * (px * px + py * py);
             }

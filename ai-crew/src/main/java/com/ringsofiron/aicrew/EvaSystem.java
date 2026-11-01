@@ -147,8 +147,12 @@ public class EvaSystem extends FixedLogicSystem {
     public static final float LINE_K = 4000f;
     /** The line's damping as it stretches, N s/m: a crew member on its end swings to rest without bouncing much. */
     public static final float LINE_C = 1200f;
-    /** The pull the line holds for as long as it is asked to, newtons (on its stretch): a little under a g on a crew member. */
-    public static final float LINE_RATED = 1750f;
+    /**
+     * The pull the line holds for as long as it is asked to, newtons (on its stretch): about 1.2 g on
+     * a crew member. Nov 2026: 1750 N until the mass rebalance left the corvette about a fifth
+     * lighter, so its burns pull a fifth harder on the line; raised with them, so what held still holds.
+     */
+    public static final float LINE_RATED = 2150f;
     /**
      * Past {@link #LINE_RATED} the line gives, and once the pull past it adds up to this many
      * newton-seconds it parts, as a hold does past {@link #GRIP}: the corvette's full burn parts it

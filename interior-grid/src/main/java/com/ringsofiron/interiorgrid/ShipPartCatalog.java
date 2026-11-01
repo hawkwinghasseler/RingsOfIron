@@ -120,6 +120,8 @@ public class ShipPartCatalog {
         public float burstChance = -1f;
         /** ENGINE: the hull its casing is built as; null for {@link EngineLayout#CASING}. */
         public WeightClass casing;
+        /** Kilograms a system of this component weighs by size; sizes missing here weigh {@link ComponentMass#standard}. */
+        public Map<MountFootprint.MountSize, Double> mass = Collections.emptyMap();
 
         public ComponentType(String id, String name, char symbol, SubsystemComponent.SubsystemType behavior,
                              EnumSet<MountFootprint.MountSize> sizes, int color,
@@ -164,6 +166,12 @@ public class ShipPartCatalog {
             return (double) fluid.capacityPerTile * size.baseWidth(mountKind()) * size.baseHeight(mountKind());
         }
 
+        /** Kilograms a system of this component in a mount of {@code size} weighs, not counting what a tank holds. */
+        public double mass(MountFootprint.MountSize size) {
+            Double kg = mass.get(size);
+            return kg != null ? kg : ComponentMass.standard(behavior, size, fluid);
+        }
+
         /** Copies this component's identity and settings onto a system installed from it. A tank starts full. */
         public void configure(SubsystemComponent system) {
             system.component = id;
@@ -173,6 +181,7 @@ public class ShipPartCatalog {
             system.fluid = fluid;
             system.capacity = capacity(system.footprint.size);
             system.contents = system.capacity;
+            system.mass = mass(system.footprint.size);
             system.shortChance = shortChance;
             system.burstThreshold = fluid != null ? burstThreshold : -1f;
             system.burstChance = fluid != null ? burstChance : -1f;
@@ -371,6 +380,10 @@ public class ShipPartCatalog {
         if (t.burstThreshold >= 0f) d.burstThreshold = t.burstThreshold;
         if (t.burstChance >= 0f) d.burstChance = t.burstChance;
         if (t.casing != null) d.casing = t.casing.name();
+        for (MountFootprint.MountSize size : MountFootprint.MountSize.values()) {
+            Double kg = t.mass.get(size);
+            if (kg != null) d.mass.put(size.name(), kg);
+        }
         return d;
     }
 
@@ -417,6 +430,15 @@ public class ShipPartCatalog {
         if (d.shortChance != null) type.shortChance = chance(d.shortChance, who + " short_chance");
         if (d.burstThreshold != null) type.burstThreshold = chance(d.burstThreshold, who + " burst_threshold");
         if (d.burstChance != null) type.burstChance = chance(d.burstChance, who + " burst_chance");
+        if (!d.mass.isEmpty()) {
+            Map<MountFootprint.MountSize, Double> mass = new HashMap<>();
+            for (Map.Entry<String, Double> e : d.mass.entrySet()) {
+                MountFootprint.MountSize size = parseEnum(MountFootprint.MountSize.class, e.getKey(), who + " mass size");
+                if (e.getValue() == null || !(e.getValue() >= 0)) throw new IllegalArgumentException(who + ": mass must be 0 or more");
+                mass.put(size, e.getValue());
+            }
+            type.mass = mass;
+        }
         if (d.casing != null && behavior == SubsystemComponent.SubsystemType.ENGINE) {
             type.casing = parseEnum(WeightClass.class, d.casing, who + " casing");
         }

@@ -53,7 +53,9 @@ Every tile, edge wall and hull piece is **light, medium or heavy**. The class an
 | `hitPoints` (J) | Energy needed to take the piece from integrity 1 to 0 |
 | `armor` (J) | Penetration stripped from a round before the piece absorbs it |
 
-An edge wall weighs `EDGE_WALL_MASS_FRACTION` (0.25) of a full tile of the same class. `ShipGridComponent.computeMassProperties(MaterialTable)` sums tiles and edge walls into mass, body-local centre of mass and moment of inertia about it. Installed systems carry their own mass and are not included.
+The material's `mass` weighs wall tiles only (hull, internal walls, armor). An edge wall weighs `EDGE_WALL_MASS_FRACTION` (0.1) of a full tile of the same class, about a 1 cm bulkhead. An open tile, floor or conduit, weighs `DECK_MASS` (150 kg: deck plate, framing and ceiling services), and each metre of conduit cable, on a conduit tile or along an edge, adds `CONDUIT_CABLE_MASS` (20 kg). An engine's casing tiles weigh nothing, since the engine carries its own mass. `ShipGridComponent.computeMassProperties(MaterialTable)` sums all of these into mass, body-local centre of mass and moment of inertia about it.
+
+Installed systems weigh what they weigh on their own (Nov 2026 mass rebalance): `ComponentMass` gives each its component's `mass` for its size in `components.toml`, else a standard for its behavior and size based on real hardware (an engine 6 / 18 / 60 / 180 t for S to XL, a thrust-to-weight of about 20; a reactor 10 / 25 / 70 / 180 t; a turret mount with its gun 5 / 25 / 80 / 250 t; a propellant tank, empty, about 5% of what it holds), and `ComponentMass.addMassTo` adds them as point masses at the middle of each footprint. A wrecked system keeps its mass. The game's ship mass is structure, then systems, then cargo, then what the tanks hold.
 
 ### Multi-tile hull pieces
 Hull and armor can be pieces bigger than one tile (`HullPiece`). A piece covers several tiles but is **one object with one integrity pool**: every covered tile is a `HULL` tile pointing at the piece, and `Tile.getIntegrity()` / `setIntegrity()` read and write the piece's pool. Destroying any part of a piece breaches all of its tiles.

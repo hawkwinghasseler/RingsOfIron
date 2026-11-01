@@ -140,6 +140,7 @@ class EvaPhysicsTest {
         assertTrue(amounts.get(events.indexOf(EvaEvent.Kind.ADRIFT)) > 500f, "well astern by then");
         assertEquals(jetAtSnap, s.c(crew).suitJet, 0.01f, "no fuel spent chasing a ship under full burn");
         assertTrue(eva().stranded);
+        s.run(0.1f); // the crew member's own reckoning of it, a tick after the event
         assertEquals("adrift, waiting to be picked up", s.c(crew).activity);
         thrust.set(0f, 0f);
         s.run(30f);
@@ -218,8 +219,8 @@ class EvaPhysicsTest {
     @Test
     void aFullBurnAlongTheHullPartsTheLine() {
         out();
-        // 12 m/s2, the corvette's main engine: 2,160 N on the line, less what the hull's rub takes
-        thrust.set(12f, 0f);
+        // 15 m/s2, the corvette's main engine: 2,700 N on the line, less what the hull's rub takes
+        thrust.set(15f, 0f);
         for (int i = 0; i < 80 && eva().tethered; i++) s.run(0.05f);
         assertTrue(events.contains(EvaEvent.Kind.TETHER_SNAPPED), "the line parted: " + events);
         assertEquals(1, java.util.Collections.frequency(events, EvaEvent.Kind.LOST_GRIP), "thrown off: " + events);

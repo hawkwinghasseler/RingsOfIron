@@ -301,4 +301,18 @@ class PipingTest {
         TankSupply.addMassTo(grid, registry, empty);
         assertEquals(dry.mass, empty.mass, 1e-2, "empty tanks weigh nothing extra");
     }
+
+    @Test
+    void theSystemsWeighOnTheShip() {
+        build(piped(room()));
+        ShipGridComponent.MassProperties dry = grid.computeMassProperties(MaterialTable.createDefault());
+        ShipGridComponent.MassProperties fitted = grid.computeMassProperties(MaterialTable.createDefault());
+        ComponentMass.addMassTo(grid, registry, fitted);
+        double systems = 0;
+        for (Entity e : registry.subsystems) {
+            systems += ComponentMass.of(e.getComponent(SubsystemComponent.class));
+        }
+        assertTrue(systems > 0);
+        assertEquals(dry.mass + systems, fitted.mass, 1e-1);
+    }
 }

@@ -16,10 +16,10 @@
 name = "Patrol Corvette"
 chassis = "corvette"
 texture = "tex_corvette"
-# What it weighs in the bubble with full tanks: its layout's 96 tiles at 2 t each (materials.toml's medium
-# steel, floors included), its 4 thin walls at 0.5 t, and about 3.1 t in its tanks. A ship with a layout
-# weighs its layout, so this figure only stands in for it (round 9: it said 120 t)
-mass = 197100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 87.9 t of hull, walls and
+# deck, 70.5 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 161100.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
 exhaust_velocity = 700000.0
@@ -47,10 +47,10 @@ hardpoints = [
 name = "Pirate Corvette"
 chassis = "corvette"
 texture = "tex_corvette"
-# What it weighs in the bubble with full tanks: its layout's 96 tiles at 2 t each and 4 thin walls at
-# 0.5 t, as the patrol corvette's, and about 3.1 t in its tanks. A ship with a layout weighs its layout, so
-# this figure only stands in for it (round 9: it said 120 t)
-mass = 197100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 87.9 t of hull, walls and
+# deck, 70.5 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 161100.0
 max_thrust = 2.4e6
 max_torque = 8.0e5
 exhaust_velocity = 700000.0
@@ -67,10 +67,10 @@ hardpoints = [
 name = "Hauler"
 chassis = "freighter"
 texture = "tex_freighter"
-# What it weighs in the bubble with full tanks: its layout's 260 tiles at 2 t each, 22 thin walls at
-# 0.5 t, and about 6.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
-# in for it (round 9: it said 300 t)
-mass = 537100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 158.2 t of hull, walls and
+# deck, 80.0 t of systems (ComponentMass) and 4.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 242800.0
 max_thrust = 3.0e6
 max_torque = 1.5e6
 crew = 3
@@ -80,11 +80,10 @@ crew = 3
 name = "Light Raider"
 chassis = "raider"
 texture = "tex_raider"
-# What it weighs in the bubble with full tanks: its layout's 75 tiles at 2 t each (materials.toml's medium
-# steel, floors included), 3 thin walls at 0.5 t and about 2.6 t in its tanks. A ship with a layout weighs
-# its layout, so this figure only stands in for it (round 8: it said 60 t, but the raider has always flown
-# at 153 t)
-mass = 154600.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 77.2 t of hull, walls and
+# deck, 49.1 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 128900.0
 max_thrust = 2.8e6
 max_torque = 6.25e5
 exhaust_velocity = 700000.0
@@ -98,10 +97,10 @@ hardpoints = [
 name = "Gunship"
 chassis = "gunship"
 texture = "tex_gunship"
-# What it weighs in the bubble with full tanks: its layout's 160 tiles at 2 t each, 12 thin walls at
-# 0.5 t, and about 5.1 t in its tanks, its two Imbrium drives cased in medium hull. A ship with a layout
-# weighs its layout, so this figure only stands in for it (round 9: it said 240 t)
-mass = 355100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 121.6 t of hull, walls and
+# deck, 171.5 t of systems (ComponentMass) and 4.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 297700.0
 max_thrust = 3.4e6
 max_torque = 2.0e6
 exhaust_velocity = 700000.0
@@ -124,10 +123,10 @@ hardpoints = [
 name = "Den Battery"
 chassis = "battery"
 texture = "tex_raider"
-# What it weighs in the bubble with full tanks: its layout's 63 tiles at 2 t each, 7 thin walls at 0.5 t,
-# and about 0.6 t of oxygen and nitrogen for life support. A ship with a layout weighs its layout, so this
-# figure only stands in for it (round 9: it said 150 t)
-mass = 130100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 62.8 t of hull, walls and
+# deck, 47.8 t of systems (ComponentMass) and 0.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 111200.0
 max_thrust = 2.0e4
 max_torque = 2.0e5
 exhaust_velocity = 700000.0
@@ -148,10 +147,10 @@ hardpoints = [
 name = "Pirate Gunship"
 chassis = "gunship"
 texture = "tex_gunship"
-# What it weighs in the bubble with full tanks: its layout's 160 tiles at 2 t each, as the patrols'
-# gunship's, 12 thin walls at 0.5 t, and about 5.1 t in its tanks. A ship with a layout weighs its layout,
-# so this figure only stands in for it (round 9: it said 220 t)
-mass = 355100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 121.6 t of hull, walls and
+# deck, 171.5 t of systems (ComponentMass) and 4.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 297700.0
 max_thrust = 3.4e6
 max_torque = 2.0e6
 exhaust_velocity = 700000.0
@@ -171,10 +170,10 @@ hardpoints = [
 name = "Frigate"
 chassis = "frigate"
 texture = "tex_frigate"
-# What it weighs in the bubble with full tanks: its layout's 240 tiles at 2 t each, 16 thin walls at
-# 0.5 t, and about 5.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
-# in for it (round 9: it said 380 t)
-mass = 493100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 156.7 t of hull, walls and
+# deck, 193.5 t of systems (ComponentMass) and 4.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 354800.0
 max_thrust = 3.4e6
 max_torque = 3.2e6
 exhaust_velocity = 700000.0
@@ -196,9 +195,10 @@ hardpoints = [
 name = "Picket"
 chassis = "picket"
 texture = "tex_picket"
-# What it weighs in the bubble with full tanks: its layout's 90 tiles at 2 t each, 4 thin walls at 0.5 t,
-# and about 3.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 185100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 83.3 t of hull, walls and
+# deck, 54.0 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 139900.0
 max_thrust = 2.4e6
 max_torque = 1.04e6
 exhaust_velocity = 700000.0
@@ -216,10 +216,10 @@ hardpoints = [
 name = "Salvage Tug"
 chassis = "salvage_tug"
 texture = "tex_salvage_tug"
-# What it weighs in the bubble with full tanks: its layout's 144 tiles at 2 t each, 16 thin walls at
-# 0.5 t, and about 6.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
-# in for it
-mass = 302100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 113.5 t of hull, walls and
+# deck, 72.5 t of systems (ComponentMass) and 4.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 190600.0
 max_thrust = 3.0e6
 max_torque = 2.13e6
 exhaust_velocity = 700000.0
@@ -236,10 +236,10 @@ hardpoints = [
 name = "Corsair"
 chassis = "corsair"
 texture = "tex_corsair"
-# What it weighs in the bubble with full tanks: its layout's 126 tiles at 2 t each, 10 thin walls at
-# 0.5 t, and about 3.1 t in its tanks. A ship with a layout weighs its layout, so this figure only stands
-# in for it
-mass = 260100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 104.9 t of hull, walls and
+# deck, 79.0 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 186400.0
 max_thrust = 2.4e6
 max_torque = 1.58e6
 exhaust_velocity = 700000.0
@@ -256,9 +256,10 @@ hardpoints = [
 name = "Interceptor"
 chassis = "interceptor"
 texture = "tex_interceptor"
-# What it weighs in the bubble with full tanks: its layout's 91 tiles at 2 t each, 5 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 180600.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 80.4 t of hull, walls and
+# deck, 54.0 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 137000.0
 max_thrust = 2.4e6
 max_torque = 8.6e5
 exhaust_velocity = 700000.0
@@ -274,9 +275,10 @@ hardpoints = [
 name = "Courier"
 chassis = "courier"
 texture = "tex_courier"
-# What it weighs in the bubble with full tanks: its layout's 99 tiles at 2 t each, 3 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 192600.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 96.7 t of hull, walls and
+# deck, 49.0 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 148200.0
 max_thrust = 2.4e6
 max_torque = 9.82e5
 exhaust_velocity = 700000.0
@@ -291,9 +293,10 @@ hardpoints = [
 name = "Surveyor"
 chassis = "surveyor"
 texture = "tex_surveyor"
-# What it weighs in the bubble with full tanks: its layout's 170 tiles at 2 t each, 9 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 329600.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 137.9 t of hull, walls and
+# deck, 52.5 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 193000.0
 max_thrust = 2.4e6
 max_torque = 2.1e6
 exhaust_velocity = 700000.0
@@ -309,9 +312,10 @@ hardpoints = [
 name = "Ore Barge"
 chassis = "ore_barge"
 texture = "tex_ore_barge"
-# What it weighs in the bubble with full tanks: its layout's 213 tiles at 2 t each, 17 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 432600.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 162.4 t of hull, walls and
+# deck, 82.0 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 246900.0
 max_thrust = 3.0e6
 max_torque = 2.63e6
 exhaust_velocity = 700000.0
@@ -327,9 +331,10 @@ hardpoints = [
 name = "Propellant Tanker"
 chassis = "tanker"
 texture = "tex_tanker"
-# What it weighs in the bubble with full tanks: its layout's 362 tiles at 2 t each, 10 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 763100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 256.8 t of hull, walls and
+# deck, 81.5 t of systems (ComponentMass) and 50.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 388900.0
 max_thrust = 3.0e6
 max_torque = 4.51e6
 exhaust_velocity = 700000.0
@@ -345,9 +350,10 @@ hardpoints = [
 name = "Hospital Ship"
 chassis = "hospital_ship"
 texture = "tex_hospital_ship"
-# What it weighs in the bubble with full tanks: its layout's 310 tiles at 2 t each, 33 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 627600.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 199.8 t of hull, walls and
+# deck, 87.5 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 289900.0
 max_thrust = 3.0e6
 max_torque = 2.24e6
 exhaust_velocity = 700000.0
@@ -363,10 +369,10 @@ hardpoints = [
 name = "Marauder"
 chassis = "marauder"
 texture = "tex_marauder"
-# What it weighs in the bubble with full tanks: its layout's 215 tiles at 2 t each, 20 thin walls at
-# 0.5 t, and what is in its tanks, its Imbrium drives cased in medium hull. A ship with a layout weighs its
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 151.3 t of hull, walls and
+# deck, 110.2 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
 # layout, so this figure only stands in for it
-mass = 449600.0
+mass = 264100.0
 max_thrust = 3.4e6
 max_torque = 3.43e6
 exhaust_velocity = 700000.0
@@ -383,9 +389,10 @@ hardpoints = [
 name = "Destroyer"
 chassis = "destroyer"
 texture = "tex_destroyer"
-# What it weighs in the bubble with full tanks: its layout's 453 tiles at 2 t each, 40 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 923100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 280.1 t of hull, walls and
+# deck, 315.6 t of systems (ComponentMass) and 14.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 610300.0
 max_thrust = 5.1e6
 max_torque = 1.01e7
 exhaust_velocity = 700000.0
@@ -408,9 +415,10 @@ hardpoints = [
 name = "Bulk Carrier"
 chassis = "bulk_carrier"
 texture = "tex_bulk_carrier"
-# What it weighs in the bubble with full tanks: its layout's 612 tiles at 2 t each, 12 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 1218600.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 415.3 t of hull, walls and
+# deck, 121.9 t of systems (ComponentMass) and 12.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 549800.0
 max_thrust = 6.0e6
 max_torque = 8.54e6
 exhaust_velocity = 700000.0
@@ -426,9 +434,10 @@ hardpoints = [
 name = "Heavy Cruiser"
 chassis = "heavy_cruiser"
 texture = "tex_heavy_cruiser"
-# What it weighs in the bubble with full tanks: its layout's 592 tiles at 2 t each, 40 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 1199100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 323.1 t of hull, walls and
+# deck, 342.1 t of systems (ComponentMass) and 16.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 681800.0
 max_thrust = 7.0e6
 max_torque = 1.36e7
 exhaust_velocity = 700000.0
@@ -452,9 +461,10 @@ hardpoints = [
 name = "Passenger Liner"
 chassis = "liner"
 texture = "tex_liner"
-# What it weighs in the bubble with full tanks: its layout's 674 tiles at 2 t each, 142 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 1407100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 324.6 t of hull, walls and
+# deck, 188.6 t of systems (ComponentMass) and 12.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 525800.0
 max_thrust = 7.2e6
 max_torque = 8.77e6
 exhaust_velocity = 700000.0
@@ -470,9 +480,10 @@ hardpoints = [
 name = "Reaver"
 chassis = "reaver"
 texture = "tex_reaver"
-# What it weighs in the bubble with full tanks: its layout's 550 tiles at 2 t each, 27 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 1149900.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 375.4 t of hull, walls and
+# deck, 312.2 t of systems (ComponentMass) and 16.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 704200.0
 max_thrust = 7.0e6
 max_torque = 1.77e7
 exhaust_velocity = 700000.0
@@ -492,9 +503,10 @@ hardpoints = [
 name = "Carrier"
 chassis = "carrier"
 texture = "tex_carrier"
-# What it weighs in the bubble with full tanks: its layout's 1122 tiles at 2 t each, 34 thin walls at
-# 0.5 t, and what is in its tanks. A ship with a layout weighs its layout, so this figure only stands in for it
-mass = 2281100.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 624.0 t of hull, walls and
+# deck, 388.4 t of systems (ComponentMass) and 24.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 1037000.0
 max_thrust = 1.2e7
 max_torque = 2.45e7
 exhaust_velocity = 700000.0
@@ -515,7 +527,10 @@ hardpoints = [
 [ship.audio_demo]
 name = "Audio Demo"
 chassis = "audio_demo"
-mass = 648600.0
+# What it weighs in the bubble with full tanks (Nov 2026 mass rebalance): 204.1 t of hull, walls and
+# deck, 46.1 t of systems (ComponentMass) and 2.6 t in its tanks. A ship with a layout weighs its
+# layout, so this figure only stands in for it
+mass = 252800.0
 max_thrust = 2.4e6
 max_torque = 1.5e6
 exhaust_velocity = 700000.0
