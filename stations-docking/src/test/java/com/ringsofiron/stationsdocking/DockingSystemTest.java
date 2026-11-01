@@ -398,7 +398,7 @@ class DockingSystemTest {
         // Something turns the pair, gently, with the assist off
         int[] ticks = {0};
         physics.addStepListener(dt -> {
-            if (ticks[0]++ < 120) PhysicsManager.applyTorque(body(pair[1]), 0.4f * DockingTuning.SMALL.breakTorque);
+            if (ticks[0]++ < 120) PhysicsManager.applyTorque(body(pair[1]), 0.4f * DockingTuning.SMALL.workTorque);
         });
         game.stepTicks(120);
         float spin = body(pair[0]).getAngularVelocity();

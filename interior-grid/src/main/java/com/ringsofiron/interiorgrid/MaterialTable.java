@@ -35,7 +35,7 @@ public class MaterialTable {
     public static MaterialTable createDefault() {
         MaterialTable table = new MaterialTable();
         table.define(DEFAULT_MATERIAL,
-                new ClassStats(800f, 2.0e6f, 1.0e6f),
+                new ClassStats(400f, 2.0e6f, 1.0e6f),
                 new ClassStats(2000f, 5.0e6f, 3.0e6f),
                 new ClassStats(5000f, 1.2e7f, 8.0e6f));
         return table;

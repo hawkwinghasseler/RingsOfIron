@@ -16,6 +16,17 @@
 #   efficiency    ENGINE: multiplies the ship's exhaust velocity, so propellant goes this much
 #                 further (1.0 standard; mixed engines average by thrust)
 #   casing        ENGINE: weight class of the hull its casing is (LIGHT standard, MEDIUM, HEAVY)
+#   mass          kilograms the system itself weighs, by size (a tank's contents not counted; the
+#                 tiles under it weigh their own 150 kg of deck). Left out, the standard for its
+#                 behavior (interior-grid's ComponentMass), in tonnes for S / M / L / XL:
+#                   engine 6 / 18 / 60 / 180 (thrust-to-weight ~20)
+#                   reactor 10 / 25 / 70 / 180      shield emitter 3 / 10 / 30 / 80
+#                   turret mount, with its gun, 5 / 25 / 80 / 250
+#                   life support and airlock 1.5 / 4 / 12 / 30
+#                   helm and weapons console 0.5 / 1.5 / 4 / 10      cargo bay 0.2 / 0.6 / 2 / 6
+#                   escape pod 3 / 5 / 10 / 20      docking port 0.5 / 1.5 / 4
+#                   propellant tank 0.15 / 0.4 / 1.2 / 3 (~5% of what it holds)
+#                   oxygen or nitrogen tank 0.4 / 1.2 / 4 / 10 (high-pressure vessels)
 #   maker, description  who makes it and one line on it, for the yard and the editor
 #   price         credits a station yard charges to fit one, by size, when it rebuilds the decks
 #                 (a part it takes out is bought back at half); left out, it comes free
@@ -103,6 +114,8 @@ behavior = "ENGINE"
 color = "#5a8ec0"
 thrust = { S = 5.0e5, M = 1.5e6, L = 5.0e6, XL = 1.5e7 }
 efficiency = 1.15
+# Lighter-built than the HR-40 for its size, though far heavier for its thrust
+mass = { S = 5400.0, M = 16200.0, L = 54000.0, XL = 162000.0 }
 price = { S = 8000.0, M = 24000.0, L = 75000.0, XL = 220000.0 }
 
 # A gunship's drives: Medium, but rated down so the heavy hull is slower off the mark than the
@@ -117,6 +130,8 @@ color = "#6a9ad8"
 thrust = { S = 5.7e5, M = 1.7e6, L = 5.7e6, XL = 1.7e7 }
 efficiency = 0.9
 casing = "MEDIUM"
+# Cased in medium hull
+mass = { S = 7200.0, M = 21600.0, L = 72000.0, XL = 216000.0 }
 price = { S = 10000.0, M = 30000.0, L = 95000.0, XL = 280000.0 }
 short_chance = 0.02
 
@@ -130,6 +145,8 @@ color = "#7a8fb8"
 thrust = { S = 1.32e6, M = 3.96e6, L = 1.32e7, XL = 3.96e7 }
 efficiency = 0.9
 casing = "MEDIUM"
+# Cased in medium hull, with a tenth more drive inside
+mass = { S = 7800.0, M = 23400.0, L = 78000.0, XL = 234000.0 }
 price = { S = 16000.0, M = 48000.0, L = 145000.0, XL = 420000.0 }
 short_chance = 0.02
 
@@ -142,6 +159,8 @@ behavior = "ENGINE"
 color = "#8ac8e0"
 thrust = { S = 1.02e6, M = 3.06e6, L = 1.02e7, XL = 3.06e7 }
 efficiency = 1.35
+# An aerospike is shorter and lighter than a bell of the same thrust
+mass = { S = 5400.0, M = 16200.0, L = 54000.0, XL = 162000.0 }
 price = { S = 22000.0, M = 65000.0, L = 200000.0, XL = 580000.0 }
 short_chance = 0.07
 

@@ -164,9 +164,9 @@ final class LatchLinks {
 
     /**
      * The seating: a critically damped spring drawing the two port faces together and the craft
-     * square, as hard as {@link DockingTuning#SEAT_FORCE} of the break limits at most. It pushes
-     * at the middle of each craft's mass and turns them about it, so neither part throws the
-     * other: Box2D's motor joint, which did this before, pulls on a body's origin, and a ship
+     * square, as hard as {@link DockingTuning#SEAT_FORCE} of the port's working force and torque
+     * at most. It pushes at the middle of each craft's mass and turns them about it, so neither
+     * part throws the other: Box2D's motor joint, which did this before, pulls on a body's origin, and a ship
      * whose origin is meters from its middle was swung round and into the other hull.
      */
     private void pullIntoSeat(LatchLink link, Body ba, Body bb, DockingTuning t) {
@@ -183,7 +183,7 @@ final class LatchLinks {
         Vector2 vb = DockingSystem.velocityAt(bb, fb, v4);
         float fx = mass * (k * (fb.x - fa.x) + c * (vb.x - va.x));
         float fy = mass * (k * (fb.y - fa.y) + c * (vb.y - va.y));
-        float most = DockingTuning.SEAT_FORCE * t.breakForce, len = (float) Math.sqrt(fx * fx + fy * fy);
+        float most = DockingTuning.SEAT_FORCE * t.workForce, len = (float) Math.sqrt(fx * fx + fy * fy);
         if (len > most) {
             fx *= most / len;
             fy *= most / len;
@@ -191,7 +191,7 @@ final class LatchLinks {
         float angle = bb.getAngle() - ba.getAngle() - DockingSystem.matedAngle(link.pa, link.pb);
         angle = MathUtils.atan2(MathUtils.sin(angle), MathUtils.cos(angle));
         float torque = inertia * (k * angle + c * (bb.getAngularVelocity() - ba.getAngularVelocity()));
-        torque = MathUtils.clamp(torque, -DockingTuning.SEAT_FORCE * t.breakTorque, DockingTuning.SEAT_FORCE * t.breakTorque);
+        torque = MathUtils.clamp(torque, -DockingTuning.SEAT_FORCE * t.workTorque, DockingTuning.SEAT_FORCE * t.workTorque);
         if (da) {
             PhysicsManager.applyForce(ba, fx, fy);
             PhysicsManager.applyTorque(ba, torque);

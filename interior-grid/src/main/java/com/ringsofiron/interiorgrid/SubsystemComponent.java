@@ -69,6 +69,11 @@ public class SubsystemComponent implements Component {
      * are dry ({@link TankSupply#draw(SubsystemComponent, Fluid, double)}).
      */
     public double reserveUsed;
+    /**
+     * Kilograms the system itself weighs, set from its component; below 0, the standard for its
+     * behavior and size ({@link ComponentMass#standard}). A tank's contents are not counted here.
+     */
+    public double mass = -1;
     /** TANK: what it holds, set from its component. Null for every other system. */
     public Fluid fluid;
     /** TANK: kilograms it holds when full, set from its component. */

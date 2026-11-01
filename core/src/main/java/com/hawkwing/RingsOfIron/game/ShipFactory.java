@@ -9,6 +9,7 @@ import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.ComponentMass;
 import com.ringsofiron.interiorgrid.TankSupply;
 import com.ringsofiron.macrosim.MacroSimulation;
 import com.ringsofiron.moddingdata.DefRegistry;
@@ -51,8 +52,8 @@ public final class ShipFactory {
     }
 
     /**
-     * Mass, center and inertia of a ship from its interior grid and the loaded materials, with the
-     * cargo in its bays and what its tanks hold. Null for a ship without a grid, or before content has loaded.
+     * Mass, center and inertia of a ship from its interior grid and the loaded materials, with its
+     * installed systems, the cargo in its bays and what its tanks hold. Null for a ship without a grid, or before content has loaded.
      */
     public ShipGridComponent.MassProperties shipMass(Entity ship) {
         ModContext loaded = content.get();
@@ -67,7 +68,10 @@ public final class ShipFactory {
         CargoHoldComponent hold = ship.getComponent(CargoHoldComponent.class);
         if (hold != null) hold.addMassTo(grid, m);
         ShipSubsystemRegistryComponent registry = ship.getComponent(ShipSubsystemRegistryComponent.class);
-        if (registry != null) TankSupply.addMassTo(grid, registry, m);
+        if (registry != null) {
+            ComponentMass.addMassTo(grid, registry, m);
+            TankSupply.addMassTo(grid, registry, m);
+        }
         return m;
     }
 

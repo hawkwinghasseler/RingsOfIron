@@ -40,7 +40,7 @@ public final class Defs {
             "weight_class", "material", "covering", "art", "color"));
     public static final Set<String> COMPONENT_KEYS = new HashSet<>(Arrays.asList("name", "symbol", "behavior",
             "sizes", "color", "power_output", "throughput", "fluid", "capacity", "thrust", "short_chance",
-            "burst_threshold", "burst_chance", "efficiency", "casing", "maker", "description", "price"));
+            "burst_threshold", "burst_chance", "efficiency", "casing", "mass", "maker", "description", "price"));
 
     public static List<Entry> chassis(ChassisDef d) {
         List<Entry> out = new ArrayList<>();
@@ -185,6 +185,7 @@ public final class Defs {
             if (d.efficiency != null) out.add(new Entry("efficiency", num(d.efficiency)));
             if (d.casing != null) out.add(new Entry("casing", str(d.casing)));
         }
+        if (d.mass != null && !d.mass.isEmpty()) out.add(new Entry("mass", sizeTable(d.mass)));
         if (d.price != null && !d.price.isEmpty()) out.add(new Entry("price", sizeTable(d.price)));
         if (d.shortChance != null) out.add(new Entry("short_chance", num(d.shortChance)));
         if ("TANK".equals(d.behavior)) {

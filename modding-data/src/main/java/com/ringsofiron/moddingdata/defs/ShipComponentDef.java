@@ -44,6 +44,8 @@ public class ShipComponentDef {
     public Float efficiency;
     /** ENGINE: the weight class of hull its casing is built as (LIGHT, MEDIUM, HEAVY); left out, LIGHT. */
     public String casing;
+    /** Kilograms the system itself weighs, by mount size (a tank's contents not counted). Sizes left out weigh the standard for its behavior. */
+    public Map<String, Double> mass = new LinkedHashMap<>();
     /** Who makes it, as the yard lists it; left out, nobody in particular. */
     public String maker;
     /** One line on it, for the yard and the editor. */
