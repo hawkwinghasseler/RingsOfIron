@@ -153,8 +153,8 @@ class ModdingBootstrapTest {
                 .load(engine);
 
         Entity ship = ctx.factory.spawnShip("corvette_smuggler", 10f, -5f, 1.5f);
-        // The base corvette's mass, which the mod's variant copies (ships.toml: 197.1 t with its thin walls)
-        assertEquals(197100f, ship.getComponent(MassComponent.class).mass);
+        // The base corvette's mass, which the mod's variant copies (ships.toml: 161.1 t)
+        assertEquals(161100f, ship.getComponent(MassComponent.class).mass);
         TransformComponent t = ship.getComponent(TransformComponent.class);
         assertEquals(10f, t.x);
         assertEquals(-5f, t.y);
