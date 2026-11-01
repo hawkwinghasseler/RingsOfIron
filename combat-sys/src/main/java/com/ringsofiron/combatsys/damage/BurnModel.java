@@ -126,8 +126,8 @@ final class BurnModel {
                 return true;
             }
         }
-        // The beam crosses the deck and burns into any conduit laid on it
-        sys.damageConduit(x, y, energy, false);
+        // The beam crosses the deck, and burns into the conduit laid on it if it strikes it
+        sys.strikeConduit(x, y, energy, false);
         return false;
     }
 
