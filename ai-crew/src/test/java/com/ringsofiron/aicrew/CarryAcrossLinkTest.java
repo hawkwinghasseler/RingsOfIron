@@ -1,6 +1,7 @@
 package com.ringsofiron.aicrew;
 
 import com.badlogic.ashley.core.Engine;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.interiorgrid.ChassisBlueprint;
@@ -21,7 +22,12 @@ class CarryAcrossLinkTest {
 
     /** A craft from {@code rows}, with its cargo bays as a hold. */
     private Entity craft(String... rows) {
-        ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(new ChassisBlueprint(rows));
+        return craft(new ChassisBlueprint(rows));
+    }
+
+    /** A craft from {@code bp}, with its cargo bays as a hold. */
+    private Entity craft(ChassisBlueprint bp) {
+        ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(bp);
         CompartmentBuilder.rebuildIfChanged(r.grid);
         Entity e = new Entity();
         e.add(r.grid);
@@ -89,15 +95,17 @@ class CarryAcrossLinkTest {
     @Test
     void aLoaderCarriesGoodsAcrossTheDockAndWalksHome() {
         Entity ship = craft(
-                "######",
-                "#C....",
-                "#C...#",
-                "######");
+                new ChassisBlueprint("######",
+                "#.....",
+                "#....#",
+                "######")
+                .mount("cargo", MountFootprint.MountSize.S, 1, 1));
         Entity station = craft(
-                "#######",
-                ".....C#",
-                "#....C#",
-                "#######");
+                new ChassisBlueprint("#######",
+                "......#",
+                "#.....#",
+                "#######")
+                .mount("cargo", MountFootprint.MountSize.S, 5, 1));
         ShipGridComponent sg = ship.getComponent(ShipGridComponent.class), tg = station.getComponent(ShipGridComponent.class);
         int[] a = edgeTile(sg, Side.RIGHT), b = edgeTile(tg, Side.LEFT);
         GridLink.join(ship, sg, a[0], a[1], Side.RIGHT, station, tg, b[0], b[1], Side.LEFT).setGap(1f);

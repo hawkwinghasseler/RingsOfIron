@@ -151,19 +151,19 @@ class EditorEscapePodTest {
     }
 
     @Test
-    void aPodDrawnInTheRowsFacesSpaceAndKeepsTheHull() {
+    void aPodInTheHullFacesSpaceAndKeepsTheHullUnderItsHatch() {
         ShipPartCatalog catalog = ShipPartCatalog.builtIn();
         ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(new ChassisBlueprint(new String[]{
-                "##3B3##",
-                "#..B..#",
+                "##333##",
+                "#.....#",
                 "#.....#",
                 "#######",
-        }).catalog(catalog));
+        }).catalog(catalog).mount("escape_pod", MountFootprint.MountSize.S, 3, 2));
         MountFootprint f = r.subsystems.first().footprint;
         assertEquals(Side.TOP, HullMounts.facing(f));
         Tile hatch = r.grid.getTile(3, 3);
         assertEquals(Tile.WallType.HULL, hatch.wallType);
-        assertEquals(r.grid.getTile(2, 3).weightClass, hatch.weightClass, "the hull beside it in that row");
+        assertEquals(r.grid.getTile(2, 3).weightClass, hatch.weightClass, "the hull the rows lay under it");
         assertTrue(r.grid.getTile(3, 2).isFloor());
     }
 

@@ -133,7 +133,7 @@ public class WireframeMinimap extends Widget {
         for (SubsystemComponent s : subsystems) {
             MountFootprint m = s.footprint;
             if (s.isDestroyed()) tmp.set(TileShade.SYSTEM_DESTROYED);
-            else if (!s.powered && s.type != SubsystemComponent.SubsystemType.CARGO) tmp.set(TileShade.SYSTEM_UNPOWERED);
+            else if (!s.powered && s.type.needsPower()) tmp.set(TileShade.SYSTEM_UNPOWERED);
             else tmp.set(TileShade.SYSTEM_OK);
             float inset = px * 0.3f;
             outline(batch, ox + m.originX * px + inset, oy + m.originY * px + inset,

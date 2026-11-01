@@ -1,6 +1,7 @@
 package com.ringsofiron.shipsystems;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.MountFootprint;
 
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
@@ -27,10 +28,15 @@ class PropellantFeedTest {
     private static ChassisBlueprint layout() {
         return new ChassisBlueprint(
                 "  #########",
-                "  #R......#",
-                "  #....P.P#",
-                "EE#....P.P#",
-                "  #########");
+                "  #.......#",
+                "  #.......#",
+                "  #.......#",
+                "  #########")
+                .mount("engine", MountFootprint.MountSize.S, 0, 1, 1)
+                .mount("tank", MountFootprint.MountSize.S, 7, 1)
+                .mount("tank", MountFootprint.MountSize.S, 9, 1)
+                .mount("reactor", MountFootprint.MountSize.S, 3, 3)
+                .conduitRun(3, 1, 3, 3);
     }
 
     private static ChassisBlueprint piped(ChassisBlueprint bp) {
@@ -111,10 +117,13 @@ class PropellantFeedTest {
     void aShipWithoutAnEngineKeepsFreeThrust() {
         build(new ChassisBlueprint(
                 "#########",
-                "#R......#",
-                "#....P.P#",
-                "#....P.P#",
-                "#########"));
+                "#.......#",
+                "#.......#",
+                "#.......#",
+                "#########")
+                .mount("tank", MountFootprint.MountSize.S, 5, 1)
+                .mount("tank", MountFootprint.MountSize.S, 7, 1)
+                .mount("reactor", MountFootprint.MountSize.S, 1, 3));
         assertEquals(0f, thruster.fuelPerNewtonSecond);
         assertFalse(thruster.isOutOfFuel());
         assertEquals(500, PropellantFeed.payForBurn(ship, 1e5, 500), 1e-9);

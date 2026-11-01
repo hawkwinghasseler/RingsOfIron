@@ -1,6 +1,8 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
+import com.ringsofiron.interiorgrid.MountFootprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.aicrew.demo.CrewScenario;
@@ -42,11 +44,12 @@ class CrewBehaviorTest {
     @Test
     void engineersRepairSystemsFromBesideTheMount() {
         TestShips s = new TestShips(
-                "#######",
+                new ChassisBlueprint("#######",
                 "#.....#",
-                "#..R..#",
                 "#.....#",
-                "#######");
+                "#.....#",
+                "#######")
+                .mount("reactor", MountFootprint.MountSize.S, 3, 2));
         Entity reactor = s.registry.subsystems.first();
         SubsystemComponent r = reactor.getComponent(SubsystemComponent.class);
         r.health = 0.5f;
@@ -63,11 +66,12 @@ class CrewBehaviorTest {
         // Seed 12's first fight: the hull holed behind a machine, whose footprint is the only tile
         // beside the breach. The crew reach across the machine to seal it, as they do to patch a leak
         TestShips s = new TestShips(
-                "#######",
+                new ChassisBlueprint("#######",
                 "#.....#",
-                "#....R#",
                 "#.....#",
-                "#######");
+                "#.....#",
+                "#######")
+                .mount("reactor", MountFootprint.MountSize.S, 5, 2));
         Tile breach = s.grid.getTile(6, 2);
         assertNotNull(s.grid.getTile(5, 2).mount, "a machine stands against the hull");
         breach.setIntegrity(0f);

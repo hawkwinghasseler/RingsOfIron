@@ -48,8 +48,8 @@ class SaveSafetyTest {
     }
 
     @Test
-    void aFormatOneSaveKeyedByClassNamesStillLoads() {
-        String save = "{\"version\":1,\"tick\":7,\"entities\":[{"
+    void componentsKeyedByClassNameLoad() {
+        String save = "{\"version\":" + SerializationService.FORMAT_VERSION + ",\"tick\":7,\"entities\":[{"
             + "\"" + UuidComponent.class.getName() + "\":{\"id\":\"a\"},"
             + "\"" + TransformComponent.class.getName() + "\":{\"x\":3,\"y\":4,\"rotation\":0}}],\"modules\":{}}";
         GameEngine engine = new GameEngine();
@@ -63,7 +63,7 @@ class SaveSafetyTest {
 
     @Test
     void anAliasReadsARenamedClassFromAnOldSave() {
-        String save = "{\"version\":1,\"tick\":0,\"entities\":[{"
+        String save = "{\"version\":" + SerializationService.FORMAT_VERSION + ",\"tick\":0,\"entities\":[{"
             + "\"core.Uuid\":{\"id\":\"a\"},"
             + "\"com.example.OldCargoComponent\":{\"crates\":12}}],\"modules\":{}}";
         GameEngine engine = new GameEngine();
@@ -92,8 +92,10 @@ class SaveSafetyTest {
             "{ not json",
             "[]",
             "{\"version\":" + (SerializationService.FORMAT_VERSION + 1) + ",\"entities\":[]}",
+            // From before the current format
+            "{\"version\":" + (SerializationService.FORMAT_VERSION - 1) + ",\"tick\":1,\"entities\":[]}",
             // Read as far as the second entity before the bad number
-            "{\"version\":2,\"tick\":1,\"entities\":[{\"core.Uuid\":{\"id\":\"b\"}},"
+            "{\"version\":" + SerializationService.FORMAT_VERSION + ",\"tick\":1,\"entities\":[{\"core.Uuid\":{\"id\":\"b\"}},"
                 + "{\"core.Transform\":{\"x\":\"far away\"}}]}",
         };
         for (String save : bad) {
@@ -111,7 +113,7 @@ class SaveSafetyTest {
 
     @Test
     void preparingALoadTouchesNothingAndTellsWhatWillBeLeftOut() {
-        String save = "{\"version\":2,\"tick\":3,\"entities\":[{\"core.Uuid\":{\"id\":\"c\"},"
+        String save = "{\"version\":" + SerializationService.FORMAT_VERSION + ",\"tick\":3,\"entities\":[{\"core.Uuid\":{\"id\":\"c\"},"
             + "\"gone.Mod\":{}}],\"modules\":{\"gone-mod\":{\"x\":1}}}";
         GameEngine engine = shipAt(5f);
 

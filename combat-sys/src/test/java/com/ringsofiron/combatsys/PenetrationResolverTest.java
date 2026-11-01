@@ -25,6 +25,7 @@ import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 import com.ringsofiron.interiorgrid.WeightClass;
 import com.ringsofiron.moddingdata.defs.MaterialDef;
 import org.junit.jupiter.api.Test;
@@ -335,11 +336,17 @@ class PenetrationResolverTest {
     @Test
     void conduitCanBeSevered() {
         ShipGridComponent grid = TestShips.box(8, 5, TILE, WeightClass.LIGHT);
-        for (int x = 1; x < 7; x++) grid.getTile(x, 2).floorType = Tile.FloorType.POWER_CONDUIT;
+        for (int x = 1; x < 7; x++) grid.setTileConduit(x, 2, new TileConduit());
         grid.gridDirty = false;
-        for (int i = 0; i < 4; i++) shootFromLeft(grid, 2, 2e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
-        assertEquals(0f, grid.getTile(1, 2).getIntegrity(), 1e-6f);
+        // Each round crossing its tile takes FLOOR_RESISTANCE off it: eight cut it
+        for (int i = 0; i < 7; i++) shootFromLeft(grid, 2, 2e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
+        assertFalse(grid.getTileConduit(1, 2).isCut(), "seven rounds leave it carrying");
+        assertEquals(1f - 7f * PenetrationResolver.FLOOR_RESISTANCE / PenetrationResolver.CONDUIT_HIT_POINTS,
+                grid.getTileConduit(1, 2).integrity, 1e-4f);
+        shootFromLeft(grid, 2, 2e7f, DamageType.KINETIC, Fuse.contact(), new SpallDef());
+        assertTrue(grid.getTileConduit(1, 2).isCut(), "the eighth cuts it");
         assertTrue(grid.gridDirty);
+        assertTrue(grid.getTile(1, 2).getIntegrity() > 0f, "the deck under it still stands");
     }
 
     // ------------------------------------------------------------------

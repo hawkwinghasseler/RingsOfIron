@@ -1,6 +1,7 @@
 package com.ringsofiron.shipops;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.MountFootprint;
 
 import com.badlogic.ashley.core.Engine;
 import com.badlogic.ashley.core.Entity;
@@ -25,9 +26,12 @@ class FreighterRefuelingTest {
     private void build() {
         ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(new ChassisBlueprint(
                 "#######",
-                "#P.O.N#",
-                "#P.O.N#",
-                "#######"));
+                "#.....#",
+                "#.....#",
+                "#######")
+                .mount("tank", MountFootprint.MountSize.S, 1, 1)
+                .mount("oxygen_tank", MountFootprint.MountSize.S, 3, 1)
+                .mount("nitrogen_tank", MountFootprint.MountSize.S, 5, 1));
         ship = new Entity();
         ShipSubsystemRegistryComponent registry = new ShipSubsystemRegistryComponent(ship);
         freighter = new FreighterComponent();

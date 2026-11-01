@@ -20,6 +20,7 @@ import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 
 
 /**
@@ -54,8 +55,16 @@ public class PenetrationResolver {
     public static final float RICOCHET_SCRAPE = 0.05f;
     /** Joules a round loses crossing one open floor tile (air, fittings, clutter). */
     public static final float FLOOR_RESISTANCE = 2e5f;
-    /** Joules that cut a power conduit from intact to severed. */
-    public static final float CONDUIT_HIT_POINTS = 4e5f;
+    /**
+     * Joules that cut a power conduit from intact to severed. A conduit across a tile has its own
+     * condition: the energy a tile takes damages the tile and the conduit on it each on their own.
+     * Eight rounds crossing its tile cut it ({@link #FLOOR_RESISTANCE} each). It was 4e5 (two
+     * rounds) while a conduit was a kind of floor and bare floor carried power too; with the
+     * conduits alone carrying it, and one under every powered system, two rounds through a
+     * corvette's nose turret cut it off with the turret unhurt, and the raider won the scripted
+     * first fight from three of six ranges (Nov 2026).
+     */
+    public static final float CONDUIT_HIT_POINTS = 1.6e6f;
     /** Joules a crew member's body takes out of a round. */
     public static final float CREW_RESISTANCE = 2e3f;
     /** Joules of absorbed energy per health point of crew injury. */
@@ -675,12 +684,36 @@ public class PenetrationResolver {
         float absorbed = Math.min(ray.budget, hp * integrity);
         ray.budget -= absorbed;
         damagePiece(tile, (absorbed + stripped * ARMOR_WEAR) / hp);
+        // A conduit laid over the wall takes what got through its armor
+        damageConduit(x, y, absorbed);
         lastAbsorbed = stripped + absorbed;
         ray.absorbed += lastAbsorbed;
     }
 
     void damagePiece(Tile tile, float integrityLoss) {
         tile.setIntegrity(tile.getIntegrity() - integrityLoss);
+    }
+
+    /**
+     * {@code joules} into the conduit across tile (x, y), if there is one: it can cut it (power
+     * reroutes at once) or short it.
+     */
+    void damageConduit(int x, int y, float joules) {
+        damageConduit(x, y, joules, true);
+    }
+
+    /** As {@link #damageConduit(int, int, float)}; with {@code canShort} false it can only cut it. */
+    void damageConduit(int x, int y, float joules, boolean canShort) {
+        TileConduit conduit = grid.getTileConduit(x, y);
+        if (conduit == null || conduit.isCut() || joules <= 0f) return;
+        float was = conduit.integrity;
+        conduit.integrity = Math.max(0f, was - joules / CONDUIT_HIT_POINTS);
+        if (conduit.isCut()) {
+            grid.gridDirty = true;
+            if (report != null) report.structureChanged = true;
+        } else if (canShort && DamageStates.maybeShortConduit(grid, x, y, was - conduit.integrity, rng) && report != null) {
+            report.shorts.add(pack(x, y));
+        }
     }
 
     /** A ray crossing an open floor tile. */
@@ -711,21 +744,11 @@ public class PenetrationResolver {
             }
         }
 
-        // Deck fittings and conduit.
+        // Deck fittings, and the conduit on the deck: each takes the hit on its own condition
         float take = Math.min(ray.budget, FLOOR_RESISTANCE);
         ray.budget -= take;
-        if (tile.isPowerConduit()) {
-            float was = tile.getIntegrity();
-            damagePiece(tile, take / CONDUIT_HIT_POINTS);
-            if (was > 0f && tile.getIntegrity() <= 0f) {
-                grid.gridDirty = true;
-                if (report != null) report.structureChanged = true;
-            } else if (DamageStates.maybeShortConduit(grid, x, y, was - tile.getIntegrity(), rng) && report != null) {
-                report.shorts.add(pack(x, y));
-            }
-        } else {
-            damagePiece(tile, take / materials.get(tile.material, tile.weightClass).hitPoints);
-        }
+        damagePiece(tile, take / materials.get(tile.material, tile.weightClass).hitPoints);
+        damageConduit(x, y, take);
 
         float spent = before - ray.budget;
         ray.absorbed += spent;

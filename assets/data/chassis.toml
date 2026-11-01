@@ -1,33 +1,47 @@
-# Interior layouts. Same character map as interior-grid's ChassisBlueprintLoader:
-#   '#' hull (medium)  '1'/'2'/'3' hull light/medium/heavy  'I' internal wall
-#   '.' floor  '+' power conduit  ' ' void
-#   A conduit tile carries power through a thin wall to a conduit tile on its other side.
-#   R reactor, S shield, T turret (square mounts); L life support, H helm,
-#   W weapons console, C cargo, A airlock, E engine, P propellant tank,
-#   O oxygen tank, N nitrogen tank, Q freight drive and G gunship drive (engines), B escape pod
-#   (rectangular slots; a pod's hatch is the end that faces +y at rotation 0. That end
-#   overlaps the outer hull, which stays hull under it, and the rest of the pod lies
-#   inside; beyond the hatch it needs 5 tiles of open space, with no RCS block on the
-#   hatch end, to launch into. List pods under mounts so the hull under the hatch is kept)
-#   Engines mount on the outside of the hull: drawn out in the void, with the nozzle at the end
-#     that has only space beyond it and the flange at the other end, against the outer hull:
-#     the whole engine lies outside, overlapping none of the hull.
-#     Past the nozzle, as wide as the engine, 5 tiles for each tile of its width stay clear for
-#     the exhaust (5 Small, 10 Medium, 15 Large, 25 Extra Large). The crew, power and pipes
-#     reach it from the deck just inside the wall behind its flange.
-#   D docking port, drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large.
-#     The end tiles are frame, the rest the opening, with the port door on its
-#     outer edge. It faces the side with only space beyond it. Ports are passive
-#     unless listed under ports = [ { x, y, active = true } ] (any tile of the port).
-#   edge_walls = [ { x, y, side, weight_class, bulkhead } ] puts a thin wall on that side of
-#     tile (x, y), dividing two rooms without spending a tile on the wall; bulkhead = true puts
-#     a door in it (open at the start). A shut door stops crew, air, fire and power alike.
-#   edge_conduits = [ { x, y, side } ] runs a power conduit along that side of tile (x, y), inside
-#     whatever wall stands there, and feeds the rooms on both sides. Every ship but the audio demo
-#     runs one along each thin wall it has, so a room stays powered with its door shut.
-#   pipes = [ { x, y }, { x, y, side } ] lays a pipe across tile (x, y), or along that
-#     side of it (inside any wall). Pipes join tanks to the systems that draw on them:
-#     life support takes oxygen and nitrogen, the engines take propellant.
+# Interior layouts, in layers. Each chassis is a grid of tile types (rows), with everything on
+# top of and between the tiles listed apart from it. See ChassisDef and ChassisBlueprintLoader.
+#
+#   rows: tile types only, one character a tile (tiles.toml), the top row first:
+#     '#' hull (medium)  '1'/'2'/'3' hull light/medium/heavy  '4'-'6' composite armor
+#     'I' internal wall  '.' floor  'm' medbay deck  ' ' void
+#   Everything else lists grid coordinates, (0, 0) the bottom-left tile and +y up.
+#
+#   mounts = [ { component, size, x, y, rotation, active } ] installs a component
+#     (components.toml) in a mount of that size (S, M, L, XL) with bottom-left tile (x, y),
+#     turned rotation quarter turns counter-clockwise. The rows say what lies under it:
+#     floor under an interior system; hull under a docking port and under an escape pod's
+#     hatch end; void under an engine.
+#     Engines mount on the outside of the hull, out in the void, with the nozzle at the end
+#       that has only space beyond it and the flange at the other end, against the outer hull.
+#       Past the nozzle, as wide as the engine, 5 tiles for each tile of its width stay clear
+#       for the exhaust (5 Small, 10 Medium, 15 Large, 25 Extra Large). The crew, power and
+#       pipes reach it from the deck just inside the wall behind its flange.
+#     A docking port sits over the hull edge: 3 x 1 Small, 5 x 2 Medium, 7 x 3 Large. The end
+#       tiles are frame, the rest the opening, with the port door on its outer edge; rotation
+#       turns it to face out. active = true gives it a latch collar; ports are passive without.
+#     An escape pod's hatch is the end that faces +y at rotation 0. That end overlaps the outer
+#       hull and the rest of the pod lies inside; beyond the hatch it needs 5 tiles of open
+#       space, with no RCS block on the hatch end, to launch into.
+#
+#   Conduits, pipes and thin walls are written as runs: a list of points, each step from one
+#   to the next straight across or up and down.
+#     A tile run, [[x, y], [x, y], ...], lies on every tile it passes; one point is one tile.
+#     An edge run goes corner to corner along tile edges, corner (x, y) being the bottom-left
+#     corner of tile (x, y); it lies on every edge it passes.
+#   conduits = [ tile runs ] lays power conduit across tiles, on top of the floor (or a wall)
+#     and under any system there. Only conduits carry power: bare floor carries none. A conduit
+#     joins the conduits on the tiles beside it, through any thin wall or door between them.
+#   edge_conduits = [ edge runs ] runs power conduit along tile edges, inside whatever wall
+#     stands there, joining the conduits on the tiles both sides of it.
+#     A system draws power from any conduit on one of its tiles or along one of their edges; an
+#     engine, from those of the deck tiles just inside the wall behind its flange.
+#   pipes = [ tile runs ] and edge_pipes = [ edge runs ] lay pipe across tiles or along their
+#     edges (inside any wall). Pipes join tanks to the systems that draw on them: life support
+#     takes oxygen and nitrogen, the engines take propellant.
+#   edge_walls = [ { path, weight_class, material } ] builds a thin wall along an edge run,
+#     dividing two rooms without spending a tile on the wall.
+#   doors = [ { x, y, side } ] puts a door in the thin wall on that side of tile (x, y) (open at
+#     the start). A shut door stops crew, air and fire; power goes on through its conduits.
 #   lights = [ { x, y, side } ] hangs a wall light on that side of tile (x, y), shining
 #     into the tile; it takes no room there. The ship editor's Light tool places them
 #     (and auto-places them along every room's walls). With no lights key the game
@@ -39,7 +53,6 @@
 #     of a quad's. A ship with blocks turns, strafes and backs up on what they give it
 #     rather than its max_torque and the engines' share; a block stops when its hull tile
 #     is destroyed. The ship editor's RCS tool places them.
-# Rows read top to bottom; listed coordinates have (0, 0) at the bottom-left tile.
 # A chassis marked station = true is a station layout, named by a station type's
 # blueprint in economy.json.
 
@@ -56,8 +69,7 @@ origin_y = -3.0
 # the nearest one): nose (16,2), port and starboard beams (14,4) and (14,1), the
 # launcher (11,4) and the laser (11,1). The weapons console sits aft, away from
 # every hardpoint.
-# Cargo: a hold aft of the crew spaces with two 3 x 2 bays (x 5-7; listed under
-# mounts, since two bays side by side can't be told apart in the map), a walkway
+# Cargo: a hold aft of the crew spaces with two 3 x 2 bays (x 5-7), a walkway
 # at x 8, and two small bays up front. 16 tiles, 40 m3 at 2.5 m3 a tile.
 # A Small docking port on the port (+y) side opens onto the walkway beside the hold.
 # It is active: its collar reaches out and takes hold of another ship's port, armed
@@ -65,28 +77,60 @@ origin_y = -3.0
 # A Small escape pod (4 seats) stands at x 12 between the laser and the starboard
 # beam turret, its hatch end in the starboard (-y) hull clear of the RCS block at x 10.
 rows = [
-  "  #####DDD########",
-  "EE#......HHTCCTRR#",
-  "  #......WW....RR#",
-  "  #.....PL.++++.T#",
-  "EE#.....PL.T..TCC#",
+  "  ################",
+  "  #..............#",
+  "  #..............#",
+  "  #..............#",
+  "  #..............#",
   "  ################",
 ]
-ports = [ { x = 8, y = 5, active = true } ]
 mounts = [
-  { type = "CARGO", size = "M", x = 5, y = 1, rotation = 1 },
-  { type = "CARGO", size = "M", x = 5, y = 3, rotation = 1 },
-  { component = "oxygen_tank", size = "S", x = 3, y = 2, rotation = 1 },
+  { component = "docking_port", size = "S", x = 7, y = 5, active = true },
+  { component = "engine", size = "S", x = 0, y = 4, rotation = 1 },
+  { component = "helm", size = "S", x = 9, y = 4, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 11, y = 4 },
+  { component = "cargo", size = "S", x = 12, y = 4, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 14, y = 4 },
   { component = "nitrogen_tank", size = "S", x = 3, y = 3, rotation = 1 },
+  { component = "cargo", size = "M", x = 5, y = 3, rotation = 1 },
+  { component = "weapons", size = "S", x = 9, y = 3, rotation = 1 },
+  { component = "reactor", size = "M", x = 15, y = 3 },
+  { component = "oxygen_tank", size = "S", x = 3, y = 2, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 16, y = 2 },
+  { component = "engine", size = "S", x = 0, y = 1, rotation = 1 },
+  { component = "cargo", size = "M", x = 5, y = 1, rotation = 1 },
+  { component = "tank", size = "S", x = 8, y = 1 },
+  { component = "life_support", size = "S", x = 9, y = 1 },
+  { component = "turret_mount", size = "S", x = 11, y = 1 },
+  { component = "turret_mount", size = "S", x = 14, y = 1 },
+  { component = "cargo", size = "S", x = 15, y = 1, rotation = 1 },
   { component = "escape_pod", size = "S", x = 12, y = 0, rotation = 2 },
 ]
-pipes = [
-  { x = 3, y = 4 }, { x = 3, y = 1 },
-  { x = 4, y = 1 }, { x = 4, y = 2 }, { x = 4, y = 3 }, { x = 4, y = 4 },
-  { x = 4, y = 1, side = "BOTTOM" }, { x = 5, y = 1, side = "BOTTOM" },
-  { x = 6, y = 1, side = "BOTTOM" }, { x = 7, y = 1, side = "BOTTOM" },
-  { x = 8, y = 1, side = "BOTTOM" }, { x = 9, y = 1, side = "BOTTOM" },
+conduits = [
+  [[8, 4], [9, 4]],
+  [[14, 4], [15, 4]],
+  [[11, 2], [14, 2]],
+  [[3, 1], [11, 1]],
+  [[3, 1], [3, 4]],
+  [[8, 4], [8, 5]],
+  [[9, 1], [9, 4]],
+  [[11, 1], [11, 4]],
+  [[14, 1], [14, 4]],
+  [[16, 2], [16, 3]],
 ]
+edge_conduits = [ [[8, 1], [8, 5]] ]
+pipes = [
+  [[3, 4], [4, 4]],
+  [[3, 1], [4, 1]],
+  [[4, 1], [4, 4]],
+]
+edge_pipes = [ [[4, 1], [10, 1]] ]
+# A thin wall closes the hold and engineering off from the walkway (x 7 | 8), with a door at y 3. A
+# conduit runs in it, so the engines stay powered with the door shut. The bridge stays open to the
+# reactor room forward: a wall there (x 10 | 11) slowed the crew to a shorted reactor so much that the
+# First Play raider gave up in half the time (FirstHourBalanceBenchmark).
+edge_walls = [ { path = [[8, 1], [8, 5]], weight_class = "MEDIUM" } ]
+doors = [ { x = 8, y = 3, side = "LEFT" } ]
 # Carpet through the crew spaces, so a fire here has something to burn
 coverings = [ { covering = "CARPET", x = 9, y = 1, width = 6, height = 4 } ]
 lights = [
@@ -94,20 +138,6 @@ lights = [
   { x = 13, y = 1, side = "BOTTOM" },
   { x = 4, y = 4, side = "TOP" },
   { x = 8, y = 4, side = "LEFT" },
-]
-# A thin wall closes the hold and engineering off from the walkway (x 7 | 8), with a door at y 3. A
-# conduit runs in it, so the engines stay powered with the door shut. The bridge stays open to the
-# reactor room forward: a wall there (x 10 | 11) slowed the crew to a shorted reactor so much that the
-# First Play raider gave up in half the time (FirstHourBalanceBenchmark).
-edge_walls = [
-  { x = 7, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 7, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 7, y = 3, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 7, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-]
-edge_conduits = [
-  { x = 7, y = 1, side = "RIGHT" }, { x = 7, y = 2, side = "RIGHT" }, { x = 7, y = 3, side = "RIGHT" },
-  { x = 7, y = 4, side = "RIGHT" },
 ]
 # RCS: a quad block at each corner turns the ship, a linear pair amidships (over the centre of
 # mass) strafes it, and a linear pair on the bow either side of the centreline backs it up.
@@ -138,29 +168,64 @@ origin_y = -6.5
 # top and bottom hull beside the RCS blocks at x 21.
 rows = [
   "   ####################",
-  "QQQ#...CCCCCCCCCCCC...#",
-  "QQQ#...CCCCCCCCCCCC...#",
-  "   #RR.CCCCCCCCCCCC.HH#",
-  "   #RR.CCCCCCCCCCCC..DD",
-  "   #...CCCCCCCCCCCC..DD",
-  "   #L++++++++++++++++DD",
-  "   #L..CCCCCCCCCCCC..DD",
-  "   #ONPCCCCCCCCCCCC..DD",
-  "   #ONPCCCCCCCCCCCC...#",
-  "QQQ#...CCCCCCCCCCCC...#",
-  "QQQ#...CCCCCCCCCCCC...#",
+  "   #..................#",
+  "   #..................#",
+  "   #..................#",
+  "   #.................##",
+  "   #.................##",
+  "   #.................##",
+  "   #.................##",
+  "   #.................##",
+  "   #..................#",
+  "   #..................#",
+  "   #..................#",
   "   ####################",
 ]
 mounts = [
+  { component = "escape_pod", size = "S", x = 20, y = 11 },
+  { component = "freight_drive", size = "M", x = 0, y = 10, rotation = 1 },
+  { component = "helm", size = "S", x = 20, y = 9, rotation = 1 },
+  { component = "reactor", size = "M", x = 4, y = 8 },
   { component = "tank", size = "S", x = 4, y = 7, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 20, y = 11, rotation = 0 },
+  { component = "cargo", size = "XL", x = 7, y = 7, rotation = 1 },
+  { component = "life_support", size = "S", x = 4, y = 5 },
+  { component = "docking_port", size = "M", x = 21, y = 4, rotation = 3 },
+  { component = "oxygen_tank", size = "S", x = 4, y = 3 },
+  { component = "nitrogen_tank", size = "S", x = 5, y = 3 },
+  { component = "tank", size = "S", x = 6, y = 3 },
+  { component = "freight_drive", size = "M", x = 0, y = 1, rotation = 1 },
+  { component = "cargo", size = "XL", x = 7, y = 1, rotation = 1 },
   { component = "escape_pod", size = "S", x = 20, y = 0, rotation = 2 },
 ]
+conduits = [
+  [[19, 9], [20, 9]],
+  [[4, 6], [21, 6]],
+  [[4, 1], [6, 1]],
+  [[4, 1], [4, 10]],
+  [[20, 6], [20, 9]],
+]
+edge_conduits = [
+  [[7, 1], [7, 12]],
+  [[19, 1], [19, 12]],
+]
 pipes = [
-  { x = 4, y = 10 }, { x = 5, y = 10 }, { x = 4, y = 2 }, { x = 5, y = 2 },
-  { x = 6, y = 2 }, { x = 6, y = 3 }, { x = 6, y = 4 }, { x = 6, y = 5 }, { x = 6, y = 6 },
-  { x = 6, y = 7 }, { x = 6, y = 8 }, { x = 6, y = 9 }, { x = 6, y = 10 }, { x = 5, y = 7 },
-  { x = 5, y = 4 }, { x = 4, y = 4 }, { x = 4, y = 5 },
+  [[4, 10], [6, 10]],
+  [[5, 7], [6, 7]],
+  [[4, 4], [6, 4]],
+  [[4, 2], [6, 2]],
+  [[4, 4], [4, 5]],
+  [[6, 2], [6, 10]],
+]
+# Thin walls: engineering aft (x 6 | 7) and the bridge forward (x 18 | 19) are closed off from the
+# holds, each with a door onto the conduit spine at y 6, which runs through both walls. A conduit
+# runs in each wall as well.
+edge_walls = [
+  { path = [[7, 1], [7, 12]], weight_class = "MEDIUM" },
+  { path = [[19, 1], [19, 12]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 7, y = 6, side = "LEFT" },
+  { x = 19, y = 6, side = "LEFT" },
 ]
 lights = [
   { x = 4, y = 1, side = "BOTTOM" },
@@ -169,43 +234,6 @@ lights = [
   { x = 19, y = 5, side = "LEFT" },
   { x = 6, y = 9, side = "RIGHT" },
   { x = 19, y = 9, side = "LEFT" },
-]
-# Thin walls: engineering aft (x 6 | 7) and the bridge forward (x 18 | 19) are closed off from the
-# holds, each with a door onto the conduit spine at y 6, which runs through both walls. A conduit
-# runs in each wall as well.
-edge_walls = [
-  { x = 6, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 6, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 6, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 9, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 6, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 18, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 9, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-]
-edge_conduits = [
-  { x = 6, y = 1, side = "RIGHT" }, { x = 6, y = 2, side = "RIGHT" }, { x = 6, y = 3, side = "RIGHT" },
-  { x = 6, y = 4, side = "RIGHT" }, { x = 6, y = 5, side = "RIGHT" }, { x = 6, y = 6, side = "RIGHT" },
-  { x = 6, y = 7, side = "RIGHT" }, { x = 6, y = 8, side = "RIGHT" }, { x = 6, y = 9, side = "RIGHT" },
-  { x = 6, y = 10, side = "RIGHT" }, { x = 6, y = 11, side = "RIGHT" }, { x = 18, y = 1, side = "RIGHT" },
-  { x = 18, y = 2, side = "RIGHT" }, { x = 18, y = 3, side = "RIGHT" }, { x = 18, y = 4, side = "RIGHT" },
-  { x = 18, y = 5, side = "RIGHT" }, { x = 18, y = 6, side = "RIGHT" }, { x = 18, y = 7, side = "RIGHT" },
-  { x = 18, y = 8, side = "RIGHT" }, { x = 18, y = 9, side = "RIGHT" }, { x = 18, y = 10, side = "RIGHT" },
-  { x = 18, y = 11, side = "RIGHT" },
 ]
 # RCS: corner quads, and linear pairs amidships and on the bow either side of the docking port.
 rcs = [
@@ -235,41 +263,51 @@ origin_y = -2.5
 # A railgun slug from ahead meets those first: round 8 found slugs at 3 to 4 km shorting the
 # reactor when it stood right behind the turret, so the raider went dark before it was in reach.
 rows = [
-  "  ###DDD#########",
-  "EE#....LRR.HHC..#",
-  "  #...PLRR.WWC.T#",
-  "EE#...P.+++++...#",
+  "  ###############",
+  "  #.............#",
+  "  #.............#",
+  "  #.............#",
   "  ###############",
 ]
 mounts = [
+  { component = "docking_port", size = "S", x = 5, y = 4 },
+  { component = "engine", size = "S", x = 0, y = 3, rotation = 1 },
+  { component = "helm", size = "S", x = 11, y = 3, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 14, y = 3 },
   { component = "nitrogen_tank", size = "S", x = 3, y = 2, rotation = 1 },
   { component = "oxygen_tank", size = "S", x = 5, y = 2 },
-  { component = "escape_pod", size = "S", x = 14, y = 3, rotation = 0 },
+  { component = "life_support", size = "S", x = 7, y = 2 },
+  { component = "reactor", size = "M", x = 8, y = 2 },
+  { component = "weapons", size = "S", x = 11, y = 2, rotation = 1 },
+  { component = "cargo", size = "S", x = 13, y = 2 },
+  { component = "turret_mount", size = "S", x = 15, y = 2 },
+  { component = "engine", size = "S", x = 0, y = 1, rotation = 1 },
+  { component = "tank", size = "S", x = 6, y = 1 },
 ]
+conduits = [
+  [[3, 3], [6, 3]],
+  [[6, 2], [8, 2]],
+  [[8, 1], [15, 1]],
+  [[3, 1], [3, 3]],
+  [[6, 2], [6, 4]],
+  [[11, 1], [11, 3]],
+  [[15, 1], [15, 2]],
+]
+edge_conduits = [ [[11, 1], [11, 4]] ]
 pipes = [
-  { x = 3, y = 3 }, { x = 3, y = 1 },
-  { x = 4, y = 1 },
-  { x = 4, y = 2 },
-  { x = 4, y = 3 },
-  { x = 5, y = 2 },
-  { x = 6, y = 2 },
-  { x = 7, y = 2 },
+  [[3, 3], [4, 3]],
+  [[4, 2], [7, 2]],
+  [[3, 1], [4, 1]],
 ]
+# A conduit run along y 1 (x 8-12) through a thin wall (x 10 | 11) that closes the bridge off from
+# engineering, with a door at y 1; a conduit runs in the wall as well.
+edge_walls = [ { path = [[11, 1], [11, 4]], weight_class = "MEDIUM" } ]
+doors = [ { x = 11, y = 1, side = "LEFT" } ]
 lights = [
   { x = 3, y = 1, side = "BOTTOM" },
   { x = 7, y = 1, side = "BOTTOM" },
   { x = 10, y = 1, side = "BOTTOM" },
   { x = 13, y = 1, side = "BOTTOM" },
-]
-# A conduit run along y 1 (x 8-12) through a thin wall (x 10 | 11) that closes the bridge off from
-# engineering, with a door at y 1; a conduit runs in the wall as well.
-edge_walls = [
-  { x = 10, y = 1, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 10, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 10, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-]
-edge_conduits = [
-  { x = 10, y = 1, side = "RIGHT" }, { x = 10, y = 2, side = "RIGHT" }, { x = 10, y = 3, side = "RIGHT" },
 ]
 # RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
 rcs = [
@@ -294,36 +332,46 @@ origin_y = -3.5
 # console. Its crew man the guns; it is silenced by knocking out its reactor or every turret.
 rows = [
   "#########",
-  "#T.....T#",
-  "#..RRNLO#",
-  "#..RRNLO#",
-  "#..WW++.#",
-  "#T.....T#",
+  "#.......#",
+  "#.......#",
+  "#.......#",
+  "#.......#",
+  "#.......#",
   "#########",
+]
+mounts = [
+  { component = "turret_mount", size = "S", x = 1, y = 5 },
+  { component = "turret_mount", size = "S", x = 7, y = 5 },
+  { component = "reactor", size = "M", x = 3, y = 3 },
+  { component = "nitrogen_tank", size = "S", x = 5, y = 3 },
+  { component = "life_support", size = "S", x = 6, y = 3 },
+  { component = "oxygen_tank", size = "S", x = 7, y = 3 },
+  { component = "weapons", size = "S", x = 3, y = 2, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 1, y = 1 },
+  { component = "turret_mount", size = "S", x = 7, y = 1 },
+]
+conduits = [
+  [[1, 3], [7, 3]],
+  [[5, 2], [7, 2]],
+  [[1, 1], [1, 5]],
+  [[3, 2], [3, 3]],
+  [[7, 1], [7, 5]],
+]
+edge_conduits = [ [[1, 3], [8, 3]] ]
+# Oxygen (x 7) and nitrogen (x 5) tanks either side of life support, piped to it across y 3.
+pipes = [ [[5, 3], [7, 3]] ]
+# A thin wall splits the upper deck (reactor, life support, the top guns) from the lower one (the
+# console and the bottom guns), with doors at x 2 and x 7 (the oxygen tank is reached from below). A
+# conduit runs in it, and conduits across the tiles under it.
+edge_walls = [ { path = [[1, 3], [8, 3]], weight_class = "MEDIUM" } ]
+doors = [
+  { x = 2, y = 3, side = "BOTTOM" },
+  { x = 7, y = 3, side = "BOTTOM" },
 ]
 lights = [
   { x = 4, y = 1, side = "BOTTOM" },
   { x = 1, y = 3, side = "BOTTOM" },
   { x = 4, y = 5, side = "TOP" },
-]
-# Oxygen (x 7) and nitrogen (x 5) tanks either side of life support, piped to it across y 3.
-pipes = [ { x = 5, y = 3 }, { x = 6, y = 3 }, { x = 7, y = 3 } ]
-# A thin wall splits the upper deck (reactor, life support, the top guns) from the lower one (the
-# console and the bottom guns), with doors at x 2 and x 7 (the oxygen tank is reached from below). A
-# conduit runs in it, and conduit tiles under it.
-edge_walls = [
-  { x = 1, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 2, y = 2, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 3, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 4, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 5, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 6, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 7, y = 2, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-]
-edge_conduits = [
-  { x = 1, y = 2, side = "TOP" }, { x = 2, y = 2, side = "TOP" }, { x = 3, y = 2, side = "TOP" },
-  { x = 4, y = 2, side = "TOP" }, { x = 5, y = 2, side = "TOP" }, { x = 6, y = 2, side = "TOP" },
-  { x = 7, y = 2, side = "TOP" },
 ]
 # RCS: a quad block at each corner, enough to turn the platform on its guns
 rcs = [
@@ -350,38 +398,75 @@ origin_y = -4.0
 # and bottom hull, so the gunship carries a player's crew as well as a patrol's.
 # A medbay of four beds (m, round 7) forward of the shield emitter, x 15-16, y 5-6.
 rows = [
-  "   #######DDD##########",
-  "GGG#....P.....Tmm.T...#",
-  "GGG#....P..RRRSmm.....#",
-  "   #.....L.RRR.C.HH.TT#",
-  "   #.....L.RRR.C.WW.TT#",
-  "GGG#....P+++++++++....#",
-  "GGG#....P.....T...T...#",
+  "   ####################",
+  "   #...........mm.....#",
+  "   #...........mm.....#",
+  "   #..................#",
+  "   #..................#",
+  "   #..................#",
+  "   #..................#",
   "   ####################",
 ]
 mounts = [
+  { component = "docking_port", size = "S", x = 10, y = 7 },
+  { component = "turret_mount", size = "S", x = 14, y = 6 },
+  { component = "turret_mount", size = "S", x = 18, y = 6 },
+  { component = "escape_pod", size = "S", x = 19, y = 6 },
+  { component = "gunship_drive", size = "M", x = 0, y = 5, rotation = 1 },
+  { component = "tank", size = "S", x = 8, y = 5 },
+  { component = "shield_emitter", size = "S", x = 14, y = 5 },
   { component = "oxygen_tank", size = "S", x = 4, y = 4, rotation = 1 },
+  { component = "helm", size = "S", x = 17, y = 4, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 4, y = 3, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 19, y = 6, rotation = 0 },
+  { component = "life_support", size = "S", x = 9, y = 3 },
+  { component = "reactor", size = "L", x = 11, y = 3 },
+  { component = "cargo", size = "S", x = 15, y = 3 },
+  { component = "weapons", size = "S", x = 17, y = 3, rotation = 1 },
+  { component = "turret_mount", size = "M", x = 20, y = 3 },
+  { component = "gunship_drive", size = "M", x = 0, y = 1, rotation = 1 },
+  { component = "tank", size = "S", x = 8, y = 1 },
+  { component = "turret_mount", size = "S", x = 14, y = 1 },
+  { component = "turret_mount", size = "S", x = 18, y = 1 },
   { component = "escape_pod", size = "S", x = 19, y = 0, rotation = 2 },
 ]
+conduits = [
+  [[17, 6], [18, 6]],
+  [[13, 5], [14, 5]],
+  [[17, 4], [18, 4]],
+  [[9, 3], [11, 3]],
+  [[4, 2], [20, 2]],
+  [[4, 2], [4, 5]],
+  [[11, 5], [11, 7]],
+  [[14, 5], [14, 6]],
+  [[14, 1], [14, 2]],
+  [[17, 2], [17, 4]],
+  [[18, 4], [18, 6]],
+  [[18, 1], [18, 2]],
+  [[20, 2], [20, 3]],
+]
+edge_conduits = [
+  [[10, 1], [10, 7]],
+  [[17, 1], [17, 7]],
+]
 pipes = [
-  { x = 4, y = 6 }, { x = 4, y = 5 }, { x = 4, y = 2 }, { x = 4, y = 1 },
-  { x = 5, y = 1 },
-  { x = 5, y = 2 },
-  { x = 5, y = 3 },
-  { x = 5, y = 4 },
-  { x = 5, y = 5 },
-  { x = 5, y = 6 },
-  { x = 6, y = 3 },
-  { x = 7, y = 3 },
-  { x = 8, y = 3 },
-  { x = 9, y = 3 },
-  { x = 8, y = 1 },
-  { x = 8, y = 2 },
-  { x = 8, y = 4 },
-  { x = 8, y = 5 },
-  { x = 8, y = 6 },
+  [[4, 6], [5, 6]],
+  [[4, 5], [5, 5]],
+  [[5, 3], [9, 3]],
+  [[4, 2], [5, 2]],
+  [[4, 1], [5, 1]],
+  [[5, 1], [5, 6]],
+  [[8, 1], [8, 6]],
+]
+# A conduit run along y 2 (x 9-17) through two thin walls: one closes engineering off aft (x 9 | 10),
+# the other the bridge and the bow forward (x 16 | 17), each with a door at y 2. A conduit runs in
+# each wall as well.
+edge_walls = [
+  { path = [[10, 1], [10, 7]], weight_class = "MEDIUM" },
+  { path = [[17, 1], [17, 7]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 10, y = 2, side = "LEFT" },
+  { x = 17, y = 2, side = "LEFT" },
 ]
 lights = [
   { x = 6, y = 1, side = "BOTTOM" },
@@ -394,29 +479,6 @@ lights = [
   { x = 6, y = 6, side = "TOP" },
   { x = 13, y = 6, side = "TOP" },
   { x = 20, y = 6, side = "TOP" },
-]
-# A conduit run along y 2 (x 9-17) through two thin walls: one closes engineering off aft (x 9 | 10),
-# the other the bridge and the bow forward (x 16 | 17), each with a door at y 2. A conduit runs in
-# each wall as well.
-edge_walls = [
-  { x = 9, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 9, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 16, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 16, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 16, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 16, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 16, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 16, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-]
-edge_conduits = [
-  { x = 9, y = 1, side = "RIGHT" }, { x = 9, y = 2, side = "RIGHT" }, { x = 9, y = 3, side = "RIGHT" },
-  { x = 9, y = 4, side = "RIGHT" }, { x = 9, y = 5, side = "RIGHT" }, { x = 9, y = 6, side = "RIGHT" },
-  { x = 16, y = 1, side = "RIGHT" }, { x = 16, y = 2, side = "RIGHT" }, { x = 16, y = 3, side = "RIGHT" },
-  { x = 16, y = 4, side = "RIGHT" }, { x = 16, y = 5, side = "RIGHT" }, { x = 16, y = 6, side = "RIGHT" },
 ]
 # RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
 rcs = [
@@ -448,32 +510,80 @@ origin_y = -5.0
 # A medbay of four beds (m, round 7) forward of the reactor, x 17-18, y 2-3.
 # It collides on its layout: its hull art has no collision layer of its own.
 rows = [
-  "   ##########DDD###########",
-  "GGG#....P..T.........T.TT.#",
-  "GGG#....P..............TT.#",
-  "   #.....+++++++++++......#",
-  "   #.....L..RRR.C...HH....#",
-  "   #.....L..RRR.C...WW....#",
-  "   #........RRR..mm.......#",
-  "GGG#....P........mm....TT.#",
-  "GGG#....P..T.........T.TT.#",
+  "   ########################",
+  "   #......................#",
+  "   #......................#",
+  "   #......................#",
+  "   #......................#",
+  "   #......................#",
+  "   #.............mm.......#",
+  "   #.............mm.......#",
+  "   #......................#",
   "   ########################",
 ]
-ports = [ { x = 14, y = 9, active = true } ]
 mounts = [
+  { component = "docking_port", size = "S", x = 13, y = 9, active = true },
+  { component = "escape_pod", size = "S", x = 10, y = 8 },
+  { component = "turret_mount", size = "S", x = 11, y = 8 },
+  { component = "turret_mount", size = "S", x = 21, y = 8 },
+  { component = "gunship_drive", size = "M", x = 0, y = 7, rotation = 1 },
+  { component = "tank", size = "S", x = 8, y = 7 },
+  { component = "turret_mount", size = "M", x = 23, y = 7 },
   { component = "oxygen_tank", size = "S", x = 4, y = 5, rotation = 1 },
+  { component = "helm", size = "S", x = 20, y = 5, rotation = 1 },
   { component = "nitrogen_tank", size = "S", x = 4, y = 4, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 10, y = 8, rotation = 0 },
+  { component = "life_support", size = "S", x = 9, y = 4 },
+  { component = "cargo", size = "S", x = 16, y = 4 },
+  { component = "weapons", size = "S", x = 20, y = 4, rotation = 1 },
+  { component = "reactor", size = "L", x = 12, y = 3 },
+  { component = "gunship_drive", size = "M", x = 0, y = 1, rotation = 1 },
+  { component = "tank", size = "S", x = 8, y = 1 },
+  { component = "turret_mount", size = "S", x = 11, y = 1 },
+  { component = "turret_mount", size = "S", x = 21, y = 1 },
+  { component = "turret_mount", size = "M", x = 23, y = 1 },
   { component = "escape_pod", size = "S", x = 10, y = 0, rotation = 2 },
 ]
+conduits = [
+  [[19, 8], [23, 8]],
+  [[9, 6], [19, 6]],
+  [[11, 5], [12, 5]],
+  [[20, 5], [23, 5]],
+  [[19, 4], [20, 4]],
+  [[4, 3], [12, 3]],
+  [[14, 3], [21, 3]],
+  [[4, 1], [9, 1]],
+  [[19, 1], [23, 1]],
+  [[4, 1], [4, 7]],
+  [[9, 3], [9, 4]],
+  [[11, 5], [11, 8]],
+  [[11, 1], [11, 3]],
+  [[14, 6], [14, 9]],
+  [[21, 1], [21, 3]],
+  [[23, 5], [23, 8]],
+]
+edge_conduits = [
+  [[10, 1], [10, 9]],
+  [[19, 1], [19, 9]],
+]
 pipes = [
-  { x = 4, y = 8 }, { x = 4, y = 7 }, { x = 4, y = 2 }, { x = 4, y = 1 },
-  { x = 5, y = 1 }, { x = 5, y = 2 }, { x = 5, y = 3 }, { x = 5, y = 4 },
-  { x = 5, y = 5 }, { x = 5, y = 6 }, { x = 5, y = 7 }, { x = 5, y = 8 },
-  { x = 6, y = 4 }, { x = 7, y = 4 },
-  { x = 8, y = 1 }, { x = 8, y = 2 }, { x = 8, y = 3 }, { x = 8, y = 4 },
-  { x = 8, y = 5 }, { x = 8, y = 6 }, { x = 8, y = 7 }, { x = 8, y = 8 },
-  { x = 9, y = 4 },
+  [[4, 8], [5, 8]],
+  [[4, 7], [5, 7]],
+  [[5, 4], [9, 4]],
+  [[4, 2], [5, 2]],
+  [[4, 1], [5, 1]],
+  [[5, 1], [5, 8]],
+  [[8, 1], [8, 8]],
+]
+# A conduit run along y 6 (x 9-19) through two thin walls: one closes engineering off aft (x 9 | 10),
+# the other the bridge and the bow guns forward (x 18 | 19), each with a door at y 6. A conduit runs
+# in each wall as well.
+edge_walls = [
+  { path = [[10, 1], [10, 9]], weight_class = "MEDIUM" },
+  { path = [[19, 1], [19, 9]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 10, y = 6, side = "LEFT" },
+  { x = 19, y = 6, side = "LEFT" },
 ]
 lights = [
   { x = 6, y = 1, side = "BOTTOM" },
@@ -489,35 +599,6 @@ lights = [
   { x = 13, y = 8, side = "TOP" },
   { x = 19, y = 8, side = "TOP" },
   { x = 22, y = 8, side = "TOP" },
-]
-# A conduit run along y 6 (x 9-19) through two thin walls: one closes engineering off aft (x 9 | 10),
-# the other the bridge and the bow guns forward (x 18 | 19), each with a door at y 6. A conduit runs
-# in each wall as well.
-edge_walls = [
-  { x = 9, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 6, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 9, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 6, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 18, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-]
-edge_conduits = [
-  { x = 9, y = 1, side = "RIGHT" }, { x = 9, y = 2, side = "RIGHT" }, { x = 9, y = 3, side = "RIGHT" },
-  { x = 9, y = 4, side = "RIGHT" }, { x = 9, y = 5, side = "RIGHT" }, { x = 9, y = 6, side = "RIGHT" },
-  { x = 9, y = 7, side = "RIGHT" }, { x = 9, y = 8, side = "RIGHT" }, { x = 18, y = 1, side = "RIGHT" },
-  { x = 18, y = 2, side = "RIGHT" }, { x = 18, y = 3, side = "RIGHT" }, { x = 18, y = 4, side = "RIGHT" },
-  { x = 18, y = 5, side = "RIGHT" }, { x = 18, y = 6, side = "RIGHT" }, { x = 18, y = 7, side = "RIGHT" },
-  { x = 18, y = 8, side = "RIGHT" },
 ]
 # RCS: corner quads, and linear pairs amidships and on the bow by the centreline, as on the corvette
 rcs = [
@@ -545,33 +626,46 @@ tile_size = 1.0
 origin_x = -9.5
 origin_y = -3.0
 rows = [
-  "  #####DDD#######",
-  "EE#...PL..HH...T#",
-  "  #...PL..WWRR..#",
-  "  #....++++.RR..#",
-  "EE#............T#",
+  "  ###############",
+  "  #.............#",
+  "  #.............#",
+  "  #.............#",
+  "  #.............#",
   "  ###############",
 ]
 mounts = [
-  { component = "oxygen_tank", size = "S", x = 3, y = 2, rotation = 1 },
+  { component = "docking_port", size = "S", x = 7, y = 5 },
+  { component = "engine", size = "S", x = 0, y = 4, rotation = 1 },
+  { component = "helm", size = "S", x = 10, y = 4, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 15, y = 4 },
   { component = "nitrogen_tank", size = "S", x = 3, y = 3, rotation = 1 },
+  { component = "tank", size = "S", x = 6, y = 3 },
+  { component = "life_support", size = "S", x = 7, y = 3 },
+  { component = "weapons", size = "S", x = 10, y = 3, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 3, y = 2, rotation = 1 },
+  { component = "reactor", size = "M", x = 12, y = 2 },
+  { component = "engine", size = "S", x = 0, y = 1, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 15, y = 1 },
   { component = "escape_pod", size = "S", x = 14, y = 0, rotation = 2 },
 ]
+conduits = [
+  [[7, 3], [12, 3]],
+  [[3, 2], [10, 2]],
+  [[13, 2], [15, 2]],
+  [[3, 1], [3, 4]],
+  [[8, 2], [8, 5]],
+  [[11, 3], [11, 4]],
+  [[15, 1], [15, 4]],
+]
+edge_conduits = [ [[8, 1], [8, 5]] ]
 pipes = [
-  { x = 3, y = 4 }, { x = 3, y = 1 },
-  { x = 4, y = 1 }, { x = 4, y = 2 }, { x = 4, y = 3 }, { x = 4, y = 4 },
-  { x = 5, y = 3 }, { x = 6, y = 3 }, { x = 7, y = 3 },
+  [[3, 4], [4, 4]],
+  [[4, 3], [7, 3]],
+  [[3, 1], [4, 1]],
+  [[4, 1], [4, 4]],
 ]
-edge_walls = [
-  { x = 7, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 7, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 7, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 7, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-]
-edge_conduits = [
-  { x = 7, y = 1, side = "RIGHT" }, { x = 7, y = 2, side = "RIGHT" }, { x = 7, y = 3, side = "RIGHT" },
-  { x = 7, y = 4, side = "RIGHT" },
-]
+edge_walls = [ { path = [[8, 1], [8, 5]], weight_class = "MEDIUM" } ]
+doors = [ { x = 8, y = 2, side = "LEFT" } ]
 lights = [
   { x = 5, y = 1, side = "BOTTOM" },
   { x = 11, y = 1, side = "BOTTOM" },
@@ -609,50 +703,56 @@ origin_x = -12.0
 origin_y = -4.0
 rows = [
   "   ##################",
-  "QQQ#...ON.CCCCCCC..DD",
-  "QQQ#...ON.CCCCCCC..DD",
-  "   #RR...LCCCCCCC..DD",
-  "   #RR..PL+++++++++DD",
-  "QQQ#....P....T..HH.DD",
-  "QQQ#............WW..#",
+  "   #...............##",
+  "   #...............##",
+  "   #...............##",
+  "   #...............##",
+  "   #...............##",
+  "   #................#",
   "   ##################",
 ]
-ports = [ { x = 19, y = 4, active = true } ]
 mounts = [
-  { component = "tank", size = "S", x = 6, y = 3, rotation = 0 },
+  { component = "freight_drive", size = "M", x = 0, y = 5, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 7, y = 5 },
+  { component = "nitrogen_tank", size = "S", x = 8, y = 5 },
+  { component = "cargo", size = "L", x = 10, y = 4, rotation = 1 },
+  { component = "reactor", size = "M", x = 4, y = 3 },
+  { component = "tank", size = "S", x = 6, y = 3 },
+  { component = "life_support", size = "S", x = 9, y = 3 },
+  { component = "tank", size = "S", x = 8, y = 2 },
+  { component = "turret_mount", size = "S", x = 13, y = 2 },
+  { component = "helm", size = "S", x = 16, y = 2, rotation = 1 },
+  { component = "docking_port", size = "M", x = 19, y = 2, rotation = 3, active = true },
+  { component = "freight_drive", size = "M", x = 0, y = 1, rotation = 1 },
+  { component = "weapons", size = "S", x = 16, y = 1, rotation = 1 },
   { component = "escape_pod", size = "S", x = 14, y = 0, rotation = 2 },
 ]
-pipes = [
-  { x = 4, y = 5 }, { x = 5, y = 5 }, { x = 4, y = 1 }, { x = 5, y = 1 },
-  { x = 7, y = 1 }, { x = 7, y = 2 }, { x = 7, y = 3 }, { x = 7, y = 4 }, { x = 7, y = 5 },
-  { x = 6, y = 1 }, { x = 6, y = 3 }, { x = 6, y = 5 }, { x = 8, y = 2 }, { x = 8, y = 3 }, { x = 8, y = 4 },
-  { x = 8, y = 5 }, { x = 9, y = 3 },
-]
-edge_walls = [
-  { x = 9, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 9, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 10, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 11, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 12, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 13, y = 4, side = "BOTTOM", weight_class = "MEDIUM", bulkhead = true },
-  { x = 14, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 15, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 16, y = 4, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 16, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 16, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 16, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
+conduits = [
+  [[4, 3], [19, 3]],
+  [[4, 2], [4, 5]],
+  [[13, 2], [13, 3]],
+  [[16, 1], [16, 3]],
 ]
 edge_conduits = [
-  { x = 9, y = 1, side = "RIGHT" }, { x = 9, y = 2, side = "RIGHT" }, { x = 9, y = 3, side = "RIGHT" },
-  { x = 9, y = 4, side = "RIGHT" }, { x = 9, y = 5, side = "RIGHT" }, { x = 9, y = 6, side = "RIGHT" },
-  { x = 10, y = 4, side = "BOTTOM" }, { x = 11, y = 4, side = "BOTTOM" }, { x = 12, y = 4, side = "BOTTOM" },
-  { x = 13, y = 4, side = "BOTTOM" }, { x = 14, y = 4, side = "BOTTOM" }, { x = 15, y = 4, side = "BOTTOM" },
-  { x = 16, y = 4, side = "BOTTOM" }, { x = 16, y = 4, side = "RIGHT" }, { x = 16, y = 5, side = "RIGHT" },
-  { x = 16, y = 6, side = "RIGHT" },
+  [[10, 4], [17, 4]],
+  [[10, 1], [10, 7]],
+  [[17, 4], [17, 7]],
+]
+pipes = [
+  [[4, 5], [8, 5]],
+  [[7, 4], [8, 4]],
+  [[6, 3], [9, 3]],
+  [[7, 2], [8, 2]],
+  [[4, 1], [7, 1]],
+]
+edge_walls = [
+  { path = [[10, 4], [17, 4]], weight_class = "MEDIUM" },
+  { path = [[17, 4], [17, 7]], weight_class = "MEDIUM" },
+  { path = [[10, 1], [10, 7]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 13, y = 4, side = "BOTTOM" },
+  { x = 10, y = 2, side = "LEFT" },
 ]
 lights = [
   { x = 6, y = 1, side = "BOTTOM" },
@@ -689,42 +789,57 @@ tile_size = 1.0
 origin_x = -11.0
 origin_y = -3.5
 rows = [
-  "  ######DDD#########",
-  "EE#...PL.......HH.T#",
-  "  #...PL..RR...WW..#",
-  "  #.....++RR++++.TT#",
-  "  #..............TT#",
-  "EE#............T...#",
+  "  ##################",
+  "  #................#",
+  "  #................#",
+  "  #................#",
+  "  #................#",
+  "  #................#",
   "  ##################",
 ]
-ports = [ { x = 9, y = 6, active = true } ]
 mounts = [
+  { component = "docking_port", size = "S", x = 8, y = 6, active = true },
+  { component = "engine", size = "S", x = 0, y = 5, rotation = 1 },
+  { component = "helm", size = "S", x = 15, y = 5, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 18, y = 5 },
+  { component = "tank", size = "S", x = 6, y = 4 },
+  { component = "life_support", size = "S", x = 7, y = 4 },
+  { component = "weapons", size = "S", x = 15, y = 4, rotation = 1 },
   { component = "oxygen_tank", size = "S", x = 3, y = 3, rotation = 1 },
+  { component = "reactor", size = "M", x = 10, y = 3 },
   { component = "nitrogen_tank", size = "S", x = 3, y = 2, rotation = 1 },
+  { component = "turret_mount", size = "M", x = 17, y = 2 },
+  { component = "engine", size = "S", x = 0, y = 1, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 15, y = 1 },
   { component = "escape_pod", size = "S", x = 13, y = 0, rotation = 2 },
 ]
-pipes = [
-  { x = 3, y = 5 }, { x = 3, y = 1 },
-  { x = 4, y = 1 }, { x = 4, y = 2 }, { x = 4, y = 3 }, { x = 4, y = 4 }, { x = 4, y = 5 },
-  { x = 5, y = 4 }, { x = 6, y = 4 }, { x = 7, y = 4 },
-]
-edge_walls = [
-  { x = 7, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 7, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 7, y = 3, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 7, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 7, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 14, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 14, y = 2, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 14, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 14, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 14, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
+conduits = [
+  [[3, 4], [15, 4]],
+  [[8, 3], [9, 3]],
+  [[12, 3], [18, 3]],
+  [[3, 1], [7, 1]],
+  [[3, 1], [3, 5]],
+  [[9, 3], [9, 6]],
+  [[15, 1], [15, 5]],
+  [[18, 3], [18, 5]],
 ]
 edge_conduits = [
-  { x = 7, y = 1, side = "RIGHT" }, { x = 7, y = 2, side = "RIGHT" }, { x = 7, y = 3, side = "RIGHT" },
-  { x = 7, y = 4, side = "RIGHT" }, { x = 7, y = 5, side = "RIGHT" }, { x = 14, y = 1, side = "RIGHT" },
-  { x = 14, y = 2, side = "RIGHT" }, { x = 14, y = 3, side = "RIGHT" }, { x = 14, y = 4, side = "RIGHT" },
-  { x = 14, y = 5, side = "RIGHT" },
+  [[8, 1], [8, 6]],
+  [[15, 1], [15, 6]],
+]
+pipes = [
+  [[3, 5], [4, 5]],
+  [[4, 4], [7, 4]],
+  [[3, 1], [4, 1]],
+  [[4, 1], [4, 5]],
+]
+edge_walls = [
+  { path = [[8, 1], [8, 6]], weight_class = "MEDIUM" },
+  { path = [[15, 1], [15, 6]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 8, y = 3, side = "LEFT" },
+  { x = 15, y = 2, side = "LEFT" },
 ]
 lights = [
   { x = 5, y = 1, side = "BOTTOM" },
@@ -758,38 +873,57 @@ tile_size = 1.0
 origin_x = -9.5
 origin_y = -3.5
 rows = [
-  "  #####DDD#      ",
-  "EE#..P....###### ",
-  "  #OOP.....WW.T##",
-  "  #...+++++HH...#",
-  "  #NNL..RR....T##",
-  "EE#..L..RR###### ",
+  "  #########      ",
+  "  #.......###### ",
+  "  #............##",
+  "  #.............#",
+  "  #............##",
+  "  #.......###### ",
   "  #########      ",
 ]
 mounts = [
+  { component = "docking_port", size = "S", x = 7, y = 6 },
+  { component = "engine", size = "S", x = 0, y = 5, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 3, y = 4, rotation = 1 },
+  { component = "tank", size = "S", x = 5, y = 4 },
+  { component = "weapons", size = "S", x = 11, y = 4, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 14, y = 4 },
+  { component = "helm", size = "S", x = 11, y = 3, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 3, y = 2, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 14, y = 2 },
+  { component = "engine", size = "S", x = 0, y = 1, rotation = 1 },
+  { component = "life_support", size = "S", x = 5, y = 1 },
+  { component = "reactor", size = "M", x = 8, y = 1 },
   { component = "escape_pod", size = "S", x = 7, y = 0, rotation = 2 },
 ]
+conduits = [
+  [[11, 4], [14, 4]],
+  [[6, 3], [11, 3]],
+  [[9, 2], [14, 2]],
+  [[3, 1], [8, 1]],
+  [[3, 1], [3, 5]],
+  [[8, 3], [8, 6]],
+  [[14, 2], [14, 4]],
+]
+edge_conduits = [ [[7, 1], [7, 6]] ]
 pipes = [
-  { x = 3, y = 1 },
-  { x = 4, y = 1 }, { x = 4, y = 2 }, { x = 5, y = 2 }, { x = 4, y = 3 }, { x = 3, y = 4 }, { x = 4, y = 4 },
-  { x = 5, y = 4 }, { x = 3, y = 5 },
+  [[3, 4], [5, 4]],
+  [[4, 2], [5, 2]],
+  [[3, 1], [4, 1]],
+  [[3, 4], [3, 5]],
+  [[4, 1], [4, 4]],
 ]
-edge_walls = [
-  { x = 6, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 3, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 6, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-]
-edge_conduits = [
-  { x = 6, y = 1, side = "RIGHT" }, { x = 6, y = 2, side = "RIGHT" }, { x = 6, y = 3, side = "RIGHT" },
-  { x = 6, y = 4, side = "RIGHT" }, { x = 6, y = 5, side = "RIGHT" },
-]
+edge_walls = [ { path = [[7, 1], [7, 6]], weight_class = "MEDIUM" } ]
+doors = [ { x = 7, y = 3, side = "LEFT" } ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 2, y = 0, rotation = 2 }, { shape = "WEDGE", x = 10, y = 0, rotation = 3 }, { shape = "WEDGE", x = 15, y = 1, rotation = 3 },
-  { shape = "WEDGE", x = 16, y = 2, rotation = 3 }, { shape = "WEDGE", x = 16, y = 4, rotation = 0 }, { shape = "WEDGE", x = 15, y = 5, rotation = 0 },
-  { shape = "WEDGE", x = 2, y = 6, rotation = 1 },
+  { shape = "WEDGE", x = 2, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 10, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 15, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 16, y = 2, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 16, y = 4, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 15, y = 5, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 2, y = 6, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 6, y = 1, side = "BOTTOM" },
@@ -819,37 +953,63 @@ origin_x = -10.5
 origin_y = -4.5
 rows = [
   "  ####             ",
-  "EE#..##            ",
-  "  #OO.######DDD##  ",
-  "  ##.PLLRR......###",
-  "  #..P..RR..HH...T#",
-  "  ##..++++++WW..###",
-  "  #NN.###########  ",
-  "EE#..##            ",
+  "  #..##            ",
+  "  #...###########  ",
+  "  ##............###",
+  "  #...............#",
+  "  ##............###",
+  "  #...###########  ",
+  "  #..##            ",
   "  ####             ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 10, y = 5, rotation = 0 },
+  { component = "engine", size = "S", x = 0, y = 7, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 3, y = 6, rotation = 1 },
+  { component = "docking_port", size = "S", x = 12, y = 6 },
+  { component = "life_support", size = "S", x = 6, y = 5, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 10, y = 5 },
+  { component = "tank", size = "S", x = 5, y = 4 },
+  { component = "reactor", size = "M", x = 8, y = 4 },
+  { component = "helm", size = "S", x = 12, y = 4, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 17, y = 4 },
+  { component = "weapons", size = "S", x = 12, y = 3, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 3, y = 2, rotation = 1 },
+  { component = "engine", size = "S", x = 0, y = 1, rotation = 1 },
 ]
+conduits = [
+  [[3, 6], [4, 6]],
+  [[4, 4], [8, 4]],
+  [[12, 4], [17, 4]],
+  [[4, 3], [12, 3]],
+  [[3, 2], [4, 2]],
+  [[3, 6], [3, 7]],
+  [[3, 1], [3, 2]],
+  [[4, 2], [4, 6]],
+  [[6, 3], [6, 5]],
+  [[13, 4], [13, 6]],
+]
+edge_conduits = [ [[8, 3], [8, 6]] ]
 pipes = [
-  { x = 3, y = 1 },
-  { x = 4, y = 1 }, { x = 4, y = 2 }, { x = 4, y = 3 }, { x = 4, y = 4 }, { x = 4, y = 5 }, { x = 5, y = 5 },
-  { x = 6, y = 5 }, { x = 3, y = 6 }, { x = 4, y = 6 }, { x = 5, y = 6 }, { x = 3, y = 7 },
+  [[3, 6], [5, 6]],
+  [[4, 5], [6, 5]],
+  [[3, 1], [4, 1]],
+  [[3, 6], [3, 7]],
+  [[4, 1], [4, 6]],
 ]
-edge_walls = [
-  { x = 7, y = 3, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 7, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 7, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-]
-edge_conduits = [
-  { x = 7, y = 3, side = "RIGHT" }, { x = 7, y = 4, side = "RIGHT" }, { x = 7, y = 5, side = "RIGHT" },
-]
+edge_walls = [ { path = [[8, 3], [8, 6]], weight_class = "MEDIUM" } ]
+doors = [ { x = 8, y = 3, side = "LEFT" } ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 2, y = 0, rotation = 2 }, { shape = "WEDGE", x = 5, y = 0, rotation = 3 }, { shape = "WEDGE", x = 6, y = 1, rotation = 3 },
-  { shape = "WEDGE", x = 16, y = 2, rotation = 3 }, { shape = "WEDGE", x = 18, y = 3, rotation = 3 }, { shape = "WEDGE", x = 18, y = 5, rotation = 0 },
-  { shape = "WEDGE", x = 16, y = 6, rotation = 0 }, { shape = "WEDGE", x = 6, y = 7, rotation = 0 }, { shape = "WEDGE", x = 2, y = 8, rotation = 1 },
-  { shape = "WEDGE", x = 5, y = 8, rotation = 0 },
+  { shape = "WEDGE", x = 2, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 5, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 6, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 16, y = 2, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 18, y = 3, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 18, y = 5, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 16, y = 6, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 6, y = 7, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 2, y = 8, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 5, y = 8, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 6, y = 3, side = "BOTTOM" },
@@ -879,48 +1039,87 @@ tile_size = 1.0
 origin_x = -14.0
 origin_y = -4.5
 rows = [
-  "  ###DDD######            ",
-  "EE#..........##     ####  ",
-  "  #OOP..RR....##   ##.T## ",
-  "  #..P..RR.....#####.HH.##",
-  "  #...++++++++++++++++++S#",
-  "  #..L.........#####.WW.##",
-  "  #NNL..CCC...##   ##..## ",
-  "EE#.....CCC..##     ####  ",
+  "  ############            ",
+  "  #..........##     ####  ",
+  "  #...........##   ##..## ",
+  "  #............#####....##",
+  "  #......................#",
+  "  #............#####....##",
+  "  #...........##   ##..## ",
+  "  #..........##     ####  ",
   "  ############            ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 10, y = 7, rotation = 0 },
+  { component = "docking_port", size = "S", x = 5, y = 8 },
+  { component = "engine", size = "S", x = 0, y = 7, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 10, y = 7 },
+  { component = "oxygen_tank", size = "S", x = 3, y = 6, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 22, y = 6 },
+  { component = "tank", size = "S", x = 5, y = 5 },
+  { component = "reactor", size = "M", x = 8, y = 5 },
+  { component = "helm", size = "S", x = 21, y = 5, rotation = 1 },
+  { component = "shield_emitter", size = "S", x = 24, y = 4 },
+  { component = "weapons", size = "S", x = 21, y = 3, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 3, y = 2, rotation = 1 },
+  { component = "life_support", size = "S", x = 5, y = 2 },
+  { component = "engine", size = "S", x = 0, y = 1, rotation = 1 },
+  { component = "cargo", size = "M", x = 8, y = 1, rotation = 1 },
 ]
-pipes = [
-  { x = 3, y = 1 },
-  { x = 4, y = 1 }, { x = 4, y = 2 }, { x = 4, y = 3 }, { x = 5, y = 3 }, { x = 5, y = 4 }, { x = 5, y = 5 },
-  { x = 3, y = 6 }, { x = 4, y = 6 }, { x = 5, y = 6 }, { x = 3, y = 7 },
-]
-edge_walls = [
-  { x = 6, y = 1, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 4, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 6, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 14, y = 4, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 19, y = 4, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
+conduits = [
+  [[3, 7], [6, 7]],
+  [[6, 6], [8, 6]],
+  [[9, 5], [14, 5]],
+  [[21, 5], [22, 5]],
+  [[6, 4], [24, 4]],
+  [[3, 2], [6, 2]],
+  [[3, 1], [3, 7]],
+  [[6, 6], [6, 8]],
+  [[21, 3], [21, 5]],
+  [[22, 4], [22, 6]],
 ]
 edge_conduits = [
-  { x = 6, y = 1, side = "RIGHT" }, { x = 6, y = 2, side = "RIGHT" }, { x = 6, y = 3, side = "RIGHT" },
-  { x = 6, y = 4, side = "RIGHT" }, { x = 6, y = 5, side = "RIGHT" }, { x = 6, y = 6, side = "RIGHT" },
-  { x = 6, y = 7, side = "RIGHT" }, { x = 14, y = 4, side = "RIGHT" }, { x = 19, y = 4, side = "RIGHT" },
+  [[7, 1], [7, 8]],
+  [[15, 4], [15, 5]],
+  [[20, 4], [20, 5]],
+]
+pipes = [
+  [[3, 6], [5, 6]],
+  [[4, 3], [5, 3]],
+  [[3, 1], [4, 1]],
+  [[3, 6], [3, 7]],
+  [[4, 1], [4, 3]],
+  [[5, 3], [5, 6]],
+]
+edge_walls = [
+  { path = [[15, 4], [15, 5]], weight_class = "MEDIUM" },
+  { path = [[20, 4], [20, 5]], weight_class = "MEDIUM" },
+  { path = [[7, 1], [7, 8]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 7, y = 4, side = "LEFT" },
+  { x = 15, y = 4, side = "LEFT" },
+  { x = 20, y = 4, side = "LEFT" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 2, y = 0, rotation = 2 }, { shape = "WEDGE", x = 13, y = 0, rotation = 3 }, { shape = "WEDGE", x = 14, y = 1, rotation = 3 },
-  { shape = "WEDGE", x = 20, y = 1, rotation = 2 }, { shape = "WEDGE", x = 23, y = 1, rotation = 3 }, { shape = "WEDGE", x = 15, y = 2, rotation = 3 },
-  { shape = "WEDGE", x = 19, y = 2, rotation = 2 }, { shape = "WEDGE", x = 24, y = 2, rotation = 3 }, { shape = "WEDGE", x = 25, y = 3, rotation = 3 },
-  { shape = "WEDGE", x = 25, y = 5, rotation = 0 }, { shape = "WEDGE", x = 15, y = 6, rotation = 0 }, { shape = "WEDGE", x = 19, y = 6, rotation = 1 },
-  { shape = "WEDGE", x = 24, y = 6, rotation = 0 }, { shape = "WEDGE", x = 14, y = 7, rotation = 0 }, { shape = "WEDGE", x = 20, y = 7, rotation = 1 },
-  { shape = "WEDGE", x = 23, y = 7, rotation = 0 }, { shape = "WEDGE", x = 2, y = 8, rotation = 1 }, { shape = "WEDGE", x = 13, y = 8, rotation = 0 },
+  { shape = "WEDGE", x = 2, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 13, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 14, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 1, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 23, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 15, y = 2, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 19, y = 2, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 24, y = 2, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 25, y = 3, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 25, y = 5, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 15, y = 6, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 19, y = 6, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 24, y = 6, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 14, y = 7, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 7, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 23, y = 7, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 2, y = 8, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 13, y = 8, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 3, y = 1, side = "BOTTOM" },
@@ -955,67 +1154,86 @@ tile_size = 1.0
 origin_x = -12.0
 origin_y = -6.5
 rows = [
-  "   ###########DDDDD##",
-  "QQQ#..........DDDDDT#",
-  "QQQ#................#",
+  "   ##################",
+  "   #..........#####.#",
   "   #................#",
-  "   #RRL..WH..########",
-  "   #RRL..WH..#       ",
-  "   #..++++++.#       ",
-  "   #NN.......#       ",
-  "   #OO.......########",
-  "   #PP..............#",
-  "QQQ#................#",
-  "QQQ#...............T#",
+  "   #................#",
+  "   #.........########",
+  "   #.........#       ",
+  "   #.........#       ",
+  "   #.........#       ",
+  "   #.........########",
+  "   #................#",
+  "   #................#",
+  "   #................#",
   "   ##################",
 ]
-ports = [ { x = 14, y = 11, active = true } ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 7, y = 0, rotation = 2 },
-  { component = "cargo", size = "M", x = 10, y = 2, rotation = 1 },
-  { component = "cargo", size = "M", x = 13, y = 2, rotation = 1 },
-  { component = "cargo", size = "M", x = 16, y = 2, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 7, y = 11 },
+  { component = "docking_port", size = "M", x = 14, y = 11, active = true },
+  { component = "turret_mount", size = "S", x = 19, y = 11 },
+  { component = "freight_drive", size = "M", x = 0, y = 10, rotation = 1 },
   { component = "cargo", size = "M", x = 10, y = 9, rotation = 1 },
   { component = "cargo", size = "M", x = 13, y = 9, rotation = 1 },
   { component = "cargo", size = "M", x = 16, y = 9, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 7, y = 11, rotation = 0 },
+  { component = "reactor", size = "M", x = 4, y = 7 },
+  { component = "life_support", size = "S", x = 6, y = 7 },
+  { component = "weapons", size = "S", x = 9, y = 7 },
+  { component = "helm", size = "S", x = 10, y = 7 },
+  { component = "nitrogen_tank", size = "S", x = 4, y = 5, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 4, y = 4, rotation = 1 },
+  { component = "tank", size = "S", x = 4, y = 3, rotation = 1 },
+  { component = "cargo", size = "M", x = 10, y = 2, rotation = 1 },
+  { component = "cargo", size = "M", x = 13, y = 2, rotation = 1 },
+  { component = "cargo", size = "M", x = 16, y = 2, rotation = 1 },
+  { component = "freight_drive", size = "M", x = 0, y = 1, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 19, y = 1 },
+  { component = "escape_pod", size = "S", x = 7, y = 0, rotation = 2 },
 ]
-pipes = [
-  { x = 4, y = 2 },
-  { x = 5, y = 2 }, { x = 5, y = 3 }, { x = 5, y = 4 }, { x = 5, y = 5 }, { x = 5, y = 6 }, { x = 5, y = 7 },
-  { x = 5, y = 8 }, { x = 6, y = 8 }, { x = 6, y = 9 }, { x = 4, y = 10 }, { x = 5, y = 10 }, { x = 6, y = 10 },
-]
-edge_walls = [
-  { x = 6, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 6, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 6, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 6, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 7, y = 8, side = "TOP", weight_class = "MEDIUM" },
-  { x = 8, y = 8, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 9, y = 8, side = "TOP", weight_class = "MEDIUM" },
-  { x = 10, y = 8, side = "TOP", weight_class = "MEDIUM" },
-  { x = 11, y = 8, side = "TOP", weight_class = "MEDIUM" },
-  { x = 12, y = 8, side = "TOP", weight_class = "MEDIUM" },
-  { x = 7, y = 3, side = "TOP", weight_class = "MEDIUM" },
-  { x = 8, y = 3, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 9, y = 3, side = "TOP", weight_class = "MEDIUM" },
-  { x = 10, y = 3, side = "TOP", weight_class = "MEDIUM" },
-  { x = 11, y = 3, side = "TOP", weight_class = "MEDIUM" },
-  { x = 12, y = 3, side = "TOP", weight_class = "MEDIUM" },
+conduits = [
+  [[15, 10], [19, 10]],
+  [[12, 9], [15, 9]],
+  [[4, 7], [6, 7]],
+  [[9, 7], [10, 7]],
+  [[6, 6], [12, 6]],
+  [[4, 4], [6, 4]],
+  [[12, 3], [19, 3]],
+  [[4, 2], [4, 10]],
+  [[12, 3], [12, 9]],
+  [[15, 9], [15, 11]],
+  [[19, 10], [19, 11]],
+  [[19, 1], [19, 3]],
 ]
 edge_conduits = [
-  { x = 6, y = 4, side = "RIGHT" }, { x = 6, y = 5, side = "RIGHT" }, { x = 6, y = 6, side = "RIGHT" },
-  { x = 6, y = 7, side = "RIGHT" }, { x = 6, y = 8, side = "RIGHT" }, { x = 7, y = 8, side = "TOP" },
-  { x = 8, y = 8, side = "TOP" }, { x = 9, y = 8, side = "TOP" }, { x = 10, y = 8, side = "TOP" },
-  { x = 11, y = 8, side = "TOP" }, { x = 12, y = 8, side = "TOP" }, { x = 7, y = 3, side = "TOP" },
-  { x = 8, y = 3, side = "TOP" }, { x = 9, y = 3, side = "TOP" }, { x = 10, y = 3, side = "TOP" },
-  { x = 11, y = 3, side = "TOP" }, { x = 12, y = 3, side = "TOP" },
+  [[7, 4], [13, 4]],
+  [[7, 9], [13, 9]],
+  [[7, 4], [7, 9]],
+]
+pipes = [
+  [[4, 10], [6, 10]],
+  [[5, 8], [6, 8]],
+  [[4, 2], [5, 2]],
+  [[5, 2], [5, 8]],
+  [[6, 8], [6, 10]],
+]
+edge_walls = [
+  { path = [[7, 9], [13, 9]], weight_class = "MEDIUM" },
+  { path = [[7, 4], [7, 9]], weight_class = "MEDIUM" },
+  { path = [[7, 4], [13, 4]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 8, y = 9, side = "BOTTOM" },
+  { x = 7, y = 6, side = "LEFT" },
+  { x = 8, y = 4, side = "BOTTOM" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 3, y = 0, rotation = 2 }, { shape = "WEDGE", x = 20, y = 0, rotation = 3 }, { shape = "WEDGE", x = 20, y = 4, rotation = 0 },
-  { shape = "WEDGE", x = 20, y = 8, rotation = 3 }, { shape = "WEDGE", x = 3, y = 12, rotation = 1 }, { shape = "WEDGE", x = 20, y = 12, rotation = 0 },
+  { shape = "WEDGE", x = 3, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 4, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 8, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 12, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 12, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 4, y = 1, side = "BOTTOM" },
@@ -1054,58 +1272,89 @@ origin_x = -22.0
 origin_y = -5.5
 rows = [
   "      ######  ######  ######  ######     ",
-  "      #PPP.#  #PPP.#  #PPP.#  #PPP.#     ",
-  "   ####PPP.####PPP.####PPP.####PPP.######",
-  "QQQ#...RR............................T.DD",
-  "QQQ#...RR...........................HH.DD",
-  "   #...++++++++++++++++++++++++++++++++DD",
-  "QQQ#...PPON.........................WW.DD",
-  "QQQ#...LLON..........................T.DD",
-  "   ####PPP.####PPP.####PPP.####PPP.######",
-  "      #PPP.#  #PPP.#  #PPP.#  #PPP.#     ",
+  "      #....#  #....#  #....#  #....#     ",
+  "   ####....####....####....####....######",
+  "   #...................................##",
+  "   #...................................##",
+  "   #...................................##",
+  "   #...................................##",
+  "   #...................................##",
+  "   ####....####....####....####....######",
+  "      #....#  #....#  #....#  #....#     ",
   "      ######  ######  ######  ######     ",
 ]
 mounts = [
+  { component = "tank", size = "M", x = 7, y = 8, rotation = 1 },
+  { component = "tank", size = "M", x = 15, y = 8, rotation = 1 },
+  { component = "tank", size = "M", x = 23, y = 8, rotation = 1 },
+  { component = "tank", size = "M", x = 31, y = 8, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 36, y = 7 },
+  { component = "turret_mount", size = "S", x = 37, y = 7 },
+  { component = "freight_drive", size = "M", x = 0, y = 6, rotation = 1 },
+  { component = "reactor", size = "M", x = 7, y = 6 },
+  { component = "helm", size = "S", x = 36, y = 6, rotation = 1 },
+  { component = "tank", size = "S", x = 7, y = 4, rotation = 1 },
+  { component = "weapons", size = "S", x = 36, y = 4, rotation = 1 },
+  { component = "freight_drive", size = "M", x = 0, y = 3, rotation = 1 },
+  { component = "life_support", size = "S", x = 7, y = 3, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 9, y = 3 },
+  { component = "nitrogen_tank", size = "S", x = 10, y = 3 },
+  { component = "turret_mount", size = "S", x = 37, y = 3 },
+  { component = "docking_port", size = "M", x = 39, y = 3, rotation = 3 },
   { component = "escape_pod", size = "S", x = 36, y = 2, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 36, y = 7, rotation = 0 },
+  { component = "tank", size = "M", x = 7, y = 1, rotation = 1 },
+  { component = "tank", size = "M", x = 15, y = 1, rotation = 1 },
+  { component = "tank", size = "M", x = 23, y = 1, rotation = 1 },
+  { component = "tank", size = "M", x = 31, y = 1, rotation = 1 },
 ]
-pipes = [
-  { x = 7, y = 2 }, { x = 15, y = 2 }, { x = 23, y = 2 }, { x = 31, y = 2 }, { x = 7, y = 3 }, { x = 15, y = 3 },
-  { x = 23, y = 3 }, { x = 31, y = 3 }, { x = 4, y = 4 }, { x = 5, y = 4 }, { x = 6, y = 4 }, { x = 7, y = 4 },
-  { x = 8, y = 4 }, { x = 9, y = 4 }, { x = 10, y = 4 }, { x = 11, y = 4 }, { x = 12, y = 4 }, { x = 13, y = 4 },
-  { x = 14, y = 4 }, { x = 15, y = 4 }, { x = 23, y = 4 }, { x = 31, y = 4 }, { x = 4, y = 5 }, { x = 7, y = 5 },
-  { x = 15, y = 5 }, { x = 23, y = 5 }, { x = 31, y = 5 }, { x = 4, y = 6 }, { x = 7, y = 6 }, { x = 15, y = 6 },
-  { x = 23, y = 6 }, { x = 31, y = 6 }, { x = 7, y = 7 }, { x = 15, y = 7 }, { x = 16, y = 7 }, { x = 17, y = 7 },
-  { x = 18, y = 7 }, { x = 19, y = 7 }, { x = 20, y = 7 }, { x = 21, y = 7 }, { x = 22, y = 7 }, { x = 23, y = 7 },
-  { x = 24, y = 7 }, { x = 25, y = 7 }, { x = 26, y = 7 }, { x = 27, y = 7 }, { x = 28, y = 7 }, { x = 29, y = 7 },
-  { x = 30, y = 7 }, { x = 31, y = 7 }, { x = 7, y = 8 }, { x = 15, y = 8 }, { x = 23, y = 8 }, { x = 31, y = 8 },
-]
-edge_walls = [
-  { x = 11, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 5, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 11, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 5, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 35, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
+conduits = [
+  [[7, 5], [39, 5]],
+  [[4, 3], [7, 3]],
+  [[4, 3], [4, 6]],
+  [[7, 3], [7, 6]],
+  [[37, 3], [37, 7]],
 ]
 edge_conduits = [
-  { x = 11, y = 3, side = "RIGHT" }, { x = 11, y = 4, side = "RIGHT" }, { x = 11, y = 5, side = "RIGHT" },
-  { x = 11, y = 6, side = "RIGHT" }, { x = 11, y = 7, side = "RIGHT" }, { x = 35, y = 3, side = "RIGHT" },
-  { x = 35, y = 4, side = "RIGHT" }, { x = 35, y = 5, side = "RIGHT" }, { x = 35, y = 6, side = "RIGHT" },
-  { x = 35, y = 7, side = "RIGHT" },
+  [[12, 3], [12, 8]],
+  [[36, 3], [36, 8]],
+]
+pipes = [
+  [[15, 7], [31, 7]],
+  [[4, 4], [15, 4]],
+  [[4, 4], [4, 6]],
+  [[7, 2], [7, 8]],
+  [[15, 2], [15, 8]],
+  [[23, 2], [23, 8]],
+  [[31, 2], [31, 8]],
+]
+edge_walls = [
+  { path = [[12, 3], [12, 8]], weight_class = "MEDIUM" },
+  { path = [[36, 3], [36, 8]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 12, y = 5, side = "LEFT" },
+  { x = 36, y = 5, side = "LEFT" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 6, y = 0, rotation = 2 }, { shape = "WEDGE", x = 11, y = 0, rotation = 3 }, { shape = "WEDGE", x = 14, y = 0, rotation = 2 },
-  { shape = "WEDGE", x = 19, y = 0, rotation = 3 }, { shape = "WEDGE", x = 22, y = 0, rotation = 2 }, { shape = "WEDGE", x = 27, y = 0, rotation = 3 },
-  { shape = "WEDGE", x = 30, y = 0, rotation = 2 }, { shape = "WEDGE", x = 35, y = 0, rotation = 3 }, { shape = "WEDGE", x = 3, y = 2, rotation = 2 },
-  { shape = "WEDGE", x = 3, y = 8, rotation = 1 }, { shape = "WEDGE", x = 6, y = 10, rotation = 1 }, { shape = "WEDGE", x = 11, y = 10, rotation = 0 },
-  { shape = "WEDGE", x = 14, y = 10, rotation = 1 }, { shape = "WEDGE", x = 19, y = 10, rotation = 0 }, { shape = "WEDGE", x = 22, y = 10, rotation = 1 },
-  { shape = "WEDGE", x = 27, y = 10, rotation = 0 }, { shape = "WEDGE", x = 30, y = 10, rotation = 1 }, { shape = "WEDGE", x = 35, y = 10, rotation = 0 },
+  { shape = "WEDGE", x = 6, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 11, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 14, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 19, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 22, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 27, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 30, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 35, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 2, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 8, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 6, y = 10, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 11, y = 10, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 14, y = 10, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 19, y = 10, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 22, y = 10, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 27, y = 10, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 30, y = 10, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 35, y = 10, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 10, y = 1, side = "BOTTOM" },
@@ -1156,13 +1405,13 @@ rows = [
   "             #mmmmmm#        ",
   "             #mmmmmm#        ",
   "   ###########mmmmmm#########",
-  "   #PP.RR.................T.#",
-  "QQQ#...RR.CCC...............#",
-  "QQQ#......CCC...........HH..D",
-  "   #NN.+++++++++++++++++++S.D",
-  "QQQ#....................WW..D",
-  "QQQ#....L.CCC...............#",
-  "   #OO..L.CCC.............T.#",
+  "   #........................#",
+  "   #........................#",
+  "   #........................#",
+  "   #........................#",
+  "   #........................#",
+  "   #........................#",
+  "   #........................#",
   "   ###########mmmmmm#########",
   "             #mmmmmm#        ",
   "             #mmmmmm#        ",
@@ -1171,69 +1420,72 @@ rows = [
   "              ######         ",
 ]
 mounts = [
+  { component = "escape_pod", size = "S", x = 15, y = 17 },
+  { component = "escape_pod", size = "S", x = 18, y = 17 },
+  { component = "tank", size = "S", x = 4, y = 12, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 26, y = 12 },
+  { component = "reactor", size = "M", x = 7, y = 11 },
+  { component = "freight_drive", size = "M", x = 0, y = 10, rotation = 1 },
+  { component = "cargo", size = "M", x = 10, y = 10, rotation = 1 },
+  { component = "helm", size = "S", x = 24, y = 10, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 4, y = 9, rotation = 1 },
+  { component = "shield_emitter", size = "S", x = 26, y = 9 },
+  { component = "weapons", size = "S", x = 24, y = 8, rotation = 1 },
+  { component = "docking_port", size = "S", x = 28, y = 8, rotation = 3 },
+  { component = "freight_drive", size = "M", x = 0, y = 7, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 4, y = 6, rotation = 1 },
+  { component = "life_support", size = "S", x = 8, y = 6 },
+  { component = "cargo", size = "M", x = 10, y = 6, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 26, y = 6 },
   { component = "escape_pod", size = "S", x = 15, y = 0, rotation = 2 },
   { component = "escape_pod", size = "S", x = 18, y = 0, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 15, y = 17, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 18, y = 17, rotation = 0 },
 ]
-pipes = [
-  { x = 4, y = 6 }, { x = 4, y = 7 }, { x = 5, y = 7 }, { x = 6, y = 7 }, { x = 7, y = 7 }, { x = 8, y = 7 },
-  { x = 4, y = 8 }, { x = 4, y = 9 }, { x = 4, y = 10 }, { x = 4, y = 11 }, { x = 4, y = 12 },
-]
-edge_walls = [
-  { x = 8, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 8, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 8, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 8, y = 9, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 8, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 8, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 8, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 13, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 13, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 13, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 13, y = 9, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 13, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 13, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 13, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 9, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 19, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 14, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 16, y = 12, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 17, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 19, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 14, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 16, y = 5, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 17, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 19, y = 5, side = "TOP", weight_class = "MEDIUM" },
+conduits = [
+  [[4, 9], [28, 9]],
+  [[4, 8], [4, 10]],
+  [[8, 7], [8, 11]],
+  [[24, 8], [24, 10]],
+  [[26, 6], [26, 12]],
 ]
 edge_conduits = [
-  { x = 8, y = 6, side = "RIGHT" }, { x = 8, y = 7, side = "RIGHT" }, { x = 8, y = 8, side = "RIGHT" },
-  { x = 8, y = 9, side = "RIGHT" }, { x = 8, y = 10, side = "RIGHT" }, { x = 8, y = 11, side = "RIGHT" },
-  { x = 8, y = 12, side = "RIGHT" }, { x = 13, y = 6, side = "RIGHT" }, { x = 13, y = 7, side = "RIGHT" },
-  { x = 13, y = 8, side = "RIGHT" }, { x = 13, y = 9, side = "RIGHT" }, { x = 13, y = 10, side = "RIGHT" },
-  { x = 13, y = 11, side = "RIGHT" }, { x = 13, y = 12, side = "RIGHT" }, { x = 19, y = 6, side = "RIGHT" },
-  { x = 19, y = 7, side = "RIGHT" }, { x = 19, y = 8, side = "RIGHT" }, { x = 19, y = 9, side = "RIGHT" },
-  { x = 19, y = 10, side = "RIGHT" }, { x = 19, y = 11, side = "RIGHT" }, { x = 19, y = 12, side = "RIGHT" },
-  { x = 14, y = 12, side = "TOP" }, { x = 15, y = 12, side = "TOP" }, { x = 16, y = 12, side = "TOP" },
-  { x = 17, y = 12, side = "TOP" }, { x = 18, y = 12, side = "TOP" }, { x = 19, y = 12, side = "TOP" },
-  { x = 14, y = 5, side = "TOP" }, { x = 15, y = 5, side = "TOP" }, { x = 16, y = 5, side = "TOP" },
-  { x = 17, y = 5, side = "TOP" }, { x = 18, y = 5, side = "TOP" }, { x = 19, y = 5, side = "TOP" },
+  [[14, 6], [20, 6]],
+  [[14, 13], [20, 13]],
+  [[9, 6], [9, 13]],
+  [[14, 6], [14, 13]],
+  [[20, 6], [20, 13]],
+]
+pipes = [
+  [[4, 7], [8, 7]],
+  [[4, 6], [4, 12]],
+]
+edge_walls = [
+  { path = [[14, 13], [20, 13]], weight_class = "MEDIUM" },
+  { path = [[9, 6], [9, 13]], weight_class = "MEDIUM" },
+  { path = [[14, 6], [14, 13]], weight_class = "MEDIUM" },
+  { path = [[14, 6], [20, 6]], weight_class = "MEDIUM" },
+  { path = [[20, 6], [20, 13]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 16, y = 13, side = "BOTTOM" },
+  { x = 9, y = 9, side = "LEFT" },
+  { x = 14, y = 9, side = "LEFT" },
+  { x = 20, y = 9, side = "LEFT" },
+  { x = 16, y = 6, side = "BOTTOM" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 14, y = 0, rotation = 2 }, { shape = "WEDGE", x = 19, y = 0, rotation = 3 }, { shape = "WEDGE", x = 13, y = 1, rotation = 2 },
-  { shape = "WEDGE", x = 20, y = 1, rotation = 3 }, { shape = "WEDGE", x = 3, y = 5, rotation = 2 }, { shape = "WEDGE", x = 28, y = 5, rotation = 3 },
-  { shape = "WEDGE", x = 3, y = 13, rotation = 1 }, { shape = "WEDGE", x = 28, y = 13, rotation = 0 }, { shape = "WEDGE", x = 13, y = 17, rotation = 1 },
-  { shape = "WEDGE", x = 20, y = 17, rotation = 0 }, { shape = "WEDGE", x = 14, y = 18, rotation = 1 }, { shape = "WEDGE", x = 19, y = 18, rotation = 0 },
+  { shape = "WEDGE", x = 14, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 19, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 13, y = 1, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 5, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 28, y = 5, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 13, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 28, y = 13, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 13, y = 17, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 17, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 14, y = 18, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 19, y = 18, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 16, y = 1, side = "BOTTOM" },
@@ -1275,65 +1527,81 @@ tile_size = 1.0
 origin_x = -16.0
 origin_y = -6.0
 rows = [
-  "         ######DDD#          ",
-  "         #..TT....#          ",
-  "        ##T.TT....##         ",
-  "   ######..+.......#####5    ",
-  "GGG#...LRR.+............555  ",
-  "GGG#...LRR.+........HH....555",
-  "   #...++++++++++++++++++..T5",
-  "GGG#................WW....555",
-  "GGG#....................555  ",
-  "   #NN...###############5    ",
-  "   #PPOO##                   ",
+  "         ##########          ",
+  "         #........#          ",
+  "        ##........##         ",
+  "   ######..........#####5    ",
+  "   #....................555  ",
+  "   #......................555",
+  "   #........................5",
+  "   #......................555",
+  "   #....................555  ",
+  "   #.....###############5    ",
+  "   #....##                   ",
   "   ######                    ",
 ]
-ports = [ { x = 15, y = 11, active = true } ]
 mounts = [
+  { component = "docking_port", size = "S", x = 15, y = 11, active = true },
+  { component = "turret_mount", size = "S", x = 10, y = 9 },
+  { component = "turret_mount", size = "M", x = 12, y = 9 },
+  { component = "gunship_drive", size = "M", x = 0, y = 6, rotation = 1 },
+  { component = "life_support", size = "S", x = 7, y = 6 },
+  { component = "reactor", size = "M", x = 8, y = 6 },
+  { component = "helm", size = "S", x = 20, y = 6, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 27, y = 5 },
+  { component = "weapons", size = "S", x = 20, y = 4, rotation = 1 },
+  { component = "gunship_drive", size = "M", x = 0, y = 3, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 4, y = 2, rotation = 1 },
   { component = "escape_pod", size = "S", x = 15, y = 2, rotation = 2 },
+  { component = "tank", size = "S", x = 4, y = 1, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 6, y = 1, rotation = 1 },
 ]
-pipes = [
-  { x = 4, y = 1 }, { x = 5, y = 1 }, { x = 6, y = 1 }, { x = 4, y = 2 }, { x = 4, y = 3 }, { x = 4, y = 4 },
-  { x = 4, y = 5 }, { x = 4, y = 6 }, { x = 5, y = 6 }, { x = 6, y = 6 }, { x = 7, y = 6 },
-]
-edge_walls = [
-  { x = 9, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 5, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 9, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 5, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 18, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 18, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 9, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 10, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 11, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 12, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 13, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 14, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 7, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 16, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 7, side = "TOP", weight_class = "MEDIUM" },
+conduits = [
+  [[10, 8], [12, 8]],
+  [[4, 6], [8, 6]],
+  [[7, 5], [27, 5]],
+  [[4, 4], [4, 6]],
+  [[10, 8], [10, 9]],
+  [[11, 5], [11, 8]],
+  [[12, 8], [12, 9]],
+  [[16, 5], [16, 11]],
+  [[20, 4], [20, 6]],
 ]
 edge_conduits = [
-  { x = 9, y = 3, side = "RIGHT" }, { x = 9, y = 4, side = "RIGHT" }, { x = 9, y = 5, side = "RIGHT" },
-  { x = 9, y = 6, side = "RIGHT" }, { x = 9, y = 7, side = "RIGHT" }, { x = 18, y = 3, side = "RIGHT" },
-  { x = 18, y = 4, side = "RIGHT" }, { x = 18, y = 5, side = "RIGHT" }, { x = 18, y = 6, side = "RIGHT" },
-  { x = 18, y = 7, side = "RIGHT" }, { x = 9, y = 7, side = "TOP" }, { x = 10, y = 7, side = "TOP" },
-  { x = 11, y = 7, side = "TOP" }, { x = 12, y = 7, side = "TOP" }, { x = 13, y = 7, side = "TOP" },
-  { x = 14, y = 7, side = "TOP" }, { x = 15, y = 7, side = "TOP" }, { x = 16, y = 7, side = "TOP" },
-  { x = 17, y = 7, side = "TOP" }, { x = 18, y = 7, side = "TOP" },
+  [[9, 8], [19, 8]],
+  [[10, 3], [10, 8]],
+  [[19, 3], [19, 8]],
+]
+pipes = [
+  [[4, 6], [7, 6]],
+  [[4, 1], [6, 1]],
+  [[4, 1], [4, 6]],
+]
+edge_walls = [
+  { path = [[9, 8], [19, 8]], weight_class = "MEDIUM" },
+  { path = [[10, 3], [10, 8]], weight_class = "MEDIUM" },
+  { path = [[19, 3], [19, 8]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 15, y = 8, side = "BOTTOM" },
+  { x = 10, y = 5, side = "LEFT" },
+  { x = 19, y = 5, side = "LEFT" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 3, y = 0, rotation = 2 }, { shape = "WEDGE", x = 8, y = 0, rotation = 3 }, { shape = "WEDGE", x = 9, y = 1, rotation = 3 },
-  { shape = "WEDGE", x = 24, y = 2, rotation = 3 }, { shape = "WEDGE", x = 26, y = 3, rotation = 3 }, { shape = "WEDGE", x = 28, y = 4, rotation = 3 },
-  { shape = "WEDGE", x = 28, y = 6, rotation = 0 }, { shape = "WEDGE", x = 26, y = 7, rotation = 0 }, { shape = "WEDGE", x = 3, y = 8, rotation = 1 },
-  { shape = "WEDGE", x = 24, y = 8, rotation = 0 }, { shape = "WEDGE", x = 8, y = 9, rotation = 1 }, { shape = "WEDGE", x = 19, y = 9, rotation = 0 },
-  { shape = "WEDGE", x = 9, y = 11, rotation = 1 },
+  { shape = "WEDGE", x = 3, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 8, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 9, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 24, y = 2, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 26, y = 3, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 28, y = 4, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 28, y = 6, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 26, y = 7, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 8, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 24, y = 8, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 8, y = 9, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 19, y = 9, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 9, y = 11, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 13, y = 3, side = "BOTTOM" },
@@ -1374,101 +1642,125 @@ tile_size = 1.0
 origin_x = -19.5
 origin_y = -9.5
 rows = [
-  "                            ##DDD## ",
+  "                            ####### ",
   "                           ##.....##",
-  "   #####                   #.+TT...#",
-  "   #...###     ########    #.+TT.T.#",
-  "   #PP...#     #T...T.#    #.+.....#",
-  "GGG#.....#######......######.+.....#",
-  "GGG#.....RRR.................+.....#",
-  "   #NN...RRR............SS...+.....#",
-  "   #PP...RRR............SS...+HHTTT#",
-  "GGG#...+++++++++++++++++++++++++TTT#",
-  "GGG#.........................+WWTTT#",
-  "   #PP...L...................+.....#",
-  "   #OO.PPL...................+.....#",
-  "GGG#...PP#######......######.+.....#",
-  "GGG#...PP#     #T...T.#    #.+.....#",
-  "   #PP.###     ########    #.+TT.T.#",
-  "   #####                   #..TT...#",
+  "   #####                   #.......#",
+  "   #...###     ########    #.......#",
+  "   #.....#     #......#    #.......#",
+  "   #.....#######......######.......#",
+  "   #...............................#",
+  "   #...............................#",
+  "   #...............................#",
+  "   #...............................#",
+  "   #...............................#",
+  "   #...............................#",
+  "   #...............................#",
+  "   #.....#######......######.......#",
+  "   #.....#     #......#    #.......#",
+  "   #...###     ########    #.......#",
+  "   #####                   #.......#",
   "                           ##.....##",
   "                            ####### ",
 ]
 mounts = [
+  { component = "docking_port", size = "S", x = 30, y = 18 },
+  { component = "turret_mount", size = "M", x = 30, y = 15 },
+  { component = "turret_mount", size = "S", x = 33, y = 15 },
+  { component = "tank", size = "S", x = 4, y = 14, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 16, y = 14 },
+  { component = "turret_mount", size = "S", x = 20, y = 14 },
+  { component = "gunship_drive", size = "M", x = 0, y = 12, rotation = 1 },
+  { component = "escape_pod", size = "S", x = 14, y = 12 },
+  { component = "nitrogen_tank", size = "S", x = 4, y = 11, rotation = 1 },
+  { component = "tank", size = "S", x = 4, y = 10, rotation = 1 },
+  { component = "reactor", size = "L", x = 9, y = 10 },
+  { component = "shield_emitter", size = "M", x = 24, y = 10 },
+  { component = "helm", size = "S", x = 30, y = 10, rotation = 1 },
+  { component = "gunship_drive", size = "M", x = 0, y = 8, rotation = 1 },
+  { component = "weapons", size = "S", x = 30, y = 8, rotation = 1 },
+  { component = "turret_mount", size = "L", x = 32, y = 8 },
+  { component = "tank", size = "S", x = 4, y = 7, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 4, y = 6, rotation = 1 },
+  { component = "life_support", size = "S", x = 9, y = 6 },
   { component = "escape_pod", size = "S", x = 14, y = 5, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 14, y = 12, rotation = 0 },
+  { component = "gunship_drive", size = "M", x = 0, y = 4, rotation = 1 },
+  { component = "tank", size = "M", x = 7, y = 4 },
+  { component = "turret_mount", size = "S", x = 16, y = 4 },
+  { component = "turret_mount", size = "S", x = 20, y = 4 },
+  { component = "tank", size = "S", x = 4, y = 3, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 33, y = 3 },
+  { component = "turret_mount", size = "M", x = 30, y = 2 },
 ]
-pipes = [
-  { x = 4, y = 3 }, { x = 4, y = 4 }, { x = 4, y = 5 }, { x = 5, y = 5 }, { x = 6, y = 5 }, { x = 7, y = 5 },
-  { x = 8, y = 5 }, { x = 4, y = 6 }, { x = 8, y = 6 }, { x = 9, y = 6 }, { x = 4, y = 7 }, { x = 4, y = 8 },
-  { x = 4, y = 9 }, { x = 4, y = 10 }, { x = 4, y = 11 }, { x = 4, y = 12 }, { x = 4, y = 13 }, { x = 4, y = 14 },
-]
-edge_walls = [
-  { x = 11, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 9, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 11, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 22, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 22, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 22, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 22, y = 9, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 22, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 22, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 22, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 16, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 12, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 19, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 20, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 21, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 16, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 5, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 19, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 20, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 21, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 28, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 29, y = 12, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 30, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 31, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 32, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 33, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 34, y = 12, side = "TOP", weight_class = "MEDIUM" },
-  { x = 28, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 29, y = 5, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 30, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 31, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 32, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 33, y = 5, side = "TOP", weight_class = "MEDIUM" },
-  { x = 34, y = 5, side = "TOP", weight_class = "MEDIUM" },
+conduits = [
+  [[29, 15], [33, 15]],
+  [[11, 10], [30, 10]],
+  [[4, 9], [32, 9]],
+  [[29, 8], [30, 8]],
+  [[29, 7], [30, 7]],
+  [[29, 6], [30, 6]],
+  [[29, 5], [30, 5]],
+  [[16, 4], [20, 4]],
+  [[29, 4], [30, 4]],
+  [[29, 3], [33, 3]],
+  [[4, 5], [4, 12]],
+  [[9, 7], [9, 9]],
+  [[16, 4], [16, 14]],
+  [[20, 9], [20, 14]],
+  [[20, 4], [20, 5]],
+  [[29, 3], [29, 16]],
+  [[31, 15], [31, 18]],
+  [[33, 13], [33, 15]],
+  [[33, 3], [33, 5]],
 ]
 edge_conduits = [
-  { x = 11, y = 6, side = "RIGHT" }, { x = 11, y = 7, side = "RIGHT" }, { x = 11, y = 8, side = "RIGHT" },
-  { x = 11, y = 9, side = "RIGHT" }, { x = 11, y = 10, side = "RIGHT" }, { x = 11, y = 11, side = "RIGHT" },
-  { x = 11, y = 12, side = "RIGHT" }, { x = 22, y = 6, side = "RIGHT" }, { x = 22, y = 7, side = "RIGHT" },
-  { x = 22, y = 8, side = "RIGHT" }, { x = 22, y = 9, side = "RIGHT" }, { x = 22, y = 10, side = "RIGHT" },
-  { x = 22, y = 11, side = "RIGHT" }, { x = 22, y = 12, side = "RIGHT" }, { x = 16, y = 12, side = "TOP" },
-  { x = 17, y = 12, side = "TOP" }, { x = 18, y = 12, side = "TOP" }, { x = 19, y = 12, side = "TOP" },
-  { x = 20, y = 12, side = "TOP" }, { x = 21, y = 12, side = "TOP" }, { x = 16, y = 5, side = "TOP" },
-  { x = 17, y = 5, side = "TOP" }, { x = 18, y = 5, side = "TOP" }, { x = 19, y = 5, side = "TOP" },
-  { x = 20, y = 5, side = "TOP" }, { x = 21, y = 5, side = "TOP" }, { x = 28, y = 12, side = "TOP" },
-  { x = 29, y = 12, side = "TOP" }, { x = 30, y = 12, side = "TOP" }, { x = 31, y = 12, side = "TOP" },
-  { x = 32, y = 12, side = "TOP" }, { x = 33, y = 12, side = "TOP" }, { x = 34, y = 12, side = "TOP" },
-  { x = 28, y = 5, side = "TOP" }, { x = 29, y = 5, side = "TOP" }, { x = 30, y = 5, side = "TOP" },
-  { x = 31, y = 5, side = "TOP" }, { x = 32, y = 5, side = "TOP" }, { x = 33, y = 5, side = "TOP" },
-  { x = 34, y = 5, side = "TOP" },
+  [[16, 6], [22, 6]],
+  [[28, 6], [35, 6]],
+  [[16, 13], [22, 13]],
+  [[28, 13], [35, 13]],
+  [[12, 6], [12, 13]],
+  [[23, 6], [23, 13]],
+]
+pipes = [
+  [[8, 6], [9, 6]],
+  [[4, 5], [8, 5]],
+  [[4, 3], [4, 14]],
+]
+edge_walls = [
+  { path = [[16, 13], [22, 13]], weight_class = "MEDIUM" },
+  { path = [[28, 13], [35, 13]], weight_class = "MEDIUM" },
+  { path = [[12, 6], [12, 13]], weight_class = "MEDIUM" },
+  { path = [[16, 6], [22, 6]], weight_class = "MEDIUM" },
+  { path = [[23, 6], [23, 13]], weight_class = "MEDIUM" },
+  { path = [[28, 6], [35, 6]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 18, y = 13, side = "BOTTOM" },
+  { x = 29, y = 13, side = "BOTTOM" },
+  { x = 12, y = 9, side = "LEFT" },
+  { x = 23, y = 9, side = "LEFT" },
+  { x = 18, y = 6, side = "BOTTOM" },
+  { x = 29, y = 6, side = "BOTTOM" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 28, y = 0, rotation = 2 }, { shape = "WEDGE", x = 34, y = 0, rotation = 3 }, { shape = "WEDGE", x = 27, y = 1, rotation = 2 },
-  { shape = "WEDGE", x = 35, y = 1, rotation = 3 }, { shape = "WEDGE", x = 3, y = 2, rotation = 2 }, { shape = "WEDGE", x = 7, y = 2, rotation = 3 },
-  { shape = "WEDGE", x = 9, y = 3, rotation = 3 }, { shape = "WEDGE", x = 15, y = 3, rotation = 2 }, { shape = "WEDGE", x = 22, y = 3, rotation = 3 },
-  { shape = "WEDGE", x = 9, y = 15, rotation = 0 }, { shape = "WEDGE", x = 15, y = 15, rotation = 1 }, { shape = "WEDGE", x = 22, y = 15, rotation = 0 },
-  { shape = "WEDGE", x = 3, y = 16, rotation = 1 }, { shape = "WEDGE", x = 7, y = 16, rotation = 0 }, { shape = "WEDGE", x = 27, y = 17, rotation = 1 },
-  { shape = "WEDGE", x = 35, y = 17, rotation = 0 }, { shape = "WEDGE", x = 28, y = 18, rotation = 1 }, { shape = "WEDGE", x = 34, y = 18, rotation = 0 },
+  { shape = "WEDGE", x = 28, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 34, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 27, y = 1, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 35, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 2, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 7, y = 2, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 9, y = 3, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 15, y = 3, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 22, y = 3, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 9, y = 15, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 15, y = 15, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 22, y = 15, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 16, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 7, y = 16, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 27, y = 17, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 35, y = 17, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 28, y = 18, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 34, y = 18, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 30, y = 1, side = "BOTTOM" },
@@ -1518,61 +1810,104 @@ origin_y = -7.5
 rows = [
   "   ########   #######  #######  #######          ",
   "   #......#####.....####.....####.....##         ",
-  "QQQ#........##.......##.......##.......#         ",
-  "QQQ#...PP...##CCCCCCC##CCCCCCC##CCCCCCC#######   ",
-  "   #...PP.RR##CCCCCCC##CCCCCCC##CCCCCCC##.T..### ",
-  "QQQ#...PP.RR##CCCCCCC##CCCCCCC##CCCCCCC##......##",
-  "QQQ#...NN...................................HH..#",
-  "   #.....++++++++++++++++++++++++++++++++++++++.#",
-  "QQQ#...OO...................................WW..#",
-  "QQQ#...PP...##CCCCCCC##CCCCCCC##CCCCCCC##......##",
-  "   #...PP...##CCCCCCC##CCCCCCC##CCCCCCC##.T..### ",
-  "QQQ#...PP..L##CCCCCCC##CCCCCCC##CCCCCCC#######   ",
-  "QQQ#.......L##.......##.......##.......#         ",
+  "   #........##.......##.......##.......#         ",
+  "   #........##.......##.......##.......#######   ",
+  "   #........##.......##.......##.......##....### ",
+  "   #........##.......##.......##.......##......##",
+  "   #............................................#",
+  "   #............................................#",
+  "   #............................................#",
+  "   #........##.......##.......##.......##......##",
+  "   #........##.......##.......##.......##....### ",
+  "   #........##.......##.......##.......#######   ",
+  "   #........##.......##.......##.......#         ",
   "   #......#####.....####.....####.....##         ",
   "   ########   #######  #######  #######          ",
 ]
 mounts = [
+  { component = "escape_pod", size = "S", x = 8, y = 13 },
+  { component = "freight_drive", size = "M", x = 0, y = 11, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 42, y = 10 },
+  { component = "tank", size = "M", x = 7, y = 9 },
+  { component = "reactor", size = "M", x = 10, y = 9 },
+  { component = "cargo", size = "L", x = 14, y = 9, rotation = 1 },
+  { component = "cargo", size = "L", x = 23, y = 9, rotation = 1 },
+  { component = "cargo", size = "L", x = 32, y = 9, rotation = 1 },
+  { component = "freight_drive", size = "M", x = 0, y = 8, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 7, y = 8, rotation = 1 },
+  { component = "helm", size = "S", x = 44, y = 8, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 7, y = 6, rotation = 1 },
+  { component = "weapons", size = "S", x = 44, y = 6, rotation = 1 },
+  { component = "freight_drive", size = "M", x = 0, y = 5, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 42, y = 4 },
+  { component = "tank", size = "M", x = 7, y = 3 },
+  { component = "cargo", size = "L", x = 14, y = 3, rotation = 1 },
+  { component = "cargo", size = "L", x = 23, y = 3, rotation = 1 },
+  { component = "cargo", size = "L", x = 32, y = 3, rotation = 1 },
+  { component = "freight_drive", size = "M", x = 0, y = 2, rotation = 1 },
+  { component = "life_support", size = "S", x = 11, y = 2 },
   { component = "escape_pod", size = "S", x = 8, y = 0, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 8, y = 13, rotation = 0 },
 ]
-pipes = [
-  { x = 4, y = 6 }, { x = 5, y = 6 }, { x = 4, y = 5 }, { x = 5, y = 5 }, { x = 4, y = 3 }, { x = 5, y = 3 },
-  { x = 6, y = 3 }, { x = 7, y = 3 }, { x = 8, y = 3 }, { x = 9, y = 3 }, { x = 10, y = 3 }, { x = 11, y = 3 },
-  { x = 6, y = 4 }, { x = 6, y = 5 }, { x = 7, y = 5 }, { x = 6, y = 6 }, { x = 7, y = 6 }, { x = 7, y = 7 },
-  { x = 7, y = 8 }, { x = 4, y = 9 }, { x = 7, y = 9 }, { x = 4, y = 10 }, { x = 7, y = 10 }, { x = 4, y = 11 },
-  { x = 5, y = 11 }, { x = 6, y = 11 }, { x = 7, y = 11 },
-]
-edge_walls = [
-  { x = 11, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 7, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 11, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 20, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 20, y = 7, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 20, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 29, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 29, y = 7, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 29, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 38, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 38, y = 7, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 38, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
+conduits = [
+  [[4, 7], [46, 7]],
+  [[4, 3], [4, 11]],
+  [[11, 3], [11, 9]],
+  [[42, 4], [42, 10]],
+  [[44, 6], [44, 8]],
 ]
 edge_conduits = [
-  { x = 11, y = 6, side = "RIGHT" }, { x = 11, y = 7, side = "RIGHT" }, { x = 11, y = 8, side = "RIGHT" },
-  { x = 20, y = 6, side = "RIGHT" }, { x = 20, y = 7, side = "RIGHT" }, { x = 20, y = 8, side = "RIGHT" },
-  { x = 29, y = 6, side = "RIGHT" }, { x = 29, y = 7, side = "RIGHT" }, { x = 29, y = 8, side = "RIGHT" },
-  { x = 38, y = 6, side = "RIGHT" }, { x = 38, y = 7, side = "RIGHT" }, { x = 38, y = 8, side = "RIGHT" },
+  [[12, 6], [12, 9]],
+  [[21, 6], [21, 9]],
+  [[30, 6], [30, 9]],
+  [[39, 6], [39, 9]],
+]
+pipes = [
+  [[4, 11], [7, 11]],
+  [[4, 6], [7, 6]],
+  [[4, 5], [7, 5]],
+  [[4, 3], [11, 3]],
+  [[4, 9], [4, 11]],
+  [[6, 3], [6, 6]],
+  [[7, 5], [7, 11]],
+]
+edge_walls = [
+  { path = [[12, 6], [12, 9]], weight_class = "MEDIUM" },
+  { path = [[21, 6], [21, 9]], weight_class = "MEDIUM" },
+  { path = [[30, 6], [30, 9]], weight_class = "MEDIUM" },
+  { path = [[39, 6], [39, 9]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 12, y = 7, side = "LEFT" },
+  { x = 21, y = 7, side = "LEFT" },
+  { x = 30, y = 7, side = "LEFT" },
+  { x = 39, y = 7, side = "LEFT" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 3, y = 0, rotation = 2 }, { shape = "WEDGE", x = 10, y = 0, rotation = 3 }, { shape = "WEDGE", x = 14, y = 0, rotation = 2 },
-  { shape = "WEDGE", x = 20, y = 0, rotation = 3 }, { shape = "WEDGE", x = 23, y = 0, rotation = 2 }, { shape = "WEDGE", x = 29, y = 0, rotation = 3 },
-  { shape = "WEDGE", x = 32, y = 0, rotation = 2 }, { shape = "WEDGE", x = 38, y = 0, rotation = 3 }, { shape = "WEDGE", x = 39, y = 1, rotation = 3 },
-  { shape = "WEDGE", x = 45, y = 3, rotation = 3 }, { shape = "WEDGE", x = 47, y = 4, rotation = 3 }, { shape = "WEDGE", x = 48, y = 5, rotation = 3 },
-  { shape = "WEDGE", x = 48, y = 9, rotation = 0 }, { shape = "WEDGE", x = 47, y = 10, rotation = 0 }, { shape = "WEDGE", x = 45, y = 11, rotation = 0 },
-  { shape = "WEDGE", x = 39, y = 13, rotation = 0 }, { shape = "WEDGE", x = 3, y = 14, rotation = 1 }, { shape = "WEDGE", x = 10, y = 14, rotation = 0 },
-  { shape = "WEDGE", x = 14, y = 14, rotation = 1 }, { shape = "WEDGE", x = 20, y = 14, rotation = 0 }, { shape = "WEDGE", x = 23, y = 14, rotation = 1 },
-  { shape = "WEDGE", x = 29, y = 14, rotation = 0 }, { shape = "WEDGE", x = 32, y = 14, rotation = 1 }, { shape = "WEDGE", x = 38, y = 14, rotation = 0 },
+  { shape = "WEDGE", x = 3, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 10, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 14, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 23, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 29, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 32, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 38, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 39, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 45, y = 3, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 47, y = 4, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 48, y = 5, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 48, y = 9, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 47, y = 10, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 45, y = 11, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 39, y = 13, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 14, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 10, y = 14, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 14, y = 14, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 20, y = 14, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 23, y = 14, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 29, y = 14, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 32, y = 14, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 38, y = 14, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 9, y = 1, side = "RIGHT" },
@@ -1628,107 +1963,126 @@ origin_y = -11.5
 rows = [
   "                ########                     ",
   "                #......#                     ",
-  "             ####T.+TT.###                   ",
-  "             #.....+TT...#                   ",
-  "   ########  #.....+...T.#                   ",
-  "   #PP....#  #.....+.....#                   ",
-  "   #......####.....+.....####DDD####         ",
-  "GGG#...PP..........+.......T.......####      ",
-  "GGG#...PP.RRR......+.......SS.........####   ",
-  "   #...PP.RRR......+.......SS............### ",
-  "   #OO....RRR......+.............HH.TTT....##",
-  "EEE#...+++++++++++++++++++++++++++++TTT++T++#",
-  "EEE#.....L.........+.............WW.TTT....##",
-  "   #.....LRR.......+.....................### ",
-  "   #NN.PP.RR.......+..................####   ",
-  "GGG#...PP..........+..........T....####      ",
-  "GGG#...PP.####.....+.....###########         ",
-  "   #PP....#  #.....+.....#                   ",
-  "   ########  #.....+.....#                   ",
-  "             #.....+...T.#                   ",
-  "             ####...TT.###                   ",
-  "                #T..TT.#                     ",
+  "             ####......###                   ",
+  "             #...........#                   ",
+  "   ########  #...........#                   ",
+  "   #......#  #...........#                   ",
+  "   #......####...........###########         ",
+  "   #...............................####      ",
+  "   #..................................####   ",
+  "   #.....................................### ",
+  "   #.......................................##",
+  "   #........................................#",
+  "   #.......................................##",
+  "   #.....................................### ",
+  "   #..................................####   ",
+  "   #...............................####      ",
+  "   #......####...........###########         ",
+  "   #......#  #...........#                   ",
+  "   ########  #...........#                   ",
+  "             #...........#                   ",
+  "             ####......###                   ",
+  "                #......#                     ",
   "                ########                     ",
 ]
 mounts = [
+  { component = "turret_mount", size = "S", x = 17, y = 20 },
+  { component = "escape_pod", size = "S", x = 15, y = 19 },
+  { component = "turret_mount", size = "M", x = 20, y = 19 },
+  { component = "turret_mount", size = "S", x = 23, y = 18 },
+  { component = "tank", size = "S", x = 4, y = 17, rotation = 1 },
+  { component = "docking_port", size = "S", x = 29, y = 16 },
+  { component = "turret_mount", size = "S", x = 27, y = 15 },
+  { component = "gunship_drive", size = "M", x = 0, y = 14, rotation = 1 },
+  { component = "tank", size = "M", x = 7, y = 13 },
+  { component = "shield_emitter", size = "M", x = 27, y = 13 },
+  { component = "oxygen_tank", size = "S", x = 4, y = 12, rotation = 1 },
+  { component = "reactor", size = "L", x = 10, y = 12 },
+  { component = "helm", size = "S", x = 33, y = 12, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 41, y = 11 },
+  { component = "engine", size = "M", x = 0, y = 10, rotation = 1 },
+  { component = "weapons", size = "S", x = 33, y = 10, rotation = 1 },
+  { component = "turret_mount", size = "L", x = 36, y = 10 },
+  { component = "life_support", size = "S", x = 9, y = 9 },
+  { component = "nitrogen_tank", size = "S", x = 4, y = 8, rotation = 1 },
+  { component = "reactor", size = "M", x = 10, y = 8 },
+  { component = "turret_mount", size = "S", x = 30, y = 7 },
+  { component = "gunship_drive", size = "M", x = 0, y = 6, rotation = 1 },
+  { component = "tank", size = "M", x = 7, y = 6 },
+  { component = "tank", size = "S", x = 4, y = 5, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 23, y = 3 },
   { component = "escape_pod", size = "S", x = 15, y = 2, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 15, y = 19, rotation = 0 },
+  { component = "turret_mount", size = "S", x = 17, y = 1 },
+  { component = "turret_mount", size = "M", x = 20, y = 1 },
 ]
-pipes = [
-  { x = 4, y = 15 },
-  { x = 4, y = 5 }, { x = 4, y = 6 }, { x = 4, y = 7 }, { x = 4, y = 8 }, { x = 5, y = 8 }, { x = 6, y = 8 },
-  { x = 7, y = 8 }, { x = 8, y = 8 }, { x = 9, y = 8 }, { x = 4, y = 9 }, { x = 9, y = 9 }, { x = 4, y = 10 },
-  { x = 4, y = 11 }, { x = 4, y = 12 }, { x = 4, y = 13 }, { x = 4, y = 14 }, { x = 5, y = 14 }, { x = 6, y = 14 },
-  { x = 7, y = 14 }, { x = 5, y = 15 }, { x = 5, y = 16 }, { x = 5, y = 17 },
-]
-edge_walls = [
-  { x = 12, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 9, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 11, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 12, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 13, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 14, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 15, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 25, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 25, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 25, y = 9, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 25, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 25, y = 11, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 25, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 25, y = 13, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 25, y = 14, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 25, y = 15, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 14, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 16, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 19, y = 15, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 20, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 21, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 22, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 23, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 24, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 14, y = 6, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 6, side = "TOP", weight_class = "MEDIUM" },
-  { x = 16, y = 6, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 6, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 6, side = "TOP", weight_class = "MEDIUM" },
-  { x = 19, y = 6, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 20, y = 6, side = "TOP", weight_class = "MEDIUM" },
-  { x = 21, y = 6, side = "TOP", weight_class = "MEDIUM" },
-  { x = 22, y = 6, side = "TOP", weight_class = "MEDIUM" },
-  { x = 23, y = 6, side = "TOP", weight_class = "MEDIUM" },
-  { x = 24, y = 6, side = "TOP", weight_class = "MEDIUM" },
+conduits = [
+  [[17, 20], [19, 20]],
+  [[19, 19], [23, 19]],
+  [[27, 15], [30, 15]],
+  [[4, 11], [43, 11]],
+  [[9, 9], [10, 9]],
+  [[17, 3], [23, 3]],
+  [[4, 7], [4, 14]],
+  [[9, 9], [9, 11]],
+  [[17, 1], [17, 3]],
+  [[19, 3], [19, 20]],
+  [[20, 2], [20, 3]],
+  [[23, 16], [23, 19]],
+  [[27, 11], [27, 15]],
+  [[30, 15], [30, 16]],
+  [[30, 7], [30, 11]],
+  [[33, 10], [33, 12]],
 ]
 edge_conduits = [
-  { x = 12, y = 7, side = "RIGHT" }, { x = 12, y = 8, side = "RIGHT" }, { x = 12, y = 9, side = "RIGHT" },
-  { x = 12, y = 10, side = "RIGHT" }, { x = 12, y = 11, side = "RIGHT" }, { x = 12, y = 12, side = "RIGHT" },
-  { x = 12, y = 13, side = "RIGHT" }, { x = 12, y = 14, side = "RIGHT" }, { x = 12, y = 15, side = "RIGHT" },
-  { x = 25, y = 7, side = "RIGHT" }, { x = 25, y = 8, side = "RIGHT" }, { x = 25, y = 9, side = "RIGHT" },
-  { x = 25, y = 10, side = "RIGHT" }, { x = 25, y = 11, side = "RIGHT" }, { x = 25, y = 12, side = "RIGHT" },
-  { x = 25, y = 13, side = "RIGHT" }, { x = 25, y = 14, side = "RIGHT" }, { x = 25, y = 15, side = "RIGHT" },
-  { x = 14, y = 15, side = "TOP" }, { x = 15, y = 15, side = "TOP" }, { x = 16, y = 15, side = "TOP" },
-  { x = 17, y = 15, side = "TOP" }, { x = 18, y = 15, side = "TOP" }, { x = 19, y = 15, side = "TOP" },
-  { x = 20, y = 15, side = "TOP" }, { x = 21, y = 15, side = "TOP" }, { x = 22, y = 15, side = "TOP" },
-  { x = 23, y = 15, side = "TOP" }, { x = 24, y = 15, side = "TOP" }, { x = 14, y = 6, side = "TOP" },
-  { x = 15, y = 6, side = "TOP" }, { x = 16, y = 6, side = "TOP" }, { x = 17, y = 6, side = "TOP" },
-  { x = 18, y = 6, side = "TOP" }, { x = 19, y = 6, side = "TOP" }, { x = 20, y = 6, side = "TOP" },
-  { x = 21, y = 6, side = "TOP" }, { x = 22, y = 6, side = "TOP" }, { x = 23, y = 6, side = "TOP" },
-  { x = 24, y = 6, side = "TOP" },
+  [[14, 7], [25, 7]],
+  [[14, 16], [25, 16]],
+  [[13, 7], [13, 16]],
+  [[26, 7], [26, 16]],
+]
+pipes = [
+  [[4, 15], [5, 15]],
+  [[4, 14], [7, 14]],
+  [[4, 8], [9, 8]],
+  [[4, 5], [4, 15]],
+  [[5, 14], [5, 17]],
+  [[9, 8], [9, 9]],
+]
+edge_walls = [
+  { path = [[14, 16], [25, 16]], weight_class = "MEDIUM" },
+  { path = [[13, 7], [13, 16]], weight_class = "MEDIUM" },
+  { path = [[14, 7], [25, 7]], weight_class = "MEDIUM" },
+  { path = [[26, 7], [26, 16]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 19, y = 16, side = "BOTTOM" },
+  { x = 13, y = 11, side = "LEFT" },
+  { x = 26, y = 11, side = "LEFT" },
+  { x = 19, y = 7, side = "BOTTOM" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 16, y = 0, rotation = 2 }, { shape = "WEDGE", x = 23, y = 0, rotation = 3 }, { shape = "WEDGE", x = 13, y = 2, rotation = 2 },
-  { shape = "WEDGE", x = 25, y = 2, rotation = 3 }, { shape = "WEDGE", x = 3, y = 4, rotation = 2 }, { shape = "WEDGE", x = 10, y = 4, rotation = 3 },
-  { shape = "WEDGE", x = 35, y = 6, rotation = 3 }, { shape = "WEDGE", x = 38, y = 7, rotation = 3 }, { shape = "WEDGE", x = 41, y = 8, rotation = 3 },
-  { shape = "WEDGE", x = 43, y = 9, rotation = 3 }, { shape = "WEDGE", x = 44, y = 10, rotation = 3 }, { shape = "WEDGE", x = 44, y = 12, rotation = 0 },
-  { shape = "WEDGE", x = 43, y = 13, rotation = 0 }, { shape = "WEDGE", x = 41, y = 14, rotation = 0 }, { shape = "WEDGE", x = 38, y = 15, rotation = 0 },
-  { shape = "WEDGE", x = 35, y = 16, rotation = 0 }, { shape = "WEDGE", x = 3, y = 18, rotation = 1 }, { shape = "WEDGE", x = 10, y = 18, rotation = 0 },
-  { shape = "WEDGE", x = 13, y = 20, rotation = 1 }, { shape = "WEDGE", x = 25, y = 20, rotation = 0 }, { shape = "WEDGE", x = 16, y = 22, rotation = 1 },
-  { shape = "WEDGE", x = 23, y = 22, rotation = 0 },
+  { shape = "WEDGE", x = 16, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 23, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 13, y = 2, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 25, y = 2, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 4, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 10, y = 4, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 35, y = 6, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 38, y = 7, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 41, y = 8, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 43, y = 9, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 44, y = 10, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 44, y = 12, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 43, y = 13, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 41, y = 14, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 38, y = 15, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 35, y = 16, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 18, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 10, y = 18, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 13, y = 20, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 25, y = 20, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 16, y = 22, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 23, y = 22, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 19, y = 1, side = "BOTTOM" },
@@ -1790,15 +2144,15 @@ rows = [
   "        ####........................####     ",
   "      ###..............................###   ",
   "     ##..................................##  ",
-  "    ##.PPRRR...........................T..## ",
-  "   ##OOPPRRR...............................##",
-  "EEE#...PPRRR...............................DD",
-  "EEE#....................................HH.DD",
-  "   #...L++++++++++++++++++++++++++++++++...DD",
-  "EEE#...L................................WW.DD",
-  "EEE#...PPRR................................DD",
-  "   ##NNPPRR................................##",
-  "    ##.PP..............................T..## ",
+  "    ##....................................## ",
+  "   ##......................................##",
+  "   #.......................................##",
+  "   #.......................................##",
+  "   #.......................................##",
+  "   #.......................................##",
+  "   #.......................................##",
+  "   ##......................................##",
+  "    ##....................................## ",
   "     ##..................................##  ",
   "      ###..............................###   ",
   "        ####........................####     ",
@@ -1806,6 +2160,27 @@ rows = [
   "               ##################            ",
 ]
 mounts = [
+  { component = "escape_pod", size = "S", x = 17, y = 17 },
+  { component = "escape_pod", size = "S", x = 19, y = 17 },
+  { component = "escape_pod", size = "S", x = 21, y = 17 },
+  { component = "escape_pod", size = "S", x = 24, y = 17 },
+  { component = "escape_pod", size = "S", x = 25, y = 17 },
+  { component = "escape_pod", size = "S", x = 27, y = 17 },
+  { component = "escape_pod", size = "S", x = 29, y = 17 },
+  { component = "turret_mount", size = "S", x = 39, y = 13 },
+  { component = "oxygen_tank", size = "S", x = 5, y = 12, rotation = 1 },
+  { component = "tank", size = "M", x = 7, y = 11 },
+  { component = "reactor", size = "L", x = 9, y = 11 },
+  { component = "engine", size = "M", x = 0, y = 10, rotation = 1 },
+  { component = "helm", size = "S", x = 40, y = 10, rotation = 1 },
+  { component = "life_support", size = "S", x = 7, y = 8 },
+  { component = "weapons", size = "S", x = 40, y = 8, rotation = 1 },
+  { component = "engine", size = "M", x = 0, y = 7, rotation = 1 },
+  { component = "docking_port", size = "M", x = 43, y = 7, rotation = 3 },
+  { component = "nitrogen_tank", size = "S", x = 5, y = 6, rotation = 1 },
+  { component = "reactor", size = "M", x = 9, y = 6 },
+  { component = "tank", size = "M", x = 7, y = 5 },
+  { component = "turret_mount", size = "S", x = 39, y = 5 },
   { component = "escape_pod", size = "S", x = 17, y = 0, rotation = 2 },
   { component = "escape_pod", size = "S", x = 19, y = 0, rotation = 2 },
   { component = "escape_pod", size = "S", x = 21, y = 0, rotation = 2 },
@@ -1813,226 +2188,92 @@ mounts = [
   { component = "escape_pod", size = "S", x = 25, y = 0, rotation = 2 },
   { component = "escape_pod", size = "S", x = 27, y = 0, rotation = 2 },
   { component = "escape_pod", size = "S", x = 29, y = 0, rotation = 2 },
-  { component = "escape_pod", size = "S", x = 17, y = 17, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 19, y = 17, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 21, y = 17, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 24, y = 17, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 25, y = 17, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 27, y = 17, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 29, y = 17, rotation = 0 },
 ]
-pipes = [
-  { x = 4, y = 11 }, { x = 5, y = 11 }, { x = 4, y = 7 }, { x = 5, y = 7 },
-  { x = 6, y = 6 }, { x = 6, y = 7 }, { x = 7, y = 7 }, { x = 4, y = 8 }, { x = 5, y = 8 }, { x = 6, y = 8 },
-  { x = 7, y = 8 }, { x = 4, y = 9 }, { x = 7, y = 9 }, { x = 4, y = 10 }, { x = 7, y = 10 }, { x = 6, y = 11 },
-  { x = 7, y = 11 }, { x = 6, y = 12 },
-]
-coverings = [ { covering = "CARPET", x = 12, y = 11, width = 24, height = 5 }, { covering = "CARPET", x = 12, y = 3, width = 24, height = 5 } ]
-edge_walls = [
-  { x = 11, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 9, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 11, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 13, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 14, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 11, y = 15, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 8, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 9, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 35, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 13, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 14, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 35, y = 15, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 13, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 14, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 10, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 16, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 19, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 20, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 21, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 22, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 23, y = 10, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 24, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 25, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 26, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 27, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 28, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 29, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 30, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 31, y = 10, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 32, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 33, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 34, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 35, y = 10, side = "TOP", weight_class = "MEDIUM" },
-  { x = 12, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 13, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 14, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 7, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 16, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 19, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 20, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 21, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 22, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 23, y = 7, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 24, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 25, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 26, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 27, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 28, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 29, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 30, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 31, y = 7, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 32, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 33, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 34, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 35, y = 7, side = "TOP", weight_class = "MEDIUM" },
-  { x = 12, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 13, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 14, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 16, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 15, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 19, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 20, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 21, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 22, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 23, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 24, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 25, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 26, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 27, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 28, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 29, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 30, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 31, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 32, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 33, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 34, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 35, y = 15, side = "TOP", weight_class = "MEDIUM" },
-  { x = 12, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 13, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 14, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 16, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 2, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 19, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 20, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 21, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 22, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 23, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 24, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 25, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 26, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 27, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 28, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 29, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 30, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 31, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 32, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 33, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 34, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 35, y = 2, side = "TOP", weight_class = "MEDIUM" },
-  { x = 19, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 13, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 14, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 15, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 19, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 13, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 14, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 15, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 27, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
+conduits = [
+  [[39, 10], [40, 10]],
+  [[4, 9], [40, 9]],
+  [[39, 8], [43, 8]],
+  [[4, 8], [4, 10]],
+  [[9, 7], [9, 9]],
+  [[39, 5], [39, 13]],
 ]
 edge_conduits = [
-  { x = 11, y = 3, side = "RIGHT" }, { x = 11, y = 4, side = "RIGHT" }, { x = 11, y = 5, side = "RIGHT" },
-  { x = 11, y = 6, side = "RIGHT" }, { x = 11, y = 7, side = "RIGHT" }, { x = 11, y = 8, side = "RIGHT" },
-  { x = 11, y = 9, side = "RIGHT" }, { x = 11, y = 10, side = "RIGHT" }, { x = 11, y = 11, side = "RIGHT" },
-  { x = 11, y = 12, side = "RIGHT" }, { x = 11, y = 13, side = "RIGHT" }, { x = 11, y = 14, side = "RIGHT" },
-  { x = 11, y = 15, side = "RIGHT" }, { x = 35, y = 3, side = "RIGHT" }, { x = 35, y = 4, side = "RIGHT" },
-  { x = 35, y = 5, side = "RIGHT" }, { x = 35, y = 6, side = "RIGHT" }, { x = 35, y = 7, side = "RIGHT" },
-  { x = 35, y = 8, side = "RIGHT" }, { x = 35, y = 9, side = "RIGHT" }, { x = 35, y = 10, side = "RIGHT" },
-  { x = 35, y = 11, side = "RIGHT" }, { x = 35, y = 12, side = "RIGHT" }, { x = 35, y = 13, side = "RIGHT" },
-  { x = 35, y = 14, side = "RIGHT" }, { x = 35, y = 15, side = "RIGHT" }, { x = 12, y = 10, side = "TOP" },
-  { x = 13, y = 10, side = "TOP" }, { x = 14, y = 10, side = "TOP" }, { x = 15, y = 10, side = "TOP" },
-  { x = 16, y = 10, side = "TOP" }, { x = 17, y = 10, side = "TOP" }, { x = 18, y = 10, side = "TOP" },
-  { x = 19, y = 10, side = "TOP" }, { x = 20, y = 10, side = "TOP" }, { x = 21, y = 10, side = "TOP" },
-  { x = 22, y = 10, side = "TOP" }, { x = 23, y = 10, side = "TOP" }, { x = 24, y = 10, side = "TOP" },
-  { x = 25, y = 10, side = "TOP" }, { x = 26, y = 10, side = "TOP" }, { x = 27, y = 10, side = "TOP" },
-  { x = 28, y = 10, side = "TOP" }, { x = 29, y = 10, side = "TOP" }, { x = 30, y = 10, side = "TOP" },
-  { x = 31, y = 10, side = "TOP" }, { x = 32, y = 10, side = "TOP" }, { x = 33, y = 10, side = "TOP" },
-  { x = 34, y = 10, side = "TOP" }, { x = 35, y = 10, side = "TOP" }, { x = 12, y = 7, side = "TOP" },
-  { x = 13, y = 7, side = "TOP" }, { x = 14, y = 7, side = "TOP" }, { x = 15, y = 7, side = "TOP" },
-  { x = 16, y = 7, side = "TOP" }, { x = 17, y = 7, side = "TOP" }, { x = 18, y = 7, side = "TOP" },
-  { x = 19, y = 7, side = "TOP" }, { x = 20, y = 7, side = "TOP" }, { x = 21, y = 7, side = "TOP" },
-  { x = 22, y = 7, side = "TOP" }, { x = 23, y = 7, side = "TOP" }, { x = 24, y = 7, side = "TOP" },
-  { x = 25, y = 7, side = "TOP" }, { x = 26, y = 7, side = "TOP" }, { x = 27, y = 7, side = "TOP" },
-  { x = 28, y = 7, side = "TOP" }, { x = 29, y = 7, side = "TOP" }, { x = 30, y = 7, side = "TOP" },
-  { x = 31, y = 7, side = "TOP" }, { x = 32, y = 7, side = "TOP" }, { x = 33, y = 7, side = "TOP" },
-  { x = 34, y = 7, side = "TOP" }, { x = 35, y = 7, side = "TOP" }, { x = 12, y = 15, side = "TOP" },
-  { x = 13, y = 15, side = "TOP" }, { x = 14, y = 15, side = "TOP" }, { x = 15, y = 15, side = "TOP" },
-  { x = 16, y = 15, side = "TOP" }, { x = 17, y = 15, side = "TOP" }, { x = 18, y = 15, side = "TOP" },
-  { x = 19, y = 15, side = "TOP" }, { x = 20, y = 15, side = "TOP" }, { x = 21, y = 15, side = "TOP" },
-  { x = 22, y = 15, side = "TOP" }, { x = 23, y = 15, side = "TOP" }, { x = 24, y = 15, side = "TOP" },
-  { x = 25, y = 15, side = "TOP" }, { x = 26, y = 15, side = "TOP" }, { x = 27, y = 15, side = "TOP" },
-  { x = 28, y = 15, side = "TOP" }, { x = 29, y = 15, side = "TOP" }, { x = 30, y = 15, side = "TOP" },
-  { x = 31, y = 15, side = "TOP" }, { x = 32, y = 15, side = "TOP" }, { x = 33, y = 15, side = "TOP" },
-  { x = 34, y = 15, side = "TOP" }, { x = 35, y = 15, side = "TOP" }, { x = 12, y = 2, side = "TOP" },
-  { x = 13, y = 2, side = "TOP" }, { x = 14, y = 2, side = "TOP" }, { x = 15, y = 2, side = "TOP" },
-  { x = 16, y = 2, side = "TOP" }, { x = 17, y = 2, side = "TOP" }, { x = 18, y = 2, side = "TOP" },
-  { x = 19, y = 2, side = "TOP" }, { x = 20, y = 2, side = "TOP" }, { x = 21, y = 2, side = "TOP" },
-  { x = 22, y = 2, side = "TOP" }, { x = 23, y = 2, side = "TOP" }, { x = 24, y = 2, side = "TOP" },
-  { x = 25, y = 2, side = "TOP" }, { x = 26, y = 2, side = "TOP" }, { x = 27, y = 2, side = "TOP" },
-  { x = 28, y = 2, side = "TOP" }, { x = 29, y = 2, side = "TOP" }, { x = 30, y = 2, side = "TOP" },
-  { x = 31, y = 2, side = "TOP" }, { x = 32, y = 2, side = "TOP" }, { x = 33, y = 2, side = "TOP" },
-  { x = 34, y = 2, side = "TOP" }, { x = 35, y = 2, side = "TOP" }, { x = 19, y = 11, side = "RIGHT" },
-  { x = 19, y = 12, side = "RIGHT" }, { x = 19, y = 13, side = "RIGHT" }, { x = 19, y = 14, side = "RIGHT" },
-  { x = 19, y = 15, side = "RIGHT" }, { x = 19, y = 3, side = "RIGHT" }, { x = 19, y = 4, side = "RIGHT" },
-  { x = 19, y = 5, side = "RIGHT" }, { x = 19, y = 6, side = "RIGHT" }, { x = 19, y = 7, side = "RIGHT" },
-  { x = 27, y = 11, side = "RIGHT" }, { x = 27, y = 12, side = "RIGHT" }, { x = 27, y = 13, side = "RIGHT" },
-  { x = 27, y = 14, side = "RIGHT" }, { x = 27, y = 15, side = "RIGHT" }, { x = 27, y = 3, side = "RIGHT" },
-  { x = 27, y = 4, side = "RIGHT" }, { x = 27, y = 5, side = "RIGHT" }, { x = 27, y = 6, side = "RIGHT" },
-  { x = 27, y = 7, side = "RIGHT" },
+  [[12, 3], [36, 3]],
+  [[12, 8], [36, 8]],
+  [[12, 11], [36, 11]],
+  [[12, 16], [36, 16]],
+  [[12, 3], [12, 16]],
+  [[20, 3], [20, 8]],
+  [[20, 11], [20, 16]],
+  [[28, 3], [28, 8]],
+  [[28, 11], [28, 16]],
+  [[36, 3], [36, 16]],
+]
+pipes = [
+  [[4, 11], [7, 11]],
+  [[4, 8], [7, 8]],
+  [[4, 7], [7, 7]],
+  [[4, 7], [4, 11]],
+  [[6, 11], [6, 12]],
+  [[6, 6], [6, 8]],
+  [[7, 7], [7, 11]],
+]
+edge_walls = [
+  { path = [[12, 16], [36, 16]], weight_class = "MEDIUM" },
+  { path = [[12, 11], [36, 11]], weight_class = "MEDIUM" },
+  { path = [[20, 11], [20, 16]], weight_class = "MEDIUM" },
+  { path = [[28, 11], [28, 16]], weight_class = "MEDIUM" },
+  { path = [[12, 8], [36, 8]], weight_class = "MEDIUM" },
+  { path = [[12, 3], [12, 16]], weight_class = "MEDIUM" },
+  { path = [[12, 3], [36, 3]], weight_class = "MEDIUM" },
+  { path = [[20, 3], [20, 8]], weight_class = "MEDIUM" },
+  { path = [[28, 3], [28, 8]], weight_class = "MEDIUM" },
+  { path = [[36, 3], [36, 16]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 18, y = 16, side = "BOTTOM" },
+  { x = 15, y = 11, side = "BOTTOM" },
+  { x = 23, y = 11, side = "BOTTOM" },
+  { x = 31, y = 11, side = "BOTTOM" },
+  { x = 12, y = 9, side = "LEFT" },
+  { x = 36, y = 9, side = "LEFT" },
+  { x = 15, y = 8, side = "BOTTOM" },
+  { x = 23, y = 8, side = "BOTTOM" },
+  { x = 31, y = 8, side = "BOTTOM" },
+  { x = 18, y = 3, side = "BOTTOM" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 15, y = 0, rotation = 2 }, { shape = "WEDGE", x = 32, y = 0, rotation = 3 }, { shape = "WEDGE", x = 11, y = 1, rotation = 2 },
-  { shape = "WEDGE", x = 36, y = 1, rotation = 3 }, { shape = "WEDGE", x = 8, y = 2, rotation = 2 }, { shape = "WEDGE", x = 39, y = 2, rotation = 3 },
-  { shape = "WEDGE", x = 6, y = 3, rotation = 2 }, { shape = "WEDGE", x = 41, y = 3, rotation = 3 }, { shape = "WEDGE", x = 5, y = 4, rotation = 2 },
-  { shape = "WEDGE", x = 42, y = 4, rotation = 3 }, { shape = "WEDGE", x = 4, y = 5, rotation = 2 }, { shape = "WEDGE", x = 43, y = 5, rotation = 3 },
-  { shape = "WEDGE", x = 3, y = 6, rotation = 2 }, { shape = "WEDGE", x = 3, y = 12, rotation = 1 }, { shape = "WEDGE", x = 4, y = 13, rotation = 1 },
-  { shape = "WEDGE", x = 43, y = 13, rotation = 0 }, { shape = "WEDGE", x = 5, y = 14, rotation = 1 }, { shape = "WEDGE", x = 42, y = 14, rotation = 0 },
-  { shape = "WEDGE", x = 6, y = 15, rotation = 1 }, { shape = "WEDGE", x = 41, y = 15, rotation = 0 }, { shape = "WEDGE", x = 8, y = 16, rotation = 1 },
-  { shape = "WEDGE", x = 39, y = 16, rotation = 0 }, { shape = "WEDGE", x = 11, y = 17, rotation = 1 }, { shape = "WEDGE", x = 36, y = 17, rotation = 0 },
-  { shape = "WEDGE", x = 15, y = 18, rotation = 1 }, { shape = "WEDGE", x = 32, y = 18, rotation = 0 },
+  { shape = "WEDGE", x = 15, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 32, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 11, y = 1, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 36, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 8, y = 2, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 39, y = 2, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 6, y = 3, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 41, y = 3, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 5, y = 4, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 42, y = 4, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 4, y = 5, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 43, y = 5, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 6, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 12, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 4, y = 13, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 43, y = 13, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 5, y = 14, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 42, y = 14, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 6, y = 15, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 41, y = 15, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 8, y = 16, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 39, y = 16, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 11, y = 17, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 36, y = 17, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 15, y = 18, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 32, y = 18, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+]
+coverings = [
+  { covering = "CARPET", x = 12, y = 11, width = 24, height = 5 },
+  { covering = "CARPET", x = 12, y = 3, width = 24, height = 5 },
 ]
 lights = [
   { x = 20, y = 1, side = "BOTTOM" },
@@ -2097,88 +2338,125 @@ origin_x = -25.5
 origin_y = -8.5
 rows = [
   "              ####      ####    ####            ",
-  "   #######   ##TT#     ##TT#   ##TT#            ",
-  "   #.....#  ##.TT#    ##.TT#  ##.TT#            ",
-  "   #PP...####...+######.+..####....#66          ",
-  "   #...PP.......+.......+............6          ",
-  "   #...PPRRR..CCCCCCC...+..SS........6666666    ",
-  "   #...PPRRR..CCCCCCC...+..SS.........CCC..66666",
-  "   #.....RRR..CCCCCCC...+......HH.....CCC......D",
-  "   #...+++++++++++++++++++++++++++++++++++++T..D",
-  "   #OO........CCCCCCC...+......WW..............D",
-  "EEE#...PPRRL..CCCCCCC...+..................66666",
-  "EEE#...PPRRL..CCCCCCC...+............6666666    ",
-  "   #NN.PP.......+.......+............6          ",
-  "   #.....######....####....####DDD##66          ",
-  "   #PP...#    ##.TT#  ##.TT#                    ",
-  "   #######     ##TT#   ##TT#                    ",
+  "   #######   ##..#     ##..#   ##..#            ",
+  "   #.....#  ##...#    ##...#  ##...#            ",
+  "   #.....####....######....####....#66          ",
+  "   #.................................6          ",
+  "   #.................................6666666    ",
+  "   #.......................................66666",
+  "   #...........................................#",
+  "   #...........................................#",
+  "   #...........................................#",
+  "   #.......................................66666",
+  "   #.................................6666666    ",
+  "   #.................................6          ",
+  "   #.....######....####....#########66          ",
+  "   #.....#    ##...#  ##...#                    ",
+  "   #######     ##..#   ##..#                    ",
   "                ####    ####                    ",
 ]
-ports = [ { x = 47, y = 7, active = true }, { x = 31, y = 3, active = true } ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 34, y = 3, rotation = 2 },
-  { component = "gunship_drive", size = "M", x = 0, y = 9, rotation = 1 },
+  { component = "turret_mount", size = "M", x = 15, y = 14 },
+  { component = "turret_mount", size = "M", x = 25, y = 14 },
+  { component = "turret_mount", size = "M", x = 33, y = 14 },
+  { component = "tank", size = "S", x = 4, y = 13, rotation = 1 },
   { component = "gunship_drive", size = "M", x = 0, y = 11, rotation = 1 },
-  { component = "escape_pod", size = "S", x = 41, y = 10, rotation = 0 },
+  { component = "tank", size = "M", x = 7, y = 10 },
+  { component = "shield_emitter", size = "M", x = 27, y = 10 },
+  { component = "escape_pod", size = "S", x = 41, y = 10 },
+  { component = "gunship_drive", size = "M", x = 0, y = 9, rotation = 1 },
+  { component = "reactor", size = "L", x = 9, y = 9 },
+  { component = "cargo", size = "L", x = 14, y = 9, rotation = 1 },
+  { component = "helm", size = "S", x = 31, y = 9, rotation = 1 },
+  { component = "cargo", size = "M", x = 38, y = 9, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 44, y = 8 },
+  { component = "oxygen_tank", size = "S", x = 4, y = 7, rotation = 1 },
+  { component = "weapons", size = "S", x = 31, y = 7, rotation = 1 },
+  { component = "docking_port", size = "S", x = 47, y = 7, rotation = 3, active = true },
+  { component = "engine", size = "M", x = 0, y = 5, rotation = 1 },
+  { component = "reactor", size = "M", x = 9, y = 5 },
+  { component = "life_support", size = "S", x = 11, y = 5 },
+  { component = "cargo", size = "L", x = 14, y = 5, rotation = 1 },
+  { component = "nitrogen_tank", size = "S", x = 4, y = 4, rotation = 1 },
+  { component = "tank", size = "M", x = 7, y = 4 },
+  { component = "docking_port", size = "S", x = 31, y = 3, rotation = 2, active = true },
+  { component = "escape_pod", size = "S", x = 34, y = 3, rotation = 2 },
+  { component = "tank", size = "S", x = 4, y = 2, rotation = 1 },
+  { component = "turret_mount", size = "M", x = 17, y = 1 },
+  { component = "turret_mount", size = "M", x = 25, y = 1 },
 ]
-pipes = [
-  { x = 4, y = 2 }, { x = 4, y = 3 }, { x = 4, y = 4 }, { x = 4, y = 5 }, { x = 5, y = 5 }, { x = 6, y = 5 },
-  { x = 7, y = 5 }, { x = 8, y = 5 }, { x = 9, y = 5 }, { x = 10, y = 5 }, { x = 11, y = 5 }, { x = 4, y = 6 },
-  { x = 4, y = 7 }, { x = 4, y = 8 }, { x = 4, y = 9 }, { x = 4, y = 10 }, { x = 4, y = 11 }, { x = 5, y = 11 },
-  { x = 6, y = 11 }, { x = 7, y = 11 }, { x = 4, y = 12 }, { x = 4, y = 13 },
-]
-edge_walls = [
-  { x = 12, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 8, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 12, y = 9, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 12, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 2, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 3, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 4, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 5, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 8, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 24, y = 9, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 11, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 13, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 24, y = 14, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 36, y = 6, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 36, y = 7, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 36, y = 8, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 36, y = 9, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 36, y = 10, side = "RIGHT", weight_class = "MEDIUM" },
+conduits = [
+  [[15, 13], [16, 13]],
+  [[24, 13], [25, 13]],
+  [[15, 12], [16, 12]],
+  [[11, 11], [15, 11]],
+  [[7, 8], [47, 8]],
+  [[31, 7], [32, 7]],
+  [[4, 5], [11, 5]],
+  [[16, 4], [17, 4]],
+  [[24, 4], [25, 4]],
+  [[4, 5], [4, 11]],
+  [[9, 5], [9, 8]],
+  [[15, 11], [15, 14]],
+  [[17, 2], [17, 8]],
+  [[24, 4], [24, 13]],
+  [[25, 13], [25, 14]],
+  [[25, 2], [25, 4]],
+  [[27, 8], [27, 10]],
+  [[31, 7], [31, 9]],
+  [[32, 3], [32, 8]],
+  [[33, 8], [33, 14]],
 ]
 edge_conduits = [
-  { x = 12, y = 4, side = "RIGHT" }, { x = 12, y = 5, side = "RIGHT" }, { x = 12, y = 6, side = "RIGHT" },
-  { x = 12, y = 7, side = "RIGHT" }, { x = 12, y = 8, side = "RIGHT" }, { x = 12, y = 9, side = "RIGHT" },
-  { x = 12, y = 10, side = "RIGHT" }, { x = 12, y = 11, side = "RIGHT" }, { x = 12, y = 12, side = "RIGHT" },
-  { x = 24, y = 2, side = "RIGHT" }, { x = 24, y = 3, side = "RIGHT" }, { x = 24, y = 4, side = "RIGHT" },
-  { x = 24, y = 5, side = "RIGHT" }, { x = 24, y = 6, side = "RIGHT" }, { x = 24, y = 7, side = "RIGHT" },
-  { x = 24, y = 8, side = "RIGHT" }, { x = 24, y = 9, side = "RIGHT" }, { x = 24, y = 10, side = "RIGHT" },
-  { x = 24, y = 11, side = "RIGHT" }, { x = 24, y = 12, side = "RIGHT" }, { x = 24, y = 13, side = "RIGHT" },
-  { x = 24, y = 14, side = "RIGHT" }, { x = 36, y = 6, side = "RIGHT" }, { x = 36, y = 7, side = "RIGHT" },
-  { x = 36, y = 8, side = "RIGHT" }, { x = 36, y = 9, side = "RIGHT" }, { x = 36, y = 10, side = "RIGHT" },
+  [[13, 4], [13, 13]],
+  [[25, 2], [25, 15]],
+  [[37, 6], [37, 11]],
+]
+pipes = [
+  [[4, 11], [7, 11]],
+  [[4, 5], [11, 5]],
+  [[4, 2], [4, 13]],
+]
+edge_walls = [
+  { path = [[37, 6], [37, 11]], weight_class = "MEDIUM" },
+  { path = [[13, 4], [13, 13]], weight_class = "MEDIUM" },
+  { path = [[25, 2], [25, 15]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 13, y = 8, side = "LEFT" },
+  { x = 25, y = 8, side = "LEFT" },
+  { x = 37, y = 8, side = "LEFT" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 16, y = 0, rotation = 2 }, { shape = "WEDGE", x = 19, y = 0, rotation = 3 }, { shape = "WEDGE", x = 24, y = 0, rotation = 2 },
-  { shape = "WEDGE", x = 27, y = 0, rotation = 3 }, { shape = "WEDGE", x = 3, y = 1, rotation = 2 }, { shape = "WEDGE", x = 9, y = 1, rotation = 3 },
-  { shape = "WEDGE", x = 15, y = 1, rotation = 2 }, { shape = "WEDGE", x = 23, y = 1, rotation = 2 }, { shape = "WEDGE", x = 14, y = 2, rotation = 2 },
-  { shape = "WEDGE", x = 22, y = 2, rotation = 2 }, { shape = "WEDGE", x = 37, y = 3, rotation = 3 }, { shape = "WEDGE", x = 43, y = 5, rotation = 3 },
-  { shape = "WEDGE", x = 43, y = 11, rotation = 0 }, { shape = "WEDGE", x = 37, y = 13, rotation = 0 }, { shape = "WEDGE", x = 12, y = 14, rotation = 1 },
-  { shape = "WEDGE", x = 22, y = 14, rotation = 1 }, { shape = "WEDGE", x = 30, y = 14, rotation = 1 }, { shape = "WEDGE", x = 3, y = 15, rotation = 1 },
-  { shape = "WEDGE", x = 9, y = 15, rotation = 0 }, { shape = "WEDGE", x = 13, y = 15, rotation = 1 }, { shape = "WEDGE", x = 23, y = 15, rotation = 1 },
-  { shape = "WEDGE", x = 31, y = 15, rotation = 1 }, { shape = "WEDGE", x = 14, y = 16, rotation = 1 }, { shape = "WEDGE", x = 17, y = 16, rotation = 0 },
-  { shape = "WEDGE", x = 24, y = 16, rotation = 1 }, { shape = "WEDGE", x = 27, y = 16, rotation = 0 }, { shape = "WEDGE", x = 32, y = 16, rotation = 1 },
-  { shape = "WEDGE", x = 35, y = 16, rotation = 0 },
+  { shape = "WEDGE", x = 16, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 19, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 24, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 27, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 1, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 9, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 15, y = 1, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 23, y = 1, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 14, y = 2, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 22, y = 2, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 37, y = 3, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 43, y = 5, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 43, y = 11, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 37, y = 13, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 12, y = 14, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 22, y = 14, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 30, y = 14, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 3, y = 15, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 9, y = 15, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 13, y = 15, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 23, y = 15, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 31, y = 15, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 14, y = 16, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 17, y = 16, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 24, y = 16, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 27, y = 16, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 32, y = 16, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 35, y = 16, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 6, y = 2, side = "BOTTOM" },
@@ -2230,113 +2508,151 @@ tile_size = 1.0
 origin_x = -32.0
 origin_y = -16.5
 rows = [
-  "                   ####DDDDDDD####DDDDDDD####            ",
-  "                 ###...DDDDDDD....DDDDDDD...###          ",
-  "                 #.....DDDDDDD....DDDDDDD.....#          ",
-  "                 #.....+...............+......#          ",
-  "                 #.....+...............+......#          ",
-  "                 #.T...+...............+....TT#          ",
-  "                 #.....+...............+....TT#          ",
-  "                 #.....+...............+......#          ",
-  "                 #####.+..############.+..#####          ",
-  "                     #.+..#          #.+..#              ",
-  "                     #.+..#          #.+..#              ",
-  "       ###############.+..############.+..#############  ",
-  "       #....OO.........+..CCCCCCC......+.......T......#  ",
-  "       #.....L.RRR.....+..CCCCCCC..SSS.+...........TT.###",
-  "       #.....L.RRR.....+..CCCCCCC..SSS.+...........TT..DD",
-  "EEEEEEE#.......RRR.....+...........SSS.+.........HH....DD",
-  "EEEEEEE#.......+++++++++++++++++++++++++++++++++++++++.DD",
-  "EEEEEEE#.......RRR.....+...............+.........WW....DD",
-  "       #.......RRR.....+..CCCCCCC......+...........TT..DD",
-  "       #.......RRR.....+..CCCCCCC......+...........TT.###",
-  "       #....NN.........+..CCCCCCC......+.......T......#  ",
-  "       ###############.+..############.+..#############  ",
-  "                     #.+..#          #.+..#              ",
-  "                     #.+..#          #.+..#              ",
-  "                 #####.+..############.+..#####          ",
-  "                 #.....+...............+......#          ",
-  "                 #.....+...............+....TT#          ",
-  "                 #.T...+...............+....TT#          ",
-  "                 #.....+...............+......#          ",
-  "                 #.....+...............+......#          ",
-  "                 #.....DDDDDDD....DDDDDDD.....#          ",
-  "                 ###...DDDDDDD....DDDDDDD...###          ",
-  "                   ####DDDDDDD####DDDDDDD####            ",
+  "                   ##########################            ",
+  "                 ###...#######....#######...###          ",
+  "                 #.....#######....#######.....#          ",
+  "                 #............................#          ",
+  "                 #............................#          ",
+  "                 #............................#          ",
+  "                 #............................#          ",
+  "                 #............................#          ",
+  "                 #####....############....#####          ",
+  "                     #....#          #....#              ",
+  "                     #....#          #....#              ",
+  "       ###############....############....#############  ",
+  "       #..............................................#  ",
+  "       #..............................................###",
+  "       #...............................................##",
+  "       #...............................................##",
+  "       #...............................................##",
+  "       #...............................................##",
+  "       #...............................................##",
+  "       #..............................................###",
+  "       #..............................................#  ",
+  "       ###############....############....#############  ",
+  "                     #....#          #....#              ",
+  "                     #....#          #....#              ",
+  "                 #####....############....#####          ",
+  "                 #............................#          ",
+  "                 #............................#          ",
+  "                 #............................#          ",
+  "                 #............................#          ",
+  "                 #............................#          ",
+  "                 #.....#######....#######.....#          ",
+  "                 ###...#######....#######...###          ",
+  "                   ##########################            ",
 ]
 mounts = [
-  { component = "escape_pod", size = "S", x = 33, y = 0, rotation = 2 },
+  { component = "escape_pod", size = "S", x = 32, y = 31 },
+  { component = "escape_pod", size = "S", x = 33, y = 31 },
+  { component = "docking_port", size = "L", x = 23, y = 30 },
+  { component = "docking_port", size = "L", x = 34, y = 30 },
+  { component = "turret_mount", size = "S", x = 19, y = 27 },
+  { component = "turret_mount", size = "M", x = 44, y = 26 },
+  { component = "oxygen_tank", size = "S", x = 12, y = 20, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 47, y = 20 },
+  { component = "tank", size = "M", x = 8, y = 18 },
+  { component = "tank", size = "M", x = 10, y = 18 },
+  { component = "life_support", size = "S", x = 13, y = 18 },
+  { component = "cargo", size = "L", x = 26, y = 18, rotation = 1 },
+  { component = "turret_mount", size = "M", x = 51, y = 18 },
+  { component = "reactor", size = "L", x = 15, y = 17 },
+  { component = "shield_emitter", size = "L", x = 35, y = 17 },
+  { component = "helm", size = "S", x = 49, y = 17, rotation = 1 },
+  { component = "engine", size = "L", x = 0, y = 15, rotation = 1 },
+  { component = "weapons", size = "S", x = 49, y = 15, rotation = 1 },
+  { component = "docking_port", size = "M", x = 55, y = 14, rotation = 3 },
+  { component = "reactor", size = "L", x = 15, y = 13 },
+  { component = "turret_mount", size = "M", x = 51, y = 13 },
+  { component = "tank", size = "M", x = 8, y = 12 },
+  { component = "tank", size = "M", x = 10, y = 12 },
+  { component = "nitrogen_tank", size = "S", x = 12, y = 12, rotation = 1 },
+  { component = "cargo", size = "L", x = 26, y = 12, rotation = 1 },
+  { component = "turret_mount", size = "S", x = 47, y = 12 },
+  { component = "turret_mount", size = "S", x = 19, y = 5 },
+  { component = "turret_mount", size = "M", x = 44, y = 5 },
+  { component = "docking_port", size = "L", x = 23, y = 0, rotation = 2 },
   { component = "escape_pod", size = "S", x = 32, y = 0, rotation = 2 },
-  { component = "tank", size = "M", x = 8, y = 12, rotation = 0 },
-  { component = "tank", size = "M", x = 10, y = 12, rotation = 0 },
-  { component = "tank", size = "M", x = 8, y = 18, rotation = 0 },
-  { component = "tank", size = "M", x = 10, y = 18, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 33, y = 31, rotation = 0 },
-  { component = "escape_pod", size = "S", x = 32, y = 31, rotation = 0 },
+  { component = "escape_pod", size = "S", x = 33, y = 0, rotation = 2 },
+  { component = "docking_port", size = "L", x = 34, y = 0, rotation = 2 },
 ]
-pipes = [
-  { x = 12, y = 12 }, { x = 12, y = 13 }, { x = 8, y = 14 }, { x = 9, y = 14 }, { x = 10, y = 14 }, { x = 11, y = 14 },
-  { x = 12, y = 14 }, { x = 8, y = 15 }, { x = 8, y = 16 }, { x = 8, y = 17 }, { x = 8, y = 18 }, { x = 9, y = 18 },
-  { x = 10, y = 18 }, { x = 11, y = 18 }, { x = 12, y = 18 }, { x = 13, y = 18 }, { x = 13, y = 19 }, { x = 13, y = 20 },
-]
-edge_walls = [
-  { x = 17, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 17, y = 13, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 17, y = 14, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 17, y = 15, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 17, y = 16, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 17, y = 17, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 17, y = 18, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 17, y = 19, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 17, y = 20, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 42, y = 12, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 42, y = 13, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 42, y = 14, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 42, y = 15, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 42, y = 16, side = "RIGHT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 42, y = 17, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 42, y = 18, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 42, y = 19, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 42, y = 20, side = "RIGHT", weight_class = "MEDIUM" },
-  { x = 22, y = 20, side = "TOP", weight_class = "MEDIUM" },
-  { x = 23, y = 20, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 24, y = 20, side = "TOP", weight_class = "MEDIUM" },
-  { x = 25, y = 20, side = "TOP", weight_class = "MEDIUM" },
-  { x = 38, y = 20, side = "TOP", weight_class = "MEDIUM" },
-  { x = 39, y = 20, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 40, y = 20, side = "TOP", weight_class = "MEDIUM" },
-  { x = 41, y = 20, side = "TOP", weight_class = "MEDIUM" },
-  { x = 22, y = 11, side = "TOP", weight_class = "MEDIUM" },
-  { x = 23, y = 11, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 24, y = 11, side = "TOP", weight_class = "MEDIUM" },
-  { x = 25, y = 11, side = "TOP", weight_class = "MEDIUM" },
-  { x = 38, y = 11, side = "TOP", weight_class = "MEDIUM" },
-  { x = 39, y = 11, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 40, y = 11, side = "TOP", weight_class = "MEDIUM" },
-  { x = 41, y = 11, side = "TOP", weight_class = "MEDIUM" },
+conduits = [
+  [[23, 29], [24, 29]],
+  [[19, 27], [23, 27]],
+  [[39, 26], [44, 26]],
+  [[8, 18], [15, 18]],
+  [[15, 16], [55, 16]],
+  [[17, 13], [24, 13]],
+  [[23, 12], [24, 12]],
+  [[23, 11], [24, 11]],
+  [[23, 10], [24, 10]],
+  [[23, 9], [24, 9]],
+  [[23, 8], [24, 8]],
+  [[23, 7], [24, 7]],
+  [[23, 6], [24, 6]],
+  [[19, 5], [24, 5]],
+  [[39, 5], [44, 5]],
+  [[23, 4], [24, 4]],
+  [[23, 3], [24, 3]],
+  [[8, 17], [8, 18]],
+  [[23, 3], [23, 29]],
+  [[24, 29], [24, 30]],
+  [[24, 2], [24, 13]],
+  [[35, 16], [35, 17]],
+  [[39, 2], [39, 30]],
+  [[47, 12], [47, 20]],
+  [[49, 15], [49, 17]],
+  [[51, 14], [51, 18]],
 ]
 edge_conduits = [
-  { x = 17, y = 12, side = "RIGHT" }, { x = 17, y = 13, side = "RIGHT" }, { x = 17, y = 14, side = "RIGHT" },
-  { x = 17, y = 15, side = "RIGHT" }, { x = 17, y = 16, side = "RIGHT" }, { x = 17, y = 17, side = "RIGHT" },
-  { x = 17, y = 18, side = "RIGHT" }, { x = 17, y = 19, side = "RIGHT" }, { x = 17, y = 20, side = "RIGHT" },
-  { x = 42, y = 12, side = "RIGHT" }, { x = 42, y = 13, side = "RIGHT" }, { x = 42, y = 14, side = "RIGHT" },
-  { x = 42, y = 15, side = "RIGHT" }, { x = 42, y = 16, side = "RIGHT" }, { x = 42, y = 17, side = "RIGHT" },
-  { x = 42, y = 18, side = "RIGHT" }, { x = 42, y = 19, side = "RIGHT" }, { x = 42, y = 20, side = "RIGHT" },
-  { x = 22, y = 20, side = "TOP" }, { x = 23, y = 20, side = "TOP" }, { x = 24, y = 20, side = "TOP" },
-  { x = 25, y = 20, side = "TOP" }, { x = 38, y = 20, side = "TOP" }, { x = 39, y = 20, side = "TOP" },
-  { x = 40, y = 20, side = "TOP" }, { x = 41, y = 20, side = "TOP" }, { x = 22, y = 11, side = "TOP" },
-  { x = 23, y = 11, side = "TOP" }, { x = 24, y = 11, side = "TOP" }, { x = 25, y = 11, side = "TOP" },
-  { x = 38, y = 11, side = "TOP" }, { x = 39, y = 11, side = "TOP" }, { x = 40, y = 11, side = "TOP" },
-  { x = 41, y = 11, side = "TOP" },
+  [[22, 12], [26, 12]],
+  [[38, 12], [42, 12]],
+  [[22, 21], [26, 21]],
+  [[38, 21], [42, 21]],
+  [[18, 12], [18, 21]],
+  [[43, 12], [43, 21]],
+]
+pipes = [
+  [[8, 18], [13, 18]],
+  [[8, 14], [12, 14]],
+  [[8, 14], [8, 18]],
+  [[12, 12], [12, 14]],
+  [[13, 18], [13, 20]],
+]
+edge_walls = [
+  { path = [[22, 21], [26, 21]], weight_class = "MEDIUM" },
+  { path = [[38, 21], [42, 21]], weight_class = "MEDIUM" },
+  { path = [[18, 12], [18, 21]], weight_class = "MEDIUM" },
+  { path = [[22, 12], [26, 12]], weight_class = "MEDIUM" },
+  { path = [[38, 12], [42, 12]], weight_class = "MEDIUM" },
+  { path = [[43, 12], [43, 21]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 23, y = 21, side = "BOTTOM" },
+  { x = 39, y = 21, side = "BOTTOM" },
+  { x = 18, y = 16, side = "LEFT" },
+  { x = 43, y = 16, side = "LEFT" },
+  { x = 23, y = 12, side = "BOTTOM" },
+  { x = 39, y = 12, side = "BOTTOM" },
 ]
 # Wedges bevel the outer corners of the hull
 hull_pieces = [
-  { shape = "WEDGE", x = 19, y = 0, rotation = 2 }, { shape = "WEDGE", x = 44, y = 0, rotation = 3 }, { shape = "WEDGE", x = 17, y = 1, rotation = 2 },
-  { shape = "WEDGE", x = 46, y = 1, rotation = 3 }, { shape = "WEDGE", x = 17, y = 8, rotation = 1 }, { shape = "WEDGE", x = 46, y = 8, rotation = 0 },
-  { shape = "WEDGE", x = 7, y = 11, rotation = 2 }, { shape = "WEDGE", x = 54, y = 11, rotation = 3 }, { shape = "WEDGE", x = 7, y = 21, rotation = 1 },
-  { shape = "WEDGE", x = 54, y = 21, rotation = 0 }, { shape = "WEDGE", x = 17, y = 24, rotation = 2 }, { shape = "WEDGE", x = 46, y = 24, rotation = 3 },
-  { shape = "WEDGE", x = 17, y = 31, rotation = 1 }, { shape = "WEDGE", x = 46, y = 31, rotation = 0 }, { shape = "WEDGE", x = 19, y = 32, rotation = 1 },
-  { shape = "WEDGE", x = 44, y = 32, rotation = 0 },
+  { shape = "WEDGE", x = 19, y = 0, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 44, y = 0, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 17, y = 1, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 46, y = 1, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 17, y = 8, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 46, y = 8, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 7, y = 11, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 54, y = 11, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 7, y = 21, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 54, y = 21, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 17, y = 24, width = 1, height = 1, rotation = 2, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 46, y = 24, width = 1, height = 1, rotation = 3, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 17, y = 31, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 46, y = 31, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 19, y = 32, width = 1, height = 1, rotation = 1, weight_class = "MEDIUM" },
+  { shape = "WEDGE", x = 44, y = 32, width = 1, height = 1, rotation = 0, weight_class = "MEDIUM" },
 ]
 lights = [
   { x = 20, y = 1, side = "BOTTOM" },
@@ -2419,26 +2735,66 @@ tile_size = 1.0
 origin_x = -15.0
 origin_y = -6.0
 rows = [
-  "  #####################DDD##",
-  "EE#.......I.......HH.WW....#",
-  "  #.....L.I................#",
-  "  #.....L.I................#",
+  "  ##########################",
   "  #.......I................#",
-  "  #...RR++I+++++++++++++...#",
-  "  #...RR.................T.#",
   "  #.......I................#",
-  "  #...P...I.CC.............#",
-  "  #...P...I................#",
-  "EE#.......I................#",
+  "  #.......I................#",
+  "  #.......I................#",
+  "  #.......I................#",
+  "  #........................#",
+  "  #.......I................#",
+  "  #.......I................#",
+  "  #.......I................#",
+  "  #.......I................#",
   "  ##########################",
 ]
 mounts = [
-  { component = "oxygen_tank", size = "S", x = 3, y = 3, rotation = 1 },
+  { component = "docking_port", size = "S", x = 23, y = 11 },
+  { component = "engine", size = "S", x = 0, y = 10, rotation = 1 },
+  { component = "helm", size = "S", x = 18, y = 10, rotation = 1 },
+  { component = "weapons", size = "S", x = 21, y = 10, rotation = 1 },
+  { component = "life_support", size = "S", x = 8, y = 8 },
+  { component = "reactor", size = "M", x = 6, y = 5 },
+  { component = "turret_mount", size = "S", x = 25, y = 5 },
   { component = "nitrogen_tank", size = "S", x = 3, y = 4, rotation = 1 },
+  { component = "oxygen_tank", size = "S", x = 3, y = 3, rotation = 1 },
+  { component = "cargo", size = "S", x = 12, y = 3, rotation = 1 },
+  { component = "tank", size = "S", x = 6, y = 2 },
+  { component = "engine", size = "S", x = 0, y = 1, rotation = 1 },
+]
+conduits = [
+  [[18, 10], [24, 10]],
+  [[3, 8], [8, 8]],
+  [[7, 6], [9, 6]],
+  [[11, 6], [25, 6]],
+  [[9, 5], [18, 5]],
+  [[3, 1], [3, 10]],
+  [[8, 6], [8, 8]],
+  [[18, 5], [18, 10]],
+  [[24, 10], [24, 11]],
+  [[25, 5], [25, 6]],
 ]
 # Oxygen and nitrogen up to life support
 pipes = [
-  { x = 5, y = 3 }, { x = 5, y = 4 }, { x = 5, y = 5 }, { x = 5, y = 6 }, { x = 5, y = 7 }, { x = 6, y = 7 }, { x = 7, y = 7 }, { x = 8, y = 7 },
+  [[5, 7], [8, 7]],
+  [[5, 3], [5, 7]],
+]
+# The thin walls and doors. The lab door (x 19, y 4, top) starts shut; the demo seals it.
+edge_walls = [
+  { path = [[11, 7], [23, 7]], weight_class = "MEDIUM" },
+  { path = [[17, 7], [17, 11]], weight_class = "MEDIUM" },
+  { path = [[11, 5], [11, 6]], weight_class = "MEDIUM" },
+  { path = [[11, 5], [23, 5]], weight_class = "MEDIUM" },
+  { path = [[17, 1], [17, 5]], weight_class = "MEDIUM" },
+  { path = [[23, 1], [23, 11]], weight_class = "MEDIUM" },
+]
+doors = [
+  { x = 13, y = 7, side = "BOTTOM" },
+  { x = 19, y = 7, side = "BOTTOM" },
+  { x = 11, y = 5, side = "LEFT" },
+  { x = 13, y = 5, side = "BOTTOM" },
+  { x = 19, y = 5, side = "BOTTOM" },
+  { x = 23, y = 5, side = "LEFT" },
 ]
 coverings = [ { covering = "CARPET", x = 11, y = 7, width = 6, height = 4 } ]
 lights = [
@@ -2461,52 +2817,6 @@ lights = [
   { x = 20, y = 10, side = "TOP" },
   { x = 23, y = 10, side = "TOP" },
 ]
-# The thin walls and doors. The lab door (x 19, y 4, top) starts shut; the demo seals it.
-edge_walls = [
-  { x = 11, y = 5, side = "LEFT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 11, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 12, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 13, y = 7, side = "BOTTOM", weight_class = "MEDIUM", bulkhead = true },
-  { x = 14, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 15, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 16, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 17, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 18, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 19, y = 7, side = "BOTTOM", weight_class = "MEDIUM", bulkhead = true },
-  { x = 20, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 21, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 22, y = 7, side = "BOTTOM", weight_class = "MEDIUM" },
-  { x = 11, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 12, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 13, y = 4, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 14, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 15, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 16, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 18, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 19, y = 4, side = "TOP", weight_class = "MEDIUM", bulkhead = true },
-  { x = 20, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 21, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 22, y = 4, side = "TOP", weight_class = "MEDIUM" },
-  { x = 17, y = 7, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 17, y = 8, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 17, y = 9, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 17, y = 10, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 17, y = 1, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 17, y = 2, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 17, y = 3, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 17, y = 4, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 23, y = 1, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 23, y = 2, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 23, y = 3, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 23, y = 4, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 23, y = 5, side = "LEFT", weight_class = "MEDIUM", bulkhead = true },
-  { x = 23, y = 6, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 23, y = 7, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 23, y = 8, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 23, y = 9, side = "LEFT", weight_class = "MEDIUM" },
-  { x = 23, y = 10, side = "LEFT", weight_class = "MEDIUM" },
-]
 
 # Stations. Every station type carries docking ports of all three sizes, so any ship
 # can berth: an outpost one of each, a hub two of each. Station ports are active, so
@@ -2524,23 +2834,23 @@ origin_y = -13.0
 # at the end of a pier, its outer edge 5 tiles out from the hull, so what a ship has
 # beside its own port (engines, wings, turrets) clears the station's hull.
 rows = [
-  "              DDD            ",
+  "              ###            ",
   "              #.#            ",
   "              #.#            ",
   "              #.#            ",
   "              #.#            ",
   "     ##########.#############",
   "     #......................#",
-  "     #..CCCCCCC.............#",
-  "     #..CCCCCCC.............#",
-  "     #..CCCCCCC.............#",
-  "DDD###.............IIIIIII..#",
-  "DDD................I.....I..#",
-  "DDD................I.RRR.I..#",
-  "DDD................I.RRR.I..#",
-  "DDD................I.RRR.I..#",
-  "DDD................I.L...I..#",
-  "DDD###.............I.L...I..#",
+  "     #......................#",
+  "     #......................#",
+  "     #......................#",
+  "######.............IIIIIII..#",
+  "###................I.....I..#",
+  "###................I.....I..#",
+  "###................I.....I..#",
+  "###................I.....I..#",
+  "###................I.....I..#",
+  "######.............I.....I..#",
   "     #.............III.III..#",
   "     #......................#",
   "     #......................#",
@@ -2548,13 +2858,25 @@ rows = [
   "            #...#            ",
   "            #...#            ",
   "            #...#            ",
-  "            DDDDD            ",
-  "            DDDDD            ",
+  "            #####            ",
+  "            #####            ",
 ]
-ports = [
-  { x = 14, y = 25, active = true },
-  { x = 0, y = 15, active = true },
-  { x = 12, y = 1, active = true },
+mounts = [
+  { component = "docking_port", size = "S", x = 14, y = 25, active = true },
+  { component = "cargo", size = "L", x = 8, y = 16, rotation = 1 },
+  { component = "reactor", size = "L", x = 21, y = 11 },
+  { component = "docking_port", size = "L", x = 0, y = 9, rotation = 1, active = true },
+  { component = "life_support", size = "S", x = 21, y = 9 },
+  { component = "docking_port", size = "M", x = 12, y = 0, rotation = 2, active = true },
+]
+conduits = [
+  [[2, 10], [6, 10]],
+  [[21, 10], [22, 10]],
+  [[6, 7], [22, 7]],
+  [[6, 7], [6, 10]],
+  [[15, 1], [15, 25]],
+  [[21, 10], [21, 11]],
+  [[22, 7], [22, 10]],
 ]
 lights = [
   { x = 13, y = 2, side = "LEFT" },
@@ -2591,7 +2913,7 @@ origin_y = -17.0
 # pier, its outer edge 5 tiles out from the hull, so what a ship has beside its own
 # port (engines, wings, turrets) clears the station's hull.
 rows = [
-  "            DDD            DDD            ",
+  "            ###            ###            ",
   "            #.#            #.#            ",
   "            #.#            #.#            ",
   "            #.#            #.#            ",
@@ -2599,19 +2921,19 @@ rows = [
   "     ########.##############.########     ",
   "     #..............................#     ",
   "     #..............................#     ",
-  "     #...CCCCCCC..........CCCCCCC...#     ",
-  "     #...CCCCCCC..........CCCCCCC...#     ",
-  "     #...CCCCCCC..........CCCCCCC...#     ",
+  "     #..............................#     ",
+  "     #..............................#     ",
+  "     #..............................#     ",
   "     #..............................#     ",
   "     #........IIIIII..IIIIII........#     ",
   "     #........I............I........#     ",
-  "DDD###........I...RRR......I........###DDD",
-  "DDD...........I...RRR......I...........DDD",
-  "DDD...........I...RRR......I...........DDD",
-  "DDD...........I............I...........DDD",
-  "DDD...........I..L.........I...........DDD",
-  "DDD...........I..L.........I...........DDD",
-  "DDD###........I............I........###DDD",
+  "######........I............I........######",
+  "###...........I............I...........###",
+  "###...........I............I...........###",
+  "###...........I............I...........###",
+  "###...........I............I...........###",
+  "###...........I............I...........###",
+  "######........I............I........######",
   "     #........I............I........#     ",
   "     #........IIIIII..IIIIII........#     ",
   "     #..............................#     ",
@@ -2623,16 +2945,33 @@ rows = [
   "          #...#            #...#          ",
   "          #...#            #...#          ",
   "          #...#            #...#          ",
-  "          DDDDD            DDDDD          ",
-  "          DDDDD            DDDDD          ",
+  "          #####            #####          ",
+  "          #####            #####          ",
 ]
-ports = [
-  { x = 12, y = 33, active = true },
-  { x = 27, y = 33, active = true },
-  { x = 0, y = 19, active = true },
-  { x = 39, y = 19, active = true },
-  { x = 10, y = 1, active = true },
-  { x = 27, y = 1, active = true },
+mounts = [
+  { component = "docking_port", size = "S", x = 12, y = 33, active = true },
+  { component = "docking_port", size = "S", x = 27, y = 33, active = true },
+  { component = "cargo", size = "L", x = 9, y = 23, rotation = 1 },
+  { component = "cargo", size = "L", x = 26, y = 23, rotation = 1 },
+  { component = "reactor", size = "L", x = 18, y = 17 },
+  { component = "life_support", size = "S", x = 17, y = 14 },
+  { component = "docking_port", size = "L", x = 0, y = 13, rotation = 1, active = true },
+  { component = "docking_port", size = "L", x = 39, y = 13, rotation = 3, active = true },
+  { component = "docking_port", size = "M", x = 10, y = 0, rotation = 2, active = true },
+  { component = "docking_port", size = "M", x = 27, y = 0, rotation = 2, active = true },
+]
+conduits = [
+  [[6, 22], [35, 22]],
+  [[2, 18], [6, 18]],
+  [[35, 18], [39, 18]],
+  [[17, 17], [18, 17]],
+  [[6, 18], [6, 22]],
+  [[11, 1], [11, 22]],
+  [[13, 22], [13, 33]],
+  [[17, 15], [17, 17]],
+  [[20, 19], [20, 22]],
+  [[28, 1], [28, 33]],
+  [[35, 18], [35, 22]],
 ]
 lights = [
   { x = 11, y = 2, side = "LEFT" },

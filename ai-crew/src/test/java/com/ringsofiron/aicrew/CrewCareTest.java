@@ -1,6 +1,8 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
+import com.ringsofiron.interiorgrid.MountFootprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.FloorCovering;
@@ -260,11 +262,12 @@ class CrewCareTest {
         // Round 9's trace: six of the wound survey's dead lay down, suited, in a ship holed past
         // holding, until their suits ran dry beside oxygen enough to fill them many times over
         TestShips s = new TestShips(
-                "##########",
-                "#L.......#",
-                "#L.......#",
+                new ChassisBlueprint("##########",
                 "#........#",
-                "##########");
+                "#........#",
+                "#........#",
+                "##########")
+                .mount("life_support", MountFootprint.MountSize.S, 1, 2));
         for (com.ringsofiron.interiorgrid.Compartment room : s.grid.compartments) {
             room.oxygen = 0;
             room.nitrogen = 0;

@@ -5,38 +5,22 @@ import com.badlogic.gdx.utils.Array;
 /**
  * Loads and validates a {@link ChassisBlueprint} into a {@link ShipGridComponent}.
  *
- * Characters are looked up in the blueprint's {@link ShipPartCatalog}: tile types build a tile,
- * component letters mark mounts, and any other character is an error. The built-in ones:
+ * The rows hold tile types only: each character is looked up in the blueprint's
+ * {@link ShipPartCatalog}, and one that is not a tile type is an error. The built-in ones:
  *   '#' = Outer hull wall, medium (immovable, WallType.HULL)
  *   '1' / '2' / '3' = Outer hull wall, light / medium / heavy
  *   'I' = Full-tile internal wall, medium (WallType.INTERNAL)
  *   '.' = Interior floor tile (steel deck)
- *   '+' = Power conduit tile (steel deck)
  *   ' ' = Void (space, not part of the ship)
  *
- * System letters mark floor tiles covered by a mount. Each solid rectangle of one
- * letter becomes one mount, and its size must be a legal mount for that system's kind
- * (in either orientation for rectangular slots). Adjacent mounts of the same type
- * cannot be told apart in the map; list those in {@link ChassisBlueprint#mounts}.
- *   Primary (square):        'R' reactor, 'S' shield emitter, 'T' turret mount
- *   Auxiliary (rectangular): 'L' life support, 'H' helm, 'W' weapons console,
- *                            'C' cargo, 'A' airlock, 'E' engine
- *   Engines are drawn outside the hull (see {@link EngineLayout}): the nozzle at the end with
- *                            only space beyond it, the flange against the hull or in place of
- *                            one tile of it.
- *   Docking port:            'D', drawn over the hull edge: 3 x 1 Small, 5 x 2 Medium,
- *                            7 x 3 Large. It faces the side where nothing but space lies
- *                            beyond it; a port that could face either way goes in
- *                            {@link ChassisBlueprint#mounts} with its rotation. See
- *                            {@link DockingPortLayout} for its frame, opening and door.
- *   Escape pod:              'B', a rectangular slot through the hull edge. Its hatch end faces
- *                            the side with only space beyond it and is built as hull (as the
- *                            hull beside it in that row, else '#'); list a pod under
- *                            {@link ChassisBlueprint#mounts} to keep the hull under it as drawn.
- *                            See {@link EscapePodLayout}.
- *
- * Floor coverings such as carpet are laid over the steel deck from
- * {@link ChassisBlueprint#coverings}, on every floor tile inside each listed rectangle.
+ * Every other layer is laid over the tiles from the blueprint's lists: thin walls and their
+ * doors, power conduits across tiles ({@link TileConduit}) and along edges ({@link EdgeConduit}),
+ * pipes, floor coverings, hull pieces, lights, RCS blocks, and the mounts with the systems
+ * installed in them. A mount's size must be one its component comes in, and the tiles under it
+ * are as the rows draw them: floor under an interior system, hull under a docking port's frame
+ * and an escape pod's hatch end, void under an engine outside the hull (see {@link EngineLayout},
+ * {@link DockingPortLayout} and {@link EscapePodLayout}). Conduits and pipes take no room, so they
+ * may run under any mount.
  *
  * This class is intentionally independent of the ECS; it simply produces a
  * populated ShipGridComponent and a list of SubsystemPlacement data objects.
@@ -78,7 +62,7 @@ public class ChassisBlueprintLoader {
         }
     }
 
-    /** Parses a character map with no edge walls, hull pieces or explicit mounts. */
+    /** Builds a bare grid of tile types: no walls, conduits, pipes or mounts. */
     public static LoadResult load(String[] blueprint, float tileSize) {
         return load(new ChassisBlueprint(blueprint).tileSize(tileSize));
     }
@@ -107,19 +91,27 @@ public class ChassisBlueprintLoader {
             for (int x = 0; x < width; x++) {
                 char ch = chars[y][x];
                 ShipPartCatalog.TileType tileType = catalog.tileFor(ch);
-                if (tileType != null) {
-                    tileType.apply(grid.getTile(x, y), grid.tileSize);
-                } else if (catalog.componentFor(ch) != null) {
-                    grid.getTile(x, y).floorType = Tile.FloorType.FLOOR;
-                } else {
-                    throw new IllegalArgumentException("'" + ch + "' at " + x + "," + y
-                            + " is not a tile type or component symbol");
+                if (tileType == null) {
+                    throw new IllegalArgumentException("'" + ch + "' at " + x + "," + y + " is not a tile type");
                 }
+                tileType.apply(grid.getTile(x, y), grid.tileSize);
             }
         }
 
         for (ChassisBlueprint.EdgeWallDef def : blueprint.edgeWalls) {
             grid.setEdge(def.x, def.y, def.side, new EdgeWall(def.weightClass, def.material, def.hasBulkhead));
+        }
+
+        // Conduits across tiles lie on top of them, floor or wall, under anything mounted there
+        for (ChassisBlueprint.ConduitDef def : blueprint.conduits) {
+            if (!grid.inBounds(def.x, def.y)) {
+                throw new IllegalArgumentException("Conduit at " + def.x + "," + def.y + " is off the grid");
+            }
+            if (grid.getTile(def.x, def.y).isVoid()) {
+                throw new IllegalArgumentException("Conduit at " + def.x + "," + def.y
+                        + " lies out in space: a conduit lies on a floor or wall tile");
+            }
+            if (grid.getTileConduit(def.x, def.y) == null) grid.setTileConduit(def.x, def.y, new TileConduit());
         }
 
         // Conduits along edges may run inside any wall, full-tile or thin
@@ -149,22 +141,12 @@ public class ChassisBlueprintLoader {
         if (blueprint.wallLights != null) grid.wallLights = new Array<>(blueprint.wallLights);
         grid.rcsThrusters.addAll(blueprint.rcsThrusters);
 
-        Array<SubsystemPlacement> drawnMounts = drawnMounts(chars, catalog, true);
-        // An engine's letters say nothing of what lies under them: shape its tiles from its surroundings
-        for (SubsystemPlacement drawn : drawnMounts) {
-            if (drawn.type == SubsystemComponent.SubsystemType.ENGINE) EngineLayout.shape(grid, drawn.footprint);
-        }
-        for (ChassisBlueprint.MountDef def : blueprint.mounts) {
+        Array<ChassisBlueprint.MountDef> mounts = new Array<>();
+        for (ChassisBlueprint.MountDef def : blueprint.mounts) mounts.add(resolve(def, catalog));
+        for (ChassisBlueprint.MountDef def : mounts) {
             if (def.type == SubsystemComponent.SubsystemType.ENGINE) EngineLayout.shape(grid, def.footprint);
         }
-        for (SubsystemPlacement drawn : drawnMounts) {
-            if (drawn.type == SubsystemComponent.SubsystemType.ESCAPE_POD) hullUnderHatch(grid, chars, catalog, drawn.footprint);
-            grid.placeMount(drawn.footprint, drawn.type);
-            encase(grid, drawn.footprint, drawn.component);
-            subsystems.add(drawn);
-        }
-
-        for (ChassisBlueprint.MountDef def : blueprint.mounts) {
+        for (ChassisBlueprint.MountDef def : mounts) {
             ShipPartCatalog.ComponentType component = def.component != null ? def.component
                     : catalog.standardComponent(def.type);
             if (def.footprint.kind != component.mountKind()) {
@@ -200,27 +182,16 @@ public class ChassisBlueprintLoader {
         }
     }
 
-    /**
-     * Builds the hatch end of an escape pod drawn in the map as hull: the hull type beside it in
-     * that row, else the catalog's medium hull.
-     */
-    private static void hullUnderHatch(ShipGridComponent grid, char[][] chars, ShipPartCatalog catalog, MountFootprint pod) {
-        Side out = HullMounts.facing(pod);
-        boolean along = out.dx == 0;
-        int x0 = pod.originX, y0 = pod.originY, x1 = x0 + pod.width() - 1, y1 = y0 + pod.height() - 1;
-        int ex = out == Side.LEFT ? x0 : x1, ey = out == Side.BOTTOM ? y0 : y1;
-        ShipPartCatalog.TileType hull = null;
-        int[][] beside = along ? new int[][]{{x0 - 1, ey}, {x1 + 1, ey}} : new int[][]{{ex, y0 - 1}, {ex, y1 + 1}};
-        for (int[] b : beside) {
-            if (hull != null || b[1] < 0 || b[1] >= chars.length || b[0] < 0 || b[0] >= chars[b[1]].length) continue;
-            ShipPartCatalog.TileType t = catalog.tileFor(chars[b[1]][b[0]]);
-            if (t != null && t.base == ShipPartCatalog.TileBase.HULL) hull = t;
+    /** A mount with its footprint, looking a component given by id up in {@code catalog}. */
+    private static ChassisBlueprint.MountDef resolve(ChassisBlueprint.MountDef def, ShipPartCatalog catalog) {
+        if (def.footprint != null) return def;
+        ShipPartCatalog.ComponentType component = catalog.component(def.componentId);
+        if (component == null) throw new IllegalArgumentException("Unknown component '" + def.componentId + "'");
+        if (!def.size.exists(component.mountKind())) {
+            throw new IllegalArgumentException("There is no " + def.size + " " + component.mountKind() + " mount");
         }
-        if (hull == null) hull = catalog.tile("hull");
-        if (hull == null) return;
-        for (int y = y0; y <= y1; y++)
-            for (int x = x0; x <= x1; x++)
-                if (HullMounts.onEdge(pod, x, y, out)) hull.apply(grid.getTile(x, y), grid.tileSize);
+        return new ChassisBlueprint.MountDef(new MountFootprint(component.mountKind(), def.size, def.x, def.y,
+                def.rotation), component);
     }
 
     /**
@@ -238,124 +209,6 @@ public class ChassisBlueprintLoader {
             }
         }
         return chars;
-    }
-
-    /**
-     * Finds the mounts drawn as letter rectangles in a character grid (see {@link #toGrid}): each
-     * solid rectangle of one component's letter is one mount, and a docking port faces the side
-     * with only space beyond it. Nothing is placed on a grid.
-     *
-     * @param strict throw on a rectangle that is not a legal mount; otherwise skip it
-     */
-    public static Array<SubsystemPlacement> drawnMounts(char[][] chars, ShipPartCatalog catalog, boolean strict) {
-        int height = chars.length, width = height == 0 ? 0 : chars[0].length;
-        // Void tiles, for telling which way a docking port faces
-        boolean[][] space = new boolean[height][width];
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                ShipPartCatalog.TileType t = catalog.tileFor(chars[y][x]);
-                space[y][x] = t != null && t.base == ShipPartCatalog.TileBase.VOID;
-            }
-        }
-        Array<SubsystemPlacement> out = new Array<>();
-        boolean[][] visited = new boolean[height][width];
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                ShipPartCatalog.ComponentType component = catalog.componentFor(chars[y][x]);
-                if (component == null || visited[y][x]) continue;
-                SubsystemComponent.SubsystemType type = component.behavior;
-                char c = chars[y][x];
-                int w = 1;
-                while (x + w < width && chars[y][x + w] == c && !visited[y][x + w]) w++;
-                int h = 1;
-                while (y + h < height && rowMatches(chars[y + h], visited[y + h], x, w, c)) h++;
-                for (int yy = y; yy < y + h; yy++)
-                    for (int xx = x; xx < x + w; xx++) visited[yy][xx] = true;
-
-                MountFootprint footprint = MountFootprint.fromSize(type.mountKind, x, y, w, h);
-                if (footprint == null || !component.sizes.contains(footprint.size)) {
-                    if (!strict) continue;
-                    throw new IllegalArgumentException("'" + c + "' at " + x + "," + y + " is " + w + "x" + h
-                            + ", which is not a size " + component.name + " comes in");
-                }
-                if (type.mountKind == MountFootprint.MountKind.PORT || type == SubsystemComponent.SubsystemType.ESCAPE_POD) {
-                    try {
-                        footprint = facingSpace(space, footprint, component.name);
-                    } catch (IllegalArgumentException e) {
-                        if (strict) throw e;
-                        continue;
-                    }
-                }
-                if (type == SubsystemComponent.SubsystemType.ENGINE) {
-                    try {
-                        footprint = nozzleOut(space, footprint);
-                    } catch (IllegalArgumentException e) {
-                        // The editor keeps it, so the check can say what is wrong with it
-                        if (strict) throw e;
-                    }
-                }
-                out.add(new SubsystemPlacement(footprint, component));
-            }
-        }
-        return out;
-    }
-
-    /**
-     * Turns a port (or escape pod) drawn in the map to face the side with only space beyond it: a
-     * horizontal port faces up or down, a vertical one left or right; a pod faces along its length.
-     */
-    private static MountFootprint facingSpace(boolean[][] space, MountFootprint port, String name) {
-        Side[] sides = port.rotation % 2 == 0 ? new Side[]{Side.TOP, Side.BOTTOM} : new Side[]{Side.LEFT, Side.RIGHT};
-        Side found = null;
-        for (Side side : sides) {
-            if (!spaceBeyond(space, port, side)) continue;
-            if (found != null) {
-                throw new IllegalArgumentException(name + " at " + port.originX + "," + port.originY
-                        + " could face " + found + " or " + side + "; list it under mounts with a rotation");
-            }
-            found = side;
-        }
-        if (found == null) {
-            throw new IllegalArgumentException(name + " at " + port.originX + "," + port.originY
-                    + " has no side facing space");
-        }
-        return new MountFootprint(port.kind, port.size, port.originX, port.originY, DockingPortLayout.rotationFacing(found));
-    }
-
-    /**
-     * Points an engine drawn in the map out into space: its nozzle goes at the end of its long side
-     * with only space beyond it, and its flange at the other end, which must not.
-     */
-    private static MountFootprint nozzleOut(boolean[][] space, MountFootprint engine) {
-        Side[] ends = engine.rotation % 2 == 0 ? new Side[]{Side.TOP, Side.BOTTOM} : new Side[]{Side.LEFT, Side.RIGHT};
-        boolean first = spaceBeyond(space, engine, ends[0]), second = spaceBeyond(space, engine, ends[1]);
-        if (first == second) {
-            throw new IllegalArgumentException("Engine at " + engine.originX + "," + engine.originY
-                    + (first ? " is not mounted on the hull" : " has no end facing space")
-                    + ": it mounts on the outside of the hull, its nozzle out into space");
-        }
-        Side out = first ? ends[0] : ends[1];
-        return new MountFootprint(engine.kind, engine.size, engine.originX, engine.originY, EngineLayout.rotationFacing(out));
-    }
-
-    /** True if every tile just beyond one side of the footprint is void or off the map. */
-    private static boolean spaceBeyond(boolean[][] space, MountFootprint m, Side side) {
-        int height = space.length, width = height == 0 ? 0 : space[0].length;
-        for (int y = m.originY; y < m.originY + m.height(); y++) {
-            for (int x = m.originX; x < m.originX + m.width(); x++) {
-                int bx = x + side.dx, by = y + side.dy;
-                if (m.covers(bx, by)) continue;
-                if (bx >= 0 && bx < width && by >= 0 && by < height && !space[by][bx]) return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean rowMatches(char[] row, boolean[] visitedRow, int x, int w, char c) {
-        for (int xx = x; xx < x + w; xx++) {
-            if (row[xx] != c || visitedRow[xx]) return false;
-        }
-        return true;
     }
 
     /**

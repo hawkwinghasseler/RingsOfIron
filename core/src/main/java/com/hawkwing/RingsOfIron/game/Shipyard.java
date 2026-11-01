@@ -686,7 +686,7 @@ public class Shipyard extends EntitySystem {
         }
     }
 
-    /** Seats in the escape pods {@code shipId}'s chassis carries: its pod mounts, and pods drawn into its map. */
+    /** Seats in the escape pods {@code shipId}'s chassis mounts. */
     int podSeats(String shipId) {
         DefRegistry defs = defs();
         ShipDef ship = defs == null ? null : defs.get("ship", shipId, ShipDef.class);
@@ -696,10 +696,7 @@ public class Shipyard extends EntitySystem {
         for (ChassisDef.Mount m : chassis.mounts) {
             if ("escape_pod".equals(m.component)) seats += AbandonShip.seats(MountFootprint.MountSize.valueOf(m.size));
         }
-        int drawn = 0;
-        if (chassis.rows != null) for (String row : chassis.rows) for (char ch : row.toCharArray()) if (ch == 'B') drawn++;
-        // A pod drawn into the map is a Small one, two tiles to a pod
-        return seats + drawn / 2 * AbandonShip.seats(MountFootprint.MountSize.S);
+        return seats;
     }
 
     private static double credits(Entity ship) {

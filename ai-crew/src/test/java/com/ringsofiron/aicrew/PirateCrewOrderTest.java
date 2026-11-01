@@ -1,6 +1,7 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.MountFootprint;
@@ -24,12 +25,13 @@ class PirateCrewOrderTest {
      */
     static String firstDone(int faction, boolean powerFirst) {
         TestShips s = new TestShips(
-                "################",
+                new ChassisBlueprint("################",
                 "#..............#",
-                "#..........RR..#",
-                "#..........RR..#",
                 "#..............#",
-                "################");
+                "#..............#",
+                "#..............#",
+                "################")
+                .mount("reactor", MountFootprint.MountSize.M, 11, 2));
         s.board.faction = faction;
         s.board.keepsClearOfFire = false; // the bleed lies where the fire fell: only the order differs
         s.board.resetsPowerFirst = powerFirst;

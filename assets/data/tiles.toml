@@ -1,7 +1,9 @@
 # Tile types: the characters chassis rows are painted with (see chassis.toml), and the
 # tile each one builds. The ship editor (gradlew :lwjgl3:runShipEditor) edits this file.
-#   symbol        one character, unique across tile types and components
-#   base          VOID, FLOOR, CONDUIT, HULL or INTERNAL_WALL
+#   symbol        one character, unique across tile types
+#   base          VOID, FLOOR, HULL or INTERNAL_WALL
+# Power conduits are not tiles: a chassis lays them over its tiles in their own layer
+# (conduits and edge_conduits in chassis.toml).
 #   weight_class  walls: LIGHT, MEDIUM or HEAVY
 #   material      walls: a [material.*] id (materials.toml)
 #   covering      floors: NONE or CARPET, laid when the ship is built
@@ -22,13 +24,6 @@ symbol = "."
 base = "FLOOR"
 art = "tiles/floor"
 color = "#4a5058"
-
-[tile.conduit]
-name = "Power conduit"
-symbol = "+"
-base = "CONDUIT"
-art = "tiles/conduit"
-color = "#5a6a3a"
 
 [tile.hull]
 name = "Hull, medium"

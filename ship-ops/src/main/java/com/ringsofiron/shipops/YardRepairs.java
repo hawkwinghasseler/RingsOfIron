@@ -13,6 +13,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.TileConduit;
 import com.ringsofiron.macrosim.economy.TraderComponent;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
@@ -64,6 +65,12 @@ final class YardRepairs {
                 if (t.piece == null && (t.isWall() || t.isFloor()) && t.integrity < 1f - EPS) {
                     out.add(new StationYard.Damage(StationYard.Damage.Kind.HULL, x, y, 1, 1, null, t, null, null, null));
                 }
+            }
+        }
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                TileConduit c = grid.tileConduits[y][x];
+                if (c != null && c.integrity < 1f - EPS) out.add(new StationYard.Damage(x, y, c));
             }
         }
         for (int y = 0; y <= grid.height; y++) {

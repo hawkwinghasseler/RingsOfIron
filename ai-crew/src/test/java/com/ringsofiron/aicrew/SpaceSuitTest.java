@@ -1,6 +1,8 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
+import com.ringsofiron.interiorgrid.MountFootprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.Compartment;
@@ -76,11 +78,12 @@ class SpaceSuitTest {
     @Test
     void aSuitComesOffOnceTheAirIsBackAndIsToppedUpInItsLocker() {
         TestShips s = new TestShips(
-                "##########",
-                "#L.......#",
-                "#L.......#",
+                new ChassisBlueprint("##########",
                 "#........#",
-                "##########");
+                "#........#",
+                "#........#",
+                "##########")
+                .mount("life_support", MountFootprint.MountSize.S, 1, 2));
         Furnishing locker = s.locker(5, 3, 3);
         Entity e = s.spawn(CrewRole.CREWMAN, 0, 2, 2);
         CrewMemberComponent c = s.c(e);

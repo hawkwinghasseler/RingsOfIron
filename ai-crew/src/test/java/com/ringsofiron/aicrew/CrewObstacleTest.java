@@ -1,6 +1,7 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
@@ -28,13 +29,16 @@ class CrewObstacleTest {
     @Test
     void crewWalkRoundAReactorAndOverAConsole() {
         TestShips s = new TestShips(
-                "###########",
+                new ChassisBlueprint("###########",
                 "#.........#",
-                "#...RR....#",
-                "#...RR.H..#",
-                "#......H..#",
                 "#.........#",
-                "###########");
+                "#.........#",
+                "#.........#",
+                "#.........#",
+                "###########")
+                .mount("helm", MountFootprint.MountSize.S, 7, 2)
+                .mount("reactor", MountFootprint.MountSize.M, 4, 3)
+                .conduitRun(5, 3, 7, 3));
         MountFootprint reactor = mount(s, SubsystemComponent.SubsystemType.REACTOR);
         MountFootprint helm = mount(s, SubsystemComponent.SubsystemType.HELM);
         GridNavGraph nav = s.crew.pathfinder(s.grid).graph;
@@ -49,12 +53,13 @@ class CrewObstacleTest {
     @Test
     void theAvatarBumpsIntoAReactor() {
         TestShips s = new TestShips(
-                "#########",
+                new ChassisBlueprint("#########",
                 "#.......#",
-                "#...RR..#",
-                "#...RR..#",
                 "#.......#",
-                "#########");
+                "#.......#",
+                "#.......#",
+                "#########")
+                .mount("reactor", MountFootprint.MountSize.M, 4, 2));
         MountFootprint reactor = mount(s, SubsystemComponent.SubsystemType.REACTOR);
         Entity me = CrewFactory.spawnPlayer(s.crew, s.ship, "Me", 1, reactor.originY);
         me.getComponent(PlayerAvatarComponent.class).moveX = 1f;
@@ -65,13 +70,14 @@ class CrewObstacleTest {
     @Test
     void stackedCargoBlocksAndAnEmptyBayIsFloor() {
         TestShips s = new TestShips(
-                "########",
+                new ChassisBlueprint("########",
                 "#......#",
-                "#..CC..#",
-                "#..CC..#",
-                "#..CC..#",
                 "#......#",
-                "########");
+                "#......#",
+                "#......#",
+                "#......#",
+                "########")
+                .mount("cargo", MountFootprint.MountSize.M, 3, 2));
         MountFootprint bay = mount(s, SubsystemComponent.SubsystemType.CARGO);
         int[] tiles = new int[bay.width() * bay.height() * 2];
         int k = 0;

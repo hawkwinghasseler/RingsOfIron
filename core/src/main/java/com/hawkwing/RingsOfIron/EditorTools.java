@@ -162,8 +162,8 @@ abstract class EditorTools extends EditorCanvas {
     }
 
     /**
-     * Near an edge, runs a conduit along it or takes up the one there; in the middle of a floor
-     * tile, lays a conduit across the tile or takes it up.
+     * Near an edge, runs a conduit along it or takes up the one there; in the middle of a tile,
+     * lays a conduit across it (on top of the tile, floor or wall, components included) or takes it up.
      */
     void conduitDown(ChassisModel m, ShipPartCatalog cat) {
         Side side = conduitSide();
@@ -176,20 +176,13 @@ abstract class EditorTools extends EditorCanvas {
                     + " edge of " + hoverX + "," + hoverY);
             return;
         }
-        ShipPartCatalog.TileType t = cat.tileFor(m.tiles[hoverY][hoverX]);
-        if (t == null || (t.base != ShipPartCatalog.TileBase.FLOOR && t.base != ShipPartCatalog.TileBase.CONDUIT)) {
-            say("A conduit across a tile needs a floor; run it along an edge to go through a wall");
-            return;
-        }
-        if (m.mountAt(hoverX, hoverY, cat) != null) {
-            say("A component stands here; run the conduit along an edge of its tiles");
-            return;
-        }
-        boolean had = t.base == ShipPartCatalog.TileBase.CONDUIT;
-        char symbol = had ? ChassisModel.symbolFor(cat, ShipPartCatalog.TileBase.FLOOR, '.')
-                : ChassisModel.symbolFor(cat, ShipPartCatalog.TileBase.CONDUIT, '+');
+        boolean had = m.conduitAt(hoverX, hoverY);
         beginEdit();
-        m.paint(hoverX, hoverY, symbol, cat);
+        if (!m.toggleConduit(hoverX, hoverY, cat)) {
+            undo.pop();
+            say("A conduit across a tile lies on a floor or a wall, not out in space");
+            return;
+        }
         changed();
         say(had ? "Took up the conduit across " + hoverX + "," + hoverY : "Laid a conduit across " + hoverX + "," + hoverY);
     }

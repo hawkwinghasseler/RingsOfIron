@@ -49,13 +49,16 @@ class AirlockTest {
     @Test
     void thePortKeepsItsPowerWithTheHatchShutSoThePumpRuns() {
         // A reactor in the room; a Small port in the top hull row, as on the corvette, a system of
-        // its own fed only through its opening, the tiles either side of it hull
+        // its own fed by a conduit run from the reactor onto the hull under its middle, the tiles
+        // either side of it hull
         ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(new ChassisBlueprint(
                 "##########",
                 "#........#",
                 "#........#",
-                "#R.......#",
-                "##########").tileSize(1f));
+                "#........#",
+                "##########")
+                .mount("reactor", MountFootprint.MountSize.S, 1, 1)
+                .conduitRun(1, 1, 1, 3, 5, 3, 5, 4).tileSize(1f));
         ShipGridComponent g = r.grid;
         MountFootprint port = new MountFootprint(MountFootprint.MountKind.PORT, MountFootprint.MountSize.S, 4, 4, 0);
         g.placeMount(port);
@@ -71,7 +74,7 @@ class AirlockTest {
         hazards.step(g, DT);
         engine.update(PowerRoutingSystem.CHARGE_TICK);
         Airlock lock = Airlock.of(g, port);
-        assertTrue(dock.powered && lock.powered(g), "fed through the opening");
+        assertTrue(dock.powered && lock.powered(g), "fed by the conduit");
         double before = TestShips.totalMoles(g);
         assertTrue(lock.claim(user, true));
         for (float t = 0f; t < 60f && !lock.isOut(); t += DT) {

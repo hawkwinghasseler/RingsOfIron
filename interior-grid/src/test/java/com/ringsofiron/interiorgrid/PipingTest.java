@@ -24,10 +24,15 @@ class PipingTest {
     private static ChassisBlueprint room() {
         return new ChassisBlueprint(
                 "###########",
-                "#R........#",
-                "#L.....ON.#",
-                "#L.....ON.#",
-                "###########");
+                "#.........#",
+                "#.........#",
+                "#.........#",
+                "###########")
+                .mount("life_support", MountFootprint.MountSize.S, 1, 1)
+                .mount("oxygen_tank", MountFootprint.MountSize.S, 7, 1)
+                .mount("nitrogen_tank", MountFootprint.MountSize.S, 8, 1)
+                .mount("reactor", MountFootprint.MountSize.S, 1, 3)
+                .conduitRun(1, 2, 1, 3);
     }
 
     /** Pipe across the floor from the life support unit to both tanks, along y = 1. */
@@ -174,10 +179,13 @@ class PipingTest {
     void aShipWithoutTanksIsNotLimited() {
         build(new ChassisBlueprint(
                 "###########",
-                "#R........#",
-                "#L........#",
-                "#L........#",
-                "###########"));
+                "#.........#",
+                "#.........#",
+                "#.........#",
+                "###########")
+                .mount("life_support", MountFootprint.MountSize.S, 1, 1)
+                .mount("reactor", MountFootprint.MountSize.S, 1, 3)
+                .conduitRun(1, 2, 1, 3));
         vent();
         double vented = room(grid).totalMoles();
         run(60);
@@ -199,10 +207,15 @@ class PipingTest {
         // The unit and the tanks in rooms either side of an internal wall at x = 5
         ChassisBlueprint bp = new ChassisBlueprint(
                 "###########",
-                "#R...I....#",
-                "#L...I.ON.#",
-                "#L...I.ON.#",
-                "###########");
+                "#....I....#",
+                "#....I....#",
+                "#....I....#",
+                "###########")
+                .mount("life_support", MountFootprint.MountSize.S, 1, 1)
+                .mount("oxygen_tank", MountFootprint.MountSize.S, 7, 1)
+                .mount("nitrogen_tank", MountFootprint.MountSize.S, 8, 1)
+                .mount("reactor", MountFootprint.MountSize.S, 1, 3)
+                .conduitRun(1, 2, 1, 3);
         bp.pipe(1, 1).pipe(2, 1).pipe(3, 1).pipe(4, 1);
         // Up the wall's left edge, along its bottom over the hull and down its right edge
         bp.pipe(5, 1, Side.LEFT).pipe(5, 1, Side.BOTTOM).pipe(5, 1, Side.RIGHT);

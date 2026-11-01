@@ -14,20 +14,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The tile types and ship components a chassis map can draw, each under its one-character
- * symbol. Tile types and components share that namespace.
+ * The tile types a chassis map's rows draw, each under its one-character symbol, and the ship
+ * components its mounts install, by id.
  *
- * {@link #builtIn()} holds the characters the game has always had ({@code #}, {@code 1}-{@code 6},
- * {@code I}, {@code .}, {@code m} (a medbay's deck), {@code +}, space, and the system letters {@code R S T L H W C A D}, plus
- * {@code E} for the engine, {@code P O N} for propellant, oxygen and nitrogen tanks, and {@code B} for an escape pod (lifeboat)).
- * {@link #from(DefRegistry)} starts from those and applies the {@code [tile.*]} and
- * {@code [component.*]} definitions, which replace a built-in of the same id or add new ones.
+ * {@link #builtIn()} holds the built-in tile types ({@code #}, {@code 1}-{@code 6}, {@code I},
+ * {@code .}, {@code m} (a medbay's deck) and space) and components (reactor, shield_emitter,
+ * turret_mount, life_support, helm, weapons, cargo, airlock, engine, docking_port, escape_pod, and
+ * the tank, oxygen_tank and nitrogen_tank). {@link #from(DefRegistry)} starts from those and
+ * applies the {@code [tile.*]} and {@code [component.*]} definitions, which replace a built-in of
+ * the same id or add new ones.
+ *
+ * <p>Power conduits are not a tile type: they lie on their own layer over the tiles (see
+ * {@link TileConduit}).
  */
 public class ShipPartCatalog {
 
     /** What a tile type builds. */
     public enum TileBase {
-        VOID, FLOOR, CONDUIT, HULL, INTERNAL_WALL;
+        VOID, FLOOR, HULL, INTERNAL_WALL;
 
         public boolean isWall() {
             return this == HULL || this == INTERNAL_WALL;
@@ -80,9 +84,6 @@ public class ShipPartCatalog {
                 case FLOOR:
                     tile.floorType = Tile.FloorType.FLOOR;
                     break;
-                case CONDUIT:
-                    tile.floorType = Tile.FloorType.POWER_CONDUIT;
-                    break;
                 default:
                     return;
             }
@@ -95,11 +96,10 @@ public class ShipPartCatalog {
         }
     }
 
-    /** A ship component: a map letter for a system built on one subsystem behavior. */
+    /** A ship component: a system built on one subsystem behavior, placed by a layout's mounts. */
     public static class ComponentType {
         public final String id;
         public final String name;
-        public final char symbol;
         public final SubsystemComponent.SubsystemType behavior;
         /** Mount sizes it comes in. */
         public final EnumSet<MountFootprint.MountSize> sizes;
@@ -121,13 +121,13 @@ public class ShipPartCatalog {
         /** ENGINE: the hull its casing is built as; null for {@link EngineLayout#CASING}. */
         public WeightClass casing;
 
-        public ComponentType(String id, String name, char symbol, SubsystemComponent.SubsystemType behavior,
+        public ComponentType(String id, String name, SubsystemComponent.SubsystemType behavior,
                              EnumSet<MountFootprint.MountSize> sizes, int color,
                              Map<MountFootprint.MountSize, Double> powerOutput, float throughput) {
-            this(id, name, symbol, behavior, sizes, color, powerOutput, throughput, null, Collections.emptyMap());
+            this(id, name, behavior, sizes, color, powerOutput, throughput, null, Collections.emptyMap());
         }
 
-        public ComponentType(String id, String name, char symbol, SubsystemComponent.SubsystemType behavior,
+        public ComponentType(String id, String name, SubsystemComponent.SubsystemType behavior,
                              EnumSet<MountFootprint.MountSize> sizes, int color,
                              Map<MountFootprint.MountSize, Double> powerOutput, float throughput,
                              Fluid fluid, Map<MountFootprint.MountSize, Double> capacity) {
@@ -138,7 +138,6 @@ public class ShipPartCatalog {
             this.capacity = capacity;
             this.id = id;
             this.name = name;
-            this.symbol = symbol;
             this.behavior = behavior;
             this.sizes = sizes;
             this.color = color;
@@ -189,7 +188,6 @@ public class ShipPartCatalog {
     private final Map<String, TileType> tiles = new LinkedHashMap<>();
     private final Map<String, ComponentType> components = new LinkedHashMap<>();
     private final Map<Character, TileType> tileBySymbol = new HashMap<>();
-    private final Map<Character, ComponentType> componentBySymbol = new HashMap<>();
     private final Map<SubsystemComponent.SubsystemType, ComponentType> standard = new HashMap<>();
 
     private static final ShipPartCatalog BUILT_IN = createBuiltIn();
@@ -205,7 +203,6 @@ public class ShipPartCatalog {
         c.put(new TileType("void", "Void", ' ', TileBase.VOID, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x000000));
         c.put(new TileType("floor", "Steel floor", '.', TileBase.FLOOR, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x4a5058));
         c.put(new TileType("medbay", "Medbay deck", 'm', TileBase.FLOOR, WeightClass.MEDIUM, steel, FloorCovering.MEDBAY, 0x9fc4c0));
-        c.put(new TileType("conduit", "Power conduit", '+', TileBase.CONDUIT, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x5a6a3a));
         c.put(new TileType("hull", "Hull, medium", '#', TileBase.HULL, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x9aa4b0));
         c.put(new TileType("hull_light", "Hull, light", '1', TileBase.HULL, WeightClass.LIGHT, steel, FloorCovering.NONE, 0xb8c0ca));
         c.put(new TileType("hull_medium", "Hull, medium (2)", '2', TileBase.HULL, WeightClass.MEDIUM, steel, FloorCovering.NONE, 0x9aa4b0));
@@ -215,32 +212,32 @@ public class ShipPartCatalog {
         c.put(new TileType("armor_light", "Composite armor, light", '4', TileBase.HULL, WeightClass.LIGHT, composite, FloorCovering.NONE, 0x7d8c88));
         c.put(new TileType("armor_medium", "Composite armor, medium", '5', TileBase.HULL, WeightClass.MEDIUM, composite, FloorCovering.NONE, 0x66756f));
         c.put(new TileType("armor_heavy", "Composite armor, heavy", '6', TileBase.HULL, WeightClass.HEAVY, composite, FloorCovering.NONE, 0x4d5a56));
-        builtInComponent(c, "reactor", "Reactor", 'R', SubsystemComponent.SubsystemType.REACTOR, 0xe0703a);
-        builtInComponent(c, "shield_emitter", "Shield emitter", 'S', SubsystemComponent.SubsystemType.SHIELD_EMITTER, 0x4aa0e0);
-        builtInComponent(c, "turret_mount", "Turret mount", 'T', SubsystemComponent.SubsystemType.TURRET_MOUNT, 0xd04a4a);
-        builtInComponent(c, "life_support", "Life support", 'L', SubsystemComponent.SubsystemType.LIFE_SUPPORT, 0x4ac07a);
-        builtInComponent(c, "helm", "Helm", 'H', SubsystemComponent.SubsystemType.HELM, 0xe0d04a);
-        builtInComponent(c, "weapons", "Weapons console", 'W', SubsystemComponent.SubsystemType.WEAPONS, 0xc06ad0);
-        builtInComponent(c, "cargo", "Cargo bay", 'C', SubsystemComponent.SubsystemType.CARGO, 0xa08050);
-        builtInComponent(c, "airlock", "Airlock", 'A', SubsystemComponent.SubsystemType.AIRLOCK, 0x50c0c0);
-        builtInComponent(c, "engine", "Engine", 'E', SubsystemComponent.SubsystemType.ENGINE, 0x6aa8e8);
-        builtInComponent(c, "docking_port", "Docking port", 'D', SubsystemComponent.SubsystemType.DOCKING_PORT, 0xe0e0e0);
-        builtInComponent(c, "escape_pod", "Escape pod", 'B', SubsystemComponent.SubsystemType.ESCAPE_POD, 0xff7a2a);
-        builtInTank(c, "tank", "Propellant tank", 'P', Fluid.PROPELLANT, 0xc08a3a);
-        builtInTank(c, "oxygen_tank", "Oxygen tank", 'O', Fluid.OXYGEN, 0x6aa8e0);
-        builtInTank(c, "nitrogen_tank", "Nitrogen tank", 'N', Fluid.NITROGEN, 0x8a94a8);
+        builtInComponent(c, "reactor", "Reactor", SubsystemComponent.SubsystemType.REACTOR, 0xe0703a);
+        builtInComponent(c, "shield_emitter", "Shield emitter", SubsystemComponent.SubsystemType.SHIELD_EMITTER, 0x4aa0e0);
+        builtInComponent(c, "turret_mount", "Turret mount", SubsystemComponent.SubsystemType.TURRET_MOUNT, 0xd04a4a);
+        builtInComponent(c, "life_support", "Life support", SubsystemComponent.SubsystemType.LIFE_SUPPORT, 0x4ac07a);
+        builtInComponent(c, "helm", "Helm", SubsystemComponent.SubsystemType.HELM, 0xe0d04a);
+        builtInComponent(c, "weapons", "Weapons console", SubsystemComponent.SubsystemType.WEAPONS, 0xc06ad0);
+        builtInComponent(c, "cargo", "Cargo bay", SubsystemComponent.SubsystemType.CARGO, 0xa08050);
+        builtInComponent(c, "airlock", "Airlock", SubsystemComponent.SubsystemType.AIRLOCK, 0x50c0c0);
+        builtInComponent(c, "engine", "Engine", SubsystemComponent.SubsystemType.ENGINE, 0x6aa8e8);
+        builtInComponent(c, "docking_port", "Docking port", SubsystemComponent.SubsystemType.DOCKING_PORT, 0xe0e0e0);
+        builtInComponent(c, "escape_pod", "Escape pod", SubsystemComponent.SubsystemType.ESCAPE_POD, 0xff7a2a);
+        builtInTank(c, "tank", "Propellant tank", Fluid.PROPELLANT, 0xc08a3a);
+        builtInTank(c, "oxygen_tank", "Oxygen tank", Fluid.OXYGEN, 0x6aa8e0);
+        builtInTank(c, "nitrogen_tank", "Nitrogen tank", Fluid.NITROGEN, 0x8a94a8);
         return c;
     }
 
-    private static void builtInComponent(ShipPartCatalog c, String id, String name, char symbol,
+    private static void builtInComponent(ShipPartCatalog c, String id, String name,
                                          SubsystemComponent.SubsystemType behavior, int color) {
-        c.put(new ComponentType(id, name, symbol, behavior, allSizes(behavior.mountKind), color,
+        c.put(new ComponentType(id, name, behavior, allSizes(behavior.mountKind), color,
                 Collections.emptyMap(), 1f));
     }
 
-    private static void builtInTank(ShipPartCatalog c, String id, String name, char symbol, Fluid fluid, int color) {
+    private static void builtInTank(ShipPartCatalog c, String id, String name, Fluid fluid, int color) {
         SubsystemComponent.SubsystemType tank = SubsystemComponent.SubsystemType.TANK;
-        c.put(new ComponentType(id, name, symbol, tank, allSizes(tank.mountKind), color,
+        c.put(new ComponentType(id, name, tank, allSizes(tank.mountKind), color,
                 Collections.emptyMap(), 1f, fluid, Collections.emptyMap()));
     }
 
@@ -272,9 +269,7 @@ public class ShipPartCatalog {
         for (TileType t : tiles) {
             if (problems == null || claimLeniently(owner, t.symbol, "tile " + t.id, problems)) c.tiles.put(t.id, t);
         }
-        for (ComponentType t : components) {
-            if (problems == null || claimLeniently(owner, t.symbol, "component " + t.id, problems)) c.components.put(t.id, t);
-        }
+        for (ComponentType t : components) c.components.put(t.id, t);
         c.reindex();
         return c;
     }
@@ -299,16 +294,11 @@ public class ShipPartCatalog {
     /** Rebuilds the symbol lookups. @throws IllegalArgumentException on a symbol used twice. */
     private void reindex() {
         tileBySymbol.clear();
-        componentBySymbol.clear();
         standard.clear();
         Map<Character, String> owner = new HashMap<>();
         for (TileType t : tiles.values()) {
             claim(owner, t.symbol, "tile " + t.id);
             tileBySymbol.put(t.symbol, t);
-        }
-        for (ComponentType t : components.values()) {
-            claim(owner, t.symbol, "component " + t.id);
-            componentBySymbol.put(t.symbol, t);
         }
         for (ComponentType t : standardOrder()) standard.putIfAbsent(t.behavior, t);
     }
@@ -351,7 +341,6 @@ public class ShipPartCatalog {
         ShipComponentDef d = new ShipComponentDef();
         d.id = t.id;
         d.name = t.name;
-        d.symbol = String.valueOf(t.symbol);
         d.behavior = t.behavior.name();
         if (!t.sizes.equals(allSizes(t.behavior.mountKind))) {
             for (MountFootprint.MountSize size : t.sizes) d.sizes.add(size.name());
@@ -410,9 +399,7 @@ public class ShipPartCatalog {
         for (Map.Entry<String, Double> e : d.capacity.entrySet()) {
             capacity.put(parseEnum(MountFootprint.MountSize.class, e.getKey(), who + " capacity size"), e.getValue());
         }
-        char symbol = symbol(d.symbol, who);
-        if (!Character.isLetter(symbol)) throw new IllegalArgumentException(who + ": symbol must be a letter");
-        ComponentType type = new ComponentType(d.id, d.name != null ? d.name : d.id, symbol, behavior, sizes,
+        ComponentType type = new ComponentType(d.id, d.name != null ? d.name : d.id, behavior, sizes,
                 parseColor(d.color, 0x808080), output, d.throughput, fluid, capacity);
         if (d.shortChance != null) type.shortChance = chance(d.shortChance, who + " short_chance");
         if (d.burstThreshold != null) type.burstThreshold = chance(d.burstThreshold, who + " burst_threshold");
@@ -468,14 +455,9 @@ public class ShipPartCatalog {
         return components.get(id);
     }
 
-    /** The tile type drawn with {@code symbol}, or null if it is a component letter or unknown. */
+    /** The tile type drawn with {@code symbol}, or null if it is unknown. */
     public TileType tileFor(char symbol) {
         return tileBySymbol.get(symbol);
-    }
-
-    /** The component drawn with {@code symbol}, or null. */
-    public ComponentType componentFor(char symbol) {
-        return componentBySymbol.get(symbol);
     }
 
     /** The component a bare behavior name stands for: its built-in one, else the first with that behavior. */

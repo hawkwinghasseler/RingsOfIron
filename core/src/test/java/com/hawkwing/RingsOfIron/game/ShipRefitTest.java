@@ -76,24 +76,27 @@ class ShipRefitTest {
         c.originX = def.originX;
         c.originY = def.originY;
         c.rows = def.rows.clone();
-        c.edgeWalls.addAll(def.edgeWalls);
+        c.mounts.addAll(def.mounts);
+        c.conduits.addAll(def.conduits);
         c.edgeConduits.addAll(def.edgeConduits);
         c.pipes.addAll(def.pipes);
+        c.edgePipes.addAll(def.edgePipes);
+        c.edgeWalls.addAll(def.edgeWalls);
+        c.doors.addAll(def.doors);
         c.hullPieces.addAll(def.hullPieces);
-        c.mounts.addAll(def.mounts);
         c.coverings.addAll(def.coverings);
-        c.ports.addAll(def.ports);
         c.lights = def.lights;
+        c.rcs.addAll(def.rcs);
         return c;
     }
 
-    /** The layout with the turret mount under the laser (map row 4, column 11) taken out for deck. */
+    /** The layout with the turret mount under the laser (tile 11, 1) taken out. */
     private ChassisDef withoutLaserTurret() {
         ChassisDef c = copy();
-        char[] row = c.rows[4].toCharArray();
-        assertEquals('T', row[11], "the corvette's laser turret mount");
-        row[11] = '.';
-        c.rows[4] = new String(row);
+        ChassisDef.Mount turret = c.mounts.stream().filter(m -> m.x == 11 && m.y == 1).findFirst().orElse(null);
+        assertNotNull(turret);
+        assertEquals("turret_mount", turret.component, "the corvette's laser turret mount");
+        c.mounts.remove(turret);
         return c;
     }
 
@@ -143,7 +146,9 @@ class ShipRefitTest {
         game.player = world.getPlayer();
         ShipLayoutComponent kept = game.player.getComponent(ShipLayoutComponent.class);
         assertNotNull(kept);
-        assertEquals(layout.rows[4], kept.layout.rows[4]);
+        assertArrayEquals(layout.rows, kept.layout.rows);
+        assertEquals(layout.mounts.size(), kept.layout.mounts.size(), "the turret stays out");
+        assertEquals(layout.conduits.size(), kept.layout.conduits.size(), "and the conduits are kept");
         assertEquals(systemsBefore - 1, game.player.getComponent(ShipSubsystemRegistryComponent.class).subsystems.size);
         run(120);
         assertSame(world.engine.getEntity(game.highport), world.docking.dockedTo(game.player));
@@ -207,8 +212,7 @@ class ShipRefitTest {
     void aLayoutWithoutAFittingPortIsRefused() {
         dock();
         ChassisDef layout = copy();
-        for (int i = 0; i < layout.rows.length; i++) layout.rows[i] = layout.rows[i].replace('D', '#');
-        layout.ports.clear();
+        assertTrue(layout.mounts.removeIf(m -> m.component.equals("docking_port")));
         ShipGridComponent before = game.player.getComponent(ShipGridComponent.class);
         String said = ShipRefit.apply(world, game.player, layout);
         assertNotNull(said);
@@ -229,10 +233,20 @@ class ShipRefitTest {
         assertSame(highport, world.docking.dockedTo(game.player));
     }
 
-    /** The layout with its two Halvorsen engines swapped for the component drawn with {@code symbol}. */
-    private ChassisDef withEngines(char symbol) {
+    /** The layout with its two Halvorsen engines swapped for {@code component}. */
+    private ChassisDef withEngines(String component) {
         ChassisDef c = copy();
-        for (int i = 0; i < c.rows.length; i++) c.rows[i] = c.rows[i].replace('E', symbol);
+        for (int i = 0; i < c.mounts.size(); i++) {
+            ChassisDef.Mount m = c.mounts.get(i);
+            if (!m.component.equals("engine")) continue;
+            ChassisDef.Mount swapped = new ChassisDef.Mount();
+            swapped.component = component;
+            swapped.size = m.size;
+            swapped.x = m.x;
+            swapped.y = m.y;
+            swapped.rotation = m.rotation;
+            c.mounts.set(i, swapped);
+        }
         return c;
     }
 
@@ -241,7 +255,7 @@ class ShipRefitTest {
         dock();
         TraderComponent trader = game.player.getComponent(TraderComponent.class);
         trader.credits = 100_000;
-        ChassisDef aster = withEngines('Y');
+        ChassisDef aster = withEngines("aster_lyra");
         // Two Aster Lyra 7s at 22,000 cr, less half of two Halvorsen HR-40s at 12,000
         assertNotNull(ShipRefit.quote(world, game.player, aster));
         assertTrue(ShipRefit.quote(world, game.player, aster).contains("32,000"), ShipRefit.quote(world, game.player, aster));
@@ -261,7 +275,7 @@ class ShipRefitTest {
         TraderComponent trader = game.player.getComponent(TraderComponent.class);
         trader.credits = 1_000;
         ShipGridComponent before = game.player.getComponent(ShipGridComponent.class);
-        String said = ShipRefit.apply(world, game.player, withEngines('K'));
+        String said = ShipRefit.apply(world, game.player, withEngines("imbrium_bulwark"));
         assertNotNull(said);
         assertTrue(said.contains("cost"), said);
         assertSame(before, game.player.getComponent(ShipGridComponent.class), "nothing rebuilt");

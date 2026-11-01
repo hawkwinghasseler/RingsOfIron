@@ -14,20 +14,23 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  * Calculates power connectivity across the ship's interior grid, and the energy each
  * part of the grid can supply.
  *
- * Power floods outward from every footprint tile of each REACTOR that is switched on and
- * not disabled by damage (see {@link SubsystemComponent#DISABLE_THRESHOLD}), across
- * connected POWER_CONDUIT and FLOOR tiles. A subsystem is powered when any tile of its
- * footprint is reachable; an engine outside the hull, when one of its feed tiles is
- * ({@link EngineLayout#feedTiles}).
+ * Only power conduits carry power: {@link TileConduit}s across tiles and {@link EdgeConduit}s
+ * along tile edges. Bare floor carries none. A tile conduit joins the tile conduits on the four
+ * tiles beside it, through any thin wall or door between them, and the edge conduits on its own
+ * tile's edges. An edge conduit joins the edge conduits that meet it at either end and the tile
+ * conduits on both sides, through any wall it runs in.
  *
- * Power does not pass through intact full-tile walls, through closed edge walls (except
- * where a conduit runs on both sides of the wall), or through tiles at integrity 0:
- * a destroyed conduit stops conducting.
+ * A system is on the network of every conduit that lies on one of its footprint tiles or along
+ * one of their edges; an engine outside the hull, also those of its feed tiles inside
+ * ({@link EngineLayout#feedTiles}). Power flows out from every REACTOR that is switched on and not
+ * disabled by damage (see {@link SubsystemComponent#DISABLE_THRESHOLD}) into the networks it
+ * touches, and a system is powered when it touches one of them. Cargo bays, tanks and escape
+ * pods need no power ({@link SubsystemComponent.SubsystemType#needsPower}): they are operational
+ * without it.
  *
- * An {@link EdgeConduit} on a tile edge carries power along the edge, through any wall it runs
- * in: to the edge conduits that meet it at either end, and to the conducting tiles on both sides.
- * It stops conducting when the wall it runs in is destroyed (the thin wall on its edge, or a
- * full-tile wall beside it).
+ * A tile conduit stops conducting when it is cut (its own condition, apart from the tile's, reaches
+ * 0) or shorted. An edge conduit stops when the wall it runs in is destroyed (the thin wall on its
+ * edge, or a full-tile wall beside it).
  *
  * Each connected part of the grid with a working reactor in it is a {@link PowerCircuit}
  * (listed on {@link ShipGridComponent#circuits}, and on each powered system's
@@ -40,8 +43,8 @@ import com.ringsofiron.coreengine.systems.FixedLogicSystem;
  * Stores recharge every {@link #CHARGE_TICK}. Routing runs once per second to reflect
  * structural changes, or on the next frame when {@link ShipGridComponent#gridDirty} is set.
  *
- * A system or conduit tile a short circuit faulted ({@link SubsystemComponent#shorted},
- * {@link Tile#shorted}) is left out the same way until the crew reset it, or its breaker recloses
+ * A system or tile conduit a short circuit faulted ({@link SubsystemComponent#shorted},
+ * {@link TileConduit#shorted}) is left out the same way until the crew reset it, or its breaker recloses
  * after {@link DamageStates#AUTO_RESET}; this system counts that wait (see {@link DamageStates}).
  *
  * A system an ion hit stunned ({@link SubsystemComponent#stunned}) is not operational until the
@@ -170,14 +173,11 @@ public class PowerRoutingSystem extends FixedLogicSystem {
             previous.put(sub, old);
         }
 
-        // Step 1: split every conducting tile and edge conduit into connected groups
+        // Step 1: split every live conduit, across tiles and along edges, into connected groups
         int[] nodeGroup = new int[nodeCount(grid)];
         int groups = labelGroups(grid, nodeGroup);
-        int[][] group = new int[grid.height][grid.width];
-        for (int y = 0; y < grid.height; y++)
-            for (int x = 0; x < grid.width; x++) group[y][x] = nodeGroup[y * grid.width + x];
 
-        // Step 2: each working reactor joins the groups its footprint touches into one circuit
+        // Step 2: each working reactor joins the groups it touches into one circuit
         int[] parent = new int[groups];
         for (int i = 0; i < groups; i++) parent[i] = i;
         Array<SubsystemComponent> reactors = new Array<>();
@@ -189,8 +189,9 @@ public class PowerRoutingSystem extends FixedLogicSystem {
                     || !sub.switchedOn || sub.isDisabled() || sub.isStunned() || sub.shorted) continue;
             reactors.add(sub);
             int first = -1;
-            for (int[] t : footprintTiles(grid, sub.footprint)) {
-                int g = group[t[1]][t[0]];
+            touching(grid, sub, touched);
+            for (int i = 0; i < touched.size; i++) {
+                int g = nodeGroup[touched.get(i)];
                 if (g < 0) continue;
                 if (first < 0) first = find(parent, g);
                 else parent[find(parent, g)] = first;
@@ -204,16 +205,15 @@ public class PowerRoutingSystem extends FixedLogicSystem {
         reused.clear();
         for (SubsystemComponent r : reactors) {
             PowerCircuit c = null;
-            for (int[] t : footprintTiles(grid, r.footprint)) {
-                int g = group[t[1]][t[0]];
-                if (g >= 0) {
-                    int root = find(parent, g);
-                    if (byRoot[root] == null) byRoot[root] = newCircuit(grid, previous.get(r));
-                    c = byRoot[root];
-                    break;
-                }
+            touching(grid, r, touched);
+            for (int i = 0; i < touched.size && c == null; i++) {
+                int g = nodeGroup[touched.get(i)];
+                if (g < 0) continue;
+                int root = find(parent, g);
+                if (byRoot[root] == null) byRoot[root] = newCircuit(grid, previous.get(r));
+                c = byRoot[root];
             }
-            // A reactor whose own tiles are all wrecked still powers just itself
+            // A reactor no live conduit reaches still powers just itself
             if (c == null) c = newCircuit(grid, previous.get(r));
             c.output += reactorOutput(r);
             Double kept = carried.get(r);
@@ -225,49 +225,33 @@ public class PowerRoutingSystem extends FixedLogicSystem {
             c.stored = Math.min(c.stored, c.capacity);
         }
 
-        // Step 4: tiles are powered when their group belongs to a circuit
-        PowerCircuit[][] tileCircuit = new PowerCircuit[grid.height][grid.width];
-        for (int y = 0; y < grid.height; y++) {
-            for (int x = 0; x < grid.width; x++) {
-                Tile t = grid.getTile(x, y);
-                int g = group[y][x];
-                tileCircuit[y][x] = g < 0 ? null : byRoot[find(parent, g)];
-                t.isPowered = tileCircuit[y][x] != null;
-            }
+        // Step 4: a conduit is powered when its group belongs to a circuit
+        PowerCircuit[] nodeCircuit = new PowerCircuit[nodeGroup.length];
+        for (int n = 0; n < nodeGroup.length; n++) {
+            nodeCircuit[n] = nodeGroup[n] < 0 ? null : byRoot[find(parent, nodeGroup[n])];
         }
-        for (int n = grid.width * grid.height; n < nodeGroup.length; n++) {
+        int tiles = GridNodes.tiles(grid);
+        for (int n = 0; n < tiles; n++) {
+            TileConduit c = grid.tileConduits[n / grid.width][n % grid.width];
+            if (c != null) c.isPowered = nodeCircuit[n] != null;
+        }
+        for (int n = tiles; n < nodeGroup.length; n++) {
             EdgeConduit c = conduitOf(grid, n);
-            if (c != null) c.isPowered = nodeGroup[n] >= 0 && byRoot[find(parent, nodeGroup[n])] != null;
-        }
-        // A reactor always powers its own footprint
-        for (SubsystemComponent r : reactors) {
-            for (int[] t : footprintTiles(grid, r.footprint)) {
-                grid.getTile(t[0], t[1]).isPowered = true;
-                if (tileCircuit[t[1]][t[0]] == null) tileCircuit[t[1]][t[0]] = reactorCircuit.get(r);
-            }
+            if (c != null) c.isPowered = nodeCircuit[n] != null;
         }
 
-        // Step 5: a subsystem is on the circuit of its first powered footprint tile
+        // Step 5: a subsystem is on the circuit of the first powered conduit it touches; a reactor on its own
         for (Entity e : registry.subsystems) {
             SubsystemComponent sub = subsystemMapper.get(e);
             if (sub == null) continue;
-            sub.circuit = null;
-            for (int[] t : footprintTiles(grid, sub.footprint)) {
-                if (tileCircuit[t[1]][t[0]] != null) {
-                    sub.circuit = tileCircuit[t[1]][t[0]];
-                    break;
-                }
-            }
-            if (sub.circuit == null && sub.type == SubsystemComponent.SubsystemType.ENGINE) {
-                // An engine outside the hull draws its power from its feed tiles inside
-                feed.clear();
-                EngineLayout.feedTiles(grid, sub.footprint, feed);
-                for (int i = 0; i < feed.size && sub.circuit == null; i++) {
-                    sub.circuit = tileCircuit[feed.get(i) / grid.width][feed.get(i) % grid.width];
-                }
+            sub.circuit = reactorCircuit.get(sub);
+            if (sub.circuit == null) {
+                touching(grid, sub, touched);
+                for (int i = 0; i < touched.size && sub.circuit == null; i++) sub.circuit = nodeCircuit[touched.get(i)];
             }
             sub.powered = sub.circuit != null;
-            sub.isOperational = sub.switchedOn && sub.powered && !sub.isDisabled() && !sub.isStunned() && !sub.shorted;
+            sub.isOperational = sub.switchedOn && (sub.powered || !sub.type.needsPower()) && !sub.isDisabled()
+                    && !sub.isStunned() && !sub.shorted;
         }
 
         // Pipes follow the same structural changes
@@ -276,6 +260,30 @@ public class PowerRoutingSystem extends FixedLogicSystem {
 
     /** Feed tiles of the engine being wired, reused. */
     private final IntArray feed = new IntArray();
+    /** Nodes the system being wired touches, reused. */
+    private final IntArray touched = new IntArray();
+
+    /**
+     * The nodes a system draws power through: its footprint tiles and their edges, and for an
+     * engine its feed tiles and their edges too.
+     */
+    private void touching(ShipGridComponent grid, SubsystemComponent sub, IntArray out) {
+        out.clear();
+        MountFootprint f = sub.footprint;
+        for (int y = f.originY; y < f.originY + f.height(); y++)
+            for (int x = f.originX; x < f.originX + f.width(); x++) addTile(grid, x, y, out);
+        if (sub.type == SubsystemComponent.SubsystemType.ENGINE) {
+            feed.clear();
+            EngineLayout.feedTiles(grid, f, feed);
+            for (int i = 0; i < feed.size; i++) addTile(grid, feed.get(i) % grid.width, feed.get(i) / grid.width, out);
+        }
+    }
+
+    private static void addTile(ShipGridComponent grid, int x, int y, IntArray out) {
+        if (!grid.inBounds(x, y)) return;
+        out.add(GridNodes.tileNode(grid, x, y));
+        for (Side side : Side.values()) out.add(GridNodes.edgeNode(grid, x, y, side));
+    }
 
     /** Old circuits already taken by a new one during this reroute. */
     private final Array<PowerCircuit> reused = new Array<>();
@@ -344,42 +352,25 @@ public class PowerRoutingSystem extends FixedLogicSystem {
         return groups;
     }
 
-    /** What tile (x, y) passes power to, before checking that they conduct. */
+    /** What tile (x, y)'s conduit passes power to, before checking that they conduct: through any thin wall. */
     private static void tileNeighbors(ShipGridComponent grid, int x, int y, IntArray out) {
-        Tile current = grid.getTile(x, y);
         for (Side side : Side.values()) {
             out.add(GridNodes.edgeNode(grid, x, y, side));
             int nx = x + side.dx, ny = y + side.dy;
-            if (!grid.inBounds(nx, ny)) continue;
-            // A conduit passes through a thin wall, and a docking port's feed through its inner hatch,
-            // so the airlock's pump keeps its power with the hatch shut; nothing else does
-            if (grid.isEdgeBlocked(x, y, nx, ny)
-                    && !(current.isPowerConduit() && grid.getTile(nx, ny).isPowerConduit())
-                    && !DockingPortLayout.isHatchEdge(grid, x, y, side)) continue;
-            out.add(ny * grid.width + nx);
+            if (grid.inBounds(nx, ny)) out.add(GridNodes.tileNode(grid, nx, ny));
         }
     }
 
     private static boolean conducts(ShipGridComponent grid, int n) {
-        if (n < GridNodes.tiles(grid)) return conducts(grid.getTile(n % grid.width, n / grid.width));
+        if (n < GridNodes.tiles(grid)) {
+            TileConduit c = grid.tileConduits[n / grid.width][n % grid.width];
+            return c != null && c.isLive();
+        }
         return conduitOf(grid, n) != null && !GridNodes.edgeCut(grid, n);
-    }
-
-    private static Array<int[]> footprintTiles(ShipGridComponent grid, MountFootprint f) {
-        Array<int[]> out = new Array<>();
-        for (int y = f.originY; y < f.originY + f.height(); y++)
-            for (int x = f.originX; x < f.originX + f.width(); x++)
-                if (grid.inBounds(x, y)) out.add(new int[]{x, y});
-        return out;
     }
 
     private static int find(int[] parent, int i) {
         while (parent[i] != i) i = parent[i] = parent[parent[i]];
         return i;
-    }
-
-    /** Floors and conduits carry power until they are destroyed or shorted out; walls never do. */
-    private static boolean conducts(Tile t) {
-        return t.isFloor() && !t.isWall() && t.getIntegrity() > 0f && !t.shorted;
     }
 }

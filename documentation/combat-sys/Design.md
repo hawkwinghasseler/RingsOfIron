@@ -264,7 +264,7 @@ P -= absorbed
 Then apply the tile's contents, each taking part of `absorbed` as damage:
 - **Subsystem:** `SubsystemComponent.health -= absorbed / subsystemHardness(type)`. Below `disableThreshold` (e.g. 0.3) set `isOperational = false`, and at 0 it is destroyed. The lookup uses a per-ship tile→subsystem index built from `ShipSubsystemRegistryComponent`. Subsystems currently only record an anchor tile, so this index needs multi-tile footprints from the blueprint to be accurate.
 - **Crew:** each occupant from `GridOccupantQuery.at(x, y)` takes damage scaled by `absorbed`, applied through `CrewDamageSink` (5.9). Crew have low hardness, so a round passes through people with little energy loss.
-- **Power conduit:** a `POWER_CONDUIT` tile at integrity 0 stops conducting. `PowerRoutingSystem` must skip zero-integrity tiles (see 5.8), and combat requests a reroute on the next routing tick.
+- **Power conduit:** a conduit across the tile (`TileConduit`) takes what the deck fittings take (or, laid on a wall, what got through the wall's armor), against its own `CONDUIT_HIT_POINTS` (1.6e6, eight crossings of open deck): the deck and the conduit each keep their own condition. A cut conduit stops conducting and combat requests a reroute on the next routing tick. A beam crossing the deck burns into it the same way, and a crush crushes it apart from the tile; a blast's overpressure does not reach it.
 - **Fire:** with probability `(fireChance(damageType) + material.fire_chance) × absorbed / R_tile`, call `tile.ignite()`, which starts a small fire if the tile has a flammable covering (`isFlammable()`). There is no fire in vacuum: `GridHazardSystem` smothers a fire whose compartment is short of oxygen.
 
 Stop when `P ≤ 0`, or apply the def's fuse first (`DELAYED(depthTiles)` detonates at that depth; see 5.5).
@@ -290,11 +290,11 @@ Momentum is conserved. On every impact, apply `m · (v_in − v_out)` as a linea
 ### 5.8 Knock-on effects in other modules
 Some interior rules need small changes in `interior-grid` for damage to read correctly. They are listed here so the owning module can pick them up:
 - An `INTERNAL` wall at integrity 0 must stop blocking fire, vacuum and walking. Today the code checks `wallType` only.
-- `PowerRoutingSystem` floods through `POWER_CONDUIT` and `FLOOR` tiles. It should skip tiles with integrity 0.
+- `PowerRoutingSystem` floods through live conduits only, never bare floor, so a cut or shorted conduit is left out (done).
 - `ShipGridComponent`'s comment says tile [0][0] is the top-left. It should say bottom-left with +y up, to match Box2D (5.2). Grid rendering and the interior demo should follow.
 - Combat sets a `gridDirty` flag so power can reroute immediately after heavy damage, without waiting for the 1 s tick (optional).
 
-**Shorts and bursts (round 5).** Every hit on a system, by a round, spall, a blast or a beam, rolls for a short circuit (`DamageStates.maybeShort`), and every hit on a powered conduit tile that leaves it standing rolls too (`maybeShortConduit`). Every hit that leaves a tank below its burst threshold rolls for a burst instead. Bursts go off once the round and its secondaries are done: the tank vents (`DamageStates.burst`), and a large one (500 kg or more) sets off a small blast of its own, `min(1 MJ, 500 J/kg)` at its tile out to 1 tile, through the same overpressure flood as a warhead, so it can hurt crew (`HitCause.BLAST`) and burst another tank (up to 8 in a chain). A burst's blast is the tank's energy, not the round's, so `Result.absorbed` leaves it out. `DamageReport.shorts` and `bursts` list the tiles.
+**Shorts and bursts (round 5).** Every hit on a system, by a round, spall, a blast or a beam, rolls for a short circuit (`DamageStates.maybeShort`), and every hit on a powered conduit across a tile that leaves it uncut rolls too (`maybeShortConduit`). Every hit that leaves a tank below its burst threshold rolls for a burst instead. Bursts go off once the round and its secondaries are done: the tank vents (`DamageStates.burst`), and a large one (500 kg or more) sets off a small blast of its own, `min(1 MJ, 500 J/kg)` at its tile out to 1 tile, through the same overpressure flood as a warhead, so it can hurt crew (`HitCause.BLAST`) and burst another tank (up to 8 in a chain). A burst's blast is the tank's energy, not the round's, so `Result.absorbed` leaves it out. `DamageReport.shorts` and `bursts` list the tiles.
 
 Crew-facing outputs, through `DamageTaskSink`:
 - `SealBreachTask` per new hull breach.

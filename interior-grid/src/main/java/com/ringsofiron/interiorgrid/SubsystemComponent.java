@@ -31,6 +31,14 @@ public class SubsystemComponent implements Component {
         SubsystemType(MountFootprint.MountKind mountKind) {
             this.mountKind = mountKind;
         }
+
+        /**
+         * False for the passive systems (cargo, tanks, escape pods), which work with no power: they
+         * need no conduit, and are operational whether or not one reaches them.
+         */
+        public boolean needsPower() {
+            return this != CARGO && this != TANK && this != ESCAPE_POD;
+        }
     }
 
     /** The mount this system is installed in; its tiles are the system's footprint. */

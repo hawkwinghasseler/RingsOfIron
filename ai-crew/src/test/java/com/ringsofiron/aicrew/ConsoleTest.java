@@ -1,6 +1,8 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
+import com.ringsofiron.interiorgrid.MountFootprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.FloorCovering;
@@ -14,12 +16,14 @@ class ConsoleTest {
     /** A bridge with a helm (H) and a weapons console (W). */
     static TestShips bridge() {
         return new TestShips(
-                "##########",
-                "#........#",
-                "#.HH..WW.#",
+                new ChassisBlueprint("##########",
                 "#........#",
                 "#........#",
-                "##########");
+                "#........#",
+                "#........#",
+                "##########")
+                .mount("helm", MountFootprint.MountSize.S, 2, 3, 1)
+                .mount("weapons", MountFootprint.MountSize.S, 6, 3, 1));
     }
 
     static Entity console(TestShips s, SubsystemType type) {

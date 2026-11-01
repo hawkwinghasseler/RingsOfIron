@@ -4,7 +4,7 @@
 The ship editor is a standalone libGDX tool for making and changing the game's ships. It edits three kinds of data, all of it the same data the game loads, so whatever is saved in the editor is what the game builds the next time it starts:
 
 - **Ship layouts**: the `[chassis.*]` interior layouts in `assets/data/chassis.toml` (ships and station layouts alike).
-- **Tile types**: the `[tile.*]` building blocks a layout is painted with (floors, conduits, hull, internal walls), in `assets/data/tiles.toml`.
+- **Tile types**: the `[tile.*]` building blocks a layout is painted with (floors, hull, internal walls), in `assets/data/tiles.toml`.
 - **Ship components**: the `[component.*]` systems a layout mounts (reactors, life support, cargo bays, docking ports...), in `assets/data/components.toml`.
 
 Run it with `gradlew :lwjgl3:runShipEditor`, or `demos/Ship editor.bat` on Windows. It opens on the first chassis found.
@@ -22,20 +22,19 @@ Until now the map characters and the systems they stand for were fixed in code (
 [tile.armor_plate]
 name = "Armor plate"
 symbol = "X"              # one character, used in chassis rows
-base = "HULL"             # VOID, FLOOR, CONDUIT, HULL or INTERNAL_WALL
+base = "HULL"             # VOID, FLOOR, HULL or INTERNAL_WALL
 weight_class = "HEAVY"    # walls: LIGHT, MEDIUM or HEAVY
 material = "composite_armor"  # a [material.*] id
 covering = "NONE"         # floors: NONE or CARPET, laid when the ship is built
 art = "walls/composite_armor_heavy"  # art pack region or wall family (see documentation/art/Design.md)
 color = "#7a8a9a"         # how the editor draws it without the art pack
 ```
-`assets/data/tiles.toml` restates the built-in characters as definitions (`#`, `1`-`3`, `I`, `.`, `+` and space) so they can be edited like any other; a tile type a data file leaves out keeps its built-in meaning, so blueprints made in code still load.
+`assets/data/tiles.toml` restates the built-in characters as definitions (`#`, `1`-`6`, `I`, `.`, `m` and space) so they can be edited like any other; a tile type a data file leaves out keeps its built-in meaning, so blueprints made in code still load.
 
 ### Ship components
 ```toml
 [component.fusion_core]
 name = "Fusion core"
-symbol = "F"              # one letter, used in chassis rows
 behavior = "REACTOR"      # a SubsystemType: REACTOR, SHIELD_EMITTER, TURRET_MOUNT, LIFE_SUPPORT,
                           # HELM, WEAPONS, CARGO, AIRLOCK, DOCKING_PORT, TANK or ENGINE
 sizes = ["M", "L"]        # mount sizes it comes in (default: every size its mount kind has)
@@ -56,10 +55,10 @@ The behavior fixes the mount kind (square primary, rectangular auxiliary or hull
 
 Each installed system keeps its component id and these values on its `SubsystemComponent` (so a save restores them, even if the data changes later). Other systems read the behavior through `SubsystemComponent.type`, exactly as before, so a new turret component works wherever a turret mount does. More settings (shield strength, cargo stack height, crew console speed) are added the same way when the systems that would read them want them. The editor has no fields for the three damage settings yet: they are edited in `components.toml`, and the editor keeps them when it rewrites the file.
 
-Symbols are one character and share one namespace: no two tile types or components may use the same one. The catalog that resolves them (`ShipPartCatalog`) is built from the definitions when data loads, and throws on a clash, a bad base or behavior, or a size a component's mount kind lacks.
+A tile type's symbol is one character, and no two tile types may use the same one. Components have no symbol: a layout names them by id. The catalog that resolves both (`ShipPartCatalog`) is built from the definitions when data loads, and throws on a clash, a bad base or behavior, or a size a component's mount kind lacks.
 
 ### Chassis
-Chassis rows draw components by their symbol, as before. An explicit mount may name a component instead of a behavior: `mounts = [{ component = "fusion_core", size = "M", x = 3, y = 2 }]` (`type = "REACTOR"` still means the built-in `reactor` component).
+Chassis rows hold tile types only. Every component a layout installs is listed under `mounts`, by id: `mounts = [{ component = "fusion_core", size = "M", x = 3, y = 2, rotation = 1 }]`. Conduits, pipes, thin walls and doors have lists of their own (see Chassis Blueprints in `documentation/interior-grid/Design.md`).
 
 ## The Editor
 
@@ -70,29 +69,29 @@ The screen is the ship on a tile grid, with a panel on the right. Three tabs at 
 - **Chassis list**: pick a chassis to edit, or **New** (asks for an id; it starts as a 16 x 9 hull around steel floor). **Duplicate** copies the open one under a new id, **Delete** removes it (from its file on the next save).
 - **Tools** (number keys or click):
   1. **Paint**: left-click or drag paints the selected tile type; drag with Shift fills a rectangle.
-  2. **Component**: places the selected component at the cursor with the selected size; R rotates. The ghost is green where the game would accept it and red (with the reason) where it would not. Every component shows an arrow for the way it faces (up, +y, at rotation 0). An engine goes outside the hull, its nozzle pointing away from it: the flange end against the outer hull, the whole engine outside it, and 5 clear tiles past the nozzle for each tile of its width (10 for a Medium engine, 25 for an Extra Large); placing one leaves space under it. With a component selected, the panel shows its maker, description, yard price at the chosen size and, for an engine, its thrust, efficiency and casing. An **escape pod** goes through the outer hull: turn it so its arrow points out of the ship and place it with its hatch end (the arrow's end) on the hull, the rest of it inside. The hull under the hatch end stays hull, and the ghost is red unless there are 5 tiles of open space beyond the hatch (no hull, no other system, no RCS block on that edge). Pods are always saved under `mounts`, so the hull under them keeps its type.
-  3. **Edge wall**: click near a tile edge to add or remove a thin wall there, with the weight class and bulkhead door chosen in the panel.
+  2. **Component**: places the selected component at the cursor with the selected size; R rotates. The ghost is green where the game would accept it and red (with the reason) where it would not. Every component shows an arrow for the way it faces (up, +y, at rotation 0). An engine goes outside the hull, its nozzle pointing away from it: the flange end against the outer hull, the whole engine outside it, and 5 clear tiles past the nozzle for each tile of its width (10 for a Medium engine, 25 for an Extra Large); placing one leaves space under it. With a component selected, the panel shows its maker, description, yard price at the chosen size and, for an engine, its thrust, efficiency and casing. An **escape pod** goes through the outer hull: turn it so its arrow points out of the ship and place it with its hatch end (the arrow's end) on the hull, the rest of it inside. The hull under the hatch end stays hull, and the ghost is red unless there are 5 tiles of open space beyond the hatch (no hull, no other system, no RCS block on that edge). The hull under a pod keeps its type in the rows.
+  3. **Edge wall**: click near a tile edge to add or remove a thin wall there, with the weight class and bulkhead door chosen in the panel. Thin walls are saved as runs under `edge_walls`, and their doors under `doors`.
   4. **Hull piece**: places a wedge or block of the size chosen in the panel, centered on the cursor; R rotates and X (or the Flip button) mirrors it left to right. A mirrored wedge is stored as the same wedge with width and height swapped, turned one step the other way, so the data has no flip of its own. A new piece replaces any piece it overlaps; the ghost is green or red like a component's, and a piece that would leave the grid is not placed.
   5. **Covering**: drag a rectangle to lay carpet.
-  6. **Erase**: removes the RCS block or wall light nearest the cursor's edge, else an edge conduit on the edge the cursor is close to, else a pipe there (along the edge, or across the tile under the cursor), else the component, hull piece, edge wall or covering under the cursor, or paints void.
+  6. **Erase**: removes the RCS block or wall light nearest the cursor's edge, else an edge conduit on the edge the cursor is close to, else a pipe there (along the edge, or across the tile under the cursor), else the component, hull piece, conduit or covering under the cursor, in that order, or paints void. Painting a tile void takes up the conduit on it too.
   7. **Port**: click a docking port to toggle it active or passive.
   8. **Light**: click near a floor tile's edge to hang or take down a wall light there, shining into the tile. A light takes no room: the tile stays free for anything else. **Auto-place lights** in the panel replaces the layout's lights with the ones the game would work out (see `documentation/lighting/Design.md`), as one undoable edit; **Clear** leaves the layout with none. Lights are saved under `lights = [{ x = 3, y = 2, side = "TOP" }]`; a layout without the key gets the auto-placed ones when the game builds it.
-  9. **Conduit**: click near a tile edge to run a power conduit along it, or take up the one there. An edge conduit may run inside a thin wall or along a full-tile wall, so power can cross walls (see Power in `documentation/interior-grid/Design.md`); runs join where their edges meet. Click the middle of a floor tile to lay a conduit across it (the conduit tile type) or take it up. Edge conduits are saved under `edge_conduits = [{ x = 3, y = 2, side = "TOP" }]`.
-  10. **Pipe** (key 0): click near a tile edge to run a pipe along it, or the middle of a tile to lay one across it (not on a wall or void tile); click again to take it up. Pipes join tanks to the systems that draw on them: life support takes oxygen and nitrogen, engines propellant (see Tanks and Pipes in `documentation/interior-grid/Design.md`). They are drawn over conduits and saved under `pipes = [{ x = 3, y = 2 }, { x = 3, y = 2, side = "TOP" }]`.
+  9. **Conduit**: click near a tile edge to run a power conduit along it, or take up the one there. An edge conduit may run inside a thin wall or along a full-tile wall, so power can cross walls (see Power in `documentation/interior-grid/Design.md`); runs join where their edges meet. Click the middle of a tile to lay a conduit across it or take it up: on a floor or a wall, under anything mounted there, but not out in space. A system draws power from a conduit on one of its tiles or along one of their edges, and a conduit joins the conduits on the tiles beside it through any thin wall or door. Conduits are saved as runs under `conduits` and `edge_conduits`.
+  10. **Pipe** (key 0): click near a tile edge to run a pipe along it, or the middle of a tile to lay one across it (not on a wall or void tile); click again to take it up. Pipes join tanks to the systems that draw on them: life support takes oxygen and nitrogen, engines propellant (see Tanks and Pipes in `documentation/interior-grid/Design.md`). They are drawn over conduits and saved as runs under `pipes` and `edge_pipes`.
   11. **RCS** (click only): click near a hull tile's edge that faces space to bolt on an RCS thruster block of the kind chosen in the panel, **Linear** (one nozzle, out through the edge) or **Quad** (that one and one each way along the hull); click it again to take it off, or with the other kind to swap it. Where a block can't go, it says why. The ghost shows the block and its nozzles. In the art view, blocks and wall lights (and their ghosts) are drawn with their art, as the exterior and the deck draw them. Blocks are saved under `rcs = [{ x = 3, y = 2, side = "TOP", kind = "QUAD" }]`, keeping any `thrust` the data gives; a ship with blocks turns, strafes and backs up on them (see RCS in `documentation/physics-exterior/Design.md`).
-- **Rotating placed components**: with any tool but Hull piece, R over a placed component turns it a quarter turn counter-clockwise about its middle (a rectangular slot swaps its width and height) and undoes like any edit; the next one placed faces the same way. It refuses, with the reason, when the turned slot would leave the grid or overlap another mount. Docking ports and escape pods are not turned: they face out of the hull edge they sit in (place a pod again to point it another way). A turned square mount is saved under `mounts` with its `rotation`, since the rows cannot show which way it faces.
+- **Rotating placed components**: with any tool but Hull piece, R over a placed component turns it a quarter turn counter-clockwise about its middle (a rectangular slot swaps its width and height) and undoes like any edit; the next one placed faces the same way. It refuses, with the reason, when the turned slot would leave the grid or overlap another mount. Docking ports and escape pods are not turned: they face out of the hull edge they sit in (place a pod again to point it another way). Every mount is saved under `mounts` with its `rotation`.
 - **Grid**: buttons add or remove a row or column on any side (everything listed shifts to match, and the origin moves so the rest of the ship stays put on the body); fields set the tile size and the origin, and **Center origin** puts the body origin in the middle of the grid (drawn as a blue cross).
 - **Properties**: name, `station` flag.
 - **Check**: every edit is rebuilt through `ChassisBlueprintLoader`; the panel shows the result (tile count, mounts, cargo volume, rooms, power reach) or the loader's error, and the problem tile is outlined in red. A chassis with an error can still be saved, so work in progress is never lost, but the panel warns that the game will refuse it.
 
 ### Tiles and Components tabs
-Each lists every definition with its symbol and color. **New from selected** makes one as a copy of the selected one (so a new turret starts as a copy of the turret mount) under an id you type, with a free symbol; every field is an editable row: text fields take typing (Enter keeps, Esc cancels), choices are buttons. A component's sizes are toggles, and a tank's fluid is a choice with a capacity field per size; its behavior can change freely while no chassis mounts it, and only within the same mount shape while one does. A definition that chassis use cannot be deleted until they stop using it; changing its symbol rewrites those chassis rows to match.
+Each lists every definition with its color, and a tile type with its symbol. **New from selected** makes one as a copy of the selected one (so a new turret starts as a copy of the turret mount) under an id you type, a tile type with a free symbol; every field is an editable row: text fields take typing (Enter keeps, Esc cancels), choices are buttons. A component's sizes are toggles, and a tank's fluid is a choice with a capacity field per size; its behavior can change freely while no chassis mounts it, and only within the same mount shape while one does. A definition that chassis use cannot be deleted until they stop using it; changing a tile type's symbol rewrites those chassis rows to match.
 
 ### Saving
 The editor writes TOML by hand rather than through the parser, so the files stay readable and keep their comments:
 - A definition that came from a file is rewritten **in place**: its `[type.id]` section is replaced and the rest of the file is left untouched. Comment lines inside the section stay with the key they sat above.
 - A new definition is appended to the file its type lives in (`chassis.toml`, `tiles.toml`, `components.toml`).
-- Rows are written as a column of quoted strings. A mount is drawn in the rows when the loader would read it back exactly (no touching neighbor with the same symbol, and the rotation the loader would infer); otherwise it goes in `mounts`. Mounts that came from `mounts` stay there.
+- Rows are written as a column of quoted strings, tile types only. Mounts, conduits, pipes, thin walls and doors are written in their own lists: conduits, pipes and thin walls as runs, as few as cover what is laid, and every list in a fixed order, so saving a layout unchanged leaves its section as it was.
 - Saving only touches base data in `assets/data`. Mods are read so their parts show up, but not written.
 
 ### Refit from a station yard

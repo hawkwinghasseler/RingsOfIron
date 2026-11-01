@@ -10,11 +10,11 @@ import com.badlogic.gdx.utils.Array;
  * {@link #repaired}.
  *
  * <h2>Short circuits</h2>
- * A damaging hit on a powered system, or on a powered conduit tile, can short it, with
+ * A damaging hit on a powered system, or on a powered conduit across a tile, can short it, with
  * {@link #shortChance} (by component) scaled down for a light hit. A short trips the circuit it
  * was on (its store empties), may throw sparks that light a flammable tile beside it
  * ({@link #SHORT_FIRE_CHANCE}), and faults the part ({@link SubsystemComponent#shorted},
- * {@link Tile#shorted}): power routing leaves it out, so its consumers drop or reroute, until the
+ * {@link TileConduit#shorted}): power routing leaves it out, so its consumers drop or reroute, until the
  * crew reset it or, failing that, its breaker recloses by itself after {@link #AUTO_RESET}.
  *
  * <h2>Tank bursts</h2>
@@ -31,9 +31,9 @@ public final class DamageStates {
 
     /** Health a hit must take off a system for the full short chance; lighter hits scale it down. */
     public static final float SHORT_FULL_LOSS = 0.05f;
-    /** Chance a hit that takes {@link #CONDUIT_FULL_LOSS} of a powered conduit tile's condition shorts it. */
+    /** Chance a hit that takes {@link #CONDUIT_FULL_LOSS} of a powered tile conduit's condition shorts it. */
     public static final float CONDUIT_SHORT_CHANCE = 0.05f;
-    /** Condition a hit must take off a conduit tile for the full short chance. */
+    /** Condition a hit must take off a tile conduit for the full short chance. */
     public static final float CONDUIT_FULL_LOSS = 0.5f;
     /** Chance a short's sparks light a flammable tile at or beside it. */
     public static final float SHORT_FIRE_CHANCE = 0.3f;
@@ -158,13 +158,12 @@ public final class DamageStates {
     }
 
     /**
-     * After a hit took {@code integrityLoss} off the conduit tile (x, y): rolls for a short. Only a
-     * powered conduit that still stands can short.
+     * After a hit took {@code integrityLoss} off the conduit across tile (x, y): rolls for a short.
+     * Only a powered conduit that is not cut can short.
      */
     public static boolean maybeShortConduit(ShipGridComponent grid, int x, int y, float integrityLoss, RandomXS128 rng) {
-        Tile t = grid.getTile(x, y);
-        if (t == null || !t.isPowerConduit() || t.shorted || !t.isPowered || t.getIntegrity() <= 0f
-                || integrityLoss <= 0f || rng == null) return false;
+        TileConduit c = grid.getTileConduit(x, y);
+        if (c == null || c.shorted || !c.isPowered || c.isCut() || integrityLoss <= 0f || rng == null) return false;
         float chance = CONDUIT_SHORT_CHANCE * Math.min(1f, integrityLoss / CONDUIT_FULL_LOSS);
         if (rng.nextFloat() >= chance) return false;
         shortOut(grid, x, y, rng);
@@ -182,11 +181,11 @@ public final class DamageStates {
         report(grid, new Incident(Incident.Kind.SHORT, s, x, y, fire, null, 0, 0f));
     }
 
-    /** Shorts the conduit tile (x, y) out: it stops carrying power, and may light a fire. */
+    /** Shorts the conduit across tile (x, y) out: it stops carrying power, and may light a fire. */
     public static void shortOut(ShipGridComponent grid, int x, int y, RandomXS128 rng) {
-        Tile t = grid.getTile(x, y);
-        if (t == null) return;
-        t.shorted = true;
+        TileConduit c = grid.getTileConduit(x, y);
+        if (c == null) return;
+        c.shorted = true;
         grid.gridDirty = true;
         grid.shortCount++;
         boolean fire = rng != null && rng.nextFloat() < SHORT_FIRE_CHANCE && sparks(grid, x, y, rng);
@@ -201,12 +200,12 @@ public final class DamageStates {
         grid.gridDirty = true;
     }
 
-    /** The crew reset a shorted conduit tile. */
+    /** The crew reset the shorted conduit across tile (x, y). */
     public static void reset(ShipGridComponent grid, int x, int y) {
-        Tile t = grid.getTile(x, y);
-        if (t == null || !t.shorted) return;
-        t.shorted = false;
-        t.shortedFor = 0f;
+        TileConduit c = grid.getTileConduit(x, y);
+        if (c == null || !c.shorted) return;
+        c.shorted = false;
+        c.shortedFor = 0f;
         grid.gridDirty = true;
     }
 
@@ -243,12 +242,12 @@ public final class DamageStates {
         }
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
-                Tile t = grid.tiles[y][x];
-                if (!t.shorted) continue;
-                t.shortedFor += seconds;
-                if (t.shortedFor >= AUTO_RESET) {
-                    t.shorted = false;
-                    t.shortedFor = 0f;
+                TileConduit c = grid.tileConduits[y][x];
+                if (c == null || !c.shorted) continue;
+                c.shortedFor += seconds;
+                if (c.shortedFor >= AUTO_RESET) {
+                    c.shorted = false;
+                    c.shortedFor = 0f;
                     cleared = true;
                 }
             }
@@ -264,8 +263,7 @@ public final class DamageStates {
                 if (s != null && s.shorted) return true;
             }
         }
-        for (int y = 0; y < grid.height; y++) for (int x = 0; x < grid.width; x++) if (grid.tiles[y][x].shorted) return true;
-        return false;
+        return grid.hasShortedConduit();
     }
 
     /**

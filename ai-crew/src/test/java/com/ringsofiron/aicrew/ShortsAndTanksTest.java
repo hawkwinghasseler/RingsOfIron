@@ -1,6 +1,8 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
+import com.ringsofiron.interiorgrid.MountFootprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.DamageStates;
@@ -16,11 +18,13 @@ class ShortsAndTanksTest {
 
     static TestShips ship() {
         return new TestShips(
-                "##########",
+                new ChassisBlueprint("##########",
                 "#........#",
-                "#.LL..OO.#",
                 "#........#",
-                "##########");
+                "#........#",
+                "##########")
+                .mount("life_support", MountFootprint.MountSize.S, 2, 2, 1)
+                .mount("oxygen_tank", MountFootprint.MountSize.S, 6, 2, 1));
     }
 
     static SubsystemComponent system(TestShips s, SubsystemComponent.SubsystemType type) {

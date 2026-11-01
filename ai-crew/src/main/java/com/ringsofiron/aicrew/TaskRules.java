@@ -15,6 +15,7 @@ import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.TileConduit;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 import com.ringsofiron.interiorgrid.crew.IsolateTankTask;
@@ -72,7 +73,10 @@ public final class TaskRules {
                 return s != null && !s.isDestroyed();
             }
             case RESET_SHORT: {
-                if (((ResetShortTask) task).subsystem == null) return t != null && t.shorted;
+                if (((ResetShortTask) task).subsystem == null) {
+                    TileConduit c = grid.getTileConduit(task.x, task.y);
+                    return c != null && c.shorted;
+                }
                 SubsystemComponent s = subsystemOf(task);
                 return s != null && s.shorted;
             }
@@ -185,7 +189,7 @@ public final class TaskRules {
             }
             case RESET_SHORT:
                 if (((ResetShortTask) task).subsystem == null) {
-                    // A conduit tile: from on it, or beside it
+                    // A conduit across a tile: from on it, or beside it
                     if (x == tx && y == ty) return true;
                     return isAdjacent(x, y, tx, ty) && !grid.isEdgeBlocked(x, y, tx, ty);
                 }

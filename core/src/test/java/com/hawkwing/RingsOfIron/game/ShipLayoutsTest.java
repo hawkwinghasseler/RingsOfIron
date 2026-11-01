@@ -89,7 +89,7 @@ class ShipLayoutsTest {
         int walls = 0, doors = 0, conduitTiles = 0;
         for (int y = 0; y < grid.height; y++) {
             for (int tx = 0; tx < grid.width; tx++) {
-                if (grid.getTile(tx, y).isPowerConduit()) conduitTiles++;
+                if (grid.getTileConduit(tx, y) != null) conduitTiles++;
                 for (Side side : new Side[]{Side.TOP, Side.RIGHT}) {
                     EdgeWall wall = grid.getEdge(tx, y, side);
                     if (wall == null) continue;

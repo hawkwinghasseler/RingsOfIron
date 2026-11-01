@@ -7,12 +7,11 @@ import java.util.Map;
 
 /**
  * A ship component: a system a chassis mounts, built on one of interior-grid's subsystem
- * behaviors with its own name, map letter, sizes and settings.
+ * behaviors with its own name, sizes and settings. A chassis places it by id in its {@code mounts}.
  *
  * <pre>
  * [component.fusion_core]
  * name = "Fusion core"
- * symbol = "F"
  * behavior = "REACTOR"
  * sizes = ["M", "L"]
  * color = "#ff9a3c"
@@ -22,8 +21,6 @@ import java.util.Map;
 public class ShipComponentDef {
     public String id;
     public String name;
-    /** The one letter chassis rows draw this component with. */
-    public String symbol;
     /** A SubsystemType name, e.g. REACTOR. It fixes the mount kind and what the system does. */
     public String behavior;
     /** Mount sizes it comes in (S, M, L, XL); empty means every size its mount kind has. */

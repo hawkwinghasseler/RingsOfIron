@@ -3,6 +3,7 @@ package com.ringsofiron.interiorgrid.editor;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
+import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.InteriorGridData;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -73,7 +74,19 @@ class EditorProjectTest {
                 assertEquals(ta.floorType, tb.floorType, at);
                 assertEquals(ta.weightClass, tb.weightClass, at);
                 assertEquals(ta.covering, tb.covering, at);
-                for (Side s : Side.values()) assertEquals(ga.getEdge(x, y, s) == null, gb.getEdge(x, y, s) == null, at);
+                assertEquals(ga.getTileConduit(x, y) == null, gb.getTileConduit(x, y) == null, at + " conduit");
+                assertEquals(ga.getPipe(x, y) == null, gb.getPipe(x, y) == null, at + " pipe");
+                for (Side s : Side.values()) {
+                    EdgeWall ea = ga.getEdge(x, y, s), eb = gb.getEdge(x, y, s);
+                    assertEquals(ea == null, eb == null, at);
+                    if (ea != null) {
+                        assertEquals(ea.weightClass, eb.weightClass, at);
+                        assertEquals(ea.material, eb.material, at);
+                        assertEquals(ea.hasBulkhead, eb.hasBulkhead, at + " door");
+                    }
+                    assertEquals(ga.getConduit(x, y, s) == null, gb.getConduit(x, y, s) == null, at + " edge conduit");
+                    assertEquals(ga.getEdgePipe(x, y, s) == null, gb.getEdgePipe(x, y, s) == null, at + " edge pipe");
+                }
             }
         }
         assertEquals(a.subsystems.size, b.subsystems.size, id);
@@ -103,7 +116,9 @@ class EditorProjectTest {
             ChassisDef a = before.require("chassis", id, ChassisDef.class), b = after.require("chassis", id, ChassisDef.class);
             assertEquals(a.name, b.name);
             assertEquals(a.station, b.station);
-            assertEquals(a.ports.size(), b.ports.size(), id + " ports");
+            assertEquals(a.mounts.size(), b.mounts.size(), id + " mounts");
+            assertEquals(a.mounts.stream().filter(mt -> mt.active).count(),
+                    b.mounts.stream().filter(mt -> mt.active).count(), id + " active ports");
         }
     }
 
@@ -151,7 +166,6 @@ class EditorProjectTest {
         ShipComponentDef core = Defs.copy(project.components.get("reactor").value, ShipComponentDef.class);
         core.id = "fusion_core";
         core.name = "Fusion core";
-        core.symbol = "F";
         core.sizes.add("M");
         core.powerOutput.put("M", 4.0e6);
         project.addComponent(core);
@@ -163,7 +177,7 @@ class EditorProjectTest {
         m.place("fusion_core", MountFootprint.MountSize.M, 1, 1, 0, catalog);
         m.place("life_support", MountFootprint.MountSize.S, 4, 1, 0, catalog);
         m.place("cargo", MountFootprint.MountSize.S, 5, 1, 0, catalog);
-        m.place("cargo", MountFootprint.MountSize.S, 6, 1, 0, catalog);   // touches the first bay: must be listed
+        m.place("cargo", MountFootprint.MountSize.S, 6, 1, 0, catalog);   // touching the first bay
         m.place("docking_port", MountFootprint.MountSize.S, 2, 5, 0, catalog);
         m.mounts.get(m.mounts.size() - 1).active = true;
         m.toggleEdgeWall(3, 3, Side.RIGHT, "LIGHT", true);
@@ -171,15 +185,20 @@ class EditorProjectTest {
         EditorProject.Check check = project.check(m);
         assertNull(check.error, check.error);
         assertEquals(5, check.systems);
-        assertTrue(check.poweredSystems >= 2, "the reactor powers itself and its neighbours");
+        assertEquals(3, check.powerUsers, "the core, the life support and the port; not the bays");
+        assertEquals(1, check.poweredSystems, "with no conduit the core powers only itself");
+        for (int x = 2; x <= 4; x++) assertTrue(m.toggleConduit(x, 1, catalog));
+        check = project.check(m);
+        assertEquals(2, check.poweredSystems, "the conduit reaches the life support");
         project.addChassis(m);
         project.save();
 
         DefRegistry defs = loadDefs(assets);
         ChassisDef saved = defs.require("chassis", "skiff", ChassisDef.class);
-        assertEquals(1, saved.mounts.size(), "only the touching bay is listed");
-        assertEquals("cargo", saved.mounts.get(0).type.toLowerCase());
-        assertEquals(1, saved.ports.size());
+        assertEquals(5, saved.mounts.size(), "every system is listed");
+        assertEquals(1, saved.mounts.stream().filter(mt -> mt.active).count(), "the one active port");
+        assertEquals(1, saved.conduits.size(), "the conduit, as one run");
+        assertArrayEquals(new int[][]{{2, 1}, {4, 1}}, saved.conduits.get(0));
         ChassisBlueprintLoader.LoadResult r = build(defs, "skiff");
         assertEquals("composite_armor", r.grid.getTile(0, 0).material);
         assertEquals(5, r.subsystems.size);
@@ -205,14 +224,16 @@ class EditorProjectTest {
         assertFalse(corvette.usesSymbol('#'));
         assertTrue(project.chassis.get("corvette").dirty);
         assertNull(project.check(corvette).error);
-        assertNotNull(project.setTileSymbol(project.tiles.get("floor"), 'R'), "R is the reactor's");
+        assertNotNull(project.setTileSymbol(project.tiles.get("floor"), 'h'), "h is the hull's now");
+        assertNull(project.setTileSymbol(project.tiles.get("floor"), 'R'), "letters are free: components have none");
+        assertTrue(corvette.usesSymbol('R'));
     }
 
     @Test
     void partsInUseCannotBeDeleted() {
         EditorProject project = EditorProject.load(ASSETS, null);
         assertNotNull(project.delete(project.components.get("reactor")));
-        assertNotNull(project.delete(project.tiles.get("conduit")));
+        assertNotNull(project.delete(project.tiles.get("hull")));
         assertNull(project.delete(project.tiles.get("hull_medium")), "nothing draws with '2'");
     }
 
@@ -261,11 +282,11 @@ class EditorProjectTest {
         assertEquals(y, reactor.y);
         assertNull(project.check(corvette).error);
 
-        // The loader reads a drawn square mount as unturned, so the turned one is listed
+        // The turn is saved with the mount
         ChassisDef def = corvette.toDef(catalog);
-        ChassisDef.Mount listed = def.mounts.stream().filter(m -> m.x == x && m.y == y).findFirst().orElse(null);
-        assertNotNull(listed);
-        assertEquals(1, listed.rotation);
+        ChassisDef.Mount saved = def.mounts.stream().filter(m -> m.x == x && m.y == y).findFirst().orElse(null);
+        assertNotNull(saved);
+        assertEquals(1, saved.rotation);
         ChassisModel back = ChassisModel.fromDef(def, catalog);
         assertEquals(1, back.mountAt(15, 3, catalog).rotation);
 

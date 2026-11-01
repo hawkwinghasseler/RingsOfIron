@@ -1,6 +1,7 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -100,11 +101,12 @@ class FireZoneTest {
     /** A hall with life support at its far end, shorted where a crewmate was hit, at battle stations. */
     static TestShips rakedShort(int faction, boolean keepsClear) {
         TestShips s = new TestShips(
-                "################",
+                new ChassisBlueprint("################",
                 "#..............#",
-                "#..........LL..#",
                 "#..............#",
-                "################");
+                "#..............#",
+                "################")
+                .mount("life_support", MountFootprint.MountSize.S, 11, 2, 1));
         s.board.faction = faction;
         s.board.keepsClearOfFire = keepsClear;
         s.board.battleStations = true;

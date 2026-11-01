@@ -10,21 +10,27 @@ final class TestShips {
 
     /**
      * Two carpeted rooms, 9 by 6 tiles each, split by a light wall at x = 10 with a door at
-     * y = 3. A reactor, a life support unit and other systems stand in the left room.
+     * y = 3. A reactor, a life support unit and other systems stand in the left room, joined by a
+     * conduit.
      */
     static final String[] LAYOUT = {
         "####################  ",
         "#..................#  ",
-        "#..R++++++++++++HH.#  ",
         "#..................#  ",
-        "#..LL..........I...#  ",
+        "#..................#  ",
+        "#..............I...#  ",
         "#..................#  ",
         "#..................#  ",
         "####################  "
     };
 
     static ChassisBlueprint blueprint() {
-        ChassisBlueprint bp = new ChassisBlueprint(LAYOUT).tileSize(1f);
+        ChassisBlueprint bp = new ChassisBlueprint(LAYOUT).tileSize(1f)
+                .mount("life_support", MountFootprint.MountSize.S, 3, 3, 1)
+                .mount("reactor", MountFootprint.MountSize.S, 3, 5)
+                .mount("helm", MountFootprint.MountSize.S, 16, 5, 1)
+                .conduitRun(3, 5, 16, 5)
+                .conduitRun(3, 3, 3, 5);
         for (int y = 1; y <= 6; y++) bp.edgeWall(10, y, Side.LEFT, WeightClass.LIGHT, y == 3);
         bp.covering(FloorCovering.CARPET, 1, 1, 9, 6);
         return bp;

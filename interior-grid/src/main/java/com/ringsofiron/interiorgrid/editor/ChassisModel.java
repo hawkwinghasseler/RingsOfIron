@@ -1,11 +1,12 @@
 package com.ringsofiron.interiorgrid.editor;
 
-import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.interiorgrid.ChassisBlueprintLoader;
 import com.ringsofiron.interiorgrid.EngineLayout;
 import com.ringsofiron.interiorgrid.EscapePodLayout;
 import com.ringsofiron.interiorgrid.HullMounts;
 import com.ringsofiron.interiorgrid.InteriorGridData;
+import com.ringsofiron.interiorgrid.LayoutRuns;
+import com.ringsofiron.interiorgrid.MaterialTable;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipPartCatalog;
@@ -17,27 +18,79 @@ import com.ringsofiron.interiorgrid.WallLightLayout;
 import com.ringsofiron.moddingdata.defs.ChassisDef;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 /**
- * A chassis layout as the ship editor edits it: a grid of tile-type symbols with every mounted
- * component, edge wall, edge conduit, hull piece and covering listed on top. It converts to and from the
- * {@link ChassisDef} the game loads; {@link #toDef} decides which mounts can be drawn as letters
- * in the rows and which must be listed.
+ * A chassis layout as the ship editor edits it, in layers: a grid of tile-type symbols, a grid of
+ * the power conduits across tiles, and every mounted component, edge wall, edge conduit, pipe,
+ * hull piece and covering on top, each edge thing listed once per edge. It converts to and from
+ * the {@link ChassisDef} the game loads, which writes conduits, pipes and walls as runs
+ * ({@link LayoutRuns}).
  *
  * <p>Grid coordinates have (0, 0) at the bottom-left tile and +y up, as in the game.
  */
 public class ChassisModel {
+
+    /** A thin wall on the {@code side} edge of tile (x, y). */
+    public static class EdgeWall {
+        public int x, y;
+        /** BOTTOM, TOP, LEFT or RIGHT. */
+        public String side;
+        public String weightClass = "MEDIUM";
+        public String material = MaterialTable.DEFAULT_MATERIAL;
+        /** True when it has a door in it. */
+        public boolean bulkhead;
+
+        EdgeWall copy() {
+            EdgeWall w = new EdgeWall();
+            w.x = x;
+            w.y = y;
+            w.side = side;
+            w.weightClass = weightClass;
+            w.material = material;
+            w.bulkhead = bulkhead;
+            return w;
+        }
+    }
+
+    /** A power conduit along the {@code side} edge of tile (x, y). */
+    public static class EdgeConduit {
+        public int x, y;
+        /** BOTTOM, TOP, LEFT or RIGHT. */
+        public String side;
+
+        EdgeConduit copy() {
+            EdgeConduit c = new EdgeConduit();
+            c.x = x;
+            c.y = y;
+            c.side = side;
+            return c;
+        }
+    }
+
+    /** A pipe across tile (x, y), or with a {@code side}, along that edge of it. */
+    public static class Pipe {
+        public int x, y;
+        /** Null for across the tile; else BOTTOM, TOP, LEFT or RIGHT. */
+        public String side;
+
+        Pipe copy() {
+            Pipe p = new Pipe();
+            p.x = x;
+            p.y = y;
+            p.side = side;
+            return p;
+        }
+    }
 
     /** A component installed in the layout. */
     public static class Mount {
         public String component;
         public MountFootprint.MountSize size;
         public int x, y, rotation;
-        /** Written to {@code mounts} even when it could be drawn in the rows (it was listed there). */
-        public boolean listed;
         /** Docking ports: extends a latch collar when armed. */
         public boolean active;
 
@@ -61,7 +114,6 @@ public class ChassisModel {
 
         Mount copy() {
             Mount m = new Mount(component, size, x, y, rotation);
-            m.listed = listed;
             m.active = active;
             return m;
         }
@@ -72,23 +124,25 @@ public class ChassisModel {
     public boolean station;
     public float tileSize = 1f;
     public float originX, originY;
-    /** Tile-type symbols, {@code [y][x]}. Mounts are not drawn here. */
+    /** Tile-type symbols, {@code [y][x]}. Mounts and conduits are not drawn here. */
     public char[][] tiles;
+    /** Power conduits across tiles, {@code [y][x]}, sized as {@link #tiles}. */
+    public boolean[][] conduits;
     public final List<Mount> mounts = new ArrayList<>();
-    public final List<ChassisDef.EdgeWall> edgeWalls = new ArrayList<>();
+    /** Thin walls, each listed once (on either tile it lies between). */
+    public final List<EdgeWall> edgeWalls = new ArrayList<>();
     /** Power conduits along tile edges, each listed once (on either tile it lies between). */
-    public final List<ChassisDef.EdgeConduit> edgeConduits = new ArrayList<>();
+    public final List<EdgeConduit> edgeConduits = new ArrayList<>();
     /** Pipes across tiles and along their edges; an edge pipe is listed once (on either tile). */
-    public final List<ChassisDef.Pipe> pipes = new ArrayList<>();
+    public final List<Pipe> pipes = new ArrayList<>();
     public final List<ChassisDef.HullPiece> hullPieces = new ArrayList<>();
     public final List<ChassisDef.Covering> coverings = new ArrayList<>();
     /** Lights hung on walls; null until the layout places any, and the game works them out. */
     public List<ChassisDef.Light> lights;
     /** RCS thruster blocks on the outside of the hull. */
     public final List<ChassisDef.Rcs> rcs = new ArrayList<>();
-    /** Listed mounts and port settings that name nothing the editor knows; written back as they were. */
+    /** Mounts that name nothing the editor knows; written back as they were. */
     public final List<ChassisDef.Mount> unresolvedMounts = new ArrayList<>();
-    public final List<ChassisDef.Port> unresolvedPorts = new ArrayList<>();
 
     public int width() {
         return tiles.length == 0 ? 0 : tiles[0].length;
@@ -108,6 +162,7 @@ public class ChassisModel {
         m.id = id;
         m.name = id;
         m.tiles = new char[height][width];
+        m.conduits = new boolean[height][width];
         char hull = symbolFor(catalog, ShipPartCatalog.TileBase.HULL, '#');
         char floor = symbolFor(catalog, ShipPartCatalog.TileBase.FLOOR, '.');
         for (int y = 0; y < height; y++) {
@@ -120,7 +175,7 @@ public class ChassisModel {
         return m;
     }
 
-    /** Reads a chassis definition. Letter rectangles that are legal mounts become mounts. */
+    /** Reads a chassis definition. */
     public static ChassisModel fromDef(ChassisDef def, ShipPartCatalog catalog) {
         ChassisModel m = new ChassisModel();
         m.id = def.id;
@@ -130,32 +185,53 @@ public class ChassisModel {
         m.originX = def.originX;
         m.originY = def.originY;
         m.tiles = ChassisBlueprintLoader.toGrid(def.rows);
-        for (ChassisBlueprintLoader.SubsystemPlacement p : ChassisBlueprintLoader.drawnMounts(m.tiles, catalog, false)) {
-            Mount mount = new Mount(p.component.id, p.footprint.size, p.footprint.originX, p.footprint.originY,
-                    p.footprint.rotation);
-            m.mounts.add(mount);
-            m.fillUnder(p.footprint, p.type, catalog);
-        }
+        int w = m.width(), h = m.height();
+        m.conduits = new boolean[h][w];
         for (ChassisDef.Mount d : def.mounts) {
-            ShipPartCatalog.ComponentType type = d.component != null ? catalog.component(d.component)
-                    : standardOrNull(catalog, d.type);
+            ShipPartCatalog.ComponentType type = d.component == null ? null : catalog.component(d.component);
             MountFootprint.MountSize size = sizeOrNull(d.size);
             if (type == null || size == null || !size.exists(type.mountKind())) {
                 m.unresolvedMounts.add(d);
                 continue;
             }
             Mount mount = new Mount(type.id, size, d.x, d.y, d.rotation);
-            mount.listed = true;
+            mount.active = d.active && type.mountKind() == MountFootprint.MountKind.PORT;
             m.mounts.add(mount);
         }
-        for (ChassisDef.Port p : def.ports) {
-            Mount port = m.portAt(p.x, p.y, catalog);
-            if (port != null) port.active = p.active;
-            else m.unresolvedPorts.add(p);
+        for (int[][] run : def.conduits) {
+            for (int[] t : LayoutRuns.tiles(run)) if (m.inBounds(t[0], t[1])) m.conduits[t[1]][t[0]] = true;
         }
-        m.edgeWalls.addAll(def.edgeWalls);
-        m.edgeConduits.addAll(def.edgeConduits);
-        m.pipes.addAll(def.pipes);
+        for (int[][] run : def.edgeConduits) {
+            for (LayoutRuns.Edge e : LayoutRuns.edges(run, w, h)) {
+                if (m.edgeConduitAt(e.x, e.y, e.side) == null) m.edgeConduits.add(edgeConduit(e.x, e.y, e.side));
+            }
+        }
+        for (int[][] run : def.pipes) {
+            for (int[] t : LayoutRuns.tiles(run)) {
+                if (m.inBounds(t[0], t[1]) && m.pipeAt(t[0], t[1], null) == null) m.pipes.add(pipe(t[0], t[1], null));
+            }
+        }
+        for (int[][] run : def.edgePipes) {
+            for (LayoutRuns.Edge e : LayoutRuns.edges(run, w, h)) {
+                if (m.pipeAt(e.x, e.y, e.side) == null) m.pipes.add(pipe(e.x, e.y, e.side));
+            }
+        }
+        for (ChassisDef.EdgeWall d : def.edgeWalls) {
+            for (LayoutRuns.Edge e : LayoutRuns.edges(d.path, w, h)) {
+                if (m.edgeWallAt(e.x, e.y, e.side) != null) continue;
+                EdgeWall wall = new EdgeWall();
+                wall.x = e.x;
+                wall.y = e.y;
+                wall.side = e.side.name();
+                wall.weightClass = d.weightClass;
+                if (d.material != null) wall.material = d.material;
+                m.edgeWalls.add(wall);
+            }
+        }
+        for (ChassisDef.Door d : def.doors) {
+            EdgeWall wall = m.edgeWallAt(d.x, d.y, Side.valueOf(d.side));
+            if (wall != null) wall.bulkhead = true;
+        }
         m.hullPieces.addAll(def.hullPieces);
         m.coverings.addAll(def.coverings);
         m.lights = copyLights(def.lights);
@@ -163,10 +239,7 @@ public class ChassisModel {
         return m;
     }
 
-    /**
-     * The definition the game loads. Each mount not marked {@link Mount#listed} is drawn as its
-     * component's letter when the loader would read exactly that mount back; the rest are listed.
-     */
+    /** The definition the game loads: every mount listed, conduits, pipes and walls as runs. */
     public ChassisDef toDef(ShipPartCatalog catalog) {
         ChassisDef def = new ChassisDef();
         def.id = id;
@@ -176,57 +249,64 @@ public class ChassisModel {
         def.originX = originX;
         def.originY = originY;
 
-        List<Mount> drawn = new ArrayList<>();
-        for (Mount m : mounts) {
-            // An escape pod is always listed: drawn, its letters would cover the hull under its hatch end
-            if (!m.listed && catalog.component(m.component) != null && m.footprint(catalog) != null
-                    && !isEscapePod(m.component, catalog)) drawn.add(m);
-        }
-        char[][] chars;
-        while (true) {
-            chars = copyTiles();
-            for (Mount m : drawn) draw(chars, m, catalog);
-            Array<ChassisBlueprintLoader.SubsystemPlacement> read = ChassisBlueprintLoader.drawnMounts(chars, catalog, false);
-            // List one unmatched mount at a time: two touching mounts read back once either is listed
-            Mount unmatched = null;
-            for (Mount m : drawn) if (!readsBack(m, read)) unmatched = m;
-            if (unmatched == null) break;
-            drawn.remove(unmatched);
-        }
-
-        int h = height();
+        int w = width(), h = height();
         def.rows = new String[h];
-        for (int r = 0; r < h; r++) def.rows[r] = new String(chars[h - 1 - r]);
+        for (int r = 0; r < h; r++) def.rows[r] = new String(tiles[h - 1 - r]);
 
-        Set<Mount> isDrawn = new HashSet<>(drawn);
         for (Mount m : mounts) {
-            if (isDrawn.contains(m) || catalog.component(m.component) == null) continue;
+            if (catalog.component(m.component) == null) continue;
             ChassisDef.Mount d = new ChassisDef.Mount();
-            ShipPartCatalog.ComponentType type = catalog.component(m.component);
-            if (catalog.standardComponent(type.behavior) == type && type.id.equals(type.behavior.name().toLowerCase())) {
-                d.type = type.behavior.name();
-            } else {
-                d.component = type.id;
-            }
+            d.component = m.component;
             d.size = m.size.name();
             d.x = m.x;
             d.y = m.y;
             d.rotation = m.rotation;
+            d.active = m.active && isPort(m, catalog);
             def.mounts.add(d);
         }
         def.mounts.addAll(unresolvedMounts);
-        for (Mount m : mounts) {
-            if (!m.active || !isPort(m, catalog)) continue;
-            ChassisDef.Port p = new ChassisDef.Port();
-            p.x = m.x;
-            p.y = m.y;
-            p.active = true;
-            def.ports.add(p);
+
+        def.conduits.addAll(LayoutRuns.tileRuns(conduits));
+        boolean[][] eh = new boolean[h + 1][w], ev = new boolean[h][w + 1];
+        for (EdgeConduit c : edgeConduits) LayoutRuns.mark(eh, ev, c.x, c.y, Side.valueOf(c.side));
+        def.edgeConduits.addAll(LayoutRuns.edgeRuns(eh, ev));
+
+        boolean[][] across = new boolean[h][w];
+        boolean[][] ph = new boolean[h + 1][w], pv = new boolean[h][w + 1];
+        for (Pipe p : pipes) {
+            if (p.side == null) across[p.y][p.x] = true;
+            else LayoutRuns.mark(ph, pv, p.x, p.y, Side.valueOf(p.side));
         }
-        def.ports.addAll(unresolvedPorts);
-        def.edgeWalls.addAll(edgeWalls);
-        def.edgeConduits.addAll(edgeConduits);
-        def.pipes.addAll(pipes);
+        def.pipes.addAll(LayoutRuns.tileRuns(across));
+        def.edgePipes.addAll(LayoutRuns.edgeRuns(ph, pv));
+
+        // One run per straight stretch of wall of one weight class and material
+        Map<String, boolean[][][]> byKind = new LinkedHashMap<>();
+        for (EdgeWall e : edgeWalls) {
+            boolean[][][] a = byKind.computeIfAbsent(e.weightClass + "|" + e.material,
+                    k -> new boolean[][][]{new boolean[h + 1][w], new boolean[h][w + 1]});
+            LayoutRuns.mark(a[0], a[1], e.x, e.y, Side.valueOf(e.side));
+            if (e.bulkhead) def.doors.add(door(e.x, e.y, Side.valueOf(e.side), w, h));
+        }
+        for (Map.Entry<String, boolean[][][]> k : byKind.entrySet()) {
+            String[] kind = k.getKey().split("\\|", 2);
+            for (int[][] run : LayoutRuns.edgeRuns(k.getValue()[0], k.getValue()[1])) {
+                ChassisDef.EdgeWall d = new ChassisDef.EdgeWall();
+                d.path = run;
+                d.weightClass = kind[0];
+                d.material = kind[1];
+                def.edgeWalls.add(d);
+            }
+        }
+        // Top of the ship first, then left to right, as the data files list them
+        def.edgeWalls.sort(Comparator.<ChassisDef.EdgeWall>comparingInt(e -> -e.path[0][1])
+                .thenComparingInt(e -> e.path[0][0])
+                .thenComparingInt(e -> -e.path[e.path.length - 1][1])
+                .thenComparingInt(e -> e.path[e.path.length - 1][0])
+                .thenComparing(e -> e.weightClass)
+                .thenComparing(e -> e.material));
+        def.doors.sort(Comparator.<ChassisDef.Door>comparingInt(d -> -d.y).thenComparingInt(d -> d.x)
+                .thenComparing(d -> d.side));
         def.hullPieces.addAll(hullPieces);
         def.coverings.addAll(coverings);
         def.lights = copyLights(lights);
@@ -234,32 +314,46 @@ public class ChassisModel {
         return def;
     }
 
+    /**
+     * A door on that side of tile (x, y), named as the data names an edge: from the tile on its
+     * right or above it where there is one, so the same edge is always written the same way.
+     */
+    private static ChassisDef.Door door(int x, int y, Side side, int width, int height) {
+        if (side == Side.RIGHT && x + 1 < width) {
+            x++;
+            side = Side.LEFT;
+        } else if (side == Side.TOP && y + 1 < height) {
+            y++;
+            side = Side.BOTTOM;
+        }
+        ChassisDef.Door d = new ChassisDef.Door();
+        d.x = x;
+        d.y = y;
+        d.side = side.name();
+        return d;
+    }
+
+    private static EdgeConduit edgeConduit(int x, int y, Side side) {
+        EdgeConduit c = new EdgeConduit();
+        c.x = x;
+        c.y = y;
+        c.side = side.name();
+        return c;
+    }
+
+    private static Pipe pipe(int x, int y, Side side) {
+        Pipe p = new Pipe();
+        p.x = x;
+        p.y = y;
+        p.side = side == null ? null : side.name();
+        return p;
+    }
+
     private static List<ChassisDef.Light> copyLights(List<ChassisDef.Light> from) {
         if (from == null) return null;
         List<ChassisDef.Light> out = new ArrayList<>();
         for (ChassisDef.Light l : from) out.add(Defs.copy(l, ChassisDef.Light.class));
         return out;
-    }
-
-    private static boolean readsBack(Mount m, Array<ChassisBlueprintLoader.SubsystemPlacement> read) {
-        for (ChassisBlueprintLoader.SubsystemPlacement p : read) {
-            MountFootprint f = p.footprint;
-            if (p.component.id.equals(m.component) && f.originX == m.x && f.originY == m.y && f.size == m.size
-                    && f.rotation == m.rotation) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static void draw(char[][] chars, Mount m, ShipPartCatalog catalog) {
-        MountFootprint f = m.footprint(catalog);
-        char symbol = catalog.component(m.component).symbol;
-        for (int y = f.originY; y < f.originY + f.height(); y++) {
-            for (int x = f.originX; x < f.originX + f.width(); x++) {
-                if (y >= 0 && y < chars.length && x >= 0 && x < chars[y].length) chars[y][x] = symbol;
-            }
-        }
     }
 
     // ---- Queries ----
@@ -291,11 +385,6 @@ public class ChassisModel {
         return null;
     }
 
-    private Mount portAt(int x, int y, ShipPartCatalog catalog) {
-        Mount m = mountAt(x, y, catalog);
-        return m != null && isPort(m, catalog) ? m : null;
-    }
-
     /** True if the component is an escape pod, which sits through the hull (see {@link EscapePodLayout}). */
     public static boolean isEscapePod(String componentId, ShipPartCatalog catalog) {
         ShipPartCatalog.ComponentType t = catalog.component(componentId);
@@ -325,8 +414,8 @@ public class ChassisModel {
     }
 
     /** The edge wall on that side of tile (x, y), however it was listed, or null. */
-    public ChassisDef.EdgeWall edgeWallAt(int x, int y, Side side) {
-        for (ChassisDef.EdgeWall w : edgeWalls) {
+    public EdgeWall edgeWallAt(int x, int y, Side side) {
+        for (EdgeWall w : edgeWalls) {
             Side s = Side.valueOf(w.side);
             if (w.x == x && w.y == y && s == side) return w;
             if (w.x + s.dx == x && w.y + s.dy == y && s.opposite() == side) return w;
@@ -335,8 +424,8 @@ public class ChassisModel {
     }
 
     /** The edge conduit on that side of tile (x, y), however it was listed, or null. */
-    public ChassisDef.EdgeConduit edgeConduitAt(int x, int y, Side side) {
-        for (ChassisDef.EdgeConduit c : edgeConduits) {
+    public EdgeConduit edgeConduitAt(int x, int y, Side side) {
+        for (EdgeConduit c : edgeConduits) {
             Side s = Side.valueOf(c.side);
             if (c.x == x && c.y == y && s == side) return c;
             if (c.x + s.dx == x && c.y + s.dy == y && s.opposite() == side) return c;
@@ -348,8 +437,8 @@ public class ChassisModel {
      * The pipe across tile (x, y) when {@code side} is null, else the one on that side of it
      * however it was listed; null if there is none.
      */
-    public ChassisDef.Pipe pipeAt(int x, int y, Side side) {
-        for (ChassisDef.Pipe p : pipes) {
+    public Pipe pipeAt(int x, int y, Side side) {
+        for (Pipe p : pipes) {
             if (side == null) {
                 if (p.side == null && p.x == x && p.y == y) return p;
                 continue;
@@ -376,12 +465,16 @@ public class ChassisModel {
 
     // ---- Edits ----
 
-    /** Paints a tile type; a mount over that tile is removed. */
+    /**
+     * Paints a tile type; a mount over that tile is removed, and so is a conduit across it when the
+     * tile becomes space.
+     */
     public void paint(int x, int y, char symbol, ShipPartCatalog catalog) {
         if (!inBounds(x, y)) return;
         tiles[y][x] = symbol;
         Mount m = mountAt(x, y, catalog);
         if (m != null) mounts.remove(m);
+        if (isSpace(x, y, catalog)) conduits[y][x] = false;
     }
 
     /**
@@ -473,8 +566,8 @@ public class ChassisModel {
     }
 
     /**
-     * Removes the topmost thing at tile (x, y): a mount, else a hull piece, else a covering, else
-     * paints the tile void. Returns what was removed, for the status line.
+     * Removes the topmost thing at tile (x, y): a mount, else a hull piece, else a conduit, else a
+     * covering, else paints the tile void. Returns what was removed, for the status line.
      */
     public String erase(int x, int y, ShipPartCatalog catalog) {
         Mount m = mountAt(x, y, catalog);
@@ -487,6 +580,10 @@ public class ChassisModel {
             hullPieces.remove(p);
             return "hull piece";
         }
+        if (conduitAt(x, y)) {
+            conduits[y][x] = false;
+            return "conduit";
+        }
         ChassisDef.Covering c = coveringAt(x, y);
         if (c != null) {
             coverings.remove(c);
@@ -498,12 +595,12 @@ public class ChassisModel {
 
     /** Adds an edge wall on that side of tile (x, y), or removes the one already there. */
     public void toggleEdgeWall(int x, int y, Side side, String weightClass, boolean bulkhead) {
-        ChassisDef.EdgeWall existing = edgeWallAt(x, y, side);
+        EdgeWall existing = edgeWallAt(x, y, side);
         if (existing != null) {
             edgeWalls.remove(existing);
             return;
         }
-        ChassisDef.EdgeWall w = new ChassisDef.EdgeWall();
+        EdgeWall w = new EdgeWall();
         w.x = x;
         w.y = y;
         w.side = side.name();
@@ -518,17 +615,35 @@ public class ChassisModel {
      */
     public boolean toggleEdgeConduit(int x, int y, Side side) {
         if (!inBounds(x, y)) return false;
-        ChassisDef.EdgeConduit existing = edgeConduitAt(x, y, side);
+        EdgeConduit existing = edgeConduitAt(x, y, side);
         if (existing != null) {
             edgeConduits.remove(existing);
             return true;
         }
-        ChassisDef.EdgeConduit c = new ChassisDef.EdgeConduit();
-        c.x = x;
-        c.y = y;
-        c.side = side.name();
-        edgeConduits.add(c);
+        edgeConduits.add(edgeConduit(x, y, side));
         return true;
+    }
+
+    /** True if a power conduit runs across tile (x, y). */
+    public boolean conduitAt(int x, int y) {
+        return inBounds(x, y) && conduits[y][x];
+    }
+
+    /**
+     * Lays a power conduit across tile (x, y), or takes up the one already there. A conduit lies on
+     * top of the tile, floor or wall, under anything mounted there. False, with nothing changed, if
+     * the tile is off the grid or a conduit would lie out in space.
+     */
+    public boolean toggleConduit(int x, int y, ShipPartCatalog catalog) {
+        if (!inBounds(x, y)) return false;
+        if (!conduits[y][x] && isSpace(x, y, catalog)) return false;
+        conduits[y][x] = !conduits[y][x];
+        return true;
+    }
+
+    private boolean isSpace(int x, int y, ShipPartCatalog catalog) {
+        ShipPartCatalog.TileType t = catalog.tileFor(tiles[y][x]);
+        return t == null || t.base == ShipPartCatalog.TileBase.VOID;
     }
 
     /**
@@ -539,7 +654,7 @@ public class ChassisModel {
      */
     public boolean togglePipe(int x, int y, Side side, ShipPartCatalog catalog) {
         if (!inBounds(x, y)) return false;
-        ChassisDef.Pipe existing = pipeAt(x, y, side);
+        Pipe existing = pipeAt(x, y, side);
         if (existing != null) {
             pipes.remove(existing);
             return true;
@@ -548,11 +663,7 @@ public class ChassisModel {
             ShipPartCatalog.TileType t = catalog.tileFor(tiles[y][x]);
             if (t != null && (t.base.isWall() || t.base == ShipPartCatalog.TileBase.VOID)) return false;
         }
-        ChassisDef.Pipe p = new ChassisDef.Pipe();
-        p.x = x;
-        p.y = y;
-        p.side = side == null ? null : side.name();
-        pipes.add(p);
+        pipes.add(pipe(x, y, side));
         return true;
     }
 
@@ -698,6 +809,14 @@ public class ChassisModel {
             }
         }
         tiles = next;
+        boolean[][] nextConduits = new boolean[nh][nw];
+        for (int y = 0; y < nh; y++) {
+            for (int x = 0; x < nw; x++) {
+                int ox = x - dx, oy = y - dy;
+                nextConduits[y][x] = ox >= 0 && oy >= 0 && ox < w && oy < h && conduits[oy][ox];
+            }
+        }
+        conduits = nextConduits;
         originX -= dx * tileSize;
         originY -= dy * tileSize;
         shift(dx, dy, catalog);
@@ -714,19 +833,19 @@ public class ChassisModel {
             }
         }
         for (int i = edgeWalls.size() - 1; i >= 0; i--) {
-            ChassisDef.EdgeWall e = edgeWalls.get(i);
+            EdgeWall e = edgeWalls.get(i);
             e.x += dx;
             e.y += dy;
             if (!inBounds(e.x, e.y)) edgeWalls.remove(i);
         }
         for (int i = edgeConduits.size() - 1; i >= 0; i--) {
-            ChassisDef.EdgeConduit c = edgeConduits.get(i);
+            EdgeConduit c = edgeConduits.get(i);
             c.x += dx;
             c.y += dy;
             if (!inBounds(c.x, c.y)) edgeConduits.remove(i);
         }
         for (int i = pipes.size() - 1; i >= 0; i--) {
-            ChassisDef.Pipe p = pipes.get(i);
+            Pipe p = pipes.get(i);
             p.x += dx;
             p.y += dy;
             if (!inBounds(p.x, p.y)) pipes.remove(i);
@@ -790,14 +909,15 @@ public class ChassisModel {
         m.originX = originX;
         m.originY = originY;
         m.tiles = copyTiles();
+        m.conduits = new boolean[conduits.length][];
+        for (int y = 0; y < conduits.length; y++) m.conduits[y] = conduits[y].clone();
         for (Mount mount : mounts) m.mounts.add(mount.copy());
-        for (ChassisDef.EdgeWall e : edgeWalls) m.edgeWalls.add(Defs.copy(e, ChassisDef.EdgeWall.class));
-        for (ChassisDef.EdgeConduit c : edgeConduits) m.edgeConduits.add(Defs.copy(c, ChassisDef.EdgeConduit.class));
-        for (ChassisDef.Pipe p : pipes) m.pipes.add(Defs.copy(p, ChassisDef.Pipe.class));
+        for (EdgeWall e : edgeWalls) m.edgeWalls.add(e.copy());
+        for (EdgeConduit c : edgeConduits) m.edgeConduits.add(c.copy());
+        for (Pipe p : pipes) m.pipes.add(p.copy());
         for (ChassisDef.HullPiece p : hullPieces) m.hullPieces.add(Defs.copy(p, ChassisDef.HullPiece.class));
         for (ChassisDef.Covering c : coverings) m.coverings.add(Defs.copy(c, ChassisDef.Covering.class));
         for (ChassisDef.Mount u : unresolvedMounts) m.unresolvedMounts.add(Defs.copy(u, ChassisDef.Mount.class));
-        for (ChassisDef.Port u : unresolvedPorts) m.unresolvedPorts.add(Defs.copy(u, ChassisDef.Port.class));
         m.lights = copyLights(lights);
         for (ChassisDef.Rcs r : rcs) m.rcs.add(Defs.copy(r, ChassisDef.Rcs.class));
         return m;
@@ -815,14 +935,6 @@ public class ChassisModel {
         if (preferred != null && preferred.base == base) return fallback;
         for (ShipPartCatalog.TileType t : catalog.tiles()) if (t.base == base) return t.symbol;
         return fallback;
-    }
-
-    private static ShipPartCatalog.ComponentType standardOrNull(ShipPartCatalog catalog, String type) {
-        try {
-            return catalog.standardComponent(SubsystemComponent.SubsystemType.valueOf(type));
-        } catch (IllegalArgumentException | NullPointerException e) {
-            return null;
-        }
     }
 
     private static MountFootprint.MountSize sizeOrNull(String size) {

@@ -146,8 +146,10 @@ class InteriorGridDataTest {
             }
             assertEquals(java.util.EnumSet.of(MountFootprint.MountSize.S, MountFootprint.MountSize.M,
                     MountFootprint.MountSize.L), sizes, type.blueprint + " can berth any ship");
-            assertEquals(portCount(result), chassis.ports.size(), "every station port is listed as active");
-            assertTrue(chassis.ports.stream().allMatch(p -> p.active));
+            java.util.List<ChassisDef.Mount> ports = chassis.mounts.stream()
+                    .filter(m -> "docking_port".equals(m.component)).toList();
+            assertEquals(portCount(result), ports.size());
+            assertTrue(ports.stream().allMatch(m -> m.active), type.blueprint + ": every station port is active");
         }
         assertTrue(ctx.report.entries().stream().noneMatch(e -> e.message.contains("blueprint")), ctx.report.toString());
     }

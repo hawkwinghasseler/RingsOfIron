@@ -33,7 +33,7 @@ import java.util.List;
  * <pre>
  * {
  *   "summary": { "name": "...", ... },
- *   "version": 2,
+ *   "version": 3,
  *   "tick": 123456,
  *   "entities": [
  *     { "core.Uuid": { "id": "..." },
@@ -48,9 +48,8 @@ import java.util.List;
  *   <li>Entities tagged {@link TransientComponent} are skipped.</li>
  *   <li>Each component is written field by field and needs a no-arg constructor. It is keyed by the
  *       stable type id given with {@link #registerType(String, Class)}, so a class can be renamed or
- *       moved without breaking saves; a class with no id is keyed by its class name, as every
- *       component was in format 1. Saves keyed by class names still load. A class that was renamed
- *       before it had an id keeps its old saves with {@link #registerAlias(String, Class)}.</li>
+ *       moved without breaking saves; a class with no id is keyed by its class name. A class that was
+ *       renamed before it had an id keeps its saves with {@link #registerAlias(String, Class)}.</li>
  *   <li>References to other entities must be {@link EntityRef} fields (written as UUID strings);
  *       a raw {@link Entity} field is an error. After all entities load, refs are checked in a second
  *       pass and dangling ones are reported in {@link #getLastLoadWarnings()}.</li>
@@ -69,8 +68,12 @@ import java.util.List;
  * replaced ({@link #applyLoad}).
  */
 public class SerializationService {
-    /** 1: components keyed by class name. 2: keyed by stable type id where the class has one. */
-    public static final int FORMAT_VERSION = 2;
+    /**
+     * 1: components keyed by class name. 2: keyed by stable type id where the class has one. 3: ship
+     * interiors in layers, power conduits on their own layer over the tiles. Saves from before the
+     * current version are refused: there is no reading of old formats.
+     */
+    public static final int FORMAT_VERSION = 3;
     /** The key a save's summary is written under, first in the file. */
     public static final String SUMMARY = "summary";
     /** How far {@link #readSummary} reads looking for the end of the summary before giving up. */
@@ -223,7 +226,7 @@ public class SerializationService {
      * Replaces the current state with the one in {@code jsonString}: {@link #prepareLoad} then
      * {@link #applyLoad}.
      *
-     * @throws SerializationException if the JSON is malformed, from a newer format version, or a
+     * @throws SerializationException if the JSON is malformed, from another format version, or a
      *         component or module in it can't be read.
      */
     public void loadGame(String jsonString) {
@@ -254,7 +257,7 @@ public class SerializationService {
      * Parses {@code jsonString} and builds every component in it, without touching the game. If it
      * throws, nothing has changed.
      *
-     * @throws SerializationException if the JSON is malformed, from a newer format version, or a
+     * @throws SerializationException if the JSON is malformed, from another format version, or a
      *         component in it can't be read.
      */
     public PreparedLoad prepareLoad(String jsonString) {
@@ -268,6 +271,10 @@ public class SerializationService {
         int version = root.getInt("version", 0);
         if (version > FORMAT_VERSION) {
             throw new SerializationException("Save format " + version + " is newer than supported " + FORMAT_VERSION);
+        }
+        if (version < FORMAT_VERSION) {
+            throw new SerializationException("Save format " + version + " is from an older version of the game,"
+                    + " which this one can no longer read (it reads format " + FORMAT_VERSION + ")");
         }
 
         PreparedLoad load = new PreparedLoad(root.getLong("tick", 0L), root.get("modules"));

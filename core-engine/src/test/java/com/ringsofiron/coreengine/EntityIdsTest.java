@@ -52,7 +52,7 @@ class EntityIdsTest {
     void aSaveThatDoesNotSayGoesOnWithRandomUuids() {
         GameEngine loaded = new GameEngine();
         loaded.getEntityIds().seed(7);
-        loaded.getSerializationService().loadGame("{\"version\":1,\"tick\":0,\"entities\":[],\"modules\":{}}");
+        loaded.getSerializationService().loadGame("{\"version\":" + SerializationService.FORMAT_VERSION + ",\"tick\":0,\"entities\":[],\"modules\":{}}");
         assertFalse(loaded.getEntityIds().isSeeded());
     }
 }

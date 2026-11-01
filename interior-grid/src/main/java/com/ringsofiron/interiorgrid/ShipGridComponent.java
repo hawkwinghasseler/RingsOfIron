@@ -40,6 +40,8 @@ public class ShipGridComponent implements Component {
     public final EdgeConduit[][] conduitH;
     /** Power conduits along vertical edges, indexed like {@link #edgeV}. Null means none. */
     public final EdgeConduit[][] conduitV;
+    /** Power conduits across tiles, [y][x] like {@link #tiles}. Null means none. See {@link TileConduit}. */
+    public final TileConduit[][] tileConduits;
     /** Pipes across the middle of tiles, [y][x] like {@link #tiles}. Null means none. See {@link Pipe}. */
     public final Pipe[][] pipes;
     /** Pipes along horizontal edges, indexed like {@link #edgeH}. Null means none. */
@@ -133,6 +135,7 @@ public class ShipGridComponent implements Component {
         this.edgeV = new EdgeWall[height][width + 1];
         this.conduitH = new EdgeConduit[height + 1][width];
         this.conduitV = new EdgeConduit[height][width + 1];
+        this.tileConduits = new TileConduit[height][width];
         this.pipes = new Pipe[height][width];
         this.pipeH = new Pipe[height + 1][width];
         this.pipeV = new Pipe[height][width + 1];
@@ -233,14 +236,29 @@ public class ShipGridComponent implements Component {
         }
     }
 
+    /** The power conduit across tile (x, y), or null if none / out of bounds. */
+    public TileConduit getTileConduit(int x, int y) {
+        return inBounds(x, y) ? tileConduits[y][x] : null;
+    }
+
+    /** Lays (or with null, takes up) the power conduit across tile (x, y). */
+    public void setTileConduit(int x, int y, TileConduit conduit) {
+        if (!inBounds(x, y)) throw new IllegalArgumentException("Tile out of bounds: " + x + "," + y);
+        tileConduits[y][x] = conduit;
+    }
+
     /**
-     * True if tile (x, y) has a power conduit on it or on its {@code side} edge: what a conduit's
-     * art reaches toward.
+     * True if tile (x, y) has a power conduit on its {@code side} edge or across the tile beyond
+     * it: what a conduit across the tile reaches toward.
      */
     public boolean hasConduitToward(int x, int y, Side side) {
-        if (getConduit(x, y, side) != null) return true;
-        Tile t = getTile(x + side.dx, y + side.dy);
-        return t != null && t.isPowerConduit();
+        return getConduit(x, y, side) != null || getTileConduit(x + side.dx, y + side.dy) != null;
+    }
+
+    /** True if any power conduit across a tile or along an edge has been shorted. */
+    public boolean hasShortedConduit() {
+        for (TileConduit[] row : tileConduits) for (TileConduit c : row) if (c != null && c.shorted) return true;
+        return false;
     }
 
     /** The pipe across the middle of tile (x, y), or null if none / out of bounds. */

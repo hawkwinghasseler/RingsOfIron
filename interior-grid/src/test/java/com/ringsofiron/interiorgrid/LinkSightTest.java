@@ -11,12 +11,12 @@ class LinkSightTest {
     /** A room with a Small port on top whose opening is tile (2, 4), and a wall stub at (1, 2). */
     private static ShipGridComponent craft() {
         return ChassisBlueprintLoader.load(new ChassisBlueprint(new String[]{
-                "#DDD#",
+                "#####",
                 "#...#",
                 "##..#",
                 "#...#",
                 "#####",
-        }).tileSize(1f)).grid;
+        }).tileSize(1f).mount("docking_port", MountFootprint.MountSize.S, 1, 4)).grid;
     }
 
     private static EdgeWall door(ShipGridComponent g) {

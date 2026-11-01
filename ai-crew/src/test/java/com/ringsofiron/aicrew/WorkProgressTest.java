@@ -1,6 +1,8 @@
 package com.ringsofiron.aicrew;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.ringsofiron.interiorgrid.ChassisBlueprint;
+import com.ringsofiron.interiorgrid.MountFootprint;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -13,11 +15,12 @@ class WorkProgressTest {
     @Test
     void aRepairShowsItsProgressAndClearsOnceDone() {
         TestShips s = new TestShips(
-                "#######",
+                new ChassisBlueprint("#######",
                 "#.....#",
-                "#..R..#",
                 "#.....#",
-                "#######");
+                "#.....#",
+                "#######")
+                .mount("reactor", MountFootprint.MountSize.S, 3, 2));
         Entity reactor = s.registry.subsystems.first();
         SubsystemComponent r = reactor.getComponent(SubsystemComponent.class);
         r.health = 0.2f;

@@ -12,20 +12,33 @@ class EdgeConduitTest {
     private final Engine engine = new Engine();
     private ShipGridComponent grid;
 
-    /** A reactor at (1, 1) and a turret mount at (5, 1), with a full-tile wall at (3, 1) between them. */
+    /**
+     * A reactor at (1, 1) and a turret mount at (5, 1), with a full-tile wall at (3, 1) between them
+     * and a conduit run up to the wall on either side.
+     */
     private static ChassisBlueprint walledOff() {
         return new ChassisBlueprint(
                 "#######",
-                "#R.I.T#",
-                "#######");
+                "#..I..#",
+                "#######")
+                .mount("reactor", MountFootprint.MountSize.S, 1, 1)
+                .mount("turret_mount", MountFootprint.MountSize.S, 5, 1)
+                .conduitRun(1, 1, 2, 1)
+                .conduitRun(4, 1, 5, 1);
     }
 
-    /** A reactor at (1, 1) and a turret mount at (4, 1), with a closed thin wall on x = 3 between them. */
+    /**
+     * A reactor at (2, 1) and a turret mount at (3, 1), either side of a closed thin wall on x = 3,
+     * with no conduit across a tile.
+     */
     private static ChassisBlueprint thinWalled() {
         return new ChassisBlueprint(
                 "######",
-                "#R..T#",
-                "######").edgeWall(3, 1, Side.LEFT, WeightClass.MEDIUM, false);
+                "#....#",
+                "######")
+                .mount("reactor", MountFootprint.MountSize.S, 2, 1)
+                .mount("turret_mount", MountFootprint.MountSize.S, 3, 1)
+                .edgeWall(3, 1, Side.LEFT, WeightClass.MEDIUM, false);
     }
 
     private SubsystemComponent build(ChassisBlueprint bp) {
@@ -72,12 +85,12 @@ class EdgeConduitTest {
         assertTrue(turret.powered);
         assertSame(grid.circuits.first(), turret.circuit);
         assertTrue(grid.getConduit(3, 1, Side.TOP).isPowered);
-        assertTrue(grid.getTile(4, 1).isPowered, "the floor beyond the wall has power");
+        assertTrue(grid.getTileConduit(4, 1).isPowered, "the conduit beyond the wall has power");
     }
 
     @Test
     void conduitsMeetOnlyAtTheEndsOfTheirEdges() {
-        // The top edge alone touches only wall tiles: nothing to feed it
+        // Without the top edge the two sides never meet: edge conduits join only at their ends
         SubsystemComponent turret = build(walledOff().edgeConduit(3, 1, Side.LEFT).edgeConduit(3, 1, Side.RIGHT));
         assertFalse(turret.powered);
         assertTrue(grid.getConduit(3, 1, Side.LEFT).isPowered);
@@ -95,7 +108,7 @@ class EdgeConduitTest {
 
     @Test
     void aConduitInAThinWallFeedsBothSides() {
-        assertFalse(build(thinWalled()).powered, "the closed wall stops power");
+        assertFalse(build(thinWalled()).powered, "nothing carries power to it");
         engine.removeAllEntities();
         SubsystemComponent turret = build(thinWalled().edgeConduit(3, 1, Side.LEFT));
         assertTrue(turret.powered);

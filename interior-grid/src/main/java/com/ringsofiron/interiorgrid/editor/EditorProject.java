@@ -85,6 +85,8 @@ public class EditorProject {
         /** The tile the error names, or -1. */
         public int errorX = -1, errorY = -1;
         public int floorTiles, wallTiles, rooms, systems, poweredSystems;
+        /** Systems that need power (not cargo, tanks or escape pods); {@link #poweredSystems} counts those a conduit reaches. */
+        public int powerUsers;
         public double cargoVolume;
     }
 
@@ -263,7 +265,11 @@ public class EditorProject {
             subs.add(sub);
         }
         new PowerRoutingSystem().route(ship);
-        for (SubsystemComponent s : subs) if (s.powered) c.poweredSystems++;
+        for (SubsystemComponent s : subs) {
+            if (!s.type.needsPower()) continue;
+            c.powerUsers++;
+            if (s.powered) c.poweredSystems++;
+        }
         return c;
     }
 
@@ -312,11 +318,11 @@ public class EditorProject {
         return item;
     }
 
-    /** A character no tile type or component uses yet, preferring {@code preferred}. */
+    /** A character no tile type uses yet, preferring {@code preferred}. */
     public char freeSymbol(String preferred) {
         ShipPartCatalog cat = catalog();
         for (char c : (preferred + "abcdefghijklmnopqrstuvwxyzBEFGJKMNOPQUVXYZ0456789*%&$@!?~^=-_:;<>").toCharArray()) {
-            if (cat.tileFor(c) == null && cat.componentFor(c) == null && symbolFree(c)) return c;
+            if (cat.tileFor(c) == null && symbolFree(c)) return c;
         }
         return '?';
     }
@@ -324,7 +330,6 @@ public class EditorProject {
     private boolean symbolFree(char c) {
         String s = String.valueOf(c);
         for (Item<TileTypeDef> i : tiles.values()) if (s.equals(i.value.symbol)) return false;
-        for (Item<ShipComponentDef> i : components.values()) if (s.equals(i.value.symbol)) return false;
         return true;
     }
 
@@ -346,20 +351,6 @@ public class EditorProject {
         }
         item.value.symbol = String.valueOf(symbol);
         item.dirty = true;
-        partsChanged();
-        return null;
-    }
-
-    /** Changes a component's symbol. Layouts keep their mounts: they are drawn by id. */
-    public String setComponentSymbol(Item<ShipComponentDef> item, char symbol) {
-        if (item.readOnly) return item.id + " comes from a mod";
-        if (String.valueOf(symbol).equals(item.value.symbol)) return null;
-        if (!Character.isLetter(symbol)) return "a component's symbol must be a letter";
-        if (!symbolFree(symbol)) return "'" + symbol + "' is already used";
-        item.value.symbol = String.valueOf(symbol);
-        item.dirty = true;
-        // Layouts draw this component's mounts with the new letter on their next save
-        for (Item<ChassisModel> c : chassis.values()) if (!c.readOnly && c.value.usesComponent(item.id)) c.dirty = true;
         partsChanged();
         return null;
     }

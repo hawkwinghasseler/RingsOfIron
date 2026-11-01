@@ -184,7 +184,7 @@ abstract class EditorCatalogTabs extends EditorPanel {
         for (EditorProject.Item<ShipComponentDef> i : project.components.values()) {
             ShipComponentDef d = i.value;
             final String id = i.id;
-            char sym = d.symbol != null && d.symbol.length() == 1 ? d.symbol.charAt(0) : '?';
+            char sym = EditorCanvas.label(d.name, id).charAt(0);
             y = swatchRow(x, y, colorOf(d.color), sym, id + "  " + (d.name != null ? d.name : "") + (i.dirty ? " *" : "")
                     + (i.readOnly ? " (mod)" : ""), id.equals(editComponentId), () -> editComponentId = id);
         }
@@ -221,21 +221,6 @@ abstract class EditorCatalogTabs extends EditorPanel {
             beginEdit();
             d.name = s;
             componentChanged(item);
-        });
-        y -= LINE;
-        field(x, y, "comp-symbol", "Symbol", d.symbol == null ? "" : d.symbol, ed, s -> {
-            if (s.length() != 1) {
-                say("A symbol is one letter");
-                return;
-            }
-            beginEdit();
-            String why = project.setComponentSymbol(item, s.charAt(0));
-            if (why != null) {
-                undo.pop();
-                say("Cannot use '" + s + "': " + why);
-                return;
-            }
-            revision++;
         });
         y -= LINE;
         text(x, y, "Behavior", Color.LIGHT_GRAY);
@@ -433,16 +418,11 @@ abstract class EditorCatalogTabs extends EditorPanel {
         if (d.behavior == null) d.behavior = "CARGO";
         d.id = id;
         d.name = (d.name != null ? d.name : id) + " (new)";
-        // Components are drawn with capitals, as the built-in ones are; the name's initial if it is free
-        String initial = id.substring(0, 1).toUpperCase(Locale.ROOT);
-        char symbol = project.freeSymbol(initial + "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-        if (!Character.isLetter(symbol)) symbol = project.freeSymbol("abcdefghijklmnopqrstuvwxyz");
-        d.symbol = String.valueOf(symbol);
         beginEdit();
         project.addComponent(d);
         editComponentId = id;
         componentId = id;
         partsChanged();
-        say("Made component " + id + " drawn with '" + d.symbol + "'");
+        say("Made component " + id);
     }
 }

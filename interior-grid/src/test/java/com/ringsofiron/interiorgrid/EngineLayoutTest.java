@@ -9,13 +9,13 @@ import org.junit.jupiter.api.Test;
 /** Engines mount on the outside of the hull: where they may go, and how the ship reaches them. */
 class EngineLayoutTest {
 
-    private static ChassisBlueprintLoader.LoadResult load(String... rows) {
-        return ChassisBlueprintLoader.load(new ChassisBlueprint(rows));
+    private static ChassisBlueprintLoader.LoadResult load(ChassisBlueprint bp) {
+        return ChassisBlueprintLoader.load(bp);
     }
 
-    private static String refusal(String... rows) {
+    private static String refusal(ChassisBlueprint bp) {
         try {
-            load(rows);
+            load(bp);
             return null;
         } catch (IllegalArgumentException e) {
             return e.getMessage();
@@ -32,11 +32,14 @@ class EngineLayoutTest {
     @Test
     void anEngineAgainstTheAftHullPointsAftAndLiesWhollyOutsideIt() {
         ShipGridComponent g = load(
-                "   #####",
-                "EEE#R..#",
-                "EEE#...#",
+                new ChassisBlueprint("   #####",
                 "   #...#",
-                "   #####").grid;
+                "   #...#",
+                "   #...#",
+                "   #####")
+                .mount("engine", MountFootprint.MountSize.M, 0, 2, 1)
+                .mount("reactor", MountFootprint.MountSize.S, 4, 3)
+                .conduitRun(4, 3)).grid;
         MountFootprint m = engine(g);
         assertEquals(Side.LEFT, EngineLayout.nozzle(m));
         for (int y = 2; y <= 3; y++) {
@@ -55,12 +58,13 @@ class EngineLayoutTest {
     @Test
     void anEngineAgainstTheHullStandsWhollyOutsideIt() {
         ShipGridComponent g = load(
-                "#####",
+                new ChassisBlueprint("#####",
                 "#...#",
                 "#...#",
                 "#####",
-                " E   ",
-                " E   ").grid;
+                "     ",
+                "     ")
+                .mount("engine", MountFootprint.MountSize.S, 1, 0, 2)).grid;
         MountFootprint m = engine(g);
         assertEquals(Side.BOTTOM, EngineLayout.nozzle(m));
         assertTrue(EngineLayout.isCasing(g, m, 1, 1), "the flange is outside too");
@@ -71,79 +75,88 @@ class EngineLayoutTest {
     void anEngineMayNotOverlapTheHull() {
         // Its flange in place of a tile of the aft hull
         String inWall = refusal(
-                "  #####",
-                "EEE...#",
-                "EEE...#",
+                new ChassisBlueprint("  #####",
                 "  #...#",
-                "  #####");
+                "  #...#",
+                "  #...#",
+                "  #####")
+                .mount("engine", MountFootprint.MountSize.M, 0, 2, 1));
         assertNotNull(inWall);
         assertTrue(inWall.contains("wholly outside the hull"), inWall);
         // Through the aft hull and a tile on into the room
         String deep = refusal(
-                " ######",
-                "EEE...#",
-                "EEE...#",
+                new ChassisBlueprint(" ######",
                 " #....#",
-                " ######");
+                " #....#",
+                " #....#",
+                " ######")
+                .mount("engine", MountFootprint.MountSize.M, 0, 2, 1));
         assertNotNull(deep);
         assertTrue(deep.contains("wholly outside the hull"), deep);
-        // Standing in a room, with no end out in space
+        // Standing on the deck of a room
         String inside = refusal(
-                "######",
-                "#.E..#",
-                "#.E..#",
+                new ChassisBlueprint("######",
                 "#....#",
-                "######");
+                "#....#",
+                "#....#",
+                "######")
+                .mount("engine", MountFootprint.MountSize.S, 2, 2));
         assertNotNull(inside);
-        assertTrue(inside.contains("no end facing space"), inside);
+        assertTrue(inside.contains("wholly outside the hull"), inside);
     }
 
     @Test
     void anEngineNotOnTheHullIsRefused() {
         String floating = refusal(
-                "####   ",
+                new ChassisBlueprint("####   ",
                 "#..#   ",
-                "####  E",
-                "      E");
+                "####   ",
+                "       ")
+                .mount("engine", MountFootprint.MountSize.S, 6, 0));
         assertNotNull(floating);
-        assertTrue(floating.contains("not mounted on the hull"), floating);
+        assertTrue(floating.contains("against the outer hull"), floating);
     }
 
     @Test
     void anEngineNeedsFiveClearTilesPastItsNozzleForEachTileOfItsWidth() {
         // A Small engine, one tile wide: a strut of hull three tiles past its nozzle is in the way, six is not
         assertNotNull(refusal(
-                "     #####",
-                "#  EE#...#",
+                new ChassisBlueprint("     #####",
+                "#    #...#",
                 "     #...#",
-                "     #####"));
+                "     #####")
+                .mount("engine", MountFootprint.MountSize.S, 3, 2, 1)));
         assertNull(refusal(
-                "        #####",
-                "#     EE#...#",
+                new ChassisBlueprint("        #####",
+                "#       #...#",
                 "        #...#",
-                "        #####"));
+                "        #####")
+                .mount("engine", MountFootprint.MountSize.S, 6, 2, 1)));
         // A Medium engine, two tiles wide, needs ten: nine is too few, eleven enough
         String medium = refusal(
-                "            #####",
-                "         EEE#...#",
-                "#        EEE#...#",
+                new ChassisBlueprint("            #####",
                 "            #...#",
-                "            #####");
+                "#           #...#",
+                "            #...#",
+                "            #####")
+                .mount("engine", MountFootprint.MountSize.M, 9, 2, 1));
         assertNotNull(medium);
         assertTrue(medium.contains("needs 10 clear tiles"), medium);
         assertNull(refusal(
-                "              #####",
-                "           EEE#...#",
-                "#          EEE#...#",
+                new ChassisBlueprint("              #####",
                 "              #...#",
-                "              #####"));
+                "#             #...#",
+                "              #...#",
+                "              #####")
+                .mount("engine", MountFootprint.MountSize.M, 11, 2, 1)));
         // The grid's edge counts as space
         assertNull(refusal(
-                "   #####",
-                "EEE#...#",
-                "EEE#...#",
+                new ChassisBlueprint("   #####",
                 "   #...#",
-                "   #####"));
+                "   #...#",
+                "   #...#",
+                "   #####")
+                .mount("engine", MountFootprint.MountSize.M, 0, 2, 1)));
     }
 
     @Test
@@ -153,10 +166,11 @@ class EngineLayoutTest {
                 "#########",
                 "#.......#",
                 "#######.#",
-                "    E #.#",
-                "    E #.#",
                 "      #.#",
-                "      ###");
+                "      #.#",
+                "      #.#",
+                "      ###")
+                .mount("engine", MountFootprint.MountSize.S, 4, 2, 2);
         bp.mount(new MountFootprint(MountFootprint.MountKind.AUXILIARY, MountFootprint.MountSize.S, 4, 1, 1),
                 SubsystemComponent.SubsystemType.ENGINE);
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> ChassisBlueprintLoader.load(bp));
@@ -167,9 +181,13 @@ class EngineLayoutTest {
     void theShipPowersAndPipesAnEngineFromTheDeckBehindItsFlange() {
         ChassisBlueprint bp = new ChassisBlueprint(
                 "   ######",
-                " EE#R..P#",
-                "   #...P#",
-                "   ######");
+                "   #....#",
+                "   #....#",
+                "   ######")
+                .mount("tank", MountFootprint.MountSize.S, 7, 1)
+                .mount("engine", MountFootprint.MountSize.S, 1, 2, 1)
+                .mount("reactor", MountFootprint.MountSize.S, 4, 2)
+                .conduitRun(4, 2);
         for (int x = 4; x <= 7; x++) bp.pipe(x, 2);
         ChassisBlueprintLoader.LoadResult r = ChassisBlueprintLoader.load(bp);
         Engine engine = new Engine();
