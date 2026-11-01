@@ -75,7 +75,7 @@ final class CollarHeads {
     static void steerTilt(DockingPort p, boolean captured) {
         if (p.tilt == null) return;
         DockingTuning t = p.tuning();
-        float torque = captured ? DockingTuning.TILT_HOLD * t.breakTorque
+        float torque = captured ? DockingTuning.TILT_HOLD * t.workTorque
                 : DockingTuning.TILT_FREE * t.headForce * p.width * 0.5f;
         p.tilt.setMaxMotorTorque(torque * U * U);
         p.tilt.setMotorSpeed(-p.tilt.getJointAngle() * DockingTuning.TILT_RATE);
@@ -229,7 +229,7 @@ final class CollarHeads {
      * Brings the captured collar's extension to change at {@code rate} m/s (negative drawing in):
      * a push along the port's axis at the middle of each craft's mass, easing in over
      * {@link DockingTuning#DRIVE_TIME} and no harder than {@link DockingTuning#DRIVE_FORCE} of the
-     * break force. The slider only carries the head; were it the motor, its pull would come at the
+     * working force. The slider only carries the head; were it the motor, its pull would come at the
      * port, and on a ship whose port is meters from its middle it turned the ship harder than the
      * tilt spring could hold it square (a ship latched right after undocking swung in a few degrees).
      */
@@ -245,7 +245,7 @@ final class CollarHeads {
         // The extension grows as the craft draw apart along the port's axis
         float now = p.guide.getJointSpeed() * M;
         float push = MathUtils.clamp(mass * (rate - now) / DockingTuning.DRIVE_TIME,
-                -DockingTuning.DRIVE_FORCE * p.tuning().breakForce, DockingTuning.DRIVE_FORCE * p.tuning().breakForce);
+                -DockingTuning.DRIVE_FORCE * p.tuning().workForce, DockingTuning.DRIVE_FORCE * p.tuning().workForce);
         Vector2 n = DockingSystem.worldVector(own, p.normalX, p.normalY, v6);
         // Pushing the craft apart along n lengthens the collar
         if (dOwn) PhysicsManager.applyForce(own, -n.x * push, -n.y * push);

@@ -4,16 +4,19 @@ import com.ringsofiron.interiorgrid.MountFootprint.MountSize;
 
 /**
  * Tuning values for one docking port size: magnets, the active collar, latch tolerances and break
- * limits. All SI. These are prototype numbers, picked so a corvette (about 120 t) docks at walking
- * pace and tears a Small port loose under a second of full thrust.
+ * limits. All SI. These are prototype numbers, picked so a corvette (about 160 t) docks at walking
+ * pace, and a docked ship can fire every RCS block it has without tearing its latch: the most RCS
+ * force on any ship is 1 MN, and the most RCS torque 8 MN*m, plus up to about 15 MN*m from lateral
+ * RCS acting tens of meters from a bow port. A corvette's 2.4 MN main engine against a station
+ * still tears a Small latch in well under a second.
  */
 public final class DockingTuning {
     public static final DockingTuning SMALL = new DockingTuning(
-            3f, 3_000f, 1f, 6_000f, 1f, 150f, 0.12f, 6e5f, 6e5f);
+            3f, 3_000f, 1f, 6_000f, 1f, 150f, 0.12f, 6e5f, 6e5f, 1.5e6f, 2e7f);
     public static final DockingTuning MEDIUM = new DockingTuning(
-            4f, 8_000f, 1.25f, 16_000f, 2f, 400f, 0.15f, 1.5e6f, 2.5e6f);
+            4f, 8_000f, 1.25f, 16_000f, 2f, 400f, 0.15f, 1.5e6f, 2.5e6f, 3e6f, 4e7f);
     public static final DockingTuning LARGE = new DockingTuning(
-            5f, 20_000f, 1.5f, 40_000f, 2f, 900f, 0.2f, 4e6f, 8e6f);
+            5f, 20_000f, 1.5f, 40_000f, 2f, 900f, 0.2f, 4e6f, 8e6f, 6e6f, 8e7f);
 
     /** Gap between the two collar faces that still counts as touching, meters. Box2D keeps about 0.15 m. */
     public static final float LATCH_GAP = 0.35f;
@@ -34,7 +37,7 @@ public final class DockingTuning {
     public static final float CONTRACT_SPEED = 0.3f;
     /** Time constant a captured collar brings the craft to the speed it wants in, seconds. */
     public static final float DRIVE_TIME = 0.5f;
-    /** The most force a captured collar draws the craft in with, as a share of the break force. */
+    /** The most force a captured collar draws the craft in with, as a share of the working force. */
     public static final float DRIVE_FORCE = 0.5f;
     /** Collar spring stiffness and damping, as Box2D frequency (Hz) and damping ratio. */
     public static final float SPRING_HZ = 4f, SPRING_DAMPING = 0.7f;
@@ -47,7 +50,7 @@ public final class DockingTuning {
      * width: weak, so the magnet can tilt the head to the other port's angle.
      */
     public static final float TILT_FREE = 0.25f;
-    /** Torque a captured head's tilt spring turns the craft square with, as a share of the break torque. */
+    /** Torque a captured head's tilt spring turns the craft square with, as a share of the working torque. */
     public static final float TILT_HOLD = 0.15f;
     /** Friction of collars and collar heads: low, so a collar slides along the other port instead of sticking. */
     public static final float COLLAR_FRICTION = 0.02f;
@@ -71,7 +74,7 @@ public final class DockingTuning {
      * frequency of its critically damped spring (about 1.5 s to settle from a few tenths of a meter).
      */
     public static final float SEAT_RATE = 3f;
-    /** The most force and torque the seating puts on, as a share of the port's break limits. */
+    /** The most force and torque the seating puts on, as a share of the port's working force and torque. */
     public static final float SEAT_FORCE = 0.3f;
     /** Longest the seating may take before the weld is made anyway, seconds. */
     public static final float SEATING_TIME = 3f;
@@ -114,11 +117,21 @@ public final class DockingTuning {
     public final float headMass;
     /** Largest sideways offset between the port centers that still latches, meters. */
     public final float latchOffset;
-    /** Force and torque the locked connection survives, N and N*m. */
+    /**
+     * Force and torque the collar's own drive works at, N and N*m: its draw-in, tilt spring and
+     * seating are shares of these. Kept apart from the break limits, so a stronger latch doesn't
+     * also throw the craft about harder while docking.
+     */
+    public final float workForce, workTorque;
+    /**
+     * Force and torque the locked connection survives, N and N*m. Nov 2026: Small was 0.6 MN and
+     * 0.6 MN*m, Medium 1.5 and 2.5, Large 4 and 8; a docked corvette's RCS turned it free.
+     */
     public final float breakForce, breakTorque;
 
     private DockingTuning(float magnetRange, float magnetForce, float headRange, float headForce, float maxExtension,
-                          float headMass, float latchOffset, float breakForce, float breakTorque) {
+                          float headMass, float latchOffset, float workForce, float workTorque,
+                          float breakForce, float breakTorque) {
         this.magnetRange = magnetRange;
         this.magnetForce = magnetForce;
         this.headRange = headRange;
@@ -126,6 +139,8 @@ public final class DockingTuning {
         this.maxExtension = maxExtension;
         this.headMass = headMass;
         this.latchOffset = latchOffset;
+        this.workForce = workForce;
+        this.workTorque = workTorque;
         this.breakForce = breakForce;
         this.breakTorque = breakTorque;
     }
