@@ -585,7 +585,7 @@ public class ShipGridComponent implements Component {
                     tm = materials.get(t.material, t.weightClass).mass;
                     if (t.piece != null) tm *= t.piece.fillFraction();
                 } else {
-                    tm = DECK_MASS + (t.isPowerConduit() ? CONDUIT_CABLE_MASS : 0f);
+                    tm = DECK_MASS + (tileConduits[y][x] != null ? CONDUIT_CABLE_MASS : 0f);
                 }
                 Vector2 p = tileToLocal(x, y);
                 m += tm; mx += tm * p.x; my += tm * p.y;
