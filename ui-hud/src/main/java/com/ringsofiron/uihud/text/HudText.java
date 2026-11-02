@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.utils.Align;
 import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.ViewportManager;
@@ -29,7 +30,9 @@ public final class HudText {
     private final SpriteBatch batch;
     private final ViewportManager viewports;
     /** The HUD skin's body, banner and display fonts, rasterised for the UI scale. */
-    private final BitmapFont font, largeFont, displayFont;
+    private final BitmapFont font, titleFont, largeFont, displayFont;
+    /** The skin's panel and window frames, drawn under the status column and the panels over the game. */
+    private final Drawable panelFrame, windowFrame;
     private final GlyphLayout layout = new GlyphLayout();
     /** Where the status column's text ended last frame, UI y: off-screen marker names keep above or below it. */
     private float statusBottom = Float.MAX_VALUE;
@@ -41,7 +44,10 @@ public final class HudText {
         this.batch = batch;
         this.viewports = viewports;
         this.font = skin.getFont("default-font");
+        this.titleFont = skin.getFont("title-font");
         this.largeFont = skin.getFont("large-font");
+        this.panelFrame = skin.getDrawable("panel");
+        this.windowFrame = skin.getDrawable("window-bg");
         this.displayFont = skin.getFont("display-font");
     }
 
@@ -91,17 +97,12 @@ public final class HudText {
         viewports.applyUi();
         float panelX = statusPanelX();
         float panelTop = viewports.getUiViewport().getWorldHeight() - 10f;
-        if (statusBottom < panelTop) {
-            Gdx.gl.glEnable(GL20.GL_BLEND);
-            shapes.setProjectionMatrix(viewports.getUiCamera().combined);
-            shapes.begin(ShapeRenderer.ShapeType.Filled);
-            shapes.setColor(HudSkin.PANEL);
-            shapes.rect(panelX, statusBottom + 4f, STATUS_WIDTH, panelTop - statusBottom - 4f);
-            shapes.end();
-            Gdx.gl.glDisable(GL20.GL_BLEND);
-        }
         batch.setProjectionMatrix(viewports.getUiCamera().combined);
         batch.begin();
+        if (statusBottom < panelTop) {
+            batch.setColor(Color.WHITE);
+            panelFrame.draw(batch, panelX, statusBottom + 4f, STATUS_WIDTH, panelTop - statusBottom - 4f);
+        }
         statusLeft = panelX + STATUS_PAD;
         statusTop = panelTop - STATUS_PAD;
     }
@@ -152,14 +153,9 @@ public final class HudText {
                            Function<T, String> text) {
         viewports.applyUi();
         float[] p = panel(720f, 560f);
-        batch.setProjectionMatrix(viewports.getUiCamera().combined);
-        batch.begin();
-        font.setColor(Color.WHITE);
-        font.draw(batch, "Notice log", p[0], p[1]);
-        font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, keys, p[0], p[1], p[2], Align.right, false);
+        header("NOTICE LOG", keys, p);
         scroll = Math.min(scroll, Math.max(0, log.size() - 1));
-        float y = p[1] - 30f;
+        float y = p[1] - 18f;
         if (log.isEmpty()) {
             font.draw(batch, "Nothing yet.", p[0], y);
         }
@@ -186,12 +182,7 @@ public final class HudText {
     public void drawHelp(String keys, Map<String, List<String[]>> sections) {
         viewports.applyUi();
         float[] p = panel(1240f, 720f);
-        batch.setProjectionMatrix(viewports.getUiCamera().combined);
-        batch.begin();
-        font.setColor(Color.WHITE);
-        font.draw(batch, "Controls", p[0], p[1]);
-        font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, keys, p[0], p[1], p[2], Align.right, false);
+        header("CONTROLS", keys, p);
         // Columns enough for every line at the window's height, as many as the widest key leaves room for
         float keyWidth = 0f;
         int lines = 0;
@@ -203,7 +194,7 @@ public final class HudText {
             }
         }
         keyWidth += 12f;
-        float top = p[1] - 30f, rows = Math.max(1f, (top - p[3]) / 16f);
+        float top = p[1] - 18f, rows = Math.max(1f, (top - p[3]) / 16f);
         int columns = Math.max(1, Math.min((int) Math.ceil(lines / rows), (int) (p[2] / (keyWidth + 120f))));
         float colWidth = (p[2] - 20f * (columns - 1)) / columns;
         float x = p[0], y = top;
@@ -216,7 +207,7 @@ public final class HudText {
                 x += colWidth + 20f;
                 y = top;
             }
-            font.setColor(Color.SKY);
+            font.setColor(HudSkin.HUD_CYAN);
             font.draw(batch, e.getKey(), x, y);
             y -= 20f;
             for (String[] h : e.getValue()) {
@@ -237,7 +228,18 @@ public final class HudText {
         batch.end();
     }
 
-    /** A panel in the middle of the screen, dimming what is behind it; returns its {x, top, width, bottom} for text. */
+    /** A panel's title on its header band, with what the keys do at the right of it. */
+    private void header(String title, String keys, float[] p) {
+        titleFont.setColor(HudSkin.HUD_CYAN);
+        titleFont.draw(batch, title, p[0], p[4] - 7f);
+        font.setColor(HudSkin.HUD_DIM);
+        font.draw(batch, keys, p[0], p[4] - 7f, p[2], Align.right, false);
+    }
+
+    /**
+     * A panel in the middle of the screen, framed like the HUD's windows, dimming what is behind it.
+     * Leaves the batch begun in UI units; returns {x, top, width, bottom} for text, and the frame's top.
+     */
     private float[] panel(float width, float height) {
         float w = viewports.getUiViewport().getWorldWidth();
         float h = viewports.getUiViewport().getWorldHeight();
@@ -251,14 +253,14 @@ public final class HudText {
         shapes.setColor(0f, 0f, 0f, 0.5f);
         shapes.rect(0f, 0f, w, h);
         // Dark enough that the HUD under it doesn't read through the text
-        shapes.setColor(0f, 0f, 0f, 0.92f);
-        shapes.rect(x, y, width, height);
-        shapes.end();
-        shapes.begin(ShapeRenderer.ShapeType.Line);
-        shapes.setColor(0.4f, 0.6f, 0.8f, 1f);
+        shapes.setColor(0f, 0f, 0f, 0.8f);
         shapes.rect(x, y, width, height);
         shapes.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
-        return new float[]{x + 16f, y + height - 16f, width - 32f, y + 16f};
+        batch.setProjectionMatrix(viewports.getUiCamera().combined);
+        batch.begin();
+        batch.setColor(Color.WHITE);
+        windowFrame.draw(batch, x, y, width, height);
+        return new float[]{x + 16f, y + height - 28f, width - 32f, y + 16f, y + height};
     }
 }

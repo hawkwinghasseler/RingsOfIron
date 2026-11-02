@@ -28,7 +28,8 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
  * Style names: Label "default", "title", "dim", "alert", "warn", "prompt", "banner" (a large alert),
  * "heading" (a large title), "display"; Window "default";
  * TextButton "default", "menu" (wide, for the game's menus), "toggle" (a menu button that stays down when picked); CheckBox "default"; Slider "default-horizontal";
- * TextField, SelectBox, List and ScrollPane "default"; drawables "white", "panel", "panel-border", "prompt-bg".
+ * TextField, SelectBox, List and ScrollPane "default"; drawables "white", "panel", "panel-border", "prompt-bg",
+ * "window-bg". Panels, windows and controls are {@link HudFrame}s: framed, with corner brackets.
  */
 public final class HudSkin {
     public static final Color HUD_CYAN = new Color(0.45f, 0.85f, 1f, 1f);
@@ -36,6 +37,10 @@ public final class HudSkin {
     public static final Color HUD_ALERT = new Color(1f, 0.3f, 0.25f, 1f);
     public static final Color HUD_WARN = new Color(1f, 0.7f, 0.2f, 1f);
     public static final Color PANEL = new Color(0.02f, 0.05f, 0.09f, 0.85f);
+    /** The top of a panel's fill, which shades down to {@link #PANEL}. */
+    public static final Color PANEL_TOP = new Color(0.045f, 0.095f, 0.15f, 0.85f);
+    /** A button's fill, top and bottom. */
+    private static final Color BUTTON_TOP = new Color(0.12f, 0.23f, 0.33f, 0.92f), BUTTON = new Color(0.07f, 0.15f, 0.23f, 0.92f);
 
     private HudSkin() {}
 
@@ -66,12 +71,30 @@ public final class HudSkin {
         skin.add("display-font", displayFont);
         skin.add(SCALE, new float[]{scale});
 
-        skin.add("panel", skin.newDrawable("white", PANEL), Drawable.class);
+        TextureRegion region = skin.getRegion("white");
+        // Panels: shaded a touch lighter at the top, a hairline edge, bright corner brackets and a
+        // short tab on the top edge over the panel's title
+        skin.add("panel", new HudFrame(region, PANEL_TOP, PANEL)
+                .border(alpha(HUD_CYAN, 0.16f)).corners(alpha(HUD_CYAN, 0.7f), 7f)
+                .accent(HUD_CYAN, 22f), Drawable.class);
         skin.add("panel-border", skin.newDrawable("white", new Color(HUD_CYAN.r, HUD_CYAN.g, HUD_CYAN.b, 0.5f)), Drawable.class);
-        skin.add("prompt-bg", skin.newDrawable("white", new Color(0f, 0f, 0f, 0.6f)), Drawable.class);
-        skin.add("button-up", skin.newDrawable("white", new Color(0.1f, 0.2f, 0.3f, 0.9f)), Drawable.class);
-        skin.add("button-over", skin.newDrawable("white", new Color(0.15f, 0.3f, 0.45f, 0.9f)), Drawable.class);
-        skin.add("button-down", skin.newDrawable("white", new Color(0.25f, 0.45f, 0.6f, 0.9f)), Drawable.class);
+        HudFrame promptBg = new HudFrame(region, new Color(0.03f, 0.07f, 0.11f, 0.85f), new Color(0f, 0.02f, 0.04f, 0.85f))
+                .border(alpha(HUD_CYAN, 0.25f)).leftBar(HUD_CYAN, 3f);
+        // Room for the bar, and the text off the edges
+        promptBg.setLeftWidth(10f);
+        promptBg.setRightWidth(7f);
+        promptBg.setTopHeight(2f);
+        promptBg.setBottomHeight(2f);
+        skin.add("prompt-bg", promptBg, Drawable.class);
+        // Buttons: a framed plate that lights its edge under the pointer and fills when pressed
+        HudFrame buttonUp = new HudFrame(region, BUTTON_TOP, BUTTON).border(alpha(HUD_CYAN, 0.28f));
+        HudFrame buttonOver = new HudFrame(buttonUp).fill(lighter(BUTTON_TOP, 0.06f), lighter(BUTTON, 0.05f))
+                .border(alpha(HUD_CYAN, 0.75f)).leftBar(HUD_CYAN, 3f);
+        HudFrame buttonDown = new HudFrame(buttonUp).fill(new Color(0.22f, 0.44f, 0.6f, 0.95f), new Color(0.14f, 0.3f, 0.44f, 0.95f))
+                .border(HUD_CYAN).leftBar(HUD_CYAN, 3f);
+        skin.add("button-up", buttonUp, Drawable.class);
+        skin.add("button-over", buttonOver, Drawable.class);
+        skin.add("button-down", buttonDown, Drawable.class);
 
         skin.add("default", new Label.LabelStyle(font, Color.WHITE));
         skin.add("title", new Label.LabelStyle(titleFont, HUD_CYAN));
@@ -85,7 +108,13 @@ public final class HudSkin {
         skin.add("heading", new Label.LabelStyle(largeFont, HUD_CYAN));
         skin.add("display", new Label.LabelStyle(displayFont, HUD_CYAN));
 
-        Window.WindowStyle window = new Window.WindowStyle(titleFont, HUD_CYAN, skin.newDrawable("white", new Color(0.03f, 0.07f, 0.12f, 0.92f)));
+        // Windows: the panel's frame, with the title on a band of its own across the top. The
+        // windows leave 28 units over their content for the title; the band fills them.
+        HudFrame windowBg = new HudFrame(region, new Color(0.05f, 0.1f, 0.16f, 0.95f), new Color(0.02f, 0.045f, 0.08f, 0.95f))
+                .border(alpha(HUD_CYAN, 0.22f)).corners(alpha(HUD_CYAN, 0.8f), 10f)
+                .header(alpha(HUD_CYAN, 0.08f), alpha(HUD_CYAN, 0.35f), 28f).accent(HUD_CYAN, 36f);
+        skin.add("window-bg", windowBg, Drawable.class);
+        Window.WindowStyle window = new Window.WindowStyle(titleFont, HUD_CYAN, windowBg);
         skin.add("default", window);
 
         TextButton.TextButtonStyle button = new TextButton.TextButtonStyle(
@@ -93,36 +122,31 @@ public final class HudSkin {
         button.over = skin.getDrawable("button-over");
         skin.add("default", button);
 
-        Drawable boxOff = skin.newDrawable("white", new Color(0.1f, 0.2f, 0.3f, 1f));
-        Drawable boxOn = skin.newDrawable("white", HUD_CYAN);
-        boxOff.setMinWidth(14f);
-        boxOff.setMinHeight(14f);
-        boxOn.setMinWidth(14f);
-        boxOn.setMinHeight(14f);
+        HudFrame boxOff = new HudFrame(region, new Color(0.05f, 0.1f, 0.16f, 1f)).border(alpha(HUD_CYAN, 0.6f)).size(14f, 14f);
+        HudFrame boxOn = new HudFrame(boxOff).border(HUD_CYAN).inset(HUD_CYAN, 3f);
         skin.add("default", new CheckBox.CheckBoxStyle(boxOff, boxOn, font, Color.WHITE));
 
         // The game's menus and settings
         TextButton.TextButtonStyle menu = new TextButton.TextButtonStyle(button);
         menu.disabledFontColor = HUD_DIM;
-        menu.disabled = skin.newDrawable("white", new Color(0.06f, 0.1f, 0.14f, 0.9f));
+        menu.disabled = new HudFrame(region, new Color(0.05f, 0.08f, 0.11f, 0.85f)).border(alpha(HUD_DIM, 0.12f));
         skin.add("menu", menu);
         TextButton.TextButtonStyle toggle = new TextButton.TextButtonStyle(menu);
-        toggle.checked = skin.getDrawable("button-down");
+        toggle.checked = new HudFrame(buttonDown).fill(new Color(0.12f, 0.28f, 0.4f, 0.95f), new Color(0.08f, 0.19f, 0.28f, 0.95f));
         toggle.checkedFontColor = HUD_CYAN;
         skin.add("toggle", toggle);
 
-        Drawable track = skin.newDrawable("white", new Color(0.1f, 0.2f, 0.3f, 1f));
+        HudFrame track = new HudFrame(region, new Color(0.05f, 0.1f, 0.16f, 1f)).border(alpha(HUD_CYAN, 0.3f));
         track.setMinHeight(6f);
-        Drawable knob = skin.newDrawable("white", HUD_CYAN);
-        knob.setMinWidth(10f);
-        knob.setMinHeight(16f);
+        HudFrame knob = new HudFrame(region, new Color(0.75f, 0.94f, 1f, 1f), HUD_CYAN).border(new Color(0.02f, 0.05f, 0.09f, 1f)).size(10f, 16f);
         Slider.SliderStyle slider = new Slider.SliderStyle(track, knob);
-        Drawable filled = skin.newDrawable("white", new Color(HUD_CYAN.r, HUD_CYAN.g, HUD_CYAN.b, 0.5f));
+        HudFrame filled = new HudFrame(region, alpha(HUD_CYAN, 0.7f), alpha(HUD_CYAN, 0.45f));
         filled.setMinHeight(6f);
         slider.knobBefore = filled;
         skin.add("default-horizontal", slider);
 
-        Drawable field = skin.newDrawable("white", new Color(0.05f, 0.1f, 0.16f, 1f));
+        HudFrame field = new HudFrame(region, new Color(0.03f, 0.07f, 0.11f, 1f), new Color(0.05f, 0.1f, 0.16f, 1f))
+                .border(alpha(HUD_CYAN, 0.35f));
         field.setLeftWidth(6f);
         field.setRightWidth(6f);
         field.setMinHeight(24f);
@@ -131,7 +155,7 @@ public final class HudSkin {
         Drawable selection = skin.newDrawable("white", new Color(HUD_CYAN.r, HUD_CYAN.g, HUD_CYAN.b, 0.4f));
         skin.add("default", new TextField.TextFieldStyle(font, Color.WHITE, cursor, selection, field));
 
-        Drawable listBg = skin.newDrawable("white", new Color(0.03f, 0.07f, 0.12f, 0.97f));
+        Drawable listBg = new HudFrame(region, new Color(0.03f, 0.07f, 0.12f, 0.97f)).border(alpha(HUD_CYAN, 0.35f));
         List.ListStyle list = new List.ListStyle(font, Color.WHITE, HUD_DIM, selection);
         list.background = listBg;
         skin.add("default", list);
@@ -139,7 +163,7 @@ public final class HudSkin {
         scroll.vScrollKnob = skin.newDrawable("white", HUD_DIM);
         scroll.vScrollKnob.setMinWidth(6f);
         skin.add("default", scroll);
-        Drawable box = skin.newDrawable("white", new Color(0.1f, 0.2f, 0.3f, 0.9f));
+        HudFrame box = new HudFrame(buttonUp);
         box.setLeftWidth(6f);
         box.setRightWidth(6f);
         box.setMinHeight(24f);
@@ -149,6 +173,14 @@ public final class HudSkin {
     }
 
     private static final String SCALE = "ui-scale";
+
+    private static Color alpha(Color c, float a) {
+        return new Color(c.r, c.g, c.b, a);
+    }
+
+    private static Color lighter(Color c, float by) {
+        return new Color(Math.min(1f, c.r + by), Math.min(1f, c.g + by), Math.min(1f, c.b + by), c.a);
+    }
 
     /** The UI scale {@code skin}'s fonts were last rasterised for. */
     public static float scaleOf(Skin skin) {

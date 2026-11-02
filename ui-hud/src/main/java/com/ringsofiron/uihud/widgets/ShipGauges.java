@@ -138,14 +138,35 @@ public class ShipGauges extends Table {
         public void draw(Batch batch, float parentAlpha) {
             Color old = batch.getColor().cpy();
             float x = getX(), y = getY(), w = getWidth(), h = getHeight();
-            batch.setColor(0.1f, 0.2f, 0.3f, 0.9f * parentAlpha);
+            // The track: dark, with a faint edge
+            batch.setColor(0.03f, 0.07f, 0.11f, 0.95f * parentAlpha);
             batch.draw(white, x, y, w, h);
+            Color c = Float.isNaN(level) ? HudSkin.HUD_DIM : alert ? HudSkin.HUD_ALERT : levelColor(level);
+            batch.setColor(c.r, c.g, c.b, 0.22f * parentAlpha);
+            outline(batch, x, y, w, h);
             if (!Float.isNaN(level)) {
-                Color c = alert ? HudSkin.HUD_ALERT : levelColor(level);
-                batch.setColor(c.r, c.g, c.b, parentAlpha);
-                batch.draw(white, x + 1f, y + 1f, Math.max(0f, Math.min(1f, level)) * (w - 2f), h - 2f);
+                float fill = Math.max(0f, Math.min(1f, level)) * (w - 2f);
+                if (fill > 0f) {
+                    // The fill, a lighter band along its top so it reads as lit, and a bright leading edge
+                    batch.setColor(c.r * 0.8f, c.g * 0.8f, c.b * 0.8f, 0.9f * parentAlpha);
+                    batch.draw(white, x + 1f, y + 1f, fill, h - 2f);
+                    batch.setColor(Math.min(1f, c.r + 0.25f), Math.min(1f, c.g + 0.25f), Math.min(1f, c.b + 0.25f), 0.55f * parentAlpha);
+                    batch.draw(white, x + 1f, y + h - 1f - Math.max(1f, (h - 2f) / 3f), fill, Math.max(1f, (h - 2f) / 3f));
+                    batch.setColor(1f, 1f, 1f, 0.8f * parentAlpha);
+                    batch.draw(white, x + 1f + fill - 1f, y + 1f, 1f, h - 2f);
+                }
             }
+            // Notches at each quarter, cut through the fill, so a level reads at a glance
+            batch.setColor(0f, 0f, 0f, 0.55f * parentAlpha);
+            for (int q = 1; q < 4; q++) batch.draw(white, x + Math.round(w * q / 4f), y + 1f, 1f, h - 2f);
             batch.setColor(old);
+        }
+
+        private void outline(Batch batch, float x, float y, float w, float h) {
+            batch.draw(white, x, y, w, 1f);
+            batch.draw(white, x, y + h - 1f, w, 1f);
+            batch.draw(white, x, y + 1f, 1f, h - 2f);
+            batch.draw(white, x + w - 1f, y + 1f, 1f, h - 2f);
         }
 
         @Override
