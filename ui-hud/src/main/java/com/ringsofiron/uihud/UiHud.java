@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.utils.Disposable;
+import com.badlogic.gdx.utils.IntSet;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.components.InteractableConsoleComponent;
@@ -93,6 +94,8 @@ public class UiHud implements Disposable {
     private Runnable viewKey;
 
     private final Group markerLayer = new Group();
+    /** Keys the variant used this frame, which the game's own bindings leave alone ({@link #keyUsedByVariant}). */
+    private final IntSet variantKeys = new IntSet();
     /** The HUD variant's layer: above the classic panels, below the windows and the map. */
     private final Group variantLayer = new Group();
     private final HudData data = new HudData();
@@ -331,7 +334,18 @@ public class UiHud implements Disposable {
     public boolean handleKey(int keycode) {
         if (handleClassicKey(keycode)) return true;
         // Keys the HUD did not use go to the variant, unless a window has the keys
-        return variant != null && openWindow() == null && !isMapOpen() && variant.keyDown(keycode);
+        boolean used = variant != null && openWindow() == null && !isMapOpen() && variant.keyDown(keycode);
+        if (used) variantKeys.add(keycode);
+        return used;
+    }
+
+    /**
+     * Whether the HUD variant used {@code keycode} this frame ({@link HudVariant#keyDown}): the game
+     * reads its bindings by polling, so it asks here and leaves a key the variant took alone (Alt with
+     * a digit picks an MFD page, not a helm order).
+     */
+    public boolean keyUsedByVariant(int keycode) {
+        return variantKeys.contains(keycode);
     }
 
     private boolean handleClassicKey(int keycode) {
@@ -674,6 +688,8 @@ public class UiHud implements Disposable {
         applyHidden();
         stage.act(delta);
         stage.draw();
+        // The game has read this frame's keys by now: the next frame's are its own
+        variantKeys.clear();
     }
 
     public void resize(int width, int height) {
