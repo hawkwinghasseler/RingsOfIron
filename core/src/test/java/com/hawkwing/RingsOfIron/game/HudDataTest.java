@@ -149,6 +149,21 @@ class HudDataTest {
     }
 
     @Test
+    void aWreckedReactorIsAFaultAndAWarning() {
+        SubsystemComponent reactor = system(SubsystemComponent.SubsystemType.REACTOR);
+        reactor.health = 0f;
+        world.update(FRAME);
+        data.refresh();
+        PowerStatusProvider.SystemRow row = null;
+        for (PowerStatusProvider.SystemRow r : data.powerFrame.faults) if ("REACTOR".equals(r.system)) row = r;
+        assertNotNull(row, () -> "no reactor fault: " + data.powerFrame.faults.size + " faults");
+        assertEquals(PowerStatusProvider.Fault.DESTROYED, row.fault);
+        AlertRegistry.Alert a = data.alerts.get("sys:REACTOR:" + row.tileX + "," + row.tileY);
+        assertNotNull(a);
+        assertEquals(AlertRegistry.Level.WARNING, a.level);
+    }
+
+    @Test
     void theMessageFeedCarriesTheGamesNotices() {
         world.notices.post("Test notice", NoticeLog.Kind.WARNING);
         data.refresh();
