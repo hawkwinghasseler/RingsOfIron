@@ -24,7 +24,7 @@
   const INK = {
     glass: '#040605', glassTop: '#08100e', bezel: '#141517', bezelHi: '#26282b', bezelLo: '#08090a',
     silk: '#8d949a', silkDim: '#5b6167', key: '#26282c', keyHi: '#3a3d42', keyLo: '#111214',
-    lcd: '#9aa58a', lcdInk: '#1b2117',
+    lcd: '#9aa58a', lcdInk: '#1b2117', cut: '#0a0605',
   };
 
   // ---------------------------------------------------------------- 5x7 character ROM
@@ -112,6 +112,7 @@
   def('…', '..... ..... ..... ..... ..... #.#.# .....');
   def('¢', '..#.. .###. #.#.. #.#.. #.#.. .###. ..#..');
   def('♦', '..... ..#.. .###. ##### .###. ..#.. .....');
+  def('●', '..... .###. ##### ##### ##### .###. .....');
 
   // ---------------------------------------------------------------- segment masks
   const SEG7 = {
@@ -226,13 +227,22 @@
       this.canvas = canvas;
       this.base = canvas.getContext('2d');
       const mk = () => { const c = document.createElement('canvas'); c.width = canvas.width; c.height = canvas.height; return c; };
-      this.glassC = mk(); this.projC = mk();
-      this.glass = this.glassC.getContext('2d'); this.proj = this.projC.getContext('2d');
-      for (const c of [this.base, this.glass, this.proj]) c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this.glassC = mk(); this.projC = mk(); this.cutC = mk();
+      this.glass = this.glassC.getContext('2d'); this.proj = this.projC.getContext('2d'); this.cutX = this.cutC.getContext('2d');
+      for (const c of [this.base, this.glass, this.proj, this.cutX]) c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this.cuts = 0;
       this.modules = [];
       this.font = 'Inter';
     }
     ctxFor(o) { return o && o.layer === 'proj' ? this.proj : this.glass; }
+    // The guide's minimum sizes (section 15). A call below them is reported once, unless it says it is
+    // a specimen (o.small), so a mockup can't quietly drop under the minimums.
+    tooSmall(kind, v, min, str, o) {
+      if (v >= min - 1e-6 || (o && o.small)) return;
+      const key = kind + ':' + v + ':' + str;
+      if ((this._warned ||= new Set()).has(key)) return;
+      this._warned.add(key); console.warn(`under minimum: ${kind} ${v} < ${min} "${String(str).slice(0, 24)}"`);
+    }
 
     // -------- backgrounds
     image(img, x, y, w, h, o) {
@@ -294,7 +304,8 @@
 
     // -------- printed (non-emissive) legends on the bezel
     silk(x, y, str, o = {}) {
-      const b = this.base, size = o.size ?? 7.5;
+      const b = this.base, size = o.size ?? 12;
+      this.tooSmall('silk', size, 12, str, o);
       b.save();
       b.font = `${o.weight ?? 600} ${size}px ${this.font}`;
       b.fillStyle = o.color ?? INK.silk;
@@ -315,7 +326,8 @@
 
     // -------- annunciator legends: phosphor laid down in a fixed shape
     legend(x, y, str, o = {}) {
-      const size = o.size ?? 8, sx = o.condense ?? 0.8;
+      const size = o.size ?? 13, sx = o.condense ?? 0.8;
+      this.tooSmall('legend', size, 12, str, o);
       const lit = o.lit !== false;
       const draw = (ctx, style) => {
         ctx.save();
@@ -335,6 +347,7 @@
 
     // -------- seven segments
     seg7(x, y, h, str, o = {}) {
+      this.tooSmall('seg7', h, 12, str, o);
       const w = h * (o.aspect ?? 0.54), t = h * (o.thick ?? 0.13), gap = h * 0.022, s = Math.tan((o.slant ?? 8) * D);
       const adv = w + h * (o.spacing ?? 0.26);
       // parse into cells: char + decimal point / colon flags
@@ -384,6 +397,7 @@
 
     // -------- fourteen segments
     seg14(x, y, h, str, o = {}) {
+      this.tooSmall('seg14', h, 12, str, o);
       const w = h * (o.aspect ?? 0.6), t = h * (o.thick ?? 0.1), gap = h * 0.025, s = Math.tan((o.slant ?? 8) * D);
       const adv = w + h * (o.spacing ?? 0.24);
       const chars = [...String(str).toUpperCase()];
@@ -419,6 +433,7 @@
     // lights the cells' unlit dots instead; o.ghost draws the unlit dots of every cell.
     dm(x, y, str, o = {}) {
       const p = o.pitch ?? 2, d = p * (o.dot ?? 0.8), rr = d * 0.28;
+      if (String(str).trim()) this.tooSmall('dot pitch', p, 1.5, str, o);
       const chars = [...String(str).toUpperCase()];
       const n = o.cells ?? chars.length;
       while (chars.length < n) (o.align === 'right' ? chars.unshift(' ') : chars.push(' '));
@@ -433,19 +448,19 @@
         const bx = x + inv[0] * adv - p * 0.5, bw = (inv[1] - inv[0]) * adv - p * 0.5 + p * 0.5;
         litCtx.fillStyle = lit; rrect(litCtx, bx, y - p, bw, 9 * p, p * 0.4); litCtx.fill();
       }
+      const holes = [];
       chars.forEach((ch, i) => {
         const g = ROM[ch] ?? ROM['?'];
         const flip = inv && i >= inv[0] && i < inv[1];
         for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
           const on = g[r][c] === '#';
           const dx = x + i * adv + c * p + (p - d) / 2, dy = y + r * p + (p - d) / 2;
-          if (flip) {
-            if (on) { litCtx.save(); litCtx.globalCompositeOperation = 'destination-out'; litCtx.fillStyle = '#000';
-              litCtx.fillRect(x + i * adv + c * p + p * 0.04, y + r * p + p * 0.04, p * 0.92, p * 0.92); litCtx.restore(); }
-          } else if (on) { litCtx.fillStyle = lit; rrect(litCtx, dx, dy, d, d, rr); litCtx.fill(); }
+          if (flip) { if (on) holes.push([x + i * adv + c * p + p * 0.04, y + r * p + p * 0.04, p * 0.92, p * 0.92]); }
+          else if (on) { litCtx.fillStyle = lit; rrect(litCtx, dx, dy, d, d, rr); litCtx.fill(); }
           else if (ghost) { this.base.fillStyle = gst; rrect(this.base, dx, dy, d, d, rr); this.base.fill(); }
         }
       });
+      if (holes.length) this.cut(c => { c.fillStyle = '#000'; for (const h of holes) c.fillRect(h[0], h[1], h[2], h[3]); }, o);
       return n * adv - p;
     }
     dmWidth(n, o = {}) { const p = o.pitch ?? 2; return n * p * (o.cellW ?? 6) - p; }
@@ -525,18 +540,28 @@
       this.rectLit(x + g, y, w - 2 * g, t, o); this.rectLit(x + g, y + h - t, w - 2 * g, t, o);
       this.rectLit(x, y + g, t, h - 2 * g, o); this.rectLit(x + w - t, y + g, t, h - 2 * g, o);
     }
+    // Cuts a shape out of the lit glass: fn draws it in black. The shape is also kept on the cut mask, so
+    // finish() can darken it again after the bloom; otherwise the glow around it fills the letters in.
+    cut(fn, o = {}) {
+      const g = this.ctxFor(o); g.save(); g.globalCompositeOperation = 'destination-out'; fn(g); g.restore();
+      if (o.layer === 'proj') return;
+      const c = this.cutX; c.save(); fn(c); c.restore(); this.cuts++;
+    }
     // Cuts text out of the emissive layer: dark letters in a lit block.
     knockout(x, y, str, o = {}) {
-      const ctx = this.ctxFor(o), size = o.size ?? 8, sx = o.condense ?? 0.8;
-      ctx.save(); ctx.globalCompositeOperation = 'destination-out';
-      ctx.font = `${o.weight ?? 700} ${size}px ${this.font}`; ctx.letterSpacing = `${(o.track ?? 0.06) * size}px`;
-      const w = ctx.measureText(str).width * sx;
-      const ax = o.align === 'right' ? x - w : o.align === 'center' ? x - w / 2 : x;
-      ctx.translate(ax, y); ctx.scale(sx, 1); ctx.fillStyle = '#000'; ctx.fillText(str, 0, 0); ctx.restore();
+      const size = o.size ?? 13, sx = o.condense ?? 0.8;
+      this.tooSmall('inverse legend', size, 12, str, o);
+      let w = 0;
+      this.cut(ctx => {
+        ctx.font = `${o.weight ?? 700} ${size}px ${this.font}`; ctx.letterSpacing = `${(o.track ?? 0.06) * size}px`;
+        w = ctx.measureText(str).width * sx;
+        const ax = o.align === 'right' ? x - w : o.align === 'center' ? x - w / 2 : x;
+        ctx.translate(ax, y); ctx.scale(sx, 1); ctx.fillStyle = '#000'; ctx.fillText(str, 0, 0);
+      }, o);
       return w;
     }
     legendWidth(str, o = {}) {
-      const b = this.base, size = o.size ?? 8; b.save();
+      const b = this.base, size = o.size ?? 13; b.save();
       b.font = `${o.weight ?? 700} ${size}px ${this.font}`; b.letterSpacing = `${(o.track ?? 0.06) * size}px`;
       const w = b.measureText(str).width * (o.condense ?? 0.8); b.restore(); return w;
     }
@@ -571,7 +596,7 @@
       b.strokeStyle = 'rgba(255,255,255,0.08)'; b.lineWidth = 0.6;
       b.beginPath(); b.moveTo(x + 2.5, y + 0.6); b.lineTo(x + w - 2.5, y + 0.6); b.stroke();
       b.restore();
-      if (label) this.silk(x + w / 2, y + h / 2 + (o.size ?? 6.5) * 0.36, label, { size: o.size ?? 6.5, align: 'center', color: o.labelColor ?? '#c9ced2' });
+      if (label) this.silk(x + w / 2, y + h / 2 + (o.size ?? 12) * 0.36, label, { size: o.size ?? 12, align: 'center', color: o.labelColor ?? '#c9ced2' });
       if (o.led) this.led(x + w / 2, y - 4.5, o.led, o.ledOn);
     }
     led(x, y, color, on, r = 1.5) {
@@ -592,8 +617,8 @@
       b.restore();
       if (on) { const c = this.glass; c.fillStyle = rgba(rgb, 0.42); rrect(c, x, y, w, h, 2.5); c.fill(); }
       const ink = on ? (color === 'zinc' ? 'rgba(0,30,22,0.92)' : 'rgba(40,6,0,0.92)') : 'rgba(150,156,160,0.55)';
-      if (l2) { this.silkOver(x + w / 2, y + h / 2 - 1, l1, ink, 7.5); this.silkOver(x + w / 2, y + h / 2 + 7.5, l2, ink, 7.5); }
-      else this.silkOver(x + w / 2, y + h / 2 + 2.8, l1, ink, 8);
+      if (l2) { this.silkOver(x + w / 2, y + h / 2 - 1.5, l1, ink, 12); this.silkOver(x + w / 2, y + h / 2 + 11, l2, ink, 12); }
+      else this.silkOver(x + w / 2, y + h / 2 + 4.3, l1, ink, 12);
     }
     // Ink printed on top of everything (a lamp cap's legend, which must sit over its glow).
     silkOver(x, y, str, color, size) { (this.late ||= []).push({ x, y, str, color, size }); }
@@ -609,6 +634,7 @@
     }
     // LCD segments are dark, cast a faint shadow on the reflector, and ghost very slightly.
     lcdSeg7(x, y, h, str, o = {}) {
+      this.tooSmall('lcd seg7', h, 12, str, o);
       this._drawSegs(x + 0.7, y + 0.8, h, str, 'rgba(0,0,0,0.16)', o);
       this._drawSegs(x, y, h, str, o.ink ?? '#1a2016', o, 'rgba(0,0,0,0.045)');
     }
@@ -630,7 +656,8 @@
       });
     }
     lcdText(x, y, str, o = {}) {
-      const b = this.base, size = o.size ?? 7;
+      const b = this.base, size = o.size ?? 13;
+      this.tooSmall('lcd text', size, 12, str, o);
       for (const [dx, dy, col] of [[0.6, 0.7, 'rgba(0,0,0,0.16)'], [0, 0, o.ink ?? '#1a2016']]) {
         b.save(); b.font = `700 ${size}px ${this.font}`; b.letterSpacing = `${0.08 * size}px`;
         const sx = 0.82, w = b.measureText(str).width * sx;
@@ -680,6 +707,14 @@
       };
       bloom(this.glassC, o.bloom ?? 1);
       bloom(this.projC, o.projBloom ?? 0.8);
+      // cut letters: the bloom has filled them with glow, but the eye sees a dark letter in a lit block,
+      // because the glow is in the glass in front of the letter, not in the letter. Darken them again.
+      if (this.cuts) {
+        const t = document.createElement('canvas'); t.width = W; t.height = H;
+        const tc = t.getContext('2d'); tc.drawImage(this.cutC, 0, 0);
+        tc.globalCompositeOperation = 'source-in'; tc.fillStyle = INK.cut; tc.fillRect(0, 0, W, H);
+        b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = o.cutDepth ?? 0.8; b.drawImage(t, 0, 0); b.restore();
+      }
       // filaments and glare, clipped to each window
       for (const mo of this.modules) {
         b.save(); b.beginPath();

@@ -4,9 +4,27 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
-| Ship stations | `functional-stations.md` round 5 | Round 1 done; round 2 open |
-| Context-driven | `functional-context.md` version 2 | Round 1 done; round 2 open |
-| Task-driven | `functional-task.md` first version | Round 1 done; round 2 open |
+| Ship stations | `functional-stations.md` round 8 | Round 2 done. No visual criticism open; one functional note with the designer (callout length) |
+| Context-driven | `functional-context.md` version 4 | Round 2 done. No visual criticism open; four functional notes with the designer |
+| Task-driven | `functional-task.md` round 4 | Round 2 done. No visual criticism open; four functional notes with the designer |
+
+A round 3 happens for a variation when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 2
+
+**Renderer.** Inverse letters are kept on a cut mask and darkened again after the bloom, so warning tiles, the seat in use and active modes read at full drive. Legends are set in Inter SemiBold. The renderer now warns when any text is under the guide's minimum or overflows its field; every mockup and the specimen render with no warnings.
+
+**Type to the minimums** (guide section 15): legends 13 (12 for silk, key caps and lamp words), seven segments 12, dot matrix at pitch 1.5 for column text and 2 for running text and world labels, LCD text 12, anything clickable 24. Where a module no longer fit, content was cut by priority, not shrunk. The specimen sheet was redrawn at the same sizes.
+
+**Stations** (spec round 5 to round 8): the corvette's real mounts and the First Play raider's harpoons, arriving in seconds; the starter crew and the rooms BRIDGE and HOLD; one annunciator row with `+n MORE`; SHIP lines that add only what a tile can't; the board dim in Green. Then from the critique: the shield slot is blank glass on a hull with no emitter; the annunciator's tiles are dual-filtered so the warning and caution split moves; the deck draws its fire and its venting.
+
+**Context** (version 2 to version 4): P2 in fixed fields with handling and timers, P3 on two lines, the boarding screen (11.13), the master lamps on the tower's shelf or standing alone, hazard tags on the deck, the gunship in combat. From the critique: the frame tag reads on the side away from the ship; sample data matched to the game (a delivery the corvette can carry, missiles that arrive in seconds).
+
+**Task** (first version to round 4): four FLT modes, `ASSIST OFF` only when it is off, markers with names and no numbers, the starter crew, nine lamps on the corvette. The tell-tales have four states printed in register; the message centre's caution cells are two lines with a `+n MORE` cell; the weapons table has a header row; the console's prompt is a slab. From the critique: the weapons columns told apart by drive level, the scope's count in two cells, sample cargo the economy has.
+
+**Guide edits:** no bare signs (5.1); pitch and sizes (5.3, 5.4); keys at least 24 units and folded rails at L1 (7.7); tell-tales in register, the message centre, the `+n MORE` rule, the cut mask, dual-filtered tiles (7.8); deck tags by severity, the hazard tag, the square prograde marker for a station or target frame, the beaten row, the frame tag (8); the ticker's 54 cells (9.3); retired instruments sink, the master lamps' shelf (12.2); the minimum sizes (15); the cut mask in `VfdLayer` (16).
+
+**Sent to the designers.** Stations: a length for callouts. Context: X2's state line overflows; X3 offers costly exits while power is coming back; keep the master cue lit under X3; sample data (an ice mine buys food, missiles arrive in seconds). Task: the short form's double space is a line break; reserve `+n more` in Z2; INT names the object once; Z2's height at the minimum sizes.
 
 ## Round 1
 

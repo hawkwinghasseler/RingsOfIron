@@ -171,6 +171,7 @@ Four lettering systems, each with one job.
 
 - Slant 8 degrees, aspect 0.54, segment thickness 13% of the height, a visible gap at every joint.
 - **Fixed-width fields**, right aligned, leading blanks (never leading zeros, except in clock fields). The minus sign takes its own cell. The layout never moves when a value changes.
+- **No bare signs.** A value whose direction matters (closing speed, a rate of climb) never tells it by its sign alone: a word or a lit legend beside it says which way (`CLOSING`, `OPENING`).
 - **Autoranging**, like a multimeter: the field keeps its width and the unit legend beside it steps (`M` to `KM`, `M/S` to `KM/S`) with the decimal point. A 4-digit field reads ` 312 M`, `1.24 KM`, `12.4 KM`, ` 124 KM`.
 - **No data** is `----` (segment g only) at L1. **Over range** is `OL`. **Estimated** values are L1 with an `EST` legend lit.
 - **Colons** take their own narrow cell (a fifth of a digit), so `14:22:05` doesn't crowd. **Long times** carry their unit as a segment letter inside the field: `1h10`, `2d21h`, `1.4d`.
@@ -185,14 +186,14 @@ Four lettering systems, each with one job.
 
 - **5x7 glyphs from the character ROM** in `vfd/src/vfd.js`: `A` to `Z`, digits, punctuation and a page of custom glyphs: `↑ ↓ ← → ° Δ ▲ ▼ ▶ ◀ █ · × ± ³ … ¢ ♦`.
 - **Upper case only.** Writers write in sentence case; the display folds it. Long text reads like a telex, which is deliberate.
-- **Pitch**: 1.5 for table cells and tags (the minimum), 2 for body and callouts, 3 for headlines.
+- **Pitch**: 1.5 for column text, table cells and slab rows (the minimum: its 10.5-unit cap height matches a 13-unit typeface, the specs' body size); 2 for running text (a ticker, a callout) and for every label in the world; 3 for headlines.
 - Monospaced cells; no kerning; word space is one cell.
 - **Line length is the module's cell count.** Wrap at spaces only, never hyphenate; a word longer than its field is cut with `…`. Only the focused row of a list may scroll its overflow (9.3).
 
 ### 5.4 Legends: printed words
 
 - Only for a **fixed vocabulary** (section 14): units, frames, states, page and station names, alert tags.
-- Face: Inter SemiBold (already in `assets/fonts`), condensed horizontally to 80%, tracking +6%, all capitals, size 10 to 14.
+- Face: Inter SemiBold (already in `assets/fonts`), condensed horizontally to 80%, tracking +6%, all capitals, size 13 to 18. Size 12 only for silk, key caps and the words on lamps and tell-tales.
 - **If it can change state, it is phosphor; if it never changes, it is silk.** A phosphor legend is lit or ghosted (`ASSIST`, `DOCKED`, `PIN`); a silk legend is printed on the bezel in grey and never glows (a module's title, a key's name).
 
 ---
@@ -246,6 +247,7 @@ A label (phosphor legend at L1, or silk), a seven-segment value (L2) and a unit 
 
 - A module may have a row of up to six rubber keys under it. The module's bottom row of cells draws each key's label (up to 6 cells) above it, and each key cap prints its keyboard shortcut in silk.
 - The active page or mode's label is inverse. A key that toggles something has an LED above it: green when on. A key waiting for a second press (abandon ship, call a tow) has its LED blinking amber.
+- Keys are at least 24 units square, the smallest thing a pointer is asked to hit. A folded module's rail idles at L1; only the active page's label is L2, so a quiet console's brightest words are never its menu.
 - **Keys are keys.** Wherever the UI names a key, it draws a small key cap with the key's legend, never `[E]` in brackets.
 
 ### 7.8 Annunciator cells
@@ -253,11 +255,13 @@ A label (phosphor legend at L1, or silk), a seven-segment value (L2) and a unit 
 Four forms:
 
 - **Fixed panel**: one cell per condition, ghosted when inactive. For small, fixed sets: a station's own conditions on its module. Each cell is **dual-filtered**: its frame sits behind amber and its block behind red, so the same cell lights as an amber outline for a caution or a red inverse block for a warning.
-- **Tell-tales**: a fixed panel whose cells carry an icon beside the word, like a dashboard's warning lamps. For a ship-wide set of ten or so conditions the player learns by position and shape.
-- **Tile row**: for a list ordered by severity, where conditions come and go. A tile is a cell holding a legend tag and a dot-matrix value. A **caution** tile sits behind an amber filter and is drawn as an outlined cell; a **warning** tile sits behind a red filter and is drawn **inverse** (a solid lit block with dark letters). The row has two filtered zones: warnings fill inward from the `MASTER WARN` lamp at one end, cautions inward from `MASTER CAUT` at the other. Severity is told apart by colour, form, end and blink rate together.
-- **Message centre**: a dot-matrix window behind red glass that holds the one standing warning in words, over a row of cells behind amber glass for up to three cautions. A warning can only be red because there is nowhere else for it to light.
+- **Tell-tales**: a fixed panel whose cells carry an icon over the word, like a dashboard's warning lamps. For a ship-wide set of ten or so conditions the player learns by position and shape. A tell-tale has four states, so its cell is printed in register: the frame behind amber, the block behind red, the icon and word on clear glass. **Dark**: all ghost. **Advisory** (normal but worth knowing): the icon and word at L1 zinc. **Caution**: the amber frame at L3 and the icon and word at L2. **Warning**: the red block at L2 with the icon and word cut out of it. A ship without the system (no shield emitter) has blank glass in that place, not a ghost cell.
+- **Tile row**: for a list ordered by severity, where conditions come and go. A tile is a cell holding a legend tag and a dot-matrix value. A **caution** tile sits behind an amber filter and is drawn as an outlined cell; a **warning** tile sits behind a red filter and is drawn **inverse** (a solid lit block with dark letters). Every tile is dual-filtered like a fixed panel's cell (its frame and dots behind amber, its block behind red), so the row has no fixed split: warnings fill inward from the `MASTER WARN` lamp at one end, cautions inward from `MASTER CAUT` at the other, and when more stand than there are tiles, the tile where they meet counts the rest (`+2` over `MORE`) in the role of the worst it hides. Severity is told apart by colour, form, end and blink rate together.
+- **Message centre**: a dot-matrix window behind red glass that holds the one standing warning in words, over a row of cells behind amber glass for up to three cautions. A warning can only be red because there is nowhere else for it to light. The red window keeps its place unlit when no warning stands, so the cautions never move. A caution cell is two lines of 19 cells: what and where, then who is on it or the key; each line takes its part of the alert's full text when that fits and its part of the short form when it doesn't. A narrow fourth cell counts the rest: `+2` over `MORE`.
 
-Inverse text (a warning tile, an active mode, the seat in use) is cut out of a lit block. The cut letters must stay dark through the bloom, so they are at least legend size 9 or dot pitch 2; smaller inverse text fills in with glow and can't be read.
+Where a list of conditions runs out of tiles or rows, its last place says how many more stand and the most severe of them (`+1 MORE: SMOKE`); it never scrolls.
+
+Inverse text (a warning tile, an active mode, the seat in use) is cut out of a lit block. Bloom would fill the cut letters with glow, so every cut is also kept on a mask and darkened again after the bloom: the eye sees a dark letter in front of a lit block. Inverse text therefore has the same minimum sizes as lit text (section 15).
 
 ### 7.9 Master lamps
 
@@ -286,19 +290,21 @@ Tutorial guide cards and the controls reference (F1) are **printed quick-referen
 The symbology over the outside view is written by a dot-matrix projector, the descendant of those early car head-up displays. It follows its own rules:
 
 - **Dots only.** Every marker is a dot sprite on a 2-unit grid (dots 1.6 units). Lines are dot chains with dots every 4 to 6 units. There are no solid strokes and no curves.
-- **Two channels.** Zinc for everything; red for threats (hostiles, incoming missiles, the impact cross). Amber appears only for the collision cue and an unsafe docking corridor.
+- **Two channels.** Zinc for everything; red for threats (hostiles, incoming missiles, the impact cross) and for warning tags on the deck. Amber appears only for the collision cue, an unsafe docking corridor and caution tags on the deck.
 - No ghosting and no mesh (it is projected), the same bloom.
 - **Under the hardware.** The projection lands on the world, so racks, pods and slabs cover it. It never draws over a module.
-- **Tags on the deck.** Over the lit interior a tag is hard to read, so the deck view darkens a soft pill under each tag. The world is dimmed; the projector still draws no black.
+- **Tags on the deck.** Over the lit interior a tag is hard to read, so the deck view darkens a soft pill under each tag. The world is dimmed; the projector still draws no black. A hazard tag is its severity glyph (`♦` warning, red; `▲` caution, amber) and its name in 5x7 at pitch 2, set over the hazard; under it, a bar of dots for the progress of whoever works it, or `NOBODY`.
 - **Shape before colour**, so every role reads without colour:
 
 | Role | Sprite |
 |---|---|
-| Prograde | Circle of dots with three ticks |
+| Prograde | Circle of dots with three ticks; a square of dots when the frame is a station or a target, so the frame reads by shape |
 | Retrograde | Circle of dots with a cross |
+| Frame tag | When a spec names the frame beside the markers, a 5x7 tag at L1 on the side away from your own ship, never across the hull |
 | Friendly | Square corner brackets |
 | Neutral | A small open diamond; icon only unless near or hovered |
 | Hostile | Red triangular corners, with the class in 5x7 |
+| Beaten (struck, disabled, taken) | Its corners drop to L1 zinc: no longer a threat, still a ship |
 | Station | An open square with a centre dot |
 | Locked target | Full corner brackets at L3 with four ticks; blinks three times on lock |
 | Navigation target | Diamond brackets (corners turned 45 degrees) |
@@ -313,7 +319,7 @@ The symbology over the outside view is written by a dot-matrix projector, the de
 | Edge marker | A dot chevron at the edge of the view with a 5x7 label; missiles carry seconds to impact |
 | Picture-in-picture ring | A circle of dots every 4 units with a 5x7 caption |
 
-- Labels are 5x7 at pitch 2, at most 12 cells a line: the name at L2, the range under it at L1.
+- Labels are 5x7 at pitch 2, at most 12 cells a line: the name at L2, and under it at L1 a number where the spec allows markers one (the task spec gives markers names only).
 - Sprites snap to the 2-unit grid as they move, so they step rather than slide.
 
 ---
@@ -336,7 +342,7 @@ The symbology over the outside view is written by a dot-matrix projector, the de
 
 ### 9.3 Scrolling
 
-- Text that overflows its field marquees one cell at a time, 8 cells a second, with a 1 s hold at each end. Only in the focused row or a ticker line.
+- Text that overflows its field marquees one cell at a time, 8 cells a second, with a 1 s hold at each end. Only in the focused row or a ticker line. Writers keep a ticker's callouts within its width (54 cells on the stations ticker), so the marquee is the exception.
 - Lists move by whole rows and pages.
 
 ### 9.4 Attention without motion
@@ -392,7 +398,7 @@ A piezo beeper and a relay. Square waves, short, never a melody. Every alarm is 
 These are the ways FILAMENT changes more than the look. They are what the functional designs adopt when skinned in this style; where one clashes with a spec, it is raised with that spec's designer as a critique, not quietly changed.
 
 1. **Racks, not floating panels.** Persistent instruments live in opaque racks along the screen edges. The outside view is the window between them, and the camera centres the ship in that window, not on the screen.
-2. **Fixed homes.** A module never moves or resizes. In a rack, a field with nothing to show goes dark (ghosted) instead of collapsing, so every other field stays where the player learned it. In the overlay, a slab with nothing to show powers down and is gone. "Hidden when empty" means dark in a rack and gone in the overlay. A rack module that a post doesn't need **folds**: its glass sinks into the rack and only its soft-key rail stays, so it can be called back where it was.
+2. **Fixed homes.** A module never moves or resizes. In a rack, a field with nothing to show goes dark (ghosted) instead of collapsing, so every other field stays where the player learned it. In the overlay, a slab with nothing to show powers down and is gone. "Hidden when empty" means dark in a rack and gone in the overlay. A rack module that a post doesn't need **folds**: its glass sinks into the rack and only its soft-key rail stays, so it can be called back where it was. Instruments a context retires (the flight display while docked or latched) sink the same way; whatever must stay in reach, such as the master lamps, keeps a shelf of its own proud of the rack.
 3. **Character budgets.** Every text field has a cell count, and every module is sized from those counts. Specs give maximum lengths; this guide's lexicon (section 14) shortens the rest.
 4. **Soft keys instead of buttons.** Every action in a module is a soft key with a key cap. Mouse clicks land on soft keys and rows; nothing changes under a hovering pointer.
 5. **States are lit words, not text.** `ASSIST ON/OFF` becomes the legend `ASSIST`, lit or ghosted. Booleans never take text.
@@ -470,7 +476,14 @@ The legend vocabulary and the abbreviations dot-matrix fields use when a word do
 - **Legibility mode** turns off the mesh, filaments, ghosts and bloom, fills dots to squares and raises L1 to 60%.
 - **Glow** strength (bloom) and **afterglow** each have a slider.
 - **Brightness** (the dimmer's setting) from 25% to 100%.
-- **Minimum sizes**: dot text pitch 1.5 (cap 10.5 units, the same cap height as a 14-unit typeface), body pitch 2, legends size 10 and up, seven segments 12 units and up.
+- **Minimum sizes** (UI units at 1280 x 800), for lit and cut text alike:
+  - legends 13; 12 only for silk, key caps and the words on lamps and tell-tales;
+  - seven and fourteen segments 12 tall;
+  - dot matrix pitch 1.5 for column text (cap 10.5, the same cap height as a 13-unit typeface); pitch 2 for running text, tickers, callouts and labels in the world;
+  - LCD text 12;
+  - anything clickable 24 by 24.
+
+  When a module no longer fits at these sizes, its content is cut by priority (the spec's order) and never shrunk. The mockup renderer reports anything drawn below them, and an overflow check reports a row that runs past its module.
 
 ---
 
@@ -482,12 +495,12 @@ The mockups are drawn by `vfd/src/vfd.js`, which doubles as the reference for th
 |---|---|
 | `VfdGlyphs` | The seven-segment and fourteen-segment masks and the 5x7 ROM, ported from `vfd.js` |
 | `VfdDraw` | Segments, dots, bars, rings and icons as batched quads from the skin's white region, the way `HudFrame` and `HudDraw` draw now |
-| `VfdLayer` | Two frame buffers at UI resolution: base (glass, ghosts, bezels) and emissive (lit parts). Bloom is the emissive buffer at half resolution through a 9-tap Gaussian twice, added over the base |
+| `VfdLayer` | Two frame buffers at UI resolution: base (glass, ghosts, bezels) and emissive (lit parts). Bloom is the emissive buffer at half resolution through a 9-tap Gaussian twice, added over the base. A third, the cut mask, holds every inverse letter and is darkened over the result after the bloom |
 | `VfdClock` | The global blink phase, and afterglow: each part keeps its last mask and the time each segment went off |
 | `VfdDimmer` | Setting x bus x module, fed from `ShipStatusProvider` |
 | `VfdModule`, `Rack`, `Slab` | Scene2D widgets laid out in cells |
 
-Only the legends use a font (Inter Bold, drawn with a horizontal scale); everything else is geometry, so every segment can be ghosted, dimmed, blinked or burned out on its own.
+Only the legends and silk use a font (Inter SemiBold, drawn with a horizontal scale); everything else is geometry, so every segment can be ghosted, dimmed, blinked or burned out on its own.
 
 ---
 

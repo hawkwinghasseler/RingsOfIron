@@ -16,7 +16,7 @@ const KIT = (() => {
   // ------------------------------------------------------------ small parts
   // A key cap: a little rubber key with its legend. Returns its width.
   function keycap(S, x, y, label, o = {}) {
-    const h = o.h ?? 12, size = o.size ?? 6.6;
+    const h = o.h ?? 18, size = o.size ?? 12;
     const w = Math.max(h, S.legendWidth(label, { size, weight: 600, condense: 0.86, track: 0.1 }) + 7);
     const b = S.base;
     b.save();
@@ -41,7 +41,7 @@ const KIT = (() => {
 
   // A module with its silk title printed on the bezel above it.
   function titled(S, x, y, w, h, title, o = {}) {
-    if (title) S.silk(x + 1, y - 4.5, title, { size: o.titleSize ?? 7, color: o.titleColor });
+    if (title) S.silk(x + 1, y - 4.5, title, { size: o.titleSize ?? 12, color: o.titleColor });
     S.module(x, y, w, h, o);
   }
 
@@ -74,7 +74,7 @@ const KIT = (() => {
   }
   // Dark letters cut out of whatever is lit on the glass (an inverse block's text).
   function knock(S, x, y, str, p = 1.5) {
-    const ctx = S.glass; ctx.save(); ctx.globalCompositeOperation = 'destination-out'; knockDots(ctx, x, y, str, p); ctx.restore();
+    S.cut(ctx => knockDots(ctx, x, y, str, p));
   }
   // A pip: a small fixed filtered lamp (a severity column beside a list row).
   function pip(S, x, y, color, on, o = {}) {
@@ -100,10 +100,8 @@ const KIT = (() => {
       const tw = S.knockout(x + 5, ty, tag, { size: tagSize });
       if (value) {
         // dark dots in the lit block: the value's glyph dots are knocked out
-        const ctx = S.ctxFor(o); ctx.save(); ctx.globalCompositeOperation = 'destination-out';
         const vx = x + 5 + tw + 6, vy = y + (h - 7 * p) / 2;
-        knockDots(ctx, vx, vy, value, p);
-        ctx.restore();
+        S.cut(ctx => knockDots(ctx, vx, vy, value, p), o);
       }
     } else {
       S.frameLit(x, y, w, h, 1.1, { color, level: o.level ?? 'norm' });
@@ -134,8 +132,8 @@ const KIT = (() => {
       const cells = it.t.length, lw = cells * 6 * p - p;
       S.dm(cx - lw / 2, ly, it.t, { pitch: p, level: it.active ? 'full' : it.dim ? 'dim' : 'norm', inverse: it.active ? [0, cells] : null, color: it.color, ghost: false });
       if (o.keys !== false) {
-        const kw = Math.min(slotW - 6, o.keyW ?? 30);
-        S.key(cx - kw / 2, ky, kw, o.keyH ?? 9, it.k ?? '', { size: 5.6, led: it.led, ledOn: it.ledOn });
+        const kw = Math.min(slotW - 6, o.keyW ?? 40);
+        S.key(cx - kw / 2, ky, kw, o.keyH ?? 24, it.k ?? '', { size: 12, led: it.led, ledOn: it.ledOn });
       }
     });
     // tick marks between label slots, printed on the glass edge
@@ -241,45 +239,91 @@ const KIT = (() => {
   }
 
   // ------------------------------------------------------------ ship plan
-  // The corvette used in the mockups, as rooms on a tile grid (bow to the right).
+  // The starter corvette as the game builds it (chassis.toml): a hull of 16 x 6 tiles, a wall at x 8 with
+  // a door at y 3, so two rooms: the HOLD aft (tanks, cargo bays) and the BRIDGE forward (helm, weapons
+  // console, life support, reactor), open to the reactor. The engines sit outside the stern; the hull
+  // art adds the bow past the layout. Tile coordinates as the deck view shows them: bow to the right,
+  // port up (chassis row y is drawn at 5 - y).
   const CORVETTE = {
-    w: 26, h: 10,
-    rooms: [
-      { id: 'ENGINES', x: 0, y: 2, w: 4, h: 6 }, { id: 'REACTOR', x: 4, y: 1, w: 5, h: 4 }, { id: 'LIFE SUP', x: 4, y: 5, w: 5, h: 4 },
-      { id: 'CARGO 1', x: 9, y: 1, w: 4, h: 4 }, { id: 'CARGO 2', x: 9, y: 5, w: 4, h: 4 }, { id: 'GALLEY', x: 13, y: 1, w: 4, h: 4 },
-      { id: 'QUARTERS', x: 13, y: 5, w: 4, h: 4 }, { id: 'WEAPONS', x: 17, y: 2, w: 4, h: 6 }, { id: 'BRIDGE', x: 21, y: 3, w: 4, h: 4 },
-    ],
+    w: 21, h: 6,
+    hull: [[2, 0], [18, 0], [20.6, 3], [18, 6], [2, 6]],
+    rooms: [{ id: 'HOLD', x: 3, y: 1, w: 5, h: 4 }, { id: 'BRIDGE', x: 8, y: 1, w: 9, h: 4 }],
+    walls: [{ x: 8, y0: 1, y1: 5, door: [2, 3] }],
+    engines: [[0, 1], [0, 4]],
   };
-  // Draws the plan on a graphic dot panel. states: {room: 'fire'|'breach'|'vacuum'|'smoke'|'damaged'}; crew: [[tx, ty, working]]
+  // The gunship (chassis.gunship): a hull of 20 x 8 tiles with two walls, x 10 and x 17, each with a door
+  // at y 2; ENGINES aft (life support, tanks), REACTOR amidships (reactor, shield emitter, medbay), BRIDGE
+  // forward (helm, weapons console). Two Medium drives outside the stern. Port up, as on deck.
+  const GUNSHIP = {
+    w: 23.5, h: 8,
+    hull: [[3, 0], [22, 0], [23, 1], [23, 7], [22, 8], [3, 8]],
+    rooms: [{ id: 'ENGINES', x: 4, y: 1, w: 6, h: 6 }, { id: 'REACTOR', x: 10, y: 1, w: 7, h: 6 }, { id: 'BRIDGE', x: 17, y: 1, w: 5, h: 6 }],
+    walls: [{ x: 10, y0: 1, y1: 7, door: [5, 6] }, { x: 17, y0: 1, y1: 7, door: [5, 6] }],
+    engines: [[0, 1, 3, 2], [0, 5, 3, 2]],
+  };
+  // Draws the plan on a graphic dot panel. states: {ROOM: 'fire'|'breach'|'vacuum'|'smoke'|'short'};
+  // crew: [[tx, ty, working, you]] in tile coordinates; marks: [[tx, ty, kind]] for a hazard in one spot.
   function shipPlan(S, x, y, w, h, o = {}) {
     const plan = o.plan ?? CORVETTE, p = o.pitch ?? 2;
     const t = Math.floor(Math.min(w / plan.w, h / plan.h) / p) * p; // a tile in units, whole dots
     const ox = x + Math.floor((w - plan.w * t) / 2 / p) * p, oy = y + Math.floor((h - plan.h * t) / 2 / p) * p;
-    const dots = (x0, y0, x1, y1, lv) => { // a wall: dots every pitch along a line on the grid
-      const n = Math.round(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) / p);
-      for (let i = 0; i <= n; i++) S.dot(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, { size: p * 0.78, level: lv });
-    };
-    const blinkOn = o.blinkOn !== false;
-    for (const rm of plan.rooms) {
-      const rx = ox + rm.x * t, ry = oy + rm.y * t, rw = rm.w * t, rh = rm.h * t;
-      const st = (o.states || {})[rm.id];
-      // fills by pattern: fire a dense checker (blinking), smoke a sparse dither, breach an X, vacuum left empty
-      if (st === 'fire' && blinkOn) for (let yy = ry + p * 2; yy < ry + rh - p; yy += p) for (let xx = rx + p * 2; xx < rx + rw - p; xx += p) {
-        if (((xx - rx) / p + (yy - ry) / p) % 2 === 0) S.dot(xx, yy, { size: p * 0.78, level: 'full' });
+    const X = tx => ox + tx * t, Y = ty => oy + ty * t;
+    const dots = (x0, y0, x1, y1, lv, skip) => { // a line of dots, one every pitch
+      const n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / p));
+      for (let i = 0; i <= n; i++) {
+        const px = x0 + (x1 - x0) * i / n, py = y0 + (y1 - y0) * i / n;
+        if (skip && skip(px, py)) continue;
+        S.dot(px, py, { size: p * 0.78, level: lv });
       }
-      if (st === 'smoke') for (let yy = ry + p * 2; yy < ry + rh - p; yy += p * 2) for (let xx = rx + p * 2 + ((yy - ry) / p % 4 ? p : 0); xx < rx + rw - p; xx += p * 2) S.dot(xx, yy, { size: p * 0.7, level: 'dim' });
-      if (st === 'breach') { dots(rx + p * 2, ry + p * 2, rx + rw - p * 2, ry + rh - p * 2, 'full'); dots(rx + rw - p * 2, ry + p * 2, rx + p * 2, ry + rh - p * 2, 'full'); }
-      const wallLv = st === 'vacuum' ? 'dim' : (st ? 'norm' : (o.wallLevel ?? 'dim'));
-      dots(rx, ry, rx + rw, ry, wallLv); dots(rx, ry + rh, rx + rw, ry + rh, wallLv);
-      dots(rx, ry, rx, ry + rh, wallLv); dots(rx + rw, ry, rx + rw, ry + rh, wallLv);
-      if (o.labels && st) S.dm(rx + p * 2, ry + rh + p * 1.5, rm.id, { pitch: 1.5, level: 'norm', ghost: false });
+    };
+    const lv = o.wallLevel ?? 'dim';
+    // a room's pattern stops short of the crew in it, so a dot standing in a fire still reads
+    const crewAt = (o.crew || []).map(c => [X(c[0] + 0.5), Y(c[1] + 0.5)]);
+    const clear = (px, py) => crewAt.some(([cx, cy]) => Math.abs(px - cx) < p * 3 && Math.abs(py - cy) < p * 3);
+    for (let i = 0; i < plan.hull.length; i++) {
+      const a = plan.hull[i], b = plan.hull[(i + 1) % plan.hull.length];
+      dots(X(a[0]), Y(a[1]), X(b[0]), Y(b[1]), lv);
+    }
+    for (const e of plan.engines || []) { // [x, y, w, h]: an engine bell's footprint, open toward the hull
+      const ew = e[2] ?? 2, eh = e[3] ?? 1;
+      dots(X(e[0]), Y(e[1]), X(e[0] + ew), Y(e[1]), lv); dots(X(e[0]), Y(e[1] + eh), X(e[0] + ew), Y(e[1] + eh), lv); dots(X(e[0]), Y(e[1]), X(e[0]), Y(e[1] + eh), lv);
+    }
+    for (const wl of plan.walls || []) dots(X(wl.x), Y(wl.y0), X(wl.x), Y(wl.y1), lv, (px, py) => wl.door && py > Y(wl.door[0]) + p * 0.5 && py < Y(wl.door[1]) - p * 0.5);
+    for (const rm of plan.rooms) {
+      const rx = X(rm.x), ry = Y(rm.y), rw = rm.w * t, rh = rm.h * t;
+      const st = (o.states || {})[rm.id];
+      // a legend label sits at the top of the room, and the room's pattern fills what is below it
+      const named = o.labels && (st || o.labels === 'all'), top = named && o.legendLabels ? 18 : 0, fy = ry + top;
+      // fills by pattern: fire a dense checker, smoke a sparse dither, breach an X, vacuum left empty
+      if (st === 'fire') for (let yy = fy + p * 2; yy < ry + rh - p; yy += p) for (let xx = rx + p * 2; xx < rx + rw - p; xx += p) {
+        if (Math.round((xx - rx) / p + (yy - ry) / p) % 2 === 0 && !clear(xx, yy)) S.dot(xx, yy, { size: p * 0.78, level: 'full' });
+      }
+      if (st === 'smoke') for (let yy = fy + p * 2; yy < ry + rh - p; yy += p * 2) for (let xx = rx + p * 2 + (Math.round((yy - ry) / p) % 4 ? p : 0); xx < rx + rw - p; xx += p * 2) if (!clear(xx, yy)) S.dot(xx, yy, { size: p * 0.7, level: 'dim' });
+      if (st === 'breach') {
+        const bw = Math.min(rw - p * 4, rh - top - p * 4), bx = rx + (rw - bw) / 2, by = fy + p * 2;
+        dots(bx, by, bx + bw, by + bw, 'full'); dots(bx + bw, by, bx, by + bw, 'full');
+      }
+      if (st && st !== 'vacuum') { // a room with something wrong in it has its walls lit
+        dots(rx, ry, rx + rw, ry, 'norm'); dots(rx, ry + rh, rx + rw, ry + rh, 'norm');
+        dots(rx, ry, rx, ry + rh, 'norm', (px, py) => (plan.walls || []).some(wl => wl.door && Math.abs(px - X(wl.x)) < 0.1 && py > Y(wl.door[0]) + p * 0.5 && py < Y(wl.door[1]) - p * 0.5));
+        dots(rx + rw, ry, rx + rw, ry + rh, 'norm', (px, py) => (plan.walls || []).some(wl => wl.door && Math.abs(px - X(wl.x)) < 0.1 && py > Y(wl.door[0]) + p * 0.5 && py < Y(wl.door[1]) - p * 0.5));
+      }
+      if (named && o.legendLabels) S.legend(rx + rw / 2, ry + 15, rm.id, { align: 'center', level: st ? 'norm' : 'dim', ghost: false });
+      else if (named) S.dm(rx + p * 3, ry + p * 2.5, rm.id, { pitch: 1.5, level: st ? 'norm' : 'dim', ghost: false });
+    }
+    for (const m of o.marks || []) {
+      const mx = X(m[0] + 0.5), my = Y(m[1] + 0.5);
+      if (m[2] === 'short') for (const [dx, dy] of [[-1, -2], [0, -1], [-1, 0], [0, 1], [1, 0], [0, 2]]) S.dot(mx + dx * p, my + dy * p, { size: p * 0.78, level: 'full' });
+      else for (let i = -2; i <= 2; i++) { S.dot(mx + i * p, my + i * p, { size: p * 0.78, level: 'full' }); if (i) S.dot(mx + i * p, my - i * p, { size: p * 0.78, level: 'full' }); }
     }
     for (const c of o.crew || []) {
-      const cx = ox + (c[0] + 0.5) * t, cy = oy + (c[1] + 0.5) * t;
-      S.dot(cx, cy, { size: p * 1.3, level: 'full' });
-      if (c[2]) { S.dot(cx - p * 1.5, cy, { size: p * 0.6, level: 'norm' }); S.dot(cx + p * 1.5, cy, { size: p * 0.6, level: 'norm' }); }
+      const cx = X(c[0] + 0.5), cy = Y(c[1] + 0.5);
+      if (c[3]) { // the captain: a hollow square of dots
+        for (const [dx, dy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]) S.dot(cx + dx * p, cy + dy * p, { size: p * 0.8, level: 'full' });
+      } else S.dot(cx, cy, { size: p * 1.3, level: 'full' });
+      if (c[2]) { S.dot(cx - p * 2, cy, { size: p * 0.6, level: 'norm' }); S.dot(cx + p * 2, cy, { size: p * 0.6, level: 'norm' }); }
     }
-    return { ox, oy, t };
+    return { ox, oy, t, X, Y };
   }
 
   // ------------------------------------------------------------ projected HUD sprites
@@ -327,9 +371,10 @@ const KIT = (() => {
     }
   }
   function label(S, x, y, lines, o = {}) {
+    const p = o.pitch ?? 2;
     lines.forEach((ln, i) => {
       if (!ln) return;
-      S.dm(x, y + i * 7 * (o.pitch ?? 1.5) * 1.35, ln, { pitch: o.pitch ?? 1.5, layer: 'proj', color: o.color, level: i === 0 ? (o.level ?? 'norm') : 'dim', align: o.align, ghost: false });
+      S.dm(x, y + i * 7 * p * 1.35, ln, { pitch: p, layer: 'proj', color: o.color, level: i === 0 ? (o.level ?? 'norm') : 'dim', align: o.align, ghost: false });
     });
   }
 
@@ -410,12 +455,19 @@ const KIT = (() => {
   // Velocity markers: prograde a ring, centre dot and three wings; retrograde a ring with an X and the same wings.
   function velMark(S, kind, x, y, o = {}) {
     const r = o.r ?? 7.5, c = { layer: 'proj', color: o.color, level: o.level ?? 'norm' };
-    ringDots(S, x, y, r, { ...c, step: 2.9 });
+    if (o.square) { // a station or target frame: the ring becomes a square, so the frame reads by shape
+      const n = Math.round(2 * r / 2.9);
+      for (let i = 0; i < n; i++) {
+        const t = -r + (2 * r * i) / n;
+        for (const [px, py] of [[t, -r], [r, t], [-t, r], [-r, -t]]) S.dot(x + px, y + py, { ...c, size: 1.7 });
+      }
+    } else ringDots(S, x, y, r, { ...c, step: 2.9 });
     const d = (px, py, s) => S.dot(px, py, { ...c, size: s ?? 1.7 });
     if (kind === 'pro') d(x, y, 2.6);
     else for (const s of [-1, 1]) for (let i = -1; i <= 1; i++) if (i) { d(x + i * 2.6, y + s * i * 2.6); d(x + i * 4.4, y + s * i * 4.4, 1.4); }
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1]]) for (let i = 1; i <= 2; i++) d(x + dx * (r + i * 2.9), y + dy * (r + i * 2.9));
-    if (o.tag) S.dm(x + r + 9, y - 3, o.tag, { pitch: 1.1, layer: 'proj', level: 'dim', ghost: false, color: o.color });
+    // the frame's tag reads on the side away from your own ship (o.tagLeft), never across the hull
+    if (o.tag) S.dm(o.tagLeft ? x - r - 9 - S.dmWidth(o.tag.length, { pitch: 1.5 }) : x + r + 9, y - 5, o.tag, { pitch: 1.5, layer: 'proj', level: 'dim', ghost: false, color: o.color });
   }
   // Lead reticle: a ring broken on the diagonals, with a pip.
   function reticle(S, x, y, o = {}) {
@@ -446,22 +498,41 @@ const KIT = (() => {
   function edge(S, x, y, dir, lines, o = {}) {
     const spr = { r: 'chevronR', l: 'chevronL', u: 'chevronU', d: 'chevronD' }[dir];
     S.sprite(x, y, SPR[spr], { layer: 'proj', center: true, pitch: 2, color: o.color, level: o.level ?? 'norm' });
-    const p = o.pitch ?? 1.5, w = Math.max(...lines.map(l => l.length)) * 6 * p;
+    const p = o.pitch ?? 2, w = Math.max(...lines.map(l => l.length)) * 6 * p;
     const lx = dir === 'r' ? x - 10 - w : dir === 'l' ? x + 10 : x - w / 2;
     const ly = dir === 'd' ? y - 14 - lines.length * 7 * p * 1.35 : dir === 'u' ? y + 12 : y - 5;
     label(S, lx, ly, lines, { pitch: p, color: o.color, level: o.level });
+  }
+  // The deck view darkens a soft pill under each tag (the world is dimmed; the projector can't draw black).
+  function scrim(S, x, y, w, h) {
+    const b = S.base; b.save(); b.filter = 'blur(4px)'; b.fillStyle = 'rgba(0,0,0,0.62)';
+    b.beginPath(); b.roundRect(x, y, w, h, 4); b.fill(); b.restore();
+  }
+  // A hazard tag on the deck: the severity sprite and the short code (or a name), 5x7 at pitch 2 over a scrim.
+  // Warnings are red with a diamond, cautions amber with a triangle: the shape is the colour-free channel.
+  function deckTag(S, x, y, text, sev, o = {}) {
+    const p = 2, color = sev === 'warning' ? 'red' : sev === 'caution' ? 'amber' : o.color;
+    const glyph = sev === 'warning' ? '♦' : sev === 'caution' ? '▲' : '';
+    const str = (glyph ? glyph + ' ' : '') + text, w = str.length * 6 * p - p;
+    const lx = x - w / 2, ly = y - 3.5 * p;
+    scrim(S, lx - 6, ly - 5, w + 12, 7 * p + 10);
+    S.dm(lx, ly, str, { pitch: p, layer: 'proj', color, level: o.level ?? 'norm', ghost: false });
+    return w + 12;
   }
   // A row of state legends, lit or ghost: [['ASSIST', true], ['HOLD', false]]. Returns the end x.
   function states(S, x, y, items, o = {}) {
     let cx = x;
     for (const it of items) {
       const [txt, on, color] = it;
-      const w = S.legendWidth(txt, { size: o.size ?? 8 });
-      S.legend(cx, y, txt, { size: o.size ?? 8, lit: !!on, level: on === 'dim' ? 'dim' : (o.level ?? 'norm'), color: color ?? o.color, box: o.box });
+      const w = S.legendWidth(txt, { size: o.size ?? 13 });
+      S.legend(cx, y, txt, { size: o.size ?? 13, lit: !!on, level: on === 'dim' ? 'dim' : (o.level ?? 'norm'), color: color ?? o.color, box: o.box });
       cx += w + (o.gap ?? 9);
     }
     return cx;
   }
 
-  return { plate, knock, pip, rackShape, space, hull, plume, ringDots, velMark, reticle, cross, track, missile, arc, edge, states, rng, scene, loadImage, world, keycap, verbs, titled, slab, tile, softKeys, field, table, barRow, dbar, dsev, DEPLETE, RISING, sectorScope, shipPlan, CORVETTE, sprite, SPR, brackets, label };
+  // Reports a row that ran past its limit (layout is by hand; this catches what the eye might miss).
+  function fits(x, limit, what) { if (x > limit + 0.5) console.warn(`overflow: ${what} ends at ${x.toFixed(1)}, limit ${limit}`); return x; }
+
+  return { scrim, deckTag, fits, plate, knock, pip, rackShape, space, hull, plume, ringDots, velMark, reticle, cross, track, missile, arc, edge, states, rng, scene, loadImage, world, keycap, verbs, titled, slab, tile, softKeys, field, table, barRow, dbar, dsev, DEPLETE, RISING, sectorScope, shipPlan, CORVETTE, GUNSHIP, sprite, SPR, brackets, label };
 })();
