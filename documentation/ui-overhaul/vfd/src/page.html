@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>FILAMENT mockups</title>
+<style>
+  @font-face { font-family: Inter; font-weight: 600; src: url(../../../../assets/fonts/Inter-SemiBold.otf); }
+  @font-face { font-family: Inter; font-weight: 700; src: url(../../../../assets/fonts/Inter-SemiBold.otf); }
+  html, body { margin: 0; background: #000; }
+  canvas { display: block; }
+</style>
+<canvas id="c"></canvas>
+<script src="vfd.js"></script>
+<script src="kit.js"></script>
+<script src="specimen.js"></script>
+<script src="stations.js"></script>
+<script src="context.js"></script>
+<script src="task.js"></script>
+<script>
+  // ?s=<screen id>: each mockup script registers its screens in SCREENS.
+  (async () => {
+    const id = new URLSearchParams(location.search).get('s') || 'specimen';
+    await document.fonts.load('700 12px Inter');
+    await document.fonts.load('600 12px Inter');
+    const screen = SCREENS[id];
+    if (!screen) { document.body.textContent = 'no screen ' + id + ': ' + Object.keys(SCREENS).join(', '); window.__done = true; return; }
+    await screen(document.getElementById('c'));
+    window.__done = true;
+  })();
+</script>
