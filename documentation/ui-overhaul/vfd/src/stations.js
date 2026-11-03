@@ -497,7 +497,7 @@
     // the top column: status strip, tiles in their zones, the ticker (warp strip dark)
     statusStrip(S, { condition: 'RED' });
     annRow(S, TOP.row1, [['MISSILE', '2  0:03']], [['HOSTILE', 'FIRING']], { warnOn: true, cautOn: true });
-    ticker(S, [null, { tag: 'TAC', text: 'COLE: HARPOONS OFF THE RAIDER, PORT SIDE. PD HAS THEM.' }, { tag: 'HELM', text: 'BEA: HOLDING POSITION.' }]);
+    ticker(S, [null, { tag: 'TAC', text: 'COLE: HARPOONS FROM PORT. PD HAS THEM.' }, { tag: 'HELM', text: 'BEA: HOLDING POSITION.' }]);
 
     // the band: SENSORS and DAMAGE open (no shield emitter, so the right MFD starts on DAMAGE), the cluster
     bandRack(S, true, true);

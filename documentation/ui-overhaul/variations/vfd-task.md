@@ -1,6 +1,6 @@
 # FILAMENT × Task-driven
 
-The task-driven functional design (`functional-task.md`, round 4) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The task-driven functional design (`functional-task.md`, round 5) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/task.js`](../vfd/src/task.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -53,7 +53,7 @@ The other two FILAMENT variations are built like consoles: racks along the edges
 - **The band's colours are places.** The warning window is red glass and the caution row amber glass, so the band's rows can't swap. With only cautions standing, the red window stays as dark glass and the cautions keep their row (the spec says so too, from round 3).
 - **Tell-tales.** The annunciator's lamps carry icons, so the block is learned by shape as well as position and word, and an advisory (crew outside) reads as normal because it lights without a frame.
 - **The hint line is printed.** It can't fade like a text line, so its words go dark one by one as they're learned, and the strip is as long as what it holds.
-- **The band is bigger than Z2.** At the guide's minimum sizes the message centre is 600 × 96 (the spec's Z2 is 560 × 76), so screens start 112 units down rather than 100.
+- **The band is taller than Z2.** At the guide's minimum sizes the message centre is 600 × 96, inside Z2's 640-unit width with its bezel, so screens start 112 units down; the spec lets a screen start below the band wherever a style puts it (round 5).
 
 ## Round 1 critique (resolved in round 2)
 
@@ -74,11 +74,17 @@ The mockups were redrawn against spec round 4: four FLT modes, `ASSIST OFF` only
 
 No meaningful criticism of the visual build remains open. The notes below are functional.
 
+## Round 3
+
+Spec round 5 took all four round-2 notes: every short form is two parts joined by a double space, each within 19 characters, which a style may break into two lines; `+n` has a reserved slot at the end of the caution row; a screen starts below the band wherever the style puts it; the prompt names its object once (`Weapons console   V sit`). Each matches what FILAMENT already drew, so the screens are unchanged; the one sample that moved (`WOUNDED Cole  no medic`) shows its full text in the mockup.
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
 ## Functional notes sent to the task designer
 
 Round 1 (all answered by spec rounds 2 and 3): SCH at gunnery, WPN under the key strip, speed at rest in the orbit frame, decoys have no stock, cautions keep their row, room names from the chassis.
 
-Round 2:
+Round 2 (all taken in round 5):
 
 1. **The short form's double space is a line break.** FILAMENT's caution cells are two lines of 19 characters, and they split each alert at the short form's double space (`FIRE Hold  Cole`, `POWER Bridge  Ada`): what and where above, who or the key below. Suggest the spec keep that double space in every short form, as it does now.
 2. **`+n more` has no place in Z2.** ALR says `+n more` shows when there are more than three cautions, but Z2's wireframe has no room for it, so it would push or cover the third cell. FILAMENT gives it a narrow fourth cell (44 units). Suggest the wireframe reserve it.

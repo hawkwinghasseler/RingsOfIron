@@ -342,7 +342,7 @@ The symbology over the outside view is written by a dot-matrix projector, the de
 
 ### 9.3 Scrolling
 
-- Text that overflows its field marquees one cell at a time, 8 cells a second, with a 1 s hold at each end. Only in the focused row or a ticker line. Writers keep a ticker's callouts within its width (54 cells on the stations ticker), so the marquee is the exception.
+- Text that overflows its field marquees one cell at a time, 8 cells a second, with a 1 s hold at each end. Only in the focused row or a ticker line. Writers keep a ticker's callouts within its width (54 cells on the stations ticker, whose spec caps a callout at 50 characters), so the marquee is the exception.
 - Lists move by whole rows and pages.
 
 ### 9.4 Attention without motion

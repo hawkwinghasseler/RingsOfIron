@@ -1,6 +1,6 @@
 # FILAMENT × Ship stations
 
-The ship-stations functional design (`functional-stations.md`, round 8) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The ship-stations functional design (`functional-stations.md`, round 9) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/stations.js`](../vfd/src/stations.js) over real game captures and the game's own hull art; `vfd/src/export.sh` re-renders them.
 
@@ -61,10 +61,16 @@ The mockups were redrawn against spec round 8: the corvette's real mounts (coilg
 
 No meaningful criticism of the visual build remains open. The note below is functional.
 
+## Round 3
+
+Spec round 9 took the round-2 note: a callout is at most 50 characters after the station tag, the speaker's name included, and a longer one is the style's to wrap or scroll, never to cut. E's line is now "Cole: harpoons from port. PD has them." (38), and the mockup carries it. The spec also adopted FILAMENT's two choices: a slot for a system the hull lacks is blank with no legend, and `+n MORE` goes on the last tile to fill, so warnings and cautions may fill from opposite lamps.
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
 ## Functional notes sent to the stations designer
 
 Round 1 (all taken in round 6): one annunciator row with `+n MORE`, SHIP callouts that don't restate tiles, the station board dim in Green.
 
-Round 2:
+Round 2 (taken in round 9):
 
 1. **Callouts need a length.** FILAMENT's ticker holds 54 characters after the station tag at pitch 2; E's line "Cole: harpoons off the Raider, port side. PD has them." is exactly 54. Suggest 13.5 cap a callout at about 50 characters with the speaker's name counted, and say what happens past it (FILAMENT marquees it, one cell at a time with a hold at each end).

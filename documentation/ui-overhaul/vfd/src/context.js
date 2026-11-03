@@ -340,9 +340,10 @@
   }
 
   // ------------------------------------------------------------------ X2 boarding, X3 emergency
-  // X2: the boarding at a glance, and its two keys as soft keys: labels on the glass, rubber keys below.
+  // X2: the boarding at a glance in six rows of glass, and its two keys under it, each printed with its
+  // action as the station board's are (7 rows in all, 308 x 155: the spec's 150 within its 10%).
   function x2(S, y, d) {
-    const x = RX, rows = 6, gh = rows * ROW + 6 + 22, h = gh + 34;
+    const x = RX, rows = 6, gh = rows * ROW + 6, h = gh + 5 + 24;
     K.plate(S, x, y, CW, h, { pad: 5 });
     S.module(x, y, CW, gh, { radius: 2.5 });
     let ry = y + 3;
@@ -352,7 +353,7 @@
     S.dm(vx, B(ry) - 10.5, d.name, { pitch: P, cells: 16, level: 'norm' });
     K.fits(K.states(S, vx + 16 * CELL + 6, B(ry), [['LATCHED', d.latched && 'norm'], ['EVA', !d.latched && 'norm']], { size: 13, gap: 6 }) - 6, x + CW - 4, 'X2 board');
     ry += ROW;
-    S.dm(vx, B(ry) - 10.5, d.state, { pitch: P, cells: 13, level: 'norm' });
+    S.dm(vx, B(ry) - 10.5, d.state, { pitch: P, cells: 25, level: 'norm' });
     ry += ROW;
     lab('PARTY');
     let cx = vx + S.seg7(vx, B(ry) - 12, 12, d.party, { cells: 1, level: 'norm' }) + 6;
@@ -370,14 +371,10 @@
     S.legend(cx, B(ry), 'LOTS COMING ACROSS', { level: 'dim' });
     ry += ROW;
     S.dm(vx, B(ry) - 10.5, d.prisoners ? 'PRISONERS TO BRING ABOARD' : '', { pitch: P, cells: 25, level: 'norm' });
-    // soft keys: the action on the glass's bottom row, the key under it
-    const ky = y + gh + 6, ly = y + gh - 4 - 7 * P;
-    for (const [i, k, t] of [[0, 'K', 'BOARDING'], [1, 'U', 'CAST OFF']]) {
-      const sx = x + CW / 4 + i * CW / 2;
-      S.dm(sx - S.dmWidth(t.length, { pitch: P }) / 2, ly, t, { pitch: P, level: 'norm', ghost: false });
-      S.key(sx - 22, ky, 44, 24, k);
-    }
-    S.rectLit(x + CW / 2 - 0.4, ly - 1, 0.8, 7 * P + 2, { ghostOnly: true, k: 1.5 });
+    // the two keys under the glass, each printed with its key and action
+    const ky = y + gh + 5, kw = (CW - 6) / 2;
+    S.key(x, ky, kw, 24, 'K  BOARDING');
+    S.key(x + kw + 6, ky, kw, 24, 'U  CAST OFF');
   }
   // X3: a red bar with the state cut out of it; each way out on its own row, its key on the bezel beside
   // it with an LED that blinks amber while the first press holds (guide 7.7).
@@ -506,9 +503,9 @@
     p2(S, [
       { sev: 'warning', code: 'EMERG O2', you: true },
       { sev: 'warning', code: 'VACUUM', detail: 'HOLD', you: true },
+      { sev: 'warning', code: 'NO POWER', detail: 'DAMAGED', you: true },
       { sev: 'warning', code: 'CREW CRIT', detail: 'ADA', crew: 1, timer: '3:40' },
       { sev: 'warning', code: 'FIRE', detail: 'BRIDGE', crew: 2 },
-      { sev: 'warning', code: 'NO POWER', detail: 'STUNNED', back: '0:12' },
     ], '+1 MORE: SMOKE');
     x3(S, { title: 'SHIP DISABLED: NO POWER', rows: [
       { what: 'ABANDON SHIP', key: 'P' },
@@ -543,7 +540,7 @@
     bottomRack(S, { tower: false });
     p4(S, [['BOARDING', 'THE RAIDER IS TAKEN']]);
     p5(S, { l1: 'BOUNTY: RAIDER · TAKEN', l2: '→ TURN IN AT HIGHPORT' });
-    x2(S, 194, { name: 'RAIDER', latched: true, state: 'TAKEN', party: '4', partyState: 'HOLDING', marked: '3', off: '1', lots: '2', prisoners: true });
+    x2(S, 194, { name: 'RAIDER', latched: true, state: 'TAKEN: CREW SURRENDERED', party: '4', partyState: 'HOLDING', marked: '3', off: '1', lots: '2', prisoners: true });
     h4Lights(S, 16, 744, [['HULL'], ['POWER'], ['LIFE SUP']]);
     cue(S, 640, 705, {});
     S.finish();

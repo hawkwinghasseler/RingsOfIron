@@ -436,7 +436,7 @@
       warning: { title: 'MISSILE', detail: '2 INBOUND  BRG 080', label: 'IMPACT', number: '14', unit: 'S', key: 'F', action: 'DECOY', note: 'POINT DEFENCE ENGAGING' },
       cautions: [
         { full: ['FIRE  HOLD', 'ADA ON IT'], short: ['FIRE HOLD', 'ADA'] },
-        { full: ['WOUNDED', 'COLE, NO MEDIC FREE'], short: ['WOUNDED COLE', ''] },
+        { full: ['WOUNDED', 'COLE, NO MEDIC FREE'], short: ['WOUNDED COLE', 'NO MEDIC'] },
       ],
     });
     obj(S, [{ title: "BOUNTY: RAIDER 'VEX'", left: '2d21h' }]);

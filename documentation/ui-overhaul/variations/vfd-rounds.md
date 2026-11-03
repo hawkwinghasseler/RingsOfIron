@@ -4,11 +4,21 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
-| Ship stations | `functional-stations.md` round 8 | Round 2 done. No visual criticism open; one functional note with the designer (callout length) |
-| Context-driven | `functional-context.md` version 4 | Round 2 done. No visual criticism open; four functional notes with the designer |
-| Task-driven | `functional-task.md` round 4 | Round 2 done. No visual criticism open; four functional notes with the designer |
+| Ship stations | `functional-stations.md` round 9 | Converged in round 3: the spec took the last note, nothing left to criticise |
+| Context-driven | `functional-context.md` version 5 | Converged in round 3: the spec took all four notes, nothing left to criticise |
+| Task-driven | `functional-task.md` round 5 | Converged in round 3: the spec took all four notes, nothing left to criticise |
 
-A round 3 happens for a variation when its spec changes something visible, or a designer's answer to a note does.
+A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 3
+
+**Stations** (spec round 9). The designer took the callout note (50 characters after the station tag, wrapped or scrolled by the style, never cut) and adopted FILAMENT's blank slot for missing hardware and its `+n MORE` on the last tile to fill. E's Cole line is now 38 characters; the weapons screen is re-rendered with it. Converged.
+
+**Task** (spec round 5). The designer took all four notes: short forms in two parts at a double space, each within 19 characters; a reserved `+n` slot (Z2 is 640 wide); a screen starts below the band wherever the style puts it; the prompt names its object once. Each matches what FILAMENT already drew, so no screen changed. Converged.
+
+**Context** (spec version 5). The designer took all four notes: X2's state on a row of its own; X3 waits while power is due back by itself, and 11.7's reactor is damaged instead, so P2 lists `NO POWER  DAMAGED  YOU` third; the master cue stays lit under X3; the sample data. The deck emergency and boarding screens are re-rendered with them. Checking against version 5 found X2 at 182 units against a 150 zone (10% allowed); its keys now carry their actions printed on them, so it is 155. Converged.
+
+All three FILAMENT variations have converged: each spec has taken every note, and no meaningful criticism remains.
 
 ## Round 2
 

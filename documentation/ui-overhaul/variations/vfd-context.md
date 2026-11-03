@@ -1,6 +1,6 @@
 # FILAMENT × Context-driven
 
-The context-driven functional design (`functional-context.md`, version 4) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The context-driven functional design (`functional-context.md`, version 5) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -14,11 +14,11 @@ Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game
 
 ![Helm, combat](vfd/context-helm-combat.jpg)
 
-**11.7 Deck, emergency.** The corvette disabled, its reactor stunned and its hold airless. The emergency card offers the two ways out with their presses and costs; P2 lists, in order, what nobody is handling, what the crew are on, the power coming back in 12 s and `+1 MORE: SMOKE`; each hazard in view carries a tag; the captain's own kit is LCD; the master lamps stand alone at the bottom centre. The strip is on the dimmer bus.
+**11.7 Deck, emergency.** The corvette disabled, its reactor damaged and its hold airless. The emergency card offers the two ways out with their presses and costs; P2 lists, in order, what nobody is free to handle (emergency oxygen, the vacuum, the power), what the crew are on and `+1 MORE: SMOKE`; each hazard in view carries a tag; the captain's own kit is LCD; the master lamps stand alone at the bottom centre. The strip is on the dimmer bus.
 
 ![Deck, emergency](vfd/context-deck-emergency.jpg)
 
-**11.13 Boarding, latched.** The fight is over and the ship is latched to the beaten raider. The flight instruments have sunk into the rack and only the shelf with the master lamps stands proud; X2 names the raider and the party's work, with `K` and `U` as soft keys under it; the objective has the bounty's next step.
+**11.13 Boarding, latched.** The fight is over and the ship is latched to the beaten raider. The flight instruments have sunk into the rack and only the shelf with the master lamps stands proud; X2 names the raider, its state and the party's work, with its two keys under the glass; the objective has the bounty's next step.
 
 ![Boarding, latched](vfd/context-boarding.jpg)
 
@@ -37,7 +37,7 @@ Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game
 | H4 ship condition | Compact face: a lamp cell per light on the rack's left wing (hardware, always there; three on a hull with no shield emitter). Expanded face: a slab above them with the ship's own plan on a graphic dot panel and a row per light, pips leading |
 | H5 contact scope | Collapsed: a key on the right wing with the count beyond 50 km. Open: a round pod with a plotting scope and its zoom keys |
 | H6, H7 lock and armament | Slabs in R-MID. H6: the state in one word (`HOSTILE` behind red), `FIRING ON YOU` as its own red flag, range with closing or opening, time of flight and hit chance with its word. H7: guns, missiles and shields as rows of fixed state words |
-| X2 boarding | A slab where the station panel would be: the target, `LATCHED` or `EVA`, the party, salvage and cargo, with the two actions as soft keys (legends on the glass's bottom row, rubber keys under it) |
+| X2 boarding | A slab where the station panel would be: six rows of glass (the target with `LATCHED` or `EVA`, its state, the party, salvage, cargo, prisoners), then two keys under the glass printed with their key and action, `K  BOARDING` and `U  CAST OFF`, as the station board's keys are |
 | X3 emergency | A slab under P3 headed by a red bar with the state cut out of it; each way out on its own row with its cost, its key on the bezel beside it with an LED that blinks while the first press holds |
 | D1 captain vitals | Reflective LCD, backlit while it warns |
 | D3 hazards | Projected tags on each hazard in view (red `♦` warning, amber `▲` caution); edge pointers for the rest |
@@ -66,11 +66,19 @@ The mockups were rebuilt against version 4: P2's fixed-field rows with handling 
 
 No meaningful criticism of the visual build remains open. The notes below are functional.
 
+## Round 3
+
+Version 5 took all four round-2 notes: X2 has seven rows with the state on its own; X3 waits while power is due back by itself, and 11.7's reactor is now damaged, so `NO POWER  DAMAGED  YOU` sits third in P2, after the vacuum; the master alert cue stays lit under X3; the delivery is 40 food and P3 reads `T-4 S`. The mockups follow: P2 reordered, X2's state row reads `TAKEN: CREW SURRENDERED`.
+
+One fix from this round's check of version 5: X2 with its soft-key row was 182 units tall against the zone's 150 (the spec allows 10%). Its keys now carry their actions printed on them, under the glass, as the station board's do, so the slab is 155.
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
 ## Functional notes sent to the context designer
 
 Round 1 (all answered by version 3): keep P2 lit under X3, decoys have no stock, shields as a share, on-screen hazard tags for D3, states as one word.
 
-Round 2:
+Round 2 (all taken in version 5):
 
 1. **X2's state line overflows.** Its worst case (the target, `LATCHED`, the party's activity and the salvage) runs past 34 characters at 12.4's sizes. FILAMENT gives the party, salvage and cargo a row each (seven rows). Suggest the spec size X2 for that.
 2. **X3 offers costly exits while power is coming back.** In 11.7 P2 says power is back in 12 s while X3 offers abandon ship and a 3,400 cr tow. Suggest X3 wait while a recovery timer runs, or show the time beside the choices.
