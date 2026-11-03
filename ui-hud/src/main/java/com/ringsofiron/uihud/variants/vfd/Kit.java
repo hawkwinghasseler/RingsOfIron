@@ -334,6 +334,42 @@ public final class Kit {
         label(f, lx, ly, 0, text, 2f, color, level);
     }
 
+    /** How far an edge marker's label reaches either side of it along its edge, for {@link #spread}. */
+    public static float edgeHalf(char dir, String text) {
+        return dir == 'u' || dir == 'd' ? text.length() * 6f : 11f;
+    }
+
+    /**
+     * Moves the first {@code n} markers on one edge along it so none overlaps the next: {@code pos} are
+     * their centres along the edge, {@code half} how far each reaches either side, all kept within
+     * {@code lo..hi} with {@code gap} between. Markers keep their order, and only those in each other's
+     * way move. When they can't all fit they overlap at the far end.
+     */
+    public static void spread(float[] pos, float[] half, int n, float lo, float hi, float gap) {
+        // Into order along the edge (a dozen at most: an insertion sort)
+        for (int i = 1; i < n; i++) {
+            float p = pos[i], h = half[i];
+            int j = i - 1;
+            while (j >= 0 && pos[j] > p) {
+                pos[j + 1] = pos[j];
+                half[j + 1] = half[j];
+                j--;
+            }
+            pos[j + 1] = p;
+            half[j + 1] = h;
+        }
+        float next = lo;
+        for (int i = 0; i < n; i++) {
+            pos[i] = Math.max(pos[i], next + half[i]);
+            next = pos[i] + half[i] + gap;
+        }
+        float prev = hi;
+        for (int i = n - 1; i >= 0; i--) {
+            pos[i] = Math.min(pos[i], prev - half[i]);
+            prev = pos[i] - half[i] - gap;
+        }
+    }
+
     /**
      * A hazard tag on the deck: the severity mark and the short code, 5x7 at pitch 2 over a darkened
      * pill. Warnings are red with a diamond, cautions amber with a triangle: the shape is the

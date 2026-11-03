@@ -66,6 +66,20 @@ class FmtTest {
     }
 
     @Test
+    void aShipsNameKeepsTheWordsThatTellItApart() {
+        assertEquals("FREIGHTER", Fmt.name("Freighter", 9));
+        assertEquals("RAIDER 6", Fmt.name("Pirate raider 6", 8));
+        assertEquals("PIRATE RAIDER 6", Fmt.name("Pirate raider 6", 15));
+        assertEquals("RAIDE 6", Fmt.name("Pirate raider 6", 7));
+        assertEquals("GUNSH 12", Fmt.name("Pirate gunship 12", 8));
+        assertEquals("FREIGHTE", Fmt.name("Freighter", 8));
+        assertEquals("HIGH", Fmt.name("Highport", 4));
+        assertEquals("KESTREL", Fmt.name("The Kestrel", 7));
+        assertEquals("", Fmt.name(null, 8));
+        assertEquals("HAUL", Fmt.name("Hauler 123456", 4));
+    }
+
+    @Test
     void stopsAndColonsJoinTheCellBefore() {
         assertEquals(3, Fmt.segCells("7.67"));
         assertEquals(4, Fmt.segCells("12:04"));

@@ -52,7 +52,10 @@ told which box was hit. Its `Filament` holds GL resources: dispose the actor on 
 `Fmt` cuts values to fixed fields rather than growing a field to its value: `fit(7.67, 3, 2)` is
 "7.67" ('.' joins the cell before), a value too big for its cells shows nines, NaN shows blank.
 Ranges are metres under a kilometre and kilometres above; times are m:ss, then h:mm:ss, then days.
+`name("Pirate raider 6", 8)` is "RAIDER 6": a name drops its leading words before it cuts one, so the
+words that tell two ships apart stay.
 
 `Kit` holds the helpers the three variants share: the sector scope, brackets and nameplates for the
 projected HUD, velocity markers, the lead reticle, missile glyphs and the impact cross, edge
-markers, deck tags, the state rows and the pips.
+markers (`spread` moves several on one edge apart, keeping their order), deck tags, the state rows
+and the pips.

@@ -95,6 +95,35 @@ public final class Fmt {
         return u.length() <= cells ? u : u.substring(0, Math.max(0, cells));
     }
 
+    /**
+     * A ship's or station's name in {@code cells}, in capitals: whole when it fits, else its leading
+     * words dropped so the ones that tell it apart show ("Pirate raider 6" in 8 is "RAIDER 6"), and
+     * when one word is still too long it is cut and a number after it kept ("GUNSH 12"). Never cuts a
+     * word where a shorter whole one would do, as {@link #cut} does ("PIRATE R").
+     */
+    public static String name(String s, int cells) {
+        if (s == null || cells <= 0) return "";
+        String u = s.trim().toUpperCase(Locale.ROOT);
+        if (u.length() <= cells) return u;
+        String[] w = u.split("\\s+");
+        int n = w.length;
+        boolean numbered = n > 1 && isNumber(w[n - 1]);
+        int last = numbered ? n - 2 : n - 1;
+        for (int first = 1; first <= last; first++) {
+            String t = String.join(" ", java.util.Arrays.copyOfRange(w, first, n));
+            if (t.length() <= cells) return t;
+        }
+        String number = numbered ? " " + w[n - 1] : "";
+        int room = cells - number.length();
+        if (room < 1) return u.substring(0, cells);
+        return w[last].substring(0, Math.min(room, w[last].length())) + number;
+    }
+
+    private static boolean isNumber(String s) {
+        for (int i = 0; i < s.length(); i++) if (!Character.isDigit(s.charAt(i))) return false;
+        return !s.isEmpty();
+    }
+
     /** Seven-segment cells {@code text} takes: '.' and ':' join the cell before. */
     public static int segCells(String text) {
         int n = 0;
