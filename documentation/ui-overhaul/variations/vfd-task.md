@@ -1,6 +1,6 @@
 # FILAMENT × Task-driven
 
-The task-driven functional design (`functional-task.md`, round 8) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The task-driven functional design (`functional-task.md`, round 9) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/task.js`](../vfd/src/task.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -106,6 +106,18 @@ Spec round 8 (the Nasa-punk thread's round-4 notes and the designer's own check)
 3. **One lead reticle**, for the selected gun needing the most lead: FILAMENT already drew one. But it sat 38 units off the raider, about 500 m of lead, where 42 m/s for the coilgun's 1.1 s is 46 m. It now sits on the target inside the lock mark, over a soft dimmed disc so its dots don't read as the hull's lights (guide section 8).
 
 The scope's minus and plus keys were never cut from FILAMENT's scope; the 5 km step's reason is wording.
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
+## Round 7
+
+Spec round 9 (the designer's own review against the code) changes three things on FILAMENT's screens:
+
+1. **The gunnery helm line reads `HOLDING HEADING`.** A shot at the ship drops every order but hold position and match velocity (`HelmOrders.threat`), so round 8's approach couldn't stand. HLM keeps its two rows: the spec's orders still run to 49 characters, and `flying burn 1, 412 m/s to go` is 29.
+2. **The chronometer holds warp for the game's own reason:** `HELD FIRE ABOARD` at gunnery, as on deck; no guard holds warp for hostiles.
+3. **Helm at rest: the scope opens at its 5 km step**, the one its rule gives for Highport 3.0 km off, with Highport drawn at 3.0 km and the freighters at their ranges (one past the rim, on it).
+
+The lead reticle on the raider's hull inside its lock mark is as FILAMENT already draws it. The other changes (FLT's DOCK and CRUISE samples, the map, the HELM, CONTRACT and COLLAR samples) are on screens or alerts FILAMENT doesn't mock.
 
 Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
 

@@ -6,9 +6,15 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 |---|---|---|
 | Ship stations | `functional-stations.md` round 14 | Converged in round 7: C's closest approach, and the lead reticle on the target |
 | Context-driven | `functional-context.md` version 9 | Converged in round 8: version 9 took both of round 7's notes, each as FILAMENT had drawn it |
-| Task-driven | `functional-task.md` round 8 | Converged in round 7: the helm's order on a two-row HLM, the closest approach, the reticle on the target |
+| Task-driven | `functional-task.md` round 9 | Converged in round 9: the helm holds the heading under fire, warp held by the fire aboard, the 5 km scope at rest |
 
 A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 9
+
+**Task** (spec round 9, the designer's own review against the code). The gunnery helm line reads `HOLDING HEADING`, since a shot drops every order but hold and match (`HelmOrders.threat`); HLM keeps two rows for the spec's longer orders. The chronometer holds warp for the game's own reason, `HELD FIRE ABOARD`. Helm at rest opens its scope at the 5 km step, Highport drawn at 3.0 km.
+
+All three FILAMENT variations have converged; this is the last mockup round before the in-game builds.
 
 ## Round 8
 

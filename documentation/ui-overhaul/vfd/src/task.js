@@ -1,4 +1,4 @@
-// FILAMENT x Task-driven design (functional-task.md, round 8): the HUD as a late-90s digital dash. No racks
+// FILAMENT x Task-driven design (functional-task.md, round 9): the HUD as a late-90s digital dash. No racks
 // span the view; each corner carries its own moulded pod, like a car's instrument cluster, trip computer and
 // message centre. The annunciator is a cluster of tell-tales; the alert band is a message centre, a red
 // window for the one warning with an amber row hung under it for the cautions; the hint line is a strip of
@@ -409,7 +409,8 @@
 
     cluster(S, { chr: { day: '3', time: '14:22:05', warp: '1' }, ann: {} });
     scopePod(S);
-    sns(S, { heading: -4, range: '10 KM', auto: true, contacts: [{ x: -0.38, y: -0.24, kind: 'station' }, { x: 0.36, y: 0.2, kind: 'neutral' }, { x: 0.82, y: -0.56, kind: 'neutral' }] });
+    // the 5 km step holds Highport, the nearest contact, 3.0 km off; a freighter 4.1 km out, another past the rim
+    sns(S, { heading: -4, range: '5 KM', auto: true, contacts: [{ x: -0.508, y: -0.321, kind: 'station' }, { x: 0.72, y: 0.4, kind: 'neutral' }, { x: 0.82, y: -0.56, kind: 'neutral' }] });
     flt(S, { mode: 'CRUISE', frame: 'HIGHPORT', frameKm: '3.0', speed: '0.4', dv: 7007, dvFull: 9200, home: 410 });
     hnt(S, [['W S', 'THRUST'], ['A D', 'TURN'], ['M', 'MAP'], ['Q', 'DESTINATION'], ['F1', 'CONTROLS']]);
     S.finish();
@@ -436,7 +437,8 @@
     K.cross(S, 678, 388);
     S.projectNow();
 
-    cluster(S, { chr: { day: '3', time: '14:22:05', warp: '1', held: 'HOSTILES NEAR' }, ann: { FIRE: 'caution', CREW: 'caution' } });
+    // warp is held by the game's own guard reason, the fire in the hold (no guard holds it for hostiles)
+    cluster(S, { chr: { day: '3', time: '14:22:05', warp: '1', held: 'FIRE ABOARD' }, ann: { FIRE: 'caution', CREW: 'caution' } });
     sch(S, { states: { HOLD: 'fire' }, crew: [[9, 2, false, true], [9, 1], [6, 2, true], [13, 3]] });
     band(S, {
       warning: { title: 'MISSILE', detail: '2 INBOUND', label: 'IMPACT', number: '4', unit: 'S', key: 'F', action: 'DECOY', note: 'POINT DEFENSE ENGAGING' },
@@ -463,7 +465,8 @@
     // the 5 km step holds the raider (3.2 km) and both harpoons (1.4 km) with room to spare; the station is past
     // the rim, so it sits on it
     sns(S, { heading: -12, range: '5 KM', auto: true, hostiles: 1, contacts: [{ x: 0.537, y: -0.349, kind: 'hostile', lock: true }, { x: 0.27, y: -0.07, kind: 'missile' }, { x: 0.3, y: -0.01, kind: 'missile' }, { x: -0.83, y: 0.55, kind: 'station' }] });
-    hlm(S, 340, 718, 340, { who: 'BEA', order: 'APPROACHING RAIDER TO 2,000 M' });
+    // a shot at the ship drops every order but hold position and match velocity (HelmOrders.threat)
+    hlm(S, 340, 718, 340, { who: 'BEA', order: 'HOLDING HEADING' });
     hnt(S, [['SPACE', 'FIRE'], ['R', 'MISSILE'], ['TAB', 'NEXT TARGET'], ['V', 'STAND UP'], ['F1', 'CONTROLS']]);
     S.finish();
   };
