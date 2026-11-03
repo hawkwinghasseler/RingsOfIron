@@ -87,8 +87,9 @@ public final class GameInput {
     }
 
     /** The action's key went down this frame. */
-    private static boolean just(Action action) {
-        return Gdx.input.isKeyJustPressed(action.defaultKey);
+    /** The action's key went down this frame, and the HUD variant did not take it for itself. */
+    private boolean just(Action action) {
+        return Gdx.input.isKeyJustPressed(action.defaultKey) && !hud.keyUsedByVariant(action.defaultKey);
     }
 
     private static boolean held(Action action) {
