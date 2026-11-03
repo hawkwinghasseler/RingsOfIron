@@ -6,7 +6,17 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
+import com.ringsofiron.uihud.providers.ContactProvider;
+import com.ringsofiron.uihud.providers.ContactProvider.ContactFrame;
+import com.ringsofiron.uihud.providers.DockingApproachProvider;
+import com.ringsofiron.uihud.providers.DockingApproachProvider.DockingApproach;
+import com.ringsofiron.uihud.providers.FlightStatusProvider;
+import com.ringsofiron.uihud.providers.FlightStatusProvider.FlightStatus;
 import com.ringsofiron.uihud.providers.InteractorProvider;
+import com.ringsofiron.uihud.providers.NavigationProvider;
+import com.ringsofiron.uihud.providers.NavigationProvider.NavReadout;
+import com.ringsofiron.uihud.providers.ObjectiveProvider;
+import com.ringsofiron.uihud.providers.ObjectiveProvider.ObjectiveFrame;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
 import com.ringsofiron.uihud.providers.PowerStatusProvider;
 import com.ringsofiron.uihud.providers.PowerStatusProvider.PowerFrame;
@@ -14,6 +24,8 @@ import com.ringsofiron.uihud.providers.ShieldStatusProvider;
 import com.ringsofiron.uihud.providers.ShieldStatusProvider.ShieldStatus;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 import com.ringsofiron.uihud.providers.ShipStatusProvider.ShipStatus;
+import com.ringsofiron.uihud.providers.StationBoardProvider;
+import com.ringsofiron.uihud.providers.StationBoardProvider.StationBoard;
 import com.ringsofiron.uihud.providers.TargetStatusProvider;
 import com.ringsofiron.uihud.providers.TargetStatusProvider.TargetStatus;
 import com.ringsofiron.uihud.providers.TargetingProvider;
@@ -46,6 +58,12 @@ public final class HudData {
     public PowerStatusProvider power;
     public TargetStatusProvider target;
     public ThreatProvider threats;
+    public FlightStatusProvider flight;
+    public NavigationProvider navigation;
+    public DockingApproachProvider dockingApproach;
+    public ContactProvider contacts;
+    public ObjectiveProvider objectives;
+    public StationBoardProvider stationBoard;
     /** Also set by {@code UiHud} when the game sets them there. */
     public TargetingProvider targeting;
     public OrbitInfoProvider orbitInfo;
@@ -74,6 +92,18 @@ public final class HudData {
     public final PowerFrame powerFrame = new PowerFrame();
     public final TargetStatus targetStatus = new TargetStatus();
     public final ThreatFrame threatFrame = new ThreatFrame();
+    /** Speed against the frame that matters, engines, delta-v. */
+    public final FlightStatus flightStatus = new FlightStatus();
+    /** The nav target, the next burn, the station docked at. */
+    public final NavReadout navReadout = new NavReadout();
+    /** The selected docking port and how it lines up. */
+    public final DockingApproach docking = new DockingApproach();
+    /** Every contact in the bubble, as values. */
+    public final ContactFrame contactFrame = new ContactFrame();
+    /** The contracts held. */
+    public final ObjectiveFrame objectiveFrame = new ObjectiveFrame();
+    /** Who is at each post. */
+    public final StationBoard stations = new StationBoard();
     /** Whether {@link #shipStatus} holds a ship this frame. */
     public boolean hasShipStatus;
 
@@ -100,6 +130,18 @@ public final class HudData {
         if (target != null) target.read(targetStatus);
         threatFrame.clear();
         if (threats != null) threats.collect(threatFrame);
+        flightStatus.clear();
+        if (flight != null) flight.read(flightStatus);
+        navReadout.clear();
+        if (navigation != null) navigation.read(navReadout);
+        docking.clear();
+        if (dockingApproach != null) dockingApproach.read(docking);
+        contactFrame.clear();
+        if (contacts != null) contacts.collect(contactFrame);
+        objectiveFrame.clear();
+        if (objectives != null) objectives.collect(objectiveFrame);
+        stations.clear();
+        if (stationBoard != null) stationBoard.collect(stations);
         if (afterRefresh != null) afterRefresh.run();
     }
 
