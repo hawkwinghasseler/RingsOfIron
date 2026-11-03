@@ -1,4 +1,4 @@
-// FILAMENT x Ship Stations (functional-stations.md, round 12): the seated band as one console rack,
+// FILAMENT x Ship Stations (functional-stations.md, round 14): the seated band as one console rack,
 // the top column as plates that power up in fixed slots, the deck left to the deck.
 // Round 2: every size at or above the guide's minimums (legends 13, segments 12, dots 1.5, the ticker
 // at body pitch 2, keys 24 tall); what no longer fits was cut by priority, not shrunk.
@@ -484,7 +484,7 @@
     helmCluster(S, {
       frames: [['ORBIT', 'norm'], ['TARGET', false], ['PORT', false], ['DOCKED', false]],
       speed: '7.67', unit: 'KM/S', rot: '', control: 'MANUAL', assist: 'norm', thr: false, rcs: false,
-      ref: { name: 'HIGHPORT', range: '1.2', unit: 'KM', speed: '3.9', cpa: '140', cpaT: '2:10' },
+      ref: { name: 'HIGHPORT', range: '1.2', unit: 'KM', speed: '3.9', cpa: '140', cpaT: '5:03' },
       next: { what: 'BURN 1', when: '12:04', dv: '210', dir: 'PRO' },
       trig: null,
       dv: { left: 1840, full: 2600, home: 1210, plan: 420 },
@@ -511,8 +511,10 @@
     // fire arcs of the guns in hand (nose forward, the laser to starboard), dim; the lead line and reticle
     K.arc(S, sx, sy, 100, 250, heading - 24, heading + 18, { level: 'dim', step: 6 });
     K.arc(S, sx, sy, 40, 120, heading + 62, heading + 128, { level: 'dim', step: 6 });
-    S.dotLine(sx + 96, sy - 22, 1086, 200, { layer: 'proj', step: 7, size: 1.3, level: 'dim' });
-    K.reticle(S, 1092, 199, { level: 'norm' });
+    // 40 m/s closing for the coilgun's 0.9 s is 37 m of lead, 6 units at this zoom: the reticle sits on the Raider,
+    // inside the lock mark, and the intercept line stops at its edge
+    S.dotLine(sx + 96, sy - 22, 1046, 217, { layer: 'proj', step: 7, size: 1.3, level: 'dim' });
+    K.reticle(S, 1054, 215, { level: 'norm', onTarget: true });
     // the lock: the Raider by name only (its numbers are in the Target slot)
     hostile(S, 1060, 214, 34, { lock: true });
     nameplate(S, 1060, 278, 'RAIDER', { level: 'norm' });

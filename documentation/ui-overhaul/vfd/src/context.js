@@ -1,4 +1,4 @@
-// FILAMENT x Context-driven design (functional-context.md, version 7): two racks frame the view (the
+// FILAMENT x Context-driven design (functional-context.md, version 8): two racks frame the view (the
 // status strip on top, the seat's instruments along the bottom) and everything that comes and goes is a
 // slab that powers up in a fixed slot of its zone. Laid at the minimum sizes (guide section 15, spec 12.4):
 // column text is 5x7 at pitch 1.5, so a column's 34 characters are 34 cells of 9 units.
@@ -94,10 +94,11 @@
     else K.dbar(S, bx, b - 9, 72, 7, 22, r.frac, { level: lv });
     let cx = vx + S.seg7(vx, b - 12, 12, r.value, { cells: 3, level: lv }) + 5;
     cx += S.legend(cx, b, r.unit, { level: 'dim' }) + 8;
-    if (r.out != null) { // power: the reactors' output against their rating
+    if (r.out != null) { // power: the reactors' output, and their rating beside it only while damage holds the
+      // output under it (version 8); otherwise OF and the rating stay dark glass in their place
       cx += S.seg7(cx, b - 12, 12, r.out, { cells: 2, level: lv }) + 5;
-      cx += S.legend(cx, b, 'OF', { level: 'dim' }) + 4;
-      cx += S.seg7(cx, b - 12, 12, r.rating, { cells: 2, level: lv }) + 5;
+      cx += S.legend(cx, b, 'OF', { level: 'dim', lit: r.rating != null }) + 4;
+      cx += S.seg7(cx, b - 12, 12, r.rating ?? '', { cells: 2, level: lv }) + 5;
       cx += S.legend(cx, b, 'MW', { level: 'dim' });
     }
     K.fits(cx, x + CW - 4, 'H4 row ' + r.label);
@@ -448,17 +449,22 @@
     K.brackets(S, 880, 290, 30, 'tri', { pitch: 2, len: 5, color: 'red', level: 'norm' });
     K.brackets(S, 880, 290, 40, 'square', { pitch: 2, len: 6, level: 'full', ticks: true });
     K.label(S, 846, 236, ['RAIDER'], { pitch: 2, level: 'norm' });
-    K.reticle(S, 858, 306, { level: 'norm' });
+    // the lead reticle: 12 m/s along the line of sight for a 2.2 s shot is 26 m of lead, 2 units at this zoom, so
+    // it sits on the target inside the lock mark, the smallest mark there (W5)
+    K.reticle(S, 878, 291, { level: 'norm', onTarget: true });
     // the nose gun's arc, and the missiles with their predicted tracks to the hull. The raider is 3.4 km off and
-    // threw them 11 s ago: under a harpoon's 30 m/s² closing burn they are 1.6 km out, about halfway, 4 s from impact
+    // threw them 11 s ago: under a harpoon's 30 m/s² closing burn they are 1.6 km out, about halfway, 4 s from impact,
+    // swinging in below the line of sight from the launchers on the raider's flank
     const n = -14 * R, nx = 640 + Math.cos(n) * 90, ny = 404 + Math.sin(n) * 90;
     K.arc(S, nx, ny, 20, 150, -14 - 22, -14 + 22, { level: 'dim' });
-    K.missile(S, 753, 350); K.missile(S, 765, 357);
-    K.track(S, [[753, 350], [726, 375]], { step: 6 }); K.track(S, [[765, 357], [731, 384]], { step: 6 });
+    K.missile(S, 761, 374); K.missile(S, 769, 381);
+    K.track(S, [[761, 374], [728, 378]], { step: 6 }); K.track(S, [[769, 381], [732, 384]], { step: 6 });
     K.cross(S, 722, 380);
-    const a = -20 * R;
-    K.velMark(S, 'pro', 640 + Math.cos(a) * 112, 404 + Math.sin(a) * 112 + 34, { level: 'norm', tag: 'LOCK' });
-    K.velMark(S, 'retro', 640 - Math.cos(a) * 112, 404 - Math.sin(a) * 112 - 34, { level: 'dim', tag: 'LOCK', tagLeft: true });
+    // in the LOCK frame the gunship closes along the line of sight at 12 m/s (H1, H6), so prograde points at the
+    // raider and retrograde away from it
+    const a = Math.atan2(290 - 404, 880 - 640);
+    K.velMark(S, 'pro', 640 + Math.cos(a) * 112, 404 + Math.sin(a) * 112, { level: 'norm', tag: 'LOCK' });
+    K.velMark(S, 'retro', 640 - Math.cos(a) * 112, 404 - Math.sin(a) * 112, { level: 'dim', tag: 'LOCK', tagLeft: true });
     S.projectNow();
 
     topRack(S, { seat: 'HELM', battle: true, day: '0', time: '00:41', warp: '1' });
@@ -467,21 +473,21 @@
     p3(S, { count: '2', t: '4', decoy: 'READY', pd: true });
     p4(S, [['GUNNERY', '3 HITS ON RAIDER']]);
     h2(S, 194, 'compact', { nav: 'SHACKLETON ICE', navRange: '1240' });
-    const h7y = h6(S, 194, { name: 'RAIDER', state: 'HOSTILE', firing: true, range: '3.4', unit: 'KM', closing: 'closing', rate: '85', shot: '2.1', hit: '62', word: 'FAIR' });
+    const h7y = h6(S, 194, { name: 'RAIDER', state: 'HOSTILE', firing: true, range: '3.4', unit: 'KM', closing: 'closing', rate: '12', shot: '2.2', hit: '62', word: 'FAIR' });
     h7(S, h7y + 12, { guns: 'READY', who: 'YOU', msl: '7', reload: null, shields: 'RAISED', trim: 'BOW' });
     // H4 rose by itself: the breach lit the hull light. The plan is the gunship's own deck.
     h4Face(S, LX, 556, { plan: { plan: K.GUNSHIP, states: { ENGINES: 'breach' }, crew: [[6, 4, true], [19, 3, false, true], [18, 5, true], [13, 4]], marks: [[8, 5, 'x']] }, planH: 88,
       rows: [
         { label: 'HULL', frac: 0.81, value: '81', unit: '%', sev: 'warning' },
         { label: 'SHIELDS', frac: 0.77, value: '77', unit: '%' },
-        { label: 'POWER', frac: 0.92, value: '92', unit: '%', out: '3.0', rating: '3.0' },
+        { label: 'POWER', frac: 0.92, value: '92', unit: '%', out: '3.0' },
         { label: 'LIFE SUP', frac: 1, value: '100', unit: '%' },
       ] });
     h4Lights(S, 16, 744, [['HULL', 'warning'], ['SHIELDS'], ['POWER'], ['LIFE SUP']]);
     cue(S, 640, 648, { warn: 'BREACH' });
-    h1(S, { frames: [['ORBIT', false], ['NAV', false], ['LOCK', 'norm'], ['PORT', false]], auto: true, name: 'RAIDER', speed: '38', assist: true, dv: '1240', prop: 0.72, thrust: { main: true } });
+    h1(S, { frames: [['ORBIT', false], ['NAV', false], ['LOCK', 'norm'], ['PORT', false]], auto: true, name: 'RAIDER', speed: '12', assist: true, dv: '1240', prop: 0.72, thrust: { main: true } });
     // the 5 km step holds the raider (3.4 km) and the missiles (1.6 km) with room to spare
-    h5Scope(S, { heading: -14, range: '5 KM', contacts: [{ x: 0.613, y: -0.292, kind: 'hostile', lock: true }, { x: 0.289, y: -0.137, kind: 'missile' }, { x: 0.31, y: -0.12, kind: 'missile' }, { x: -0.5, y: 0.45, kind: 'neutral' }] });
+    h5Scope(S, { heading: -14, range: '5 KM', contacts: [{ x: 0.613, y: -0.292, kind: 'hostile', lock: true }, { x: 0.31, y: -0.077, kind: 'missile' }, { x: 0.331, y: -0.058, kind: 'missile' }, { x: -0.5, y: 0.45, kind: 'neutral' }] });
     S.finish();
   };
 

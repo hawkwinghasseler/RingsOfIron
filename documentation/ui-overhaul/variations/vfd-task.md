@@ -1,6 +1,6 @@
 # FILAMENT × Task-driven
 
-The task-driven functional design (`functional-task.md`, round 7) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The task-driven functional design (`functional-task.md`, round 8) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/task.js`](../vfd/src/task.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -42,7 +42,7 @@ The other two FILAMENT variations are built like consoles: racks along the edges
 | SNS sensor scope | A square graphic dot panel, range rings in dots, the hostile count in two seven-segment cells behind red, range and `AUTO` in the corners, 24-unit zoom keys under it |
 | SCH ship schematic | A graphic dot panel (300 × 112) in its own pod: the corvette's plan with fire and smoke as dot patterns and the crew as dots, the pattern cleared around each crew dot |
 | FLT flight instrument | The four modes along the top; the frame as `FRAME` with its distance and its name in dot matrix; speed in large seven segments; `ASSIST OFF` (lit only when it is off), `MAIN` and `RCS` lit while firing; Δv with its bar, the home notch and `HOME` |
-| HLM helm status | A one-line slab: `HELM`, who has it, the standing order |
+| HLM helm status | A two-row slab: `HELM` and who has it, then the standing order in a window the slab's width (36 cells at gunnery, 47 on deck), so the spec's orders fit whole; a longer one marquees, as the ticker does |
 | HNT hint line | A legend strip: key caps, each with its word in a small window at L1 |
 | INT prompt | A small slab by the console (guide 7.10): its name in legend type, then each verb behind its key cap |
 | OVL deck overlays | Projected hazard tags: the severity glyph and the name in 5x7 at pitch 2, under it a bar of dots for the work done or `NOBODY`, over a darkened pill |
@@ -94,6 +94,18 @@ No meaningful criticism of the visual build remains; the notes below are functio
 ## Round 5
 
 Spec round 7 took both round-3 notes. It keeps `impact 14 s` and moves its harpoons instead, just thrown from the raider at 3.2 km; FILAMENT keeps its harpoons 1.4 km out at `IMPACT 4 S`, which the designer confirms fits 9.2's formula as well. The missile alert no longer gives a bearing, so the warning reads `2 INBOUND`; where the harpoons come from is drawn by their tracks in the world and their marks on the scope (principle 5).
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
+## Round 6
+
+Spec round 8 (the Nasa-punk thread's round-4 notes and the designer's own check) changes three things on FILAMENT's gunnery screen:
+
+1. **The target card's closest approach** reads `1:15`, which is what 3.2 km closing at 41 m/s with 0.6 km at closest gives.
+2. **The helm's order** reads `APPROACHING RAIDER TO 2,000 M`, which fits a closing range. At 29 characters it didn't fit HLM's one-line slab between the schematic and the weapons pod, and the spec's longest orders run to 49, so HLM is now two rows: who has the helm, then the order in a window as wide as the slab. The deck's HLM follows, its order in the spec's words (`HOLDING HEADING`).
+3. **One lead reticle**, for the selected gun needing the most lead: FILAMENT already drew one. But it sat 38 units off the raider, about 500 m of lead, where 42 m/s for the coilgun's 1.1 s is 46 m. It now sits on the target inside the lock mark, over a soft dimmed disc so its dots don't read as the hull's lights (guide section 8).
+
+The scope's minus and plus keys were never cut from FILAMENT's scope; the 5 km step's reason is wording.
 
 Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
 

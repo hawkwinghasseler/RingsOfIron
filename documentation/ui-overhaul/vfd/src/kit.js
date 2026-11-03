@@ -469,9 +469,12 @@ const KIT = (() => {
     // the frame's tag reads on the side away from your own ship (o.tagLeft), never across the hull
     if (o.tag) S.dm(o.tagLeft ? x - r - 9 - S.dmWidth(o.tag.length, { pitch: 1.5 }) : x + r + 9, y - 5, o.tag, { pitch: 1.5, layer: 'proj', level: 'dim', ghost: false, color: o.color });
   }
-  // Lead reticle: a ring broken on the diagonals, with a pip.
+  // Lead reticle: a ring broken on the diagonals, with a pip. At fight ranges the lead is tens of metres, so the
+  // reticle sits on the target's hull (o.onTarget): the world view dims a soft disc under it, as the deck view
+  // does under a tag, so its dots don't read as the hull's own lights.
   function reticle(S, x, y, o = {}) {
     const r = o.r ?? 8, c = { layer: 'proj', color: o.color, level: o.level ?? 'norm' };
+    if (o.onTarget) scrim(S, x - r - 5, y - r - 5, 2 * r + 10, 2 * r + 10, r + 5);
     ringDots(S, x, y, r, { ...c, step: 2.6, skip: a => Math.abs(Math.sin(2 * a)) > 0.72 });
     S.dot(x, y, { ...c, size: 2.2 });
   }
@@ -504,9 +507,9 @@ const KIT = (() => {
     label(S, lx, ly, lines, { pitch: p, color: o.color, level: o.level });
   }
   // The deck view darkens a soft pill under each tag (the world is dimmed; the projector can't draw black).
-  function scrim(S, x, y, w, h) {
+  function scrim(S, x, y, w, h, radius = 4) {
     const b = S.base; b.save(); b.filter = 'blur(4px)'; b.fillStyle = 'rgba(0,0,0,0.62)';
-    b.beginPath(); b.roundRect(x, y, w, h, 4); b.fill(); b.restore();
+    b.beginPath(); b.roundRect(x, y, w, h, radius); b.fill(); b.restore();
   }
   // A hazard tag on the deck: the severity sprite and the short code (or a name), 5x7 at pitch 2 over a scrim.
   // Warnings are red with a diamond, cautions amber with a triangle: the shape is the colour-free channel.

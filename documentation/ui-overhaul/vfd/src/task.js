@@ -1,4 +1,4 @@
-// FILAMENT x Task-driven design (functional-task.md, round 7): the HUD as a late-90s digital dash. No racks
+// FILAMENT x Task-driven design (functional-task.md, round 8): the HUD as a late-90s digital dash. No racks
 // span the view; each corner carries its own moulded pod, like a car's instrument cluster, trip computer and
 // message centre. The annunciator is a cluster of tell-tales; the alert band is a message centre, a red
 // window for the one warning with an amber row hung under it for the cautions; the hint line is a strip of
@@ -333,11 +333,13 @@
     S.seg7(hx0, b - 12, 12, String(d.home), { cells: 4, level: 'dim' });
   }
   // HLM: who flies and the standing order, one line; never a countdown.
+  // Two rows: who has the helm, then the standing order in a window as wide as the slab, so the spec's orders
+  // fit whole ("approaching Raider to 2,000 m" is 29 cells); one longer than its window marquees, as the ticker does.
   function hlm(S, x, y, w, d) {
-    K.slab(S, x, y, w, 24, { pad: 4 });
-    let cx = x + 6 + S.legend(x + 6, y + 17, 'HELM', { level: 'dim' }) + 8;
-    S.dm(cx, y + 6.75, d.who, { pitch: P, cells: 5, level: 'norm' }); cx += S.dmWidth(5, { pitch: P }) + 8;
-    S.dm(cx, y + 6.75, d.order, { pitch: P, cells: fit(cx, x + w - 6), level: 'norm' });
+    K.slab(S, x, y, w, 40, { pad: 4 });
+    const cx = x + 6 + S.legend(x + 6, y + 17, 'HELM', { level: 'dim' }) + 8;
+    S.dm(cx, y + 6.75, d.who, { pitch: P, cells: 5, level: 'norm' });
+    S.dm(x + 6, y + 22.75, d.order, { pitch: P, cells: fit(x + 6, x + w - 6), level: 'norm' });
   }
 
   // ------------------------------------------------------------------ Z9: HNT, the key strip
@@ -423,7 +425,9 @@
     K.brackets(S, 842, 268, 30, 'tri', { pitch: 2, len: 5, color: 'red', level: 'norm' });
     K.brackets(S, 842, 268, 40, 'square', { pitch: 2, len: 6, level: 'full', ticks: true });
     K.label(S, 892, 214, ["RAIDER 'VEX'"], { pitch: 2, level: 'norm' });
-    K.reticle(S, 862, 300, { r: 8, level: 'norm' });
+    // 42 m/s relative for the coilgun's 1.1 s is 46 m of lead, 3 units at this zoom: the reticle sits on the
+    // target, inside the lock mark, the smallest mark there
+    K.reticle(S, 839, 270, { r: 8, level: 'norm', onTarget: true });
     // two harpoons 1.4 km out, nearly dead ahead, their tracks and the impact mark: where they come from is drawn
     // here and on the scope, never given as a bearing, and the seconds are the band's alone. Thrown from the
     // raider 3.2 km off, under a harpoon's 30 m/s² closing burn they are about 4 s from impact
@@ -443,7 +447,7 @@
     });
     obj(S, [{ title: "BOUNTY: RAIDER 'VEX'", left: '2d21h' }]);
     tgt(S, { rel: 'HOSTILE', name: "RAIDER 'VEX'", cls: 'CORVETTE, PIRATE', firing: true, locked: false, state: 'FIGHTING',
-      hull: 3, hullWord: 'DAMAGED', range: '3.2', closing: 'CLOSING', rate: '41', cpa: '0.6', cpaT: '1:12', contract: 'BOUNTY' });
+      hull: 3, hullWord: 'DAMAGED', range: '3.2', closing: 'CLOSING', rate: '41', cpa: '0.6', cpaT: '1:15', contract: 'BOUNTY' });
     weaponsPod(S);
     wpn(S, {
       head: 'GUNS IN HAND, PD AUTOMATIC',
@@ -459,7 +463,7 @@
     // the 5 km step holds the raider (3.2 km) and both harpoons (1.4 km) with room to spare; the station is past
     // the rim, so it sits on it
     sns(S, { heading: -12, range: '5 KM', auto: true, hostiles: 1, contacts: [{ x: 0.537, y: -0.349, kind: 'hostile', lock: true }, { x: 0.27, y: -0.07, kind: 'missile' }, { x: 0.3, y: -0.01, kind: 'missile' }, { x: -0.83, y: 0.55, kind: 'station' }] });
-    hlm(S, 340, 734, 340, { who: 'BEA', order: 'HOLDING 2,000 M OFF RAIDER' });
+    hlm(S, 340, 718, 340, { who: 'BEA', order: 'APPROACHING RAIDER TO 2,000 M' });
     hnt(S, [['SPACE', 'FIRE'], ['R', 'MISSILE'], ['TAB', 'NEXT TARGET'], ['V', 'STAND UP'], ['F1', 'CONTROLS']]);
     S.finish();
   };
@@ -503,7 +507,7 @@
     });
     const oy = obj(S, [{ title: 'DELIVERY: WATER, FREEHOLD', left: '1d04h' }]);
     ntf(S, oy + 12, ['PAYDAY: 2,000 CR']);
-    hlm(S, 420, 734, 440, { who: 'BEA', order: 'HOLDS THE HEADING' });
+    hlm(S, 420, 718, 440, { who: 'BEA', order: 'HOLDING HEADING' });
     hnt(S, [['W A S D', 'WALK'], ['O', 'LIGHTS'], ['F1', 'CONTROLS']]);
     S.finish();
   };

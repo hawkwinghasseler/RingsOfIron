@@ -314,7 +314,7 @@ The symbology over the outside view is written by a dot-matrix projector, the de
 | Burn arrow | A dot chain with an arrowhead sprite and the 5x7 label the spec gives it, if any: the burn's number, its countdown only where the spec puts the time on the arrow |
 | Threat track | A red dot chain, dots every 6 units, ending in an impact cross |
 | Point-defense kill | A ring of eight dots that steps out three times (16 ms each) and fades |
-| Lead reticle | Four dots in a diamond with a centre dot |
+| Lead reticle | A ring of dots broken on the diagonals, with a centre pip. At fight ranges the lead is tens of metres, so the reticle sits on the target, inside its lock mark: the world view dims a soft disc under it (as the deck view does under a tag), so its dots don't read as the hull's own lights, and it is the smallest mark there, well inside the lock's corner brackets |
 | Fire arc | Dot chains along the arc's edges, sparse dots along its rim |
 | Docking corridor | Two dotted rails: zinc while safe, amber when closing too fast |
 | Collision cue | An amber cross of dots at the closest approach, with a dot chain to it |
@@ -485,6 +485,8 @@ The legend vocabulary and the abbreviations dot-matrix fields use when a word do
   - dot matrix pitch 1.5 for column text (cap 10.5, the same cap height as a 13-unit typeface); pitch 2 for running text, tickers, callouts and labels in the world;
   - LCD text 12;
   - anything clickable 24 by 24.
+
+  The functional specs size type by its typeface (body 13, values 15). FILAMENT matches cap heights: dot matrix at pitch 1.5 has a 13-unit typeface's cap (10.5), and a seven-segment digit 12 tall stands taller than a 15-unit typeface's cap (about 11). So a spec's value, a reading a widget exists to show, is drawn in seven segments, never in dot matrix at pitch 1.5; a number inside a line of text takes the line's dot matrix.
 
   When a module no longer fits at these sizes, its content is cut by priority (the spec's order) and never shrunk. The mockup renderer reports anything drawn below them, and an overflow check reports a row that runs past its module.
 

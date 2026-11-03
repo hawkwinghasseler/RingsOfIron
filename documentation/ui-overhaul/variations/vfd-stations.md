@@ -1,6 +1,6 @@
 # FILAMENT × Ship stations
 
-The ship-stations functional design (`functional-stations.md`, round 13) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The ship-stations functional design (`functional-stations.md`, round 14) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/stations.js`](../vfd/src/stations.js) over real game captures and the game's own hull art; `vfd/src/export.sh` re-renders them.
 
@@ -99,6 +99,14 @@ Callouts now carry no countdown; FILAMENT's already didn't. Nothing else on C, E
 ## Round 6
 
 Spec round 13 took both round-3 notes, and each matches what FILAMENT already drew: the seat's station board and its world symbology go dark with the seat, and while the ship is disabled the prompt line shows neither the tow nor abandoning, which the strip carries. It also gives the deck's side of a blackout, which no FILAMENT screen shows: the deck's marks stay, being the suit's own, and the deck goes to emergency lighting with its door lights and alarm beacons lit. The guide's emergency bus now says so (7.11). No screen changed.
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
+## Round 7
+
+Spec round 14 (the Nasa-punk artist's round-4 notes) changes one thing on FILAMENT's sheets: C's closest approach reads `CPA 140 M IN 5:03`, what Highport at 1.2 km closing at 3.9 m/s and passing at 140 m gives. Its other changes are walkthrough F (the reactor console: the ticker's order, POWER's rows in the order they come back, SHORTED), which FILAMENT doesn't mock.
+
+One fix of FILAMENT's own, found while the other specs placed their reticles: E's lead reticle sat 35 units beyond the Raider, about 210 m of lead on the far side of a target that is closing. At 40 m/s for the coilgun's 0.9 s the lead is 37 m toward the corvette, 6 units at this zoom, so the reticle now sits on the Raider inside the lock mark, over a soft dimmed disc so its dots don't read as the hull's lights, and the intercept line stops at its edge (guide section 8).
 
 Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
 

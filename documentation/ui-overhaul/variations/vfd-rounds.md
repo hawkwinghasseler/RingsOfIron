@@ -4,11 +4,27 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
-| Ship stations | `functional-stations.md` round 13 | Converged in round 6: the spec took both notes, each as FILAMENT had drawn it |
-| Context-driven | `functional-context.md` version 7 | Converged in round 6: the spec took both notes; H7 totals its missiles |
-| Task-driven | `functional-task.md` round 7 | Converged in round 6: the spec took both notes; the missile warning gives no bearing |
+| Ship stations | `functional-stations.md` round 14 | Converged in round 7: C's closest approach, and the lead reticle on the target |
+| Context-driven | `functional-context.md` version 8 | Rebuilt in round 7 (the kiter's numbers, H4's power row, the reticle on the target); no visual criticism open, two functional notes with the designer |
+| Task-driven | `functional-task.md` round 8 | Converged in round 7: the helm's order on a two-row HLM, the closest approach, the reticle on the target |
 
 A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 7
+
+All three specs moved again, from the other artists' notes.
+
+**Stations** (spec round 14). C's closest approach is `5:03`. Walkthrough F's changes are on a sheet FILAMENT doesn't draw.
+
+**Context** (version 8). The kiter holds its range along the line of sight: H6 `CLOSING 12 M/S`, `SHOT 2.2 S`, H1's LOCK-frame speed 12, and the LOCK-frame prograde marker on the line to the raider (it had been nudged 23° off it). H4's power row shows the output alone, `OF` and the rating dark until damage holds the output under them. 12.4's values at 15 were already met: seven segments 12 tall stand taller than a 15-unit typeface's cap.
+
+**Task** (round 8). The closest approach is `1:15` and the helm's order `APPROACHING RAIDER TO 2,000 M`, which didn't fit HLM's one line: HLM is now two rows, the order in a window the slab's width.
+
+**Everywhere: the lead reticle sits on the target.** The context and task specs now say what the game's physics gives: at fight ranges the lead is tens of metres. FILAMENT's three reticles sat 200 to 500 m of lead off their targets (E's on the far side of a closing one). Each now sits on the hull inside the lock mark, and the world view dims a soft disc under it, since its dots otherwise read as the hull's own lights (guide section 8).
+
+**Guide.** The lead reticle's sprite and its place at fight ranges (8); how FILAMENT meets the specs' value size of 15 (15).
+
+**Sent to the designers.** Context: H6's sample block still reads 85 m/s and 2.1 s; the wireframe's H1 still reads 38 m/s in the LOCK frame.
 
 ## Round 6
 
