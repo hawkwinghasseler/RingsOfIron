@@ -75,7 +75,10 @@ The screen is divided into the **viewport** (space, seen through glass) and the 
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-* **The deck sits along the bottom** like the dashboard of a vehicle. It is the only place persistent
+* **The deck sits along the bottom** like the dashboard of a vehicle. It is built of **pods**: a cluster
+  pod, display pods whose tubes sink into the deck when a spec folds them (pop-up tubes, like pop-up
+  headlights), and a sill for the station board, so a spec that hides part of the band can do it
+  mechanically. It is the only place persistent
   UI lives. It has a hard top edge (a rolled metal lip with a highlight) so the eye reads it as solid.
 * **The viewport is kept clear.** Only things that belong *in space* are drawn there: contact brackets,
   the gunsight, missile tracks, the dock approach. They are drawn as a **reflector-sight projection**:
@@ -156,6 +159,10 @@ identifies the style at a glance, the way a livery stripe identifies a vehicle.
 
 **Amber is for words and the ship's own state; green is for space and geometry.** A player learns that
 anything green is a place or a path and anything amber is a statement.
+
+All tubes are **beam-penetration tubes** (the two-colour CRTs of 1970s air-traffic and military
+displays): one tube draws green geometry, amber words and red threats. This is what lets a
+multi-function display show a radar page and a text page in the same place.
 
 Contacts on the green scope and on the gunsight use **shape first and brightness second**, not hue
 (section 7.2), because a monochrome tube can only do that, and it is better for colour-blind players.
@@ -253,13 +260,16 @@ are there now. Four roles, each tied to a material:
 
 | Token | Size | Use |
 |---|---|---|
-| `legend-s` | 10 | Dial scale numbers, keycap legends |
-| `legend` | 12 | Switch and lamp legends, bay titles |
+| `legend` | 12 | Switch and lamp legends, bay titles, key caps, annunciator text. **Nothing smaller** |
 | `crt-body` | 15 | CRT text (the current `BODY` size, kept so layouts carry over) |
 | `crt-large` | 20 | CRT emphasis (the target's name) |
-| `counter` | 22 | Drum counter digits (drum is 30 units tall) |
+| `counter` | 14–22 | Drum counter digits (drum 18–30 units tall) |
 | `crt-display` | 28 | VT323 headings on a CRT page |
 | `stencil` | 44+ | Title, bay numbers |
+
+The floor is 12 units for any text and 13 for body text at UI scale 1, as the functional specs require.
+Small instruments drop their scale numerals rather than shrink them: the zones and ticks carry the
+reading, and the exact value is on a counter or a page.
 
 Rules: legends are always ALL CAPS and short (≤ 12 characters; abbreviate like a panel engraver would:
 `PROPLNT`, `XPDR`, `RCS`). CRT text is mixed case. Never use the CRT face on hardware or the legend face
@@ -352,9 +362,12 @@ Instrument rules:
 
 ### 8.1 The annunciator
 
-All discrete ship states live in one **annunciator panel**: a grid of lens tiles, each with a two-line
-engraved legend (`HULL BREACH`, `FIRE BRIDGE`, `LOW PROPLNT`, `DOCK CLR`, `MSL LOCK`). Unlit, every
-tile is readable; lit, it glows in its colour. This replaces the alert lists and status text lines.
+All abnormal ship states live in one **annunciator panel**: a grid of lens tiles, each with a two-line
+engraved legend (`HULL BREACH`, `FIRE BRIDGE`, `LOW PROPLNT`). It carries **cautions and warnings
+only**: engaged states such as a target lock or the transponder light on their own controls, so a dark
+annunciator always means nothing is wrong. Where a spec makes the annunciator dynamic (tiles in order of
+severity, with values), it becomes an overhead strip of lenses whose tags are backlit and whose values
+are on split-flap windows, retracted when empty. This replaces the alert lists and status text lines.
 
 Beside it, two big push-lights: **MASTER CAUTION** (amber) and **MASTER WARNING** (red). Any new
 caution or warning lights its master and the tile; pressing the master (or its key) acknowledges it,
@@ -624,6 +637,9 @@ Written so this can be built on the existing `ui-hud` module without a rewrite o
 Mockups are HTML/SVG renders in `cassette/` (source: `cassette/mockups.html`, rendered with the
 pre-installed Playwright: `node cassette/render.js`). They show the style, not a final layout; the
 layout will come from the functional specs.
+
+The variations in `variations/*-cassette/` are drawn on the game's 1280 × 800 grid with the kit's grid
+section and supersede these two as the reference for sizes.
 
 * `mockup-flight.png` – the flight console at 16:9: a raider locked at 1.3 km, a caution lit for
   low propellant, the main CRT on the target page.
