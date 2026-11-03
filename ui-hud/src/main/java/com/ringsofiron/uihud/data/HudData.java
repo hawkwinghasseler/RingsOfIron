@@ -13,6 +13,8 @@ import com.ringsofiron.uihud.providers.DockingApproachProvider.DockingApproach;
 import com.ringsofiron.uihud.providers.FlightStatusProvider;
 import com.ringsofiron.uihud.providers.FlightStatusProvider.FlightStatus;
 import com.ringsofiron.uihud.providers.InteractorProvider;
+import com.ringsofiron.uihud.providers.KeyHintProvider;
+import com.ringsofiron.uihud.providers.KeyHintProvider.KeyHintFrame;
 import com.ringsofiron.uihud.providers.NavigationProvider;
 import com.ringsofiron.uihud.providers.NavigationProvider.NavReadout;
 import com.ringsofiron.uihud.providers.ObjectiveProvider;
@@ -64,6 +66,7 @@ public final class HudData {
     public ContactProvider contacts;
     public ObjectiveProvider objectives;
     public StationBoardProvider stationBoard;
+    public KeyHintProvider hints;
     /** Also set by {@code UiHud} when the game sets them there. */
     public TargetingProvider targeting;
     public OrbitInfoProvider orbitInfo;
@@ -104,6 +107,8 @@ public final class HudData {
     public final ObjectiveFrame objectiveFrame = new ObjectiveFrame();
     /** Who is at each post. */
     public final StationBoard stations = new StationBoard();
+    /** The keys worth knowing where the player is. */
+    public final KeyHintFrame keyHints = new KeyHintFrame();
     /** Whether {@link #shipStatus} holds a ship this frame. */
     public boolean hasShipStatus;
 
@@ -142,6 +147,8 @@ public final class HudData {
         if (objectives != null) objectives.collect(objectiveFrame);
         stations.clear();
         if (stationBoard != null) stationBoard.collect(stations);
+        keyHints.clear();
+        if (hints != null) hints.collect(keyHints);
         if (afterRefresh != null) afterRefresh.run();
     }
 

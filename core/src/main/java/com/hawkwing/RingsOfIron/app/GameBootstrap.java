@@ -17,6 +17,7 @@ import com.hawkwing.RingsOfIron.render.NavOverlay;
 import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.hawkwing.RingsOfIron.game.OpeningGuide;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
+import com.hawkwing.RingsOfIron.game.PlayerKeyHints;
 import com.hawkwing.RingsOfIron.game.Rescue;
 import com.ringsofiron.shipops.ShipDisablement;
 import com.ringsofiron.shipops.DisabledComponent;
@@ -144,6 +145,10 @@ public final class GameBootstrap {
                 return null;
             }
         };
+        // The variants' key strips: the bottom line's hints, from where the screen says the player is
+        GameHudText hudText = pipeline.text;
+        hud.getData().hints = new PlayerKeyHints(world.hints, hudText::hintContexts, session::key,
+                () -> placing.isPlacing() ? placing.hint() : null);
                 session.gameHud.yard.setLayoutEditor(refit::open);
         session.gameHud.yard.setFurnisher(placing::start);
         world.combatEvents.intercepts.add((signal, hit) -> {

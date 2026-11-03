@@ -64,9 +64,30 @@ public interface NavigationProvider {
         /** The contract whose waypoint it is ("Food to Shackleton Ice"), or "". */
         public String contract = "";
 
-        /** Planned burns still to come, the next one's place among all planned (1-based), seconds to it and its delta-v, m/s. */
+        /**
+         * Burns still to come (the one being flown among them), and the burn's place in the plan: the
+         * one being flown while {@link #burning}, else the next (1-based), of how many the plan has had.
+         * Flown burns leave the game's plan, so the count of those flown is kept as this HUD saw them
+         * go; a load starts it again. All 0 with no plan.
+         */
         public int burnsLeft, burnNumber, burnsPlanned;
+        /** The next burn still in the plan (after the one being flown, if any): seconds to its centre, and its delta-v, m/s. NaN with none. */
         public float burnIn = Float.NaN, burnDeltaV = Float.NaN;
+        /**
+         * Seconds until the main engine lights for that next burn (its centre less half its length at
+         * full thrust), and until the helm turns onto it (that, less the turn lead). NaN with none.
+         */
+        public float burnStartIn = Float.NaN, turnIn = Float.NaN;
+        /** A burn is being flown now: the engine is lit for it, or about to be with the ship on it. */
+        public boolean burning;
+        /** Delta-v still to go on the burn being flown, m/s; NaN when none is. */
+        public float burnToGo = Float.NaN;
+        /**
+         * The burn being flown, else the next: seconds it takes (what is left of it) at full thrust;
+         * its direction in the bubble's axes, degrees counter-clockwise from +x, 0 to 360; and the
+         * turn still needed onto it from the nose, degrees, + counter-clockwise. NaN with none.
+         */
+        public float burnTime = Float.NaN, burnHeadingDeg = Float.NaN, pointingDeg = Float.NaN;
         /** Delta-v the plan or the proposal needs in all, m/s; 0 with none. */
         public double planDeltaV;
         /** A transfer proposal is up, not yet planned. */
@@ -90,6 +111,10 @@ public interface NavigationProvider {
             contract = "";
             burnsLeft = burnNumber = burnsPlanned = 0;
             burnIn = burnDeltaV = Float.NaN;
+            burnStartIn = turnIn = Float.NaN;
+            burning = false;
+            burnToGo = Float.NaN;
+            burnTime = burnHeadingDeg = pointingDeg = Float.NaN;
             planDeltaV = 0;
             proposal = false;
             docked.clear();

@@ -8,14 +8,21 @@ import com.ringsofiron.uihud.providers.TargetStatusProvider.Relation;
  * Every contact the player's ship knows of in the bubble, as values rather than a marker's tint and
  * label text: what it is, whose side it is on, what state it is in, where it is against the ship.
  * Filled once a frame by the game wiring layer from the HUD markers, the sensors and the factions.
- * Positions are bubble metres, the frame {@code TransformComponent} uses.
+ * Positions are bubble metres, as {@code PhysicsManager.getPosition} gives them; the camera and
+ * {@code TransformComponent} work in physics units of {@code PhysicsManager.METERS_PER_UNIT} metres.
  */
 public interface ContactProvider {
     /** Fills {@code out}, already cleared. */
     void collect(ContactFrame out);
 
     enum Kind {
-        SHIP, STATION, MISSILE, DERELICT, WAYPOINT
+        SHIP, STATION, MISSILE,
+        /** A wreck, an abandoned hull or an escape pod. */
+        DERELICT,
+        /** A place to go that is not a craft. */
+        WAYPOINT,
+        /** One of the player's crew outside, adrift or on a line. */
+        EVA
     }
 
     /** What state a ship is in, as the markers word it. */
@@ -84,16 +91,16 @@ public interface ContactProvider {
             contacts.clear();
         }
 
-        /** The locked contact, or null. */
+        /** The locked contact, or null. Indexed, as is {@link #count}, so either can be called while walking {@link #contacts}. */
         public Contact locked() {
-            for (Contact c : contacts) if (c.locked) return c;
+            for (int i = 0; i < contacts.size; i++) if (contacts.get(i).locked) return contacts.get(i);
             return null;
         }
 
         /** How many contacts of {@code relation} there are. */
         public int count(Relation relation) {
             int n = 0;
-            for (Contact c : contacts) if (c.relation == relation) n++;
+            for (int i = 0; i < contacts.size; i++) if (contacts.get(i).relation == relation) n++;
             return n;
         }
     }

@@ -67,9 +67,9 @@ public interface StationBoardProvider {
             crewAboard = crewFree = 0;
         }
 
-        /** The first seat at {@code post}, or null. */
+        /** The first seat at {@code post}, or null. Indexed, so it can be called while walking {@link #seats}. */
         public Seat at(Post post) {
-            for (Seat s : seats) if (s.post == post) return s;
+            for (int i = 0; i < seats.size; i++) if (seats.get(i).post == post) return seats.get(i);
             return null;
         }
     }
