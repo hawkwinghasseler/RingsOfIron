@@ -4,6 +4,9 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.Vector2;
 import com.ringsofiron.combatsys.ContactState;
 import com.ringsofiron.combatsys.components.MissileComponent;
+import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.combatsys.fire.Track;
+import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.macrosim.hostile.HostileComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -16,7 +19,8 @@ import com.ringsofiron.uihud.providers.TargetStatusProvider.Relation;
 /**
  * What the HUD variants' providers say of another craft the same way: whose side it is on, what
  * state it is in, and where it is in bubble metres. One rule for the target card, the contact list
- * and the navigation readout, so they never disagree.
+ * and the navigation readout, so they never disagree; and where the ship's sensors track a craft,
+ * the target card, the flight frame and the contact list all read that track ({@link #sensed}).
  */
 final class HudContacts {
     private HudContacts() {
@@ -73,6 +77,21 @@ final class HudContacts {
         if (t == null) return false;
         pos.set(t.x * PhysicsManager.METERS_PER_UNIT, t.y * PhysicsManager.METERS_PER_UNIT);
         vel.setZero();
+        return true;
+    }
+
+    /**
+     * Where {@code e} is and how it moves as the ship's sensors hold it: while {@code sensor} tracks it,
+     * the track's estimate now (its last fix carried forward by the fix's age), else as {@link #read}
+     * has it. The lock's range and closing on the target card and the same craft's in the contact list
+     * come from here, so one craft never reads two ways on one screen. False when neither knows it.
+     */
+    static boolean sensed(SensorComponent sensor, SensorTrackingSystem sensors, Entity e, Vector2 pos, Vector2 vel) {
+        Track track = sensor == null || sensors == null || e == null ? null : sensor.trackFor(e);
+        if (track == null) return read(e, pos, vel);
+        float age = sensors.ageOf(track);
+        track.positionAt(age, pos);
+        track.velocityAt(age, vel);
         return true;
     }
 

@@ -49,7 +49,10 @@ Life cycle, all on the render thread:
 3. `resize(width, height, uiScale)` when the window or the UI scale changes. The stage's units are
    already resized; this is where a variant that generates its own fonts rebuilds them.
 4. `keyDown` for keys the classic HUD did not use, before the game's own bindings see them. Not
-   called while a window or the map has the keys.
+   called while a window or the map has the keys. Return true for a key you used and the game's
+   binding for it does nothing that frame (`UiHud.keyUsedByVariant`): Alt with 1 picks your page
+   and gives no helm order. The game reads its bindings whatever modifier is held, so take a key
+   only when it means yours (with Alt held, say); one you take is gone from the game that frame.
 5. `detach` to let go of fonts and textures.
 
 A variant that throws from `attach` leaves the classic HUD up rather than none, and says so in the log.

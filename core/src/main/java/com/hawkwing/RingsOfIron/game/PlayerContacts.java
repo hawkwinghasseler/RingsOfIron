@@ -9,6 +9,7 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -24,7 +25,8 @@ import java.util.Comparator;
 /**
  * ui-hud's {@link ContactProvider}: every craft with a HUD marker in the bubble (ships, stations,
  * derelicts, crew adrift) and every missile in flight, as values against the player's ship: what
- * it is, whose side it is on, its state, where it is and how it closes, nearest first.
+ * it is, whose side it is on, its state, where it is and how it closes, nearest first. A craft the
+ * ship's sensors track is where its track puts it, as the target card has it ({@link HudContacts#sensed}).
  */
 public class PlayerContacts implements ContactProvider {
     private static final Family MARKED = Family.all(HudMarkerComponent.class).get();
@@ -36,15 +38,18 @@ public class PlayerContacts implements ContactProvider {
     private final NavTarget navTarget;
     private final PirateBase pirateBase;
     private final Spacewalks spacewalks;
+    private final SensorTrackingSystem sensors;
     private final ImmutableArray<Entity> marked, missiles;
     private final Vector2 pos = new Vector2(), vel = new Vector2(), shipPos = new Vector2(), shipVel = new Vector2();
 
-    public PlayerContacts(GameContext ctx, DockingSystem docking, NavTarget navTarget, PirateBase pirateBase, Spacewalks spacewalks) {
+    public PlayerContacts(GameContext ctx, DockingSystem docking, NavTarget navTarget, PirateBase pirateBase, Spacewalks spacewalks,
+            SensorTrackingSystem sensors) {
         this.ctx = ctx;
         this.docking = docking;
         this.navTarget = navTarget;
         this.pirateBase = pirateBase;
         this.spacewalks = spacewalks;
+        this.sensors = sensors;
         this.marked = ctx.engine.getEcsEngine().getEntitiesFor(MARKED);
         this.missiles = ctx.engine.getEcsEngine().getEntitiesFor(MISSILES);
     }
@@ -65,7 +70,7 @@ public class PlayerContacts implements ContactProvider {
         Entity nav = navTarget.entity();
         for (int i = 0; i < marked.size(); i++) {
             Entity e = marked.get(i);
-            if (e == ship || e.isScheduledForRemoval() || !HudContacts.read(e, pos, vel)) continue;
+            if (e == ship || e.isScheduledForRemoval() || !HudContacts.sensed(sensor, sensors, e, pos, vel)) continue;
             HudMarkerComponent marker = e.getComponent(HudMarkerComponent.class);
             Contact c = out.add();
             c.entity = e;
@@ -83,7 +88,7 @@ public class PlayerContacts implements ContactProvider {
         }
         for (int i = 0; i < missiles.size(); i++) {
             Entity e = missiles.get(i);
-            if (e.getComponent(HudMarkerComponent.class) != null || !HudContacts.read(e, pos, vel)) continue;
+            if (e.getComponent(HudMarkerComponent.class) != null || !HudContacts.sensed(sensor, sensors, e, pos, vel)) continue;
             MissileComponent m = e.getComponent(MissileComponent.class);
             Contact c = out.add();
             c.entity = e;
