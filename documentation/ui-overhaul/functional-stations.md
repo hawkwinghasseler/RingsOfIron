@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 12.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 13.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -174,7 +174,7 @@ Fallback rules, so no hull loses a function:
 1. If no console hosts a station, the **helm console** hosts it, as an extra tab.
 2. If the hosting console is **destroyed**, the station can still be read (from repeaters and the slate) and acting falls back to the helm console, except Helm itself, which falls back to nothing: the ship drifts, as `Bridge` already rules.
 3. If the hosting console is **unpowered or stunned**, its pages read "NO POWER" everywhere, its controls do nothing, and a caution names it.
-4. In a **blackout**, with no reactor running, every console is unpowered. The clusters and MFDs go dark on their NO POWER face, so the player sees at once that the ship can neither fly nor fight. What the player needs to get out stays up, as if on the ship's emergency supply: the overlay (7); Engineering, at its consoles and on the slate, switches included, so a reactor can always be switched back on (as in the game, where a console's switch works whatever the power, `ConsoleWindow`); and on the slate the Command tabs and COMMS for the beacon. POWER comes first, since it says why the reactor is down and what brings it back (switching it on, a repair and who is on it, the seconds left on a stun). Helm, Navigation and Tactical pages read NO POWER wherever they are viewed. The simulation has no battery, so this is a rule of the UI, not a system to model: without it, rule 3 would hide the one page that says how to get the power back.
+4. In a **blackout**, with no reactor running, every console is unpowered. The clusters and MFDs go dark on their NO POWER face, so the player sees at once that the ship can neither fly nor fight. What the player needs to get out stays up, as if on the ship's emergency supply: the overlay (7); Engineering, at its consoles and on the slate, switches included, so a reactor can always be switched back on (as in the game, where a console's switch works whatever the power, `ConsoleWindow`); and on the slate the Command tabs and COMMS for the beacon. POWER comes first, since it says why the reactor is down and what brings it back (switching it on, a repair and who is on it, the seconds left on a stun). Helm, Navigation and Tactical pages read NO POWER wherever they are viewed. The seat's station board and its world symbology (11.1 to 11.4) go dark with it, being the seat's own: a hostile nearby is still there in the world, and on its tile if it fires, but without its bracket. The slate's copy of the board stays up, and so do the deck's marks (11.5), which are the suits' own. On deck the consoles go dark and the lights go to emergency lighting (11.6). The simulation has no battery, so this is a rule of the UI, not a system to model: without it, rule 3 would hide the one page that says how to get the power back.
 
 ### 5.2 Helm
 
@@ -372,7 +372,7 @@ A condition that clears removes its tile with a short fade and leaves a line in 
 | Console prompt | The console's name and verbs: "HELM  [E] Use  [V] Sit"; at a reactor "REACTOR  [E] Use" | In the world, by the console tile, within `INTERACT_RADIUS` |
 | Door prompt | "[F] Force  [B] Cut" | In the world, by the door |
 | Response | The answer to the player's own input: "Navigation target: Highport", "Undock from the helm: [V] at the helm, then [U]" | Z7 for 4 s; in a panel's footer when a panel is open |
-| Learning hints | At most 3 contextual hints from `HintRegistry`, each retired once the player has used that action 3 times (new; counts kept in settings). The tow's hint stays while a tow is on offer (13.4) | Z7 when no response is showing |
+| Learning hints | At most 3 contextual hints from `HintRegistry`, each retired once the player has used that action 3 times (new; counts kept in settings). The tow's hint stays while the ship, short of propellant, can call one (13.4). While the ship is disabled the status strip carries the abandon and tow keys (7.7), so the prompt line shows neither | Z7 when no response is showing |
 
 ### 7.4 Suit readout
 
@@ -662,6 +662,7 @@ T0 cues that need art or lighting work, listed so the artists can plan for them:
 - Door indicator lights: vacuum, fire or smoke on the far side.
 - Alarm beacons in rooms with a fire or a breach.
 - Interior lighting follows the condition: battle lighting in Red, so a player on deck knows the ship's state at a glance (the lighting thread's call how; the strip, 7.7, says it in words).
+- In a blackout (5.1) the consoles go dark and the deck goes to emergency lighting. Door lights and alarm beacons stay lit, as the overlay does, since they are what keeps a player on deck alive.
 - Crew speaking marks (11.5).
 
 ---
@@ -854,7 +855,7 @@ A response shows where the player is looking: on the prompt line (Z7), or in the
 | Warp above 1x | Warp strip. The cluster's slots go dark except Next event, and the MFDs fold (nothing on them changes fast enough to read); any caution or warning restores them |
 | Yellow, Red | Symbology and MFD defaults as in 11.1 and 9.1 |
 | Emergency | The status strip's emergency text |
-| Blackout (no reactor running) | Clusters and MFDs on their NO POWER face; the overlay stays up; Engineering stays readable and switchable at its consoles and on the slate; the slate keeps Command's tabs and COMMS, and tile clicks open there (5.1) |
+| Blackout (no reactor running) | Clusters and MFDs on their NO POWER face, and the seat's station board and world symbology dark; deck marks, door lights and alarm beacons lit, under emergency lighting; the overlay stays up; Engineering stays readable and switchable at its consoles and on the slate; the slate keeps Command's tabs and COMMS, and tile clicks open there (5.1) |
 | A side panel open while seated | The band stays; the panel stops above it; the top-centre column recentres left of it |
 
 ---
@@ -1221,6 +1222,13 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 13 (VFD artist's round 3 notes)
+
+| Problem found | Change |
+|---|---|
+| Rule 4 said a blackout darkens the clusters and MFDs, but not what becomes of the seat's station board and world symbology | Both go dark with the seat. The slate's copy of the board and the deck's marks stay up, and the deck goes to emergency lighting with door lights and alarm beacons lit (5.1, 11.6, 14.2) |
+| 7.3 kept the tow's hint on the prompt line while the ship is disabled, when the strip already shows B twice | The hint is for a ship short of propellant only; while disabled the strip carries the keys and the prompt line shows neither (7.3) |
 
 ### Round 12 (Nasa-punk artist's round 3 notes, checked against the data, and one of my own)
 
