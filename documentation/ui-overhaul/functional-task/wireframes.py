@@ -210,7 +210,7 @@ def gunnery_combat(out):
         "state  fighting",
         "hull   damaged (sensor est.)",
         "range  3.2 km   closing 41 m/s",
-        "CPA    0.6 km in 1:12",
+        "CPA    0.6 km in 1:15",
         "[bounty contract]"])
     s.box(776, 560, 304, 200, "WPN", "Guns in hand, PD automatic", [
         "NOSE      coilgun  HAND  READY  tof 1.1s",
@@ -223,7 +223,7 @@ def gunnery_combat(out):
         "(a ship with an emitter adds a",
         " shields row: state, %, trim, 4 sectors)"])
     s.box(1088, 584, 176, 176, "SNS", "Scope 5 km (auto)", ["", "", "", "", "", "", "", "1 hostile"])
-    s.box(400, 734, 360, 26, "HLM", "Helm: Bea   holding 2,000 m off Raider", kind="cond")
+    s.box(400, 734, 360, 26, "HLM", "Helm: Bea   approaching Raider to 2,000 m", kind="cond")
     s.box(760, 250, 110, 30, "", "[ Raider 'Vex' ]", kind="world")
     s.box(812, 300, 64, 24, "", "lead +", kind="world")
     s.box(420, 230, 150, 28, "", "missile path", kind="world")
