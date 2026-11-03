@@ -10,7 +10,7 @@
 <script>
 // Walkthrough 11.5: the captain at the weapons console of a gunship (it has a shield emitter, which
 // the starting corvette lacks), Bea holding the helm. A raider has fired one missile; point
-// defence is on it. The other hostile is out at 14 km. The ship is unhurt, so P2 is dark and H4's
+// defense is on it. The other hostile is out at 14 km. The ship is unhurt, so P2 is dark and H4's
 // three lights are out.
 let s = space({ px: 1500, py: 1300, pr: 900, seed: 11 });
 const SX = 640, SY = 405, HDG = -35, K = 0.085;
@@ -18,8 +18,10 @@ const SX = 640, SY = 405, HDG = -35, K = 0.085;
 const ART = HULL_ART.gunship, ACX = (ART.x0 + ART.x1) / 2;
 const onShip = (ax, ay) => { const r = HDG * Math.PI / 180, dx = (ax - ACX) * K, dy = ay * K; return [SX + dx * Math.cos(r) - dy * Math.sin(r), SY + dx * Math.sin(r) + dy * Math.cos(r)]; };
 s += hullArt('gunship', SX, SY, HDG, K);
-// W6: the missile, its predicted track to the hull and where it would strike; point defence's
-// stream from the forward port autocannon reaching for it
+// W6: the missile, its predicted track to the hull and where it would strike; point defense's
+// stream from the forward port autocannon reaching for it. It is 1.3 km from where it would strike:
+// a harpoon closes at 30 m/s² (MissileDef.closingBurn), so from the Lock's 3.4 km it lands about
+// 15 s after launch, and the game's estimate (closest approach at the present speed) reads 4 s here.
 const [MX, MY] = [742, 318], [IX, IY] = onShip(560, -250), [PX, PY] = onShip(500, -230);
 s += W.track(`M${MX} ${MY} Q${708} ${352} ${IX} ${IY}`);
 s += W.impact(IX, IY, 7);
@@ -30,15 +32,23 @@ const [NX, NY] = onShip(844.8, 0), [RX, RY] = [842, 262], [LX, LY] = [822, 286];
 s += W.hitLane(NX, NY, LX, LY);
 s += haloed((c, w) => line(LX + 6, LY - 6, RX - 7, RY + 7, c, w), 'rgba(60,203,230,0.6)', 1);   // the reticle's line back to the target, as LeadReticle draws it
 s += haloed((c, w) => `<circle cx="${LX}" cy="${LY}" r="8" fill="none" stroke="${c}" stroke-width="${w}"/>` + line(LX - 13, LY, LX - 8, LY, c, w) + line(LX + 8, LY, LX + 13, LY, c, w) + line(LX, LY - 13, LX, LY - 8, c, w) + line(LX, LY + 8, LX, LY + 13, c, w), C.cyan);
-// W1: the Lock and the other hostile, names only (their ranges are F1's and F4's)
+// W1: the Lock, named only (its range is F1's). Raider 2 is 14 km off at bearing 117, off screen
+// at this zoom (72.8 a km), so it gets one edge marker where its bearing leaves the clear world, at
+// the scope's bezel; no range on it, since F4 has it (W1's off-screen rule)
 s += W.contact('hostile', RX, RY, { locked: true, label: ['RAIDER'], lx: 26, ly: -10 });
-s += W.contact('hostile', 868, 520, { label: ['RAIDER 2'], lx: 18, ly: 4 });
+{
+  const b = 117 * Math.PI / 180, ux = Math.sin(b), uy = -Math.cos(b), EX = 1056, EY = SY + (EX - SX) / ux * uy;
+  const arm = (sgn) => { const r = Math.PI + sgn * 0.6, ax = ux * Math.cos(r) - uy * Math.sin(r), ay = ux * Math.sin(r) + uy * Math.cos(r); return [EX + 12 * ax, EY + 12 * ay]; };
+  const [p1, p2] = [arm(1), arm(-1)];
+  s += haloed((c, w) => path(`M${p1[0]} ${p1[1]} L${EX} ${EY} L${p2[0]} ${p2[1]}`, c, w), C.red, 2.5);
+  s += text(EX - 16, EY - 8, 'RAIDER 2', { size: LB, bold: true, fill: C.red, anchor: 'end', track: 0.6, halo: true });
+}
 
-s += statusStrip({ seat: 'FIRE CONTROL', authority: 'HELM: BEA · HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:44', warp: '1×' });
+s += statusStrip({ seat: 'FIRE CONTROL', authority: 'HELM: BEA · HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:44:05', warp: '1×' });
 // P3: at fire control F4 has each missile's impact time, so P3 keeps the count and the decoy
 s += threatAlert('1 MISSILE INBOUND', ['DECOY READY', { key: 'F' }, '·  PD ENGAGING']);
 // P4: gunnery's events of the last 5 s merge into one line
-s += feed([['GUN', '2 hits on Raider']]);
+s += feed([['GUNNERY', '2 hits on Raider']]);
 
 // F4 threat list (L-MID): inbound missiles by impact time, then the hostiles other than the Lock.
 // Rows are 24 tall: a click on one locks it.
@@ -49,7 +59,7 @@ s += du(12, ZC.lmid.y, 308, 12 + 2 * 24, {
     const R = gx + gw - 6, T = gx + 150, D = gx + 162;
     let yy = gy + 16.7;
     c += sym.chevron(gx + 11, yy - 5, 0, C.red, 1.5, 5.5) + text(gx + 24, yy, 'MSL', { size: B, bold: true, fill: C.red, track: 0.4 });
-    c += val(T, yy, 'T−0:02', null, { anchor: 'end' }) + lab(D, yy, 'BRG') + text(D + 30, yy, '040', { size: B, bold: true });
+    c += val(T, yy, 'T−0:04', null, { anchor: 'end' }) + lab(D, yy, 'BRG') + text(D + 30, yy, '050', { size: B, bold: true });
     c += I.box(R - 56, yy - 14, 56, 18, 'PD ON', 'engaged', { size: LB });
     c += line(gx + 4, gy + 24, gx + gw - 4, gy + 24, C.graticule, 1);
     yy += 24;
@@ -148,7 +158,7 @@ s += du(330, 638, 620, 150, {
 // is past the rim, a tick at its bearing
 s += contactScope([
   { kind: 'hostile', x: 0.277, y: -0.196, locked: true },
-  { kind: 'missile', x: 0.118, y: -0.098, a: 232 },
+  { kind: 'missile', x: 0.140, y: -0.120, a: 232 },
 ], { heading: 55, range: '10', rim: [[117, 'hostile']] });
 
 document.getElementById('out').innerHTML = svgPage(s);

@@ -23,10 +23,10 @@ s += text(SX + 44, SY + 35, 'BURN 1  T−12:05', { size: B, bold: true, fill: C.
 s += haloed((c, w) => path(`M1238 236 L1250 244 L1238 252`, c, w), C.magenta, 2.5);
 s += text(1230, 249, 'SHACKLETON ICE', { size: LB, bold: true, fill: C.magenta, anchor: 'end', track: 0.6, halo: true });
 
-s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:33', warp: '1×' });
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:33:10', warp: '1×' });
 
 // L-MID: P5 objective (compact), then H2 navigation
-const p5 = objective(['DELIVER 40 FOOD', '→ SHACKLETON ICE · 1.4 D LEFT']);
+const p5 = objective(['DELIVER 40 FOOD', '→ SHACKLETON ICE · 1D 10H LEFT']);
 s += p5.svg;
 s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
   id: 'h2', b: 6,
@@ -44,7 +44,7 @@ s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
     // NAV: the Nav's name in the nav colour, its range, rate and closest approach
     c += lab(L, yy, 'NAV') + `<circle cx="${M + 5}" cy="${yy - 4.5}" r="5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/>` + text(M + 16, yy, 'SHACKLETON ICE', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right(num(1240), 'KM'); yy += P;
     c += lab(M, yy, 'OPENING') + right('220', 'M/S'); yy += P;
-    c += lab(M, yy, 'CLOSEST') + val(M + 66, yy, '3.2', 'KM', { size: B }) + right('T−2:05:00'); yy += P + 1;
+    c += lab(M, yy, 'CPA') + val(M + 40, yy, '3.2', 'KM', { size: B }) + right('T−2:05:00'); yy += P + 1;
     rule();
     // NEXT: the next event of any kind, and who flies it
     c += lab(L, yy, 'NEXT') + path(`M${M + 5} ${yy - 10} l5.5 5.5 l-5.5 5.5 l-5.5 -5.5 z`, C.magenta, 1.5) + text(M + 16, yy, 'BURN 1/2', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right('T−12:05'); yy += P;

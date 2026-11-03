@@ -9,19 +9,21 @@
 <script src="task.js"></script>
 <script>
 // Seated at the weapons console in a fight with the raider 'Vex'. Bea, the helmsman, holds the
-// ship 3.2 km off it. Two harpoons inbound, the first in 3 s (the one warning): about 3.5 km out
-// and still burning, which a harpoon (weapons.toml: 60 kN on 400 kg) covers in about 3 s. An earlier hit lit
+// ship 3.2 km off it. Two harpoons inbound, a second apart, the first in 3 s (the one warning). A
+// harpoon closes at 30 m/s² (MissileDef.closingBurn; weapons.toml leaves the harpoon's at that), so
+// from 3.2 km it lands about 13 s after launch and reads 3 s about 1.1 km out; the second, a second
+// behind, is 1.4 km out and reads 4 s. An earlier hit lit
 // the Hold, where Ada fights the fire, and wounded Cole, whom nobody is treating (two cautions).
 // FLT gives way to HLM; SCH shows because FIRE and CREW are lit (section 8). The crew are the
 // game's starting crew (GameScenario: Ada, engineer; Bea, crewman and helmsman; Cole, marine).
 //
-// The Patrol Corvette as ships.toml fits it: the coilgun in the nose, a point-defence autocannon on
+// The Patrol Corvette as ships.toml fits it: the coilgun in the nose, a point-defense autocannon on
 // each beam forward, the harpoon launcher aft to port (magazine 4), the laser aft to starboard
-// (3 km reach). At the weapons console every gun but point defence is in hand
+// (3 km reach). At the weapons console every gun but point defense is in hand
 // (PlayerGunnery.inHand). There is no shield emitter, so no shields row and no SHIELD lamp.
 let s = space({ px: -300, py: 1500, pr: 1000, seed: 17 });
 const SX = 640, SY = 390, HDG = 60;
-// the point-defence kill ring: the autocannons' 4 km reach (about 282 px at this zoom)
+// the point-defense kill ring: the autocannons' 4 km reach (about 282 px at this zoom)
 s += `<circle cx="${SX}" cy="${SY}" r="282" fill="none" stroke="${C.cyan}" stroke-width="1" stroke-dasharray="2 7" opacity="0.55"/>`;
 s += text(SX - 214, SY + 196, 'PD 4 KM', { size: 12, bold: true, fill: C.cyan, track: 0.6 });
 s += hull(SX, SY, HDG, 0.9);
@@ -32,10 +34,10 @@ s += raiderHull(TX, TY, 240, 0.42) + W.contact('hostile', TX, TY, { locked: true
 const RX = 798, RY = 242;
 s += W.hitLane(SX + 18, SY - 18, RX, RY);
 s += haloed((c, w) => `<circle cx="${RX}" cy="${RY}" r="8" fill="none" stroke="${c}" stroke-width="${w}"/>` + line(RX - 12, RY, RX - 8, RY, c, w) + line(RX + 8, RY, RX + 12, RY, c, w) + line(RX, RY - 12, RX, RY - 8, c, w) + line(RX, RY + 8, RX, RY + 12, c, w), C.cyan);
-// two missiles inbound from bearing 080 on their paths. Markers carry no numbers (round 4): the
-// time to impact is the band's alone
-s += W.track(`M 1010 300 Q 830 360 ${SX + 16} ${SY + 10}`) + W.missile(880, 335, 252, C.red);
-s += W.track(`M 1040 380 Q 860 410 ${SX + 18} ${SY + 14}`) + W.missile(900, 400, 258, C.red);
+// two harpoons inbound from bearing 080, each on its predicted path to the hull, as the game draws
+// it (missile to impact). Markers carry no numbers (round 4): the time to impact is the band's alone
+s += W.track(`M 715 377 Q 687 392 ${SX + 16} ${SY + 10}`) + W.missile(715, 377, 241, C.red);
+s += W.track(`M 740 387 Q 700 399 ${SX + 18} ${SY + 14}`) + W.missile(740, 387, 253, C.red);
 // the hit already taken: an impact mark on the port side aft
 s += W.impact(SX - 30, SY - 4);
 
@@ -43,7 +45,7 @@ s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×', note: 'HELD: HOS
 s += annunciatorPanel({ FIRE: 'caution', CREW: 'caution' });
 
 // ALR: the warning row with its one number and its action; the caution row under it, each caution
-// naming who handles it. Point defence engaging is the warning's own second line.
+// naming who handles it. Point defense engaging is the warning's own second line.
 s += alertBand({
   warning: { tag: 'MISSILE\n2 IN', big: 'IMPACT 0:03', big2: 'BEARING 080', line2: 'POINT DEFENSE ENGAGING', actions: [['F', 'DECOY']] },
   cautions: [['FIRE', 'HOLD', 'ADA ON IT'], ['WOUNDED', 'COLE', 'NO MEDIC FREE']],
@@ -77,7 +79,7 @@ s += du(1024, 328, 240, 200, {
   },
 }).svg;
 
-// WPN, expanded: what is in hand, one row per mount (point defence and the launcher included),
+// WPN, expanded: what is in hand, one row per mount (point defense and the launcher included),
 // then the decoy. No shields row: the corvette has no emitter.
 s += du(ZT.arms.x, ZT.arms.y, ZT.arms.w, ZT.arms.h, {
   id: 'wpn', b: 8, title: 'WEAPONS',
@@ -110,11 +112,12 @@ s += du(ZT.arms.x, ZT.arms.y, ZT.arms.w, ZT.arms.h, {
   },
 }).svg;
 
-// SNS: the scope on the threats, the count of hostiles under it
+// SNS: the scope on the threats (10 km to the rim, so each contact sits at its world offset over
+// 10 km), the count of hostiles under it
 s += du(ZT.sns.x, ZT.sns.y, ZT.sns.s, ZT.sns.s, {
   id: 'sns', b: 8, title: 'SCOPE',
   content: (gx, gy, gw, gh) => I.scope(gx + gw / 2, gy + gh / 2 - 8, gw / 2 - 16, [
-    { kind: 'hostile', x: 0.42, y: -0.29, locked: true }, { kind: 'missile', x: 0.5, y: 0.0, a: 252 }, { kind: 'missile', x: 0.56, y: 0.05, a: 258 },
+    { kind: 'hostile', x: 0.264, y: -0.182, locked: true }, { kind: 'missile', x: 0.106, y: -0.019, a: 241 }, { kind: 'missile', x: 0.142, y: -0.005, a: 253 },
     { kind: 'neutral', x: -0.6, y: 0.4 },
   ], { heading: HDG }) + text(gx + 8, gy + gh - 6, '1 HOSTILE', { size: 12, bold: true, fill: C.red, track: 0.3 }) + text(gx + gw - 8, gy + gh - 6, '10 KM AUTO', { size: 12, fill: C.dim, anchor: 'end' }),
 }).svg;
@@ -134,7 +137,7 @@ s += du(ZT.sch.x, ZT.sch.y, ZT.sch.w, ZT.sch.h, {
 }).svg;
 
 // HLM: at gunnery FLT is hidden; who flies and the order take its place
-s += helmStatus(376, 736, 320, 'BEA', 'HOLDING 2\u2009000 M OFF RAIDER');
+s += helmStatus(376, 736, 320, 'BEA', 'HOLDING 3\u2009200 M OFF RAIDER');
 
 // F is the warning's own action, so it doesn't repeat here (round 4)
 s += hintLine([['SPACE', 'FIRE'], ['R', 'MISSILE'], ['TAB', 'NEXT TARGET'], ['F1', 'CONTROLS']]);

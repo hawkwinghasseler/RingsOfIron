@@ -53,8 +53,10 @@ s += du(ZT.flt.x, ZT.flt.y, ZT.flt.w, ZT.flt.h, {
 // SNS: the scope, range automatic (nothing hostile, nothing locked: the nearest contact)
 s += du(ZT.sns.x, ZT.sns.y, ZT.sns.s, ZT.sns.s, {
   id: 'sns', b: 8, title: 'SCOPE',
+  // contacts at their world offsets over the 10 km rim (the world here is 55.5 a km: Highport's
+  // 3.0 km is 166 units), the third contact off the world view at 9 km
   content: (gx, gy, gw, gh) => I.scope(gx + gw / 2, gy + gh / 2, gw / 2 - 8, [
-    { kind: 'station', x: -0.35, y: -0.3 }, { kind: 'neutral', x: 0.3, y: 0.32 }, { kind: 'neutral', x: 0.72, y: -0.55 },
+    { kind: 'station', x: -0.252, y: -0.162 }, { kind: 'neutral', x: 0.184, y: 0.173 }, { kind: 'neutral', x: 0.72, y: -0.55 },
   ], { heading: 90, range: '10 KM' }),
 }).svg;
 

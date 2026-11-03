@@ -14,7 +14,7 @@
 // firing on the ship (a caution). The crew are the game's starting crew (GameScenario): Bea has the
 // helm, Cole sits at the nose gun, Ada is free.
 // The corvette as ships.toml fits it: the coilgun in the nose and the laser aft to starboard, in
-// hand at this seat; an autocannon on each beam forward, point defence, automatic
+// hand at this seat; an autocannon on each beam forward, point defense, automatic
 // (PlayerGunnery.inHand); the harpoon launcher aft to port, magazine 4. No shield emitter: the
 // Shields slot is blank and the right MFD starts on DAMAGE (9.1).
 let s = space({ px: -200, py: 1300, pr: 900, seed: 11 });
@@ -36,14 +36,20 @@ s += haloed((c, w) => `<circle cx="${LX}" cy="${LY}" r="8" fill="none" stroke="$
 // outside the outline on that side, with their count (11.1). No countdown on screen: the time is
 // in the MISSILE tile and the SENSORS list (11.2)
 const pa = (HDG - 90) * Math.PI / 180, IX = SX + 30 * Math.sin(pa), IY = SY - 30 * Math.cos(pa);
-// (both left the Raider's launcher seconds ago: 2.2 and 2.6 km out, most of the way still to come)
+// Both left the Raider's launcher about 6 s ago, a second apart, and are 2.0 and 2.2 km out. A
+// harpoon closes at 30 m/s² (MissileDef.closingBurn), so from 2.8 km it lands about 12 s after
+// launch, and the game's estimate (closest approach at the present speed, CombatThreats) reads
+// 0:09 and 0:12 now. Each track is drawn from the missile on, as the game draws a predicted path.
 const q = (t, a, c, b) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * c + t * t * b;
 const T1 = [TX - 20, TY + 6, 800, 200, IX + 8, IY - 3], T2 = [TX - 16, TY + 16, 810, 262, IX + 8, IY + 4];
-s += W.track(`M${T1[0]} ${T1[1]} Q ${T1[2]} ${T1[3]} ${T1[4]} ${T1[5]}`) + W.missile(q(0.22, T1[0], T1[2], T1[4]), q(0.22, T1[1], T1[3], T1[5]), 244, C.red);
-s += W.track(`M${T2[0]} ${T2[1]} Q ${T2[2]} ${T2[3]} ${T2[4]} ${T2[5]}`) + W.missile(q(0.08, T2[0], T2[2], T2[4]), q(0.08, T2[1], T2[3], T2[5]), 250, C.red);
+// the rest of a launch curve from t on: its point at t, then the curve's split control and end
+const rest = (T, t) => [q(t, T[0], T[2], T[4]), q(t, T[1], T[3], T[5]), (1 - t) * T[2] + t * T[4], (1 - t) * T[3] + t * T[5], T[4], T[5]];
+const M1 = rest(T1, 0.345), M2 = rest(T2, 0.211);   // 2.0 and 2.2 km from the ship
+s += W.track(`M${M1[0]} ${M1[1]} Q ${M1[2]} ${M1[3]} ${M1[4]} ${M1[5]}`) + W.missile(M1[0], M1[1], 253, C.red);
+s += W.track(`M${M2[0]} ${M2[1]} Q ${M2[2]} ${M2[3]} ${M2[4]} ${M2[5]}`) + W.missile(M2[0], M2[1], 242, C.red);
 s += W.impact(IX, IY) + text(IX - 2, IY - 14, '2', { size: 12, bold: true, fill: C.red, anchor: 'middle' });
-// point defence on them: tracer from the forward autocannons
-s += haloed((c, w) => line(SX + 16, SY - 4, q(0.22, T1[0], T1[2], T1[4]) - 8, q(0.22, T1[1], T1[3], T1[5]) + 3, c, w, { dash: '2 5' }), 'rgba(238,241,243,0.8)', 1.2);
+// point defense on them: tracer from the forward autocannons
+s += haloed((c, w) => line(SX + 16, SY - 4, M1[0] - 8, M1[1] + 3, c, w, { dash: '2 5' }), 'rgba(238,241,243,0.8)', 1.2);
 
 // Long-range optics on the locked target, clear of the top column
 s += haloed((c, w) => line(TX + 17, TY - 17, 1060, 150, c, w), 'rgba(238,241,243,0.5)', 1);
@@ -54,7 +60,7 @@ s += W.cctv(1060, 70, 176, 110, {
 
 // Overlay: the status strip, the annunciator with both master lamps lit, the ticker
 s += statusStrip({ condition: 'RED' });
-s += annunciator(640, Z.annunciator.y, [['MISSILE', '2  0:03', 'warning'], ['HOSTILE', 'FIRING', 'caution']], { warning: true, caution: true });
+s += annunciator(640, Z.annunciator.y, [['MISSILE', '2  0:09', 'warning'], ['HOSTILE', 'FIRING', 'caution']], { warning: true, caution: true });
 s += ticker(280, Z.ticker.y, [['TAC', 'Cole:', 'harpoons from port. PD has them.', 'warning'], ['HELM', 'Bea:', 'holding position.']]);
 
 // Prompt line, 8 above the band: learning hints
@@ -64,13 +70,13 @@ s += promptHints(640, Z.prompt.y, [['SPACE', 'FIRE'], ['R', 'MISSILES'], ['F', '
 s += mfd(Z.mfdL.x, Z.mfdL.y, 4, [{ t: 'SENSORS', state: 'cur' }, 'WEAPONS', 'DEFENSE', PIN, FOLD], (gx, gy, gw, gh) => {
   let c = pageHead(gx, gy, gw, 'SENSORS', '10 KM');
   c += I.scope(gx + 50, gy + 66, 40, [
-    { kind: 'hostile', x: 0.55, y: -0.25, locked: true },
-    { kind: 'missile', x: 0.32, y: -0.3, a: 252 }, { kind: 'missile', x: 0.22, y: -0.07, a: 262 }, { kind: 'neutral', x: -0.2, y: 0.85 },
+    { kind: 'hostile', x: 0.258, y: -0.109, locked: true },
+    { kind: 'missile', x: 0.177, y: -0.093, a: 253 }, { kind: 'missile', x: 0.207, y: -0.073, a: 242 }, { kind: 'neutral', x: -0.2, y: 0.85 },
   ], { heading: HDG });
   // per missile, its countdown (walkthrough E); the raider with no time
   const rows = [
-    [{ t: '› HARPOON', c: C.red, bold: true }, '2.2', { t: '0:03', c: C.red, bold: true }],
-    [{ t: '› HARPOON', c: C.red, bold: true }, '2.6', { t: '0:04', c: C.red, bold: true }],
+    [{ t: '› HARPOON', c: C.red, bold: true }, '2.0', { t: '0:09', c: C.red, bold: true }],
+    [{ t: '› HARPOON', c: C.red, bold: true }, '2.2', { t: '0:12', c: C.red, bold: true }],
     [{ t: '◆ RAIDER', c: C.red, bold: true }, '2.8', ''],
   ];
   c += I.table(gx + 96, gy + 36, [{ t: 'CONTACT', w: 88 }, { t: 'KM', w: 30, align: 'right' }, { t: 'IMPACT', w: 56, align: 'right' }], rows, { fs: SB, rh: 20, sel: 2 });
@@ -83,7 +89,7 @@ s += du(Z.cluster.x, Z.cluster.y, 480, 160, {
     let c = '';
     const L = gx + 8, R = gx + gw - 8, C0 = L + 70, row = i => gy + 1 + i * 23.7;
     for (let i = 1; i < 6; i++) c += line(gx + 4, row(i), gx + gw - 4, row(i), C.graticule, 1);
-    // Slot labels say the seat's mode once (8.3): guns and launchers are YOURS, point defence AUTO
+    // Slot labels say the seat's mode once (8.3): guns and launchers are YOURS, point defense AUTO
     const lab = (i, t, col = C.dim) => text(L, row(i) + 16.5, t, { size: 12, bold: true, fill: col, track: 0.5 });
     const v = (x, i, t, o = {}) => text(x, row(i) + 16.5, t, { size: SB, bold: true, fill: C.white, ...o });
     const bx = (x, i, t, st) => I.box(x, row(i) + 3.5, tw(t, 12, true, 0.5) + 12, 17, t, st, { size: 12 });
@@ -97,7 +103,7 @@ s += du(Z.cluster.x, Z.cluster.y, 480, 160, {
     c += lab(1, 'YOURS', C.cyan) + v(C0, 1, 'NOSE') + text(C0 + 78, row(1) + 16.5, 'COLE', { size: SB, fill: C.white }) + bx(C0 + 130, 1, 'CHARGING', 'normal') + hit(1, '81%');
     // the laser takes what the circuit gives: 60% of a 5 MW beam from a 3 MW reactor
     c += v(C0, 2, 'AFT STBD') + bx(C0 + 130, 2, 'BURNING 60%', 'engaged') + hit(2, '58%');
-    // Point defence: one chip for both forward autocannons; then the decoy
+    // Point defense: one chip for both forward autocannons; then the decoy
     c += lab(3, 'AUTO', C.green) + v(C0, 3, 'PD') + bx(C0 + 130, 3, 'ENGAGING', 'engaged');
     c += text(R - tw('READY', SB, true) - 6, row(3) + 16.5, 'DECOY', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.3 }) + v(R, 3, 'READY', { anchor: 'end' });
     // The launcher: rounds left of its magazine, ready, and how many one press throws (all four)

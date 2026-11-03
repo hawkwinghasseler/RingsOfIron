@@ -116,11 +116,15 @@ Rules:
 - **Values are right-aligned on the decimal** (B612's tabular figures keep columns straight).
   Units follow in `dim`, one size smaller: `7 672.6` `M/S`. Thousands are separated by a thin
   space, never a comma.
-- **Abbreviations come from one table** (`documentation/ui-overhaul/nasapunk/abbrev.md`, to be
-  written with the first skinned spec): PROP, STRUC, PWR, O2, ALT, AP, PE, T+, MET, RNG, RR
-  (range rate), TTI (time to impact), DV. One spelling per word, everywhere.
-- **Time is MET.** Mission elapsed time `MET 002:14:07:31` (days:hours:minutes:seconds) on the
-  glareshield; countdowns are `T-00:42` and counts up `T+01:15`.
+- **Words come from one table** ([`abbrev.md`](abbrev.md)). One name for each thing: a page,
+  station, system or datum is written the same way on every screen, on its key, tab and head
+  alike. Whole words unless a fixed field can't hold one; then the table's one short form (PROP,
+  ΔV, RNG, BRG, MSL, PD, FWD, STBD, LIFE SUP, EMERG, CRIT, SYS), and never another. A phrase
+  keeps its words whole (`RNG 3.4 KM`, but `OUT OF RANGE`).
+- **Time is the game's clock.** `DAY 2 · 14:07:31` (days since the campaign began) on the
+  glareshield. Countdowns are `T−12:40` with a true minus, `T−1:10:00` over an hour, and M:SS
+  without the T− where a label already says what they count to (`IMPACT 0:03`); counts up are
+  `T+01:15`. Durations are seconds: `SHOT 1.3 S`.
 
 ## 5. Lines, grid and shape
 
@@ -168,7 +172,7 @@ title for the page's one most important state; content in between on the 8 u gri
 ### Other containers, all built from the DU
 
 - **Glareshield:** a 40 u hardware strip along the top edge of the screen, holding the
-  annunciators (section 8), the flight mode annunciator (FMA) and the MET clock. In the default
+  annunciators (section 8), the flight mode annunciator (FMA) and the clock. In the default
   layout it is the only element that is always visible; a spec that puts the clock and the lamps
   in a corner block gets them in the same hardware there.
 - **Annunciator lens:** a 48 x 24 u push-button lens set in the glareshield or a console. Unlit:
@@ -199,7 +203,7 @@ Vector only, outline by default, 1.5 u strokes, 16 u nominal size, drawn on the 
 | Retrograde | Circle with a diagonal cross | same as prograde |
 | Velocity trend | Line from the ship, length = 10 s of drift, 2.5 u | `white` |
 | Heading bug | Notched cyan pentagon on the heading arc | `cyan` |
-| Planned burn | Hollow diamond on the path, DV written beside it | `magenta` |
+| Planned burn | Hollow diamond on the path, ΔV written beside it | `magenta` |
 | Flight director cue | Magenta caret on the heading arc: "turn to here" | `magenta` |
 
 ### Contacts (after MIL-STD-2525, simplified)
@@ -219,7 +223,7 @@ Affiliation is carried by **shape first**, so it reads in grey and to colour-bli
 Every moving contact carries a **leader line** along its velocity, 30 s long at the current
 scale, so relative motion reads without numbers. The locked target's symbol fills and gets a
 4-corner bracket; the navigation target gets a magenta ring. A data block beside a contact has at
-most three lines: name, `RNG`, `RR`. Never more on the world view; the rest is on a TGT page.
+most three lines: name, `RNG`, `CLOSING`. Never more on the world view; the rest is on a page.
 
 ### Interface icons
 
@@ -244,7 +248,7 @@ at all: a propellant gauge at 70% is white, at 25% amber, at 10% red.
 Acknowledging (click the lens or press its key) stops the flashing and the sound; the alert
 stays listed while the condition lasts. The first warning also pages the MFD to its **electronic
 checklist** for that alert: the steps to take, each one ticking green as the game sees it done
-(`ISOLATE PWR CMPT 3 .... DONE`). The checklist is a feature of the style and should be offered
+(`ISOLATE POWER, AFT STBD GUN .... DONE`). The checklist is a feature of the style and should be offered
 to every functional spec.
 
 **Mode changes** are announced by a `white` box drawn around the new mode on the FMA for 10 s,
@@ -267,7 +271,7 @@ guarantees each slot's size, position and behaviour at every UI scale.
 
 ```
 +----------------------------------------------------------------------+
-| GLARESHIELD: [MSTR WARN][MSTR CAUT]  FMA: ATT | TRANS | AP | WARP  MET |
+| GLARESHIELD: [MASTER WARN][MASTER CAUT] FMA: ATT|TRANS|AP|WARP  DAY |
 +--------+                                                   +---------+
 |        |                                                   |         |
 | DU-1   |                 OUT-THE-WINDOW                    | DU-2    |
@@ -281,8 +285,8 @@ guarantees each slot's size, position and behaviour at every UI scale.
 - **Glareshield** (top, full width, 40 u): always on.
 - **DU-1, primary flight display** (left, 304 x 400 u at 1280 x 800): what the pilot needs every
   second. Fixed content per view mode; it has page keys only for declutter.
-- **DU-2, multifunction display** (right, same size): pages chosen by the player (NAV, TGT, SYS,
-  CREW, COMM, ECL). The functional specs decide the page list.
+- **DU-2, multifunction display** (right, same size): pages chosen by the player (NAV, TARGET,
+  SYSTEMS, CREW, COMMS, CHECKLIST). The functional specs decide the page list.
 - **DU-3** (optional, bottom-centre, 400 x 160 u, folded down out of sight by default): a
   secondary MFD the player can raise with a key for a second page.
 - **HUD layer:** the only thing drawn over the world. Symbology from section 7 with halos,
@@ -301,7 +305,7 @@ Interaction rules that follow from the style:
   minimum. Every page must define what survives each level.
 - **Cursor on the glass.** On map-like pages the mouse becomes a cyan cross cursor inside the
   DU; clicking selects, and the selection's soft-key actions appear on the side keys.
-- **Scratchpad entry.** Typed values (a burn's DV, a quantity to buy) go to a scratchpad line at
+- **Scratchpad entry.** Typed values (a burn's ΔV, a quantity to buy) go to a scratchpad line at
   the foot of the page in `cyan`, then a line-select key beside the field puts the value there.
   Mouse dragging still works where the functional spec has it (burn handles); the scratchpad is
   for exact values.
@@ -329,7 +333,7 @@ Interaction rules that follow from the style:
   every 4 rows, no zebra stripes, changed values boxed in `white` for 3 s. Stale data carries a
   dim `S` in its own column.
 - **Timelines** for anything scheduled: a horizontal T- / T+ strip with event ticks (next burn,
-  contract deadline, arrival, missile TTI), now as a fixed `white` line, the future to the right.
+  contract deadline, arrival, a missile's impact), now as a fixed `white` line, the future to the right.
 
 ## 11. Motion
 
@@ -354,7 +358,7 @@ Sounds come from the deck's hardware and the agency's procedures, short and dry.
 | Page change | None (the click is enough) |
 | Caution | Single chime, about 1 kHz, 0.4 s decay |
 | Warning | Triple chime, repeating every 2 s until acknowledged, plus a calm voice callout ("Warning. Fire, engineering.") |
-| Missile inbound | Voice "Missile, missile" and a fast repeating tone pitched by TTI |
+| Missile inbound | Voice "Missile, missile" and a fast repeating tone pitched by the time to impact |
 | Radio, comms | Quindar tones: 2 525 Hz, 250 ms before a transmission and 2 475 Hz after it |
 | Mode change | None |
 | Range callouts on approach | Voice "One kilometre", "Five hundred", "One hundred" (optional per setting) |

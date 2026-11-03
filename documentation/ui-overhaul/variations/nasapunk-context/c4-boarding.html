@@ -30,8 +30,8 @@ s += `<g transform="translate(${SX} ${SY}) scale(${K}) translate(${-PCX} ${-PCY}
   s += text(x0, y0 - 9, 'RAIDER', { size: LB, bold: true, fill: C.white, track: 0.6, halo: true });
 }
 
-s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:30', warp: '1×' });
-s += feed([['BRD', 'The Raider is taken']]);
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:30:20', warp: '1×' });
+s += feed([['BOARDING', 'The Raider is taken']]);
 s += objective(['BOUNTY: RAIDER · TAKEN', '→ TURN IN AT HIGHPORT']).svg;
 
 // X2, the boarding panel, in R-MID where the station panel would be (v5: seven rows, 308 x up to
