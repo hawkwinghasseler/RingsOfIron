@@ -54,7 +54,7 @@ class Svg:
 
     def screen_bg(self, label):
         self.rect(0, 0, self.w, self.h, fill="#e9e9e6", stroke="#9a9a9a", rx=0, sw=1)
-        self.text(self.w - 10, self.h - 8, label, size=10, fill="#888", anchor="end")
+        self.text(self.w - 10, 11, label, size=10, fill="#888", anchor="end")
 
     def ship(self, cx, cy, label="your ship"):
         self.add(f'<polygon points="{cx-34},{cy-12} {cx+26},{cy-12} {cx+40},{cy} {cx+26},{cy+12} {cx-34},{cy+12}" '
@@ -101,9 +101,11 @@ def ntf(s, rows, y=None):
     s.box(1024, y, 240, 22 + 14 * len(rows) + 6, "NTF", "News", rows, kind="cond")
 
 
-def ann(s, lit=()):
+def ann(s, lit=(), shields=True):
     s.box(16, 72, 240, 64, "ANN", "Annunciator", [], kind="widget")
     lamps = ["HULL", "FIRE", "AIR", "POWER", "PROP", "DRIVE", "ARMS", "CREW", "EVA", "SHLD"]
+    if not shields:
+        lamps = lamps[:-1]
     for i, name in enumerate(lamps):
         col, row = i % 5, i // 5
         x, y = 22 + col * 46, 92 + row * 21
@@ -114,13 +116,16 @@ def ann(s, lit=()):
         elif state == "caut":
             s.rect(x, y, 42, 17, fill="#d6d6d0", stroke="#111", sw=1.6, rx=2)
             s.text(x + 21, y + 12.5, name, size=9.5, weight="bold", fill="#111", anchor="middle")
+        elif state == "adv":
+            s.rect(x, y, 42, 17, fill="#eeeee9", stroke="#777", sw=1.1, rx=2)
+            s.text(x + 21, y + 12.5, name, size=9.5, fill="#555", anchor="middle")
         else:
             s.rect(x, y, 42, 17, fill="#f6f6f3", stroke="#c4c4bf", sw=1, rx=2)
             s.text(x + 21, y + 12.5, name, size=9.5, fill="#b0b0aa", anchor="middle")
 
 
 def hnt(s, text):
-    s.box(320, 768, 640, 22, "", text, kind="cond")
+    s.box(16, 768, 1248, 24, "", text, kind="cond")
 
 
 def legend(s, y=None):
@@ -143,13 +148,13 @@ def zones(out):
     s.box(16, 16, 240, 48, "Z1", "TIME", ["clock, warp, next stop"])
     s.box(360, 16, 560, 70, "Z2", "ATTENTION", ["one warning, up to three cautions", "every one names its action"], kind="alert")
     s.box(1024, 16, 240, 190, "Z3", "INCOMING", ["objectives (contracts, guides)", "news (notices)", "", "slow loop: hours and days"])
-    s.box(16, 72, 240, 440, "Z4", "SELF", ["annunciator: what is wrong aboard", "personal: the captain's body", "", "medium loop: minutes", "", "", "", "", "", "", "",
+    s.box(16, 72, 240, 530, "Z4", "SELF", ["annunciator: what is wrong aboard", "personal: the captain's body", "", "medium loop: minutes", "", "", "", "", "", "", "",
                                           "nothing about other ships", "goes on this side"])
-    s.box(16, 520, 300, 264, "Z5", "SELF, SPATIAL", ["ship schematic (outside view,", "only when something is wrong)", "", "on deck the deck itself is", "the schematic: this zone", "stays empty"])
-    s.box(1024, 214, 240, 376, "Z6", "OTHERS", ["target card", "(combat target, else nav target)", "", "contacts are drawn in the world;", "this side holds what the world", "can't show: state, hull, intent"])
-    s.box(800, 598, 464, 186, "Z7", "OTHERS, SPATIAL + ARMS", ["weapons cluster (left)", "sensor scope (corner)", "", "fast loop: seconds"])
+    s.box(16, 610, 300, 150, "Z5", "SELF, SPATIAL", ["ship schematic (outside view,", "only when something is wrong)", "", "on deck the deck itself is", "the schematic: this zone", "stays empty"])
+    s.box(1024, 214, 240, 362, "Z6", "OTHERS", ["target card", "(combat target, else nav target)", "", "contacts are drawn in the world;", "this side holds what the world", "can't show: state, hull, intent"])
+    s.box(800, 584, 464, 176, "Z7", "OTHERS, SPATIAL + ARMS", ["weapons cluster (left)", "sensor scope (corner)", "", "fast loop: seconds"])
     s.box(400, 632, 392, 128, "Z8", "MOTION AND HANDS", ["flight instrument: one mode at a time", "cruise / burn / dock / departure / warp", "", "fast loop: seconds", "closest to the eye line"])
-    s.box(320, 768, 640, 22, "Z9", "keys for what you can do here (fades as you learn)", kind="cond")
+    s.box(16, 768, 1248, 24, "Z9", "keys for what you can do here (fades as you learn): a full-width strip; every zone ends above it", kind="cond")
     s.text(640, 310, "world overlays live here:", size=11, fill="#888", anchor="middle", style="italic")
     s.text(640, 326, "markers, velocity, burn arrows, reticle, missile paths,", size=11, fill="#888", anchor="middle", style="italic")
     s.text(640, 342, "docking corridor, deck hazards, prompts at objects", size=11, fill="#888", anchor="middle", style="italic")
@@ -164,14 +169,15 @@ def helm_quiet(out):
     s.clear_zone()
     s.ship(640, 390)
     chr_(s, "WARP 1x", "nothing planned")
-    ann(s)
+    ann(s, shields=False)
     s.box(420, 664, 440, 96, "FLT", "Flight: CRUISE", [
-        "frame ORBIT (Earth)        speed in frame  0.0 m/s",
+        "frame Highport (station, 3.0 km)   speed 0.4 m/s",
         "dv left 7,007 m/s   |----------|^---|  home 410",
         "rotation assist ON         main  RCS  (idle)"])
-    s.box(1088, 608, 176, 176, "SNS", "Scope 10 km", [])
+    s.box(1088, 584, 176, 176, "SNS", "Scope 10 km", [])
     s.box(500, 300, 70, 28, "", "Highport", kind="world")
-    s.box(700, 470, 80, 28, "", "Freighter", kind="world")
+    s.add('<polygon points="720,470 732,476 720,482" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>')
+    s.text(740, 480, "freighter: a glyph, no label", size=9.5, fill="#888", style="italic")
     s.add('<circle cx="640" cy="340" r="9" fill="none" stroke="#8a8a8a" stroke-width="1.2" stroke-dasharray="3 2"/>')
     s.text(654, 336, "prograde (frame-coded)", size=9.5, fill="#888", style="italic")
     hnt(s, "W/S thrust   A/D turn   M map   Q destination   F1 controls")
@@ -188,9 +194,10 @@ def gunnery_combat(out):
     s.ship(640, 390)
     chr_(s, "WARP 1x (held: hostiles)", "battle stations")
     alr(s, ("MISSILE  2 inbound  impact 14 s", "bearing 080   F decoy   point defence engaging"),
-        ("FIRE  Galley   crew on it", "POWER  store empty, guns starved"))
-    ann(s, [("FIRE", "caut"), ("ARMS", "caut"), ("POWER", "caut")])
-    obj(s, ["Bounty: Raider 'Vex'   2d 21h", "  target is here"])
+        ("FIRE  Hold   Bo on it", "CREW  Ivo wounded, no medic free"))
+    ann(s, [("FIRE", "caut"), ("CREW", "caut")], shields=False)
+    s.box(16, 610, 300, 150, "SCH", "Ship (shown: FIRE, CREW lit)", ["", "  [deck plan: fire in the Hold,", "   crew as dots, you at", "   the weapons console]"], kind="cond")
+    obj(s, ["Bounty: Raider 'Vex'   2d 21h"])
     s.box(1024, 392, 240, 160, "TGT", "Raider 'Vex'  HOSTILE", [
         "corvette, pirate   FIRING ON YOU",
         "state  fighting",
@@ -198,24 +205,23 @@ def gunnery_combat(out):
         "range  3.2 km   closing 41 m/s",
         "CPA    0.6 km in 1:12",
         "[bounty contract]"])
-    s.box(800, 560, 280, 224, "WPN", "Weapons (all in hand)", [
-        "NOSE  coilgun   HAND   READY  tof 2.1s",
-        "PORT  autocan.  HAND   NO POWER",
-        "STBD  autocan.  HAND   RELOAD 0.8s",
-        "TOP   laser     HAND   OUT OF ARC",
-        "PD    pt.def.   AUTO   2 tracks",
+    s.box(776, 560, 304, 200, "WPN", "Guns in hand, PD automatic", [
+        "NOSE      coilgun  HAND  READY  tof 1.1s",
+        "FWD PORT  autocan  AUTO  ENGAGING 2",
+        "FWD STBD  autocan  AUTO  IDLE",
+        "AFT STBD  laser    HAND  OUT OF RANGE",
+        "AFT PORT  harpoon  HAND  3/4 READY lock",
         "",
-        "MSL   harpoon  4/6   READY  lock",
-        "DCY   3        READY",
-        "SHLD  UP  62%  trim BOW",
-        "  [bow 80][port 55][stern 40][stbd 70]"])
-    s.box(1088, 608, 176, 176, "SNS", "Scope 10 km (auto)", ["", "", "", "", "", "", "", "", "1 hostile"])
-    s.box(420, 734, 360, 26, "HLM", "Helm: Ada   holding 2,000 m off Raider", kind="cond")
+        "DECOY     READY",
+        "(a ship with an emitter adds a",
+        " shields row: state, %, trim, 4 sectors)"])
+    s.box(1088, 584, 176, 176, "SNS", "Scope 10 km (auto)", ["", "", "", "", "", "", "", "1 hostile"])
+    s.box(400, 734, 360, 26, "HLM", "Helm: Ada   holding 2,000 m off Raider", kind="cond")
     s.box(760, 250, 110, 30, "", "[ Raider 'Vex' ]", kind="world")
     s.box(812, 300, 64, 24, "", "lead +", kind="world")
     s.box(420, 230, 150, 28, "", "missile path, 14 s", kind="world")
-    hnt(s, "Space fire   R missile   F decoy   9 shields   Tab next target   V stand")
-    legend(s, 600)
+    hnt(s, "Space fire   R missile   F decoy   Tab next target   F1 controls")
+    legend(s, 470)
     s.save(os.path.join(out, "gunnery-combat.svg"))
 
 
@@ -227,9 +233,9 @@ def flt_modes(out):
     s.text(16, 26, "FLT shows one mode at a time, chosen by the first that applies, top to bottom.", size=13, weight="bold")
     s.box(16, 44, 600, 112, "1", "DEPARTURE  (docked)", [
         "Docked at Highport, port 1 (S)       undock clearance: given",
-        "dv   7,007 m/s   ok        repairs   none needed   ok",
-        "crew 6/6 aboard  ok        missiles  4/6   [Yard: 2,000 cr]",
-        "contracts: dv enough for both held (furthest ~3,900 m/s)",
+        "dv        7,007 m/s  ok   (furthest contract needs ~3,900)",
+        "repairs   none needed  ok      crew  6/6 aboard  ok",
+        "missiles  2/4   short   [Yard: fill for 2,000 cr]",
         "[U] undock          [T] station terminal"])
     s.box(664, 44, 600, 112, "2", "DOCK  (dockable target within 5 km, port armed or dock order)", [
         "your port 1/1 (S, active)  >  Highport port 6   CLEARED",
@@ -257,7 +263,7 @@ def flt_modes(out):
         ""])
     s.box(664, 308, 600, 112, "", "Rules for every mode", [
         "Same zone, same size class: modes swap, they don't stack.",
-        "Frame: locked target, else a dock target in range, else orbit.",
+        "Frame: target, nav target or station within 5 km, else orbit.",
         "dv is always 'left' against 'what home takes' (Navigation).",
         "A mode's keys appear only in the mode, never in the hint line too.",
         "Gunnery: FLT hides; HLM (who flies, what order) takes its place.",
@@ -274,32 +280,38 @@ def flt_modes(out):
 def deck(out):
     s = Svg("On deck during damage control")
     s.screen_bg("DECK, on foot, ship damaged")
-    # the deck plan itself
-    s.rect(380, 250, 520, 260, fill="#dcdcd8", stroke="#555", sw=1.5)
-    for x in (510, 640, 770):
-        s.add(f'<line x1="{x}" y1="250" x2="{x}" y2="510" stroke="#888" stroke-width="1"/>')
-    s.add('<line x1="380" y1="380" x2="510" y2="380" stroke="#888" stroke-width="1"/>')
-    s.text(445, 320, "Bridge", size=10, fill="#777", anchor="middle")
-    s.text(575, 320, "Galley", size=10, fill="#777", anchor="middle")
-    s.text(705, 320, "Crew", size=10, fill="#777", anchor="middle")
-    s.text(835, 320, "Engineering", size=10, fill="#777", anchor="middle")
-    s.text(445, 450, "Airlock", size=10, fill="#777", anchor="middle")
-    s.box(530, 400, 100, 40, "", "fire (med.)", ["Bo"], kind="world")
-    s.box(784, 420, 112, 40, "", "short: reactor", ["Ada: reset 6s"], kind="world")
-    s.add('<circle cx="700" cy="440" r="6" fill="#555"/>')
-    s.text(712, 444, "you", size=10, fill="#555")
-    s.box(640, 455, 120, 26, "", "[E] Life support", kind="world")
-    s.box(1180, 430, 84, 40, "", "> breach", ["Cargo, 6 m"], kind="world")
-    chr_(s, "WARP 1x (held: fire)", "")
-    alr(s, None, ("FIRE  Galley  crew on it", "POWER  reactor shorted"))
-    ann(s, [("FIRE", "caut"), ("POWER", "caut"), ("AIR", "caut"), ("CREW", "caut")])
+    # The starter corvette, nose to the right. The room rule gives it two rooms: the Hold aft
+    # (cargo bays, tanks, engines) and the Bridge forward (helm, weapons console, life support,
+    # reactor, the guns' mounts), with a wall and a door between them.
+    s.rect(360, 270, 560, 210, fill="#dcdcd8", stroke="#555", sw=1.5)
+    s.add('<line x1="640" y1="270" x2="640" y2="358" stroke="#555" stroke-width="2"/>')
+    s.add('<line x1="640" y1="392" x2="640" y2="480" stroke="#555" stroke-width="2"/>')
+    s.text(640, 262, "door", size=9, fill="#999", anchor="middle")
+    s.text(500, 292, "Hold", size=11, fill="#666", anchor="middle")
+    s.text(780, 292, "Bridge", size=11, fill="#666", anchor="middle")
+    # hazards, each tagged with its worker's progress or "nobody"
+    s.box(392, 316, 120, 40, "", "fire (medium)", ["[======    ]"], kind="world")
+    s.add('<circle cx="452" cy="380" r="5" fill="#888"/>')
+    s.text(462, 384, "Bo", size=10, fill="#777")
+    s.box(660, 316, 120, 40, "", "conduit short", ["[=======   ]"], kind="world")
+    s.add('<circle cx="700" cy="372" r="5" fill="#888"/>')
+    s.text(710, 376, "Ada", size=10, fill="#777")
+    s.box(796, 424, 112, 40, "", "breach, venting", ["nobody"], kind="world")
+    s.add('<circle cx="880" cy="320" r="5" fill="#888"/>')
+    s.text(870, 324, "Cy", size=10, fill="#777", anchor="end")
+    s.add('<circle cx="700" cy="430" r="6" fill="#555"/>')
+    s.text(712, 434, "you", size=10, fill="#555")
+    s.box(640, 446, 136, 26, "", "E  Weapons console", kind="world")
+    chr_(s, "WARP 1x (held: fire aboard)", "")
+    alr(s, None, ("FIRE  Hold, Bo on it", "VENTING  Bridge, nobody", "POWER  Bridge short, Ada"))
+    ann(s, [("FIRE", "caut"), ("POWER", "caut"), ("AIR", "caut"), ("CREW", "adv")], shields=False)
     s.box(16, 144, 240, 78, "PER", "You", [
         "health  light wound",
         "suit    pressure   air 7:40",
-        "here    Crew room: thin air"], kind="cond")
+        "here    Bridge: thin"], kind="cond")
     obj(s, ["Delivery: ice to Freehold  1d 4h"])
-    ntf(s, ["Payday: 2,000 cr", "Contract taken: ice to Freehold"], y=82)
-    s.box(420, 736, 440, 26, "HLM", "Helm: Cy holds the heading   (no order)", kind="cond")
+    ntf(s, ["Payday: 2,000 cr"], y=66)
+    s.box(420, 734, 440, 26, "HLM", "Helm: Cy holds the heading   (no order)", kind="cond")
     hnt(s, "W/A/S/D walk   E use   V sit   O lights   F1 controls")
     legend(s, 600)
     s.save(os.path.join(out, "deck.svg"))
@@ -321,7 +333,7 @@ def map_(out):
         "Shackleton Ice  (Selene Combine)",
         "relation: neutral  standing 12",
         "services: market, yard, contracts",
-        "contract: Delivery, 2d 21h left",
+        "serves: Delivery contract",
         "distance 385,479 km",
         "[Q] next   [Shift+Q] back   list >"])
     s.box(944, 230, 320, 236, "MAP.2", "PLAN", [
@@ -362,7 +374,7 @@ def terminal(out):
     chr_(s, "WARP 1x", "")
     s.box(360, 16, 560, 44, "ALR", "(alerts stay visible over every screen)", kind="cond")
     s.box(16, 72, 1248, 52, "TRM.H", "HIGHPORT   Terran Patrol Authority (your sponsor)   standing 22", [
-        "credits 18,450 cr     hold 6 / 24 m3     contracts held 1 / 3                         [Esc] back to the deck"])
+        "credits 18,450 cr     hold 6 / 40 m3     contracts held 1 / 3                         [Esc] back to the deck"])
     tabs = ["CONTRACTS", "MARKET", "YARD", "SHIPYARD", "CREW"]
     x = 16
     for i, t in enumerate(tabs):
@@ -390,7 +402,7 @@ def terminal(out):
         "route   Freehold, same orbit band",
         "        transfer ~410 m/s, ~1.2 h",
         "        arrive Day 3 15:40 -> 1d 23h spare",
-        "hold    18 of 18 m3 free -> fits",
+        "hold    needs 18 m3, 34 free -> fits",
         "",
         "[Take]        [Show route on map]"])
     s.save(os.path.join(out, "terminal.svg"))
@@ -412,35 +424,36 @@ def book(out):
     s.box(16, 108, 760, 420, "BOOK.1", "Deck plan  (layer: damage | power | air | crew)", [
         "the schematic at full size, one layer at a time",
         "click a room: what is in it, who is there, what is wrong",
-        "", "", "", "", "", "", "", "",
         "layers reuse the deck overlays' symbols"])
-    s.rect(150, 190, 500, 240, fill="#e4e4e0", stroke="#555", sw=1.4)
-    for x in (275, 400, 525):
-        s.add(f'<line x1="{x}" y1="190" x2="{x}" y2="430" stroke="#888" stroke-width="1"/>')
-    s.add('<line x1="150" y1="310" x2="275" y2="310" stroke="#888" stroke-width="1"/>')
-    for (x, y, t) in ((212, 250, "Bridge"), (337, 250, "Galley"), (462, 250, "Crew"), (587, 250, "Engineering"), (212, 370, "Airlock")):
-        s.text(x, y, t, size=10, fill="#777", anchor="middle")
-    s.text(337, 330, "fire", size=10, fill="#444", anchor="middle", weight="bold")
-    s.text(587, 330, "short", size=10, fill="#444", anchor="middle", weight="bold")
+    # the starter corvette, nose to the right: Hold aft, Bridge forward
+    s.rect(100, 220, 560, 210, fill="#e4e4e0", stroke="#555", sw=1.4)
+    s.add('<line x1="380" y1="220" x2="380" y2="308" stroke="#555" stroke-width="2"/>')
+    s.add('<line x1="380" y1="342" x2="380" y2="430" stroke="#555" stroke-width="2"/>')
+    s.text(240, 244, "Hold", size=11, fill="#666", anchor="middle")
+    s.text(520, 244, "Bridge", size=11, fill="#666", anchor="middle")
+    s.text(240, 330, "fire", size=10, fill="#444", anchor="middle", weight="bold")
+    s.text(470, 330, "short", size=10, fill="#444", anchor="middle", weight="bold")
+    s.text(600, 410, "breach", size=10, fill="#444", anchor="middle", weight="bold")
+    s.text(380, 470, "starter corvette: two rooms by the naming rule", size=10, fill="#888", anchor="middle", style="italic")
     s.box(784, 108, 480, 420, "BOOK.2", "Systems", [
         "REACTOR (M)    3.0 MW   on    ok",
         "draw now 2.4 MW    store 2 s  ok",
-        "LIFE SUPPORT   on    serving 4 of 5 rooms",
+        "LIFE SUPPORT   on    serving 2 of 2 rooms",
         "   O2 tank 82%   N2 tank 90%",
-        "ENGINES main ok   RCS 7/8 (1 wrecked)",
+        "ENGINES  2 (S) ok    RCS 7/8 (1 wrecked)",
         "PROPELLANT 1,640 kg  -> dv 7,007 m/s",
-        "SHIELD (S)  300 kg   up    heat 40%",
-        "PORTS  1 (S, active)  ok",
-        "HOLD   6 / 24 m3  (manifest >)",
+        "PORT   1 (S, active)  ok",
+        "POD    1 (S), 4 seats",
+        "HOLD   6 / 40 m3  (manifest >)",
         "",
         "switches live at the consoles; this page",
         "says where to go ('walk there' marker)"])
-    s.box(16, 536, 1248, 248, "BOOK.3", "Damage and work", [
-        "what                  where         who's on it      progress",
-        "fire (medium)         Galley        Bo               shrinking",
-        "short: reactor        Engineering   Ada              6 s",
-        "breach (patched)      Cargo         --               needs a yard",
-        "RCS block wrecked     outside, aft  waiting: EVA suit aboard? yes, EVA held by you  [let out]"])
+    s.box(16, 536, 1248, 224, "BOOK.3", "Damage and work", [
+        "what                  where         who's on it                progress",
+        "fire (medium)         Hold          Bo                         shrinking",
+        "conduit short         Bridge        Ada                        [=======   ]",
+        "breach, venting       Bridge        nobody: no patches left    needs a yard (Y there)",
+        "RCS block wrecked     outside, aft  waiting: EVA is held       [let out]"])
     s.save(os.path.join(out, "book.svg"))
 
 
@@ -455,10 +468,10 @@ def boarding(out):
     s.text(650, 250, "Raider 'Vex' (taken)", size=10, fill="#777", anchor="middle", style="italic")
     s.box(540, 300, 150, 40, "", "Hal: stripping laser", ["Ivo: carrying ore"], kind="world")
     chr_(s, "WARP 1x", "")
-    ann(s)
+    ann(s, shields=False)
     s.box(904, 72, 360, 684, "BRD", "Boarding: Raider 'Vex'", [
         "state     TAKEN (was: reactor down)",
-        "link      latched, port 1 to its port 2",
+        "link      latched, port to port",
         "cost      none (outlaw)",
         "",
         "PARTY                 status",
@@ -469,12 +482,12 @@ def boarding(out):
         "SALVAGE    value   work    hold",
         "laser Mk1  2,250   40 s    1 m3  [strip]",
         "harpoon    1,100   30 s    1 m3  [marked]",
-        "reactor S    900   60 s    1 m3  [strip]",
+        "reactor M  1,800   60 s    2 m3  [strip]",
         "",
         "CARGO",
         "ore  8 m3   960 cr       [carry]",
         "                         [take all]",
-        "hold after: 17 of 24 m3",
+        "hold after all of it: 18 of 40 m3",
         "",
         "PRISONERS 3     berths free 2",
         "[bring aboard]  (1 will not fit)",
@@ -493,16 +506,16 @@ def crisis(out):
     s.clear_zone()
     s.ship(640, 520, "your ship, drifting")
     chr_(s, "WARP 1x", "")
-    alr(s, ("SHIP DISABLED  reactor down", "choose below, or let the crew work"), ())
-    ann(s, [("POWER", "warn"), ("HULL", "caut"), ("AIR", "caut")])
-    s.box(400, 120, 480, 200, "CRS", "SHIP DISABLED: no reactor running", [
+    alr(s, ("SHIP DISABLED  no reactor running", "options below, or let the crew work"), ())
+    ann(s, [("POWER", "warn"), ("HULL", "caut"), ("AIR", "caut")], shields=False)
+    s.box(400, 120, 480, 200, "CRS", "Options", [
         "crew working:  Ada resetting the reactor short, ~20 s",
         "               (breaker recloses by itself in 41 s)",
         "",
         "[wait]          let the crew work",
         "[B][B] tow      fee 9,600 cr, -3 standing, 3 days,",
         "                docks at Highport with ship and crew",
-        "[P][P] abandon  pods: 1 (S), 4 seats for 6 crew",
+        "[P][P] abandon  pod: 1 (S), 4 seats for 6 aboard",
         "",
         "air aboard: 41 min at this crew"])
     hnt(s, "B twice: tow   P twice: abandon   F1 controls")

@@ -1,6 +1,6 @@
 # UI Overhaul: Task-Driven Functional Spec
 
-Functional designer 2 of 3. Round 1.
+Functional designer 2 of 3. Round 2.
 
 This spec rebuilds the game's interface from the decisions a player makes, not from the panels the game has today. It says what each widget and screen contains, where it sits, and when it is visible. It says nothing about how anything looks: three artist threads (Nasa-punk, 90s VFD, Cassette-futurism) skin it, and section 12 lists what they are free to change and what they must keep.
 
@@ -81,7 +81,7 @@ Every row is a decision the game asks of the player. "Minimum information" is wh
 
 | ID | Decision | The question | Minimum information | Acted with | Tempo |
 |---|---|---|---|---|---|
-| F1 | Point and thrust | Which way am I moving relative to what matters, and how fast? | Velocity in the frame that matters (the target, the station I'm near, else the orbit): direction on screen, speed as a number, closing or opening | W/S/A/D, Z/C, X | s |
+| F1 | Point and thrust | Which way am I moving relative to what matters, and how fast? | Velocity in the frame that matters (the target, a station within 5 km, else the orbit): direction on screen, speed as a number | W/S/A/D, Z/C, X | s |
 | F2 | Avoid a collision | Will I hit something, and when? | The object and the time to contact, only when it is close | Steer, brake | s |
 | F3 | Dock | Which port, am I cleared, am I lined up and slow enough? | My port and its state, the port I'm given, clearance, range, sideways offset, angle off, closing speed against the safe speed | G, H, steering, or helm order 5 | s |
 | F4 | Leave a station | Is the ship ready to go? | Delta-v left, repairs needed, crew aboard, missiles, the contracts held and how far their destinations are | U | min |
@@ -99,7 +99,7 @@ Every row is a decision the game asks of the player. "Minimum information" is wh
 | C2 | Choose a target | Which one matters most? | For the candidates: firing on me, range, closing, state (beaten, struck), a bounty on it | Tab, click | s |
 | C3 | Shoot | Will a shot hit now? | Lead point, each gun's readiness, whether the target is in its arc and effective range, time of flight | Space, pointer | s |
 | C4 | Launch a missile | Is a launch worth it now? | Launcher ready, missiles left, target in the missile's reach | R | s |
-| C5 | Survive missiles | How long till impact, from where, what can I do? | Per inbound missile: time to impact and bearing; decoys left and ready; point defense working | F, manoeuvre, shields | s |
+| C5 | Survive missiles | How long till impact, from where, what can I do? | Per inbound missile: time to impact and bearing; the decoy ready, or how long until it is (decoys are unlimited, one every 3 s); point defence engaging | F, manoeuvre, shields | s |
 | C6 | Shields | Up or down, and which side thick? | Up, down or stowing; strength by side; trim; heat or tripped | 9, 8 | s |
 | C7 | Judge the fight | Am I winning? Is it beaten? | Target state and a coarse hull estimate; my own hull, power and guns as states, not numbers | Keep firing, cease, run, board | s |
 | C8 | Stop firing on a prize | Has it struck? Will firing again provoke it? | Struck or surrendered, and that firing lifts the surrender after the grace | Cease fire, next target | s |
@@ -172,7 +172,7 @@ Reading section 3 across its rows gives ten rules. Every later section applies t
 1. **The post decides the HUD.** On foot the player can't fly, so nothing about flying is on screen; at the weapons the helmsman flies, so the flight instrument gives way to a line saying who flies and to what order. (F, C and S decisions barely overlap by post.)
 2. **Show the answer, not the inputs.** F4, F8, N2 and C10 all ask "is there enough?", never "how many kilograms". Propellant is shown as delta-v left against delta-v needed and delta-v home; docking as closing speed against the safe speed; a plan's arrival against its deadline.
 3. **Silence means all is well.** S1 is a question about exceptions. No widget shows an empty or nominal state as text: no "Target: none", no "ALL SYSTEMS NOMINAL", no gauges at 100%.
-4. **One fact, one place.** Each number has one home on a given screen. The world may repeat a name (a marker's label) but not a number.
+4. **One fact, one place.** Each number has one home on a given screen. The world may repeat a name (a marker's label) but not a number. A comparison may quote the number it compares against (arrival against the deadline); nothing else repeats.
 5. **Where things are goes in the world; how much goes at the edges.** Directions, positions, paths and rooms (F1, F3, C1, C3, C5, S2) are drawn on the view; numbers live in fixed instruments.
 6. **Urgency has one voice.** C5, F2, F8, S6 and S9 need the eye now. They all go through one alert band, ranked by time to harm. News (contracts done, paydays, promotions) never shares it.
 7. **Tempo sets distance from the eye.** Seconds-scale information sits in the world or at the bottom centre near the ship; minutes-scale at the corners; hours-and-days-scale behind a key.
@@ -192,11 +192,11 @@ Reading section 3 across its rows gives ten rules. Every later section applies t
 | Z2 Attention (top centre) | Alert band | The one place urgency appears, above the ship, never covering it |
 | Z3 Incoming (top right) | Objectives, news | Hours-and-days information and messages from outside |
 | Z4 Self (left column) | Annunciator, personal status | Your own ship and body, at a glance |
-| Z5 Self, spatial (bottom left) | Ship schematic, outside view only | The interior when you can't see it; empty on deck, where the deck itself shows it |
+| Z5 Self, spatial (bottom left, 300 x 150) | Ship schematic, outside view only | The interior when you can't see it; empty on deck, where the deck itself shows it |
 | Z6 Others (right column) | Target card | What the world can't show about another ship: its state, hull, intent |
 | Z7 Others, spatial (bottom right) | Weapons cluster, sensor scope | Acting on others; the scope in the corner as a wider-than-the-screen view |
 | Z8 Motion and hands (bottom centre) | Flight instrument, helm status | Seconds-scale numbers, near the ship and the eye line |
-| Z9 Keys (bottom edge) | Hint line | Read once, then ignored; fades as the player learns |
+| Z9 Keys (a full-width strip along the bottom edge, 24 units) | Hint line | Read once, then ignored; fades as the player learns |
 | Clear zone (centre ellipse, 600 x 400 units) | Nothing screen-fixed | The ship, the target and every world overlay |
 
 Rules for zones:
@@ -206,6 +206,7 @@ Rules for zones:
 - When two widgets in a zone are both visible, the higher one in the zone's list keeps its size and the other collapses to its compact form.
 - Screens (Map, terminal, book) cover zones 3 to 9 but leave Z1 and Z2 visible: time and danger never go away.
 - Zones anchor to their screen edges and corners. On a wider or taller window the extra space goes to the clear zone; widgets are never stretched.
+- Z9 runs the full width of the bottom edge and every other zone ends above it (at 760 units), so the key line never runs under a widget.
 - The crisis panel is the only widget that may enter the clear zone (section 6, CRS).
 - Sizes in the wireframes are starting points. An artist may change any size by up to a quarter and move a zone's edge, but not swap sides (section 12).
 
@@ -240,9 +241,9 @@ Serves F2, F8, F9, C5, S1, S6, S9. Full rules in section 9.
 
 Serves N1, E1, G4.
 
-- **Shows:** up to four rows. First the guide's current objective (First Play or the opening walkthrough), then each contract held: kind, a short title, where, and time left (`Bounty: Raider 'Vex'   2d 21h`); a second line only for the contract that is the navigation target (`target is here`, `return leg: Highport`, `step 2 of 3` for an operation). A contract whose planned arrival falls after its deadline is marked late.
+- **Shows:** up to four rows. First the guide's current objective (First Play or the opening walkthrough), then each contract held: kind, a short title, where, and time left (`Bounty: Raider 'Vex'   2d 21h`); a second line only for the contract that is the navigation target, and only when it has a next step (`return leg: Highport`, `step 2 of 3` for an operation). A contract whose planned arrival falls after its deadline is marked late.
 - **States:** a row is normal, the navigation target, late, or done (collect at the giver).
-- **Visible:** while a guide runs or a contract is held; on every post. Hidden on screens except the Map.
+- **Visible:** while a guide runs or a contract is held; on every post. Hidden on screens: the map's destination list puts contracts first, and its plan owns the deadline.
 - **Acts:** clicking a row makes its waypoint the navigation target (Q already cycles them first).
 - **Replaces:** the gold contract lines, the First Play objective, the walkthrough text and the welcome notice in the status column.
 
@@ -253,7 +254,7 @@ Serves G5.
 - **Shows:** the three newest notices of kinds INFO and IMPORTANT (`NoticeLog`): one line each, repeats counted (`x3`), INFO for 5 s and IMPORTANT for 8 s as today.
 - **States:** info, important.
 - **Visible:** while a notice is fresh; on every post; not over screens. In combat, INFO news waits until combat ends; IMPORTANT shows at once.
-- **Not news:** feedback to something the player just did shows on the widget the action changed, not here: a missile launched with no target flashes `no target` on WPN, a decoy away drops WPN's count, shields raised change their row.
+- **Not news:** feedback to something the player just did shows on the widget the action changed, not here: a missile launched with no target flashes `no target` on WPN, a decoy away starts WPN's decoy countdown, shields raised change their row.
 - **Acts:** none; L opens the book's log.
 - **Replaces:** the notice stack in the status column. WARNING notices move to the alert band and are only logged (section 9).
 
@@ -261,23 +262,24 @@ Serves G5.
 
 Serves S1, S2, C7.
 
-A row of ten lamps, one per thing that can go wrong aboard. A lamp is dark when its system is well, lit for a caution, lit harder for a warning, and blinks only while its alert is new. A ship without shields shows no SHLD lamp. The lamps are the ship's standing state; the alert band is what calls for attention. An acknowledged caution leaves the band but keeps its lamp lit.
+A row of ten lamps, one per thing that can go wrong aboard. A lamp has four states: dark when its system is well; **advisory**, lit softly, for something normal but worth knowing (crew outside, morale low), which never enters the alert band; lit for a caution; lit harder for a warning. It blinks only while its alert is new. A ship without shields shows no SHLD lamp. The lamps are the ship's standing state; the alert band is what calls for attention. An acknowledged caution leaves the band but keeps its lamp lit.
 
-| Lamp | Caution when | Warning when |
-|---|---|---|
-| HULL | Mean hull integrity below 75% (`ShipAlerts.HULL_DAMAGED`), or a patched breach | Below 45% (the `HULL` disable line) |
-| FIRE | Any tile burning | A large fire, or fire in the captain's room |
-| AIR | A room below 70% pressure (`LOW_PRESSURE`) or smoky; venting; an oxygen or nitrogen tank below 25% | A room crew are in below 10% (`VACUUM_PRESSURE`), or the tanks dry with a room short of air |
-| POWER | A reactor below full output, a short, the store below half, or a system unpowered | No reactor running (`NO_POWER`) |
-| PROP | Delta-v left below 1.5 times what home takes | Below 1.25 times (the `FlightWarnings` low-propellant rule), or below what the accepted plan needs |
-| DRIVE | Main engine or any RCS block damaged, stunned or shorted | No working main engine |
-| ARMS | Any gun or launcher not working (damaged, unpowered, stunned, shorted) | None working while in combat |
-| CREW | Anyone wounded, or morale low | Anyone unconscious, dying or bleeding without care |
-| EVA | Anyone outside | Anyone outside with a burn under way or due in 30 s |
-| SHLD | Shields down in combat, or the cloud below half | Tripped, or below a quarter in combat |
+| Lamp | Advisory when | Caution when | Warning when |
+|---|---|---|---|
+| HULL | A patched breach | Mean hull integrity below 75% (`ShipAlerts.HULL_DAMAGED`) | Below 45% (the `HULL` disable line) |
+| FIRE | - | Any tile burning | A large fire, or fire in the captain's room |
+| AIR | An airlock cycling (its chamber is left out, as `ShipAlerts.chamber` does) | A room below 70% pressure (`LOW_PRESSURE`) or smoky; venting; an oxygen or nitrogen tank below 25% | A room crew are in below 10% (`VACUUM_PRESSURE`), or the tanks dry with a room short of air |
+| POWER | A system switched off by hand | A reactor below full output from damage; a short on a system or conduit; a system cut off from every reactor | No reactor feeding anything: every reactor off, shorted, stunned or broken. A one-reactor ship whose reactor is shorted is here, although the game does not call it disabled |
+| PROP | - | Delta-v left below 1.5 times what home takes | Below 1.25 times (the `FlightWarnings` low-propellant rule), or below what the accepted plan needs |
+| DRIVE | - | Main engine or any RCS block damaged, stunned or shorted | No working main engine |
+| ARMS | - | Any mount not working (damaged, cut off from power, stunned, shorted) | None working while in combat |
+| CREW | Morale low; a light wound under care | A wound nobody is treating | Anyone unconscious, dying or bleeding without care |
+| EVA | Anyone outside | Anyone adrift, a tether parted, or suit air under 5 minutes outside | Anyone outside with a burn under way or due in 30 s |
+| SHLD | Shields lowered outside combat | Shields down in combat, or the cloud below half | Tripped, or below a quarter in combat |
 
+- **The power store never lights a lamp.** It holds 2 s of output (`PowerRoutingSystem.STORE_SECONDS`) and empties on every laser pulse, so a lamp on it would flicker through every fight. A gun waiting on the store shows `CHARGING` in WPN instead.
 - **Visible:** on every post. On screens, no.
-- **Acts:** hover (or focus) lists what lit it (`FIRE: Galley (medium), Bo on it`). Clicking opens the book's Ship tab on that system. On deck, selecting a lamp also points the off-screen arrow at the nearest cause.
+- **Acts:** hover (or focus) lists what lit it (`FIRE: Hold (medium), Bo on it`). Clicking opens the book's Ship tab on that system. On deck, selecting a lamp also points the off-screen arrow at the nearest cause.
 - **Replaces:** the ship status gauges (propellant, structure, power, oxygen), the ship panel's alert list and its `HULL 100%` and `ALL SYSTEMS NOMINAL`.
 
 ### PER: Personal status (Z4, under ANN)
@@ -309,11 +311,12 @@ One instrument, five modes. It shows the first mode that applies, in this order:
 | Mode | Applies when | Shows | Keys shown in the mode |
 |---|---|---|---|
 | DEPARTURE | Docked at a station | Where you are berthed; undock clearance; four readiness checks, each `ok` or what is short with a link to the terminal tab that fixes it: delta-v left against the furthest held contract's need, repairs, crew aboard against berths, missiles against the launcher. The contracts themselves are OBJ's | U undock, T terminal |
-| DOCK | The navigation target can be docked with, it is within 5 km (`PlayerDocking.READOUT_RANGE`), and a port is armed, clearance asked, or the helm ordered to dock | Your port (n of N, size, active or passive, jammed); the port you were given and clearance (given, asked, refused, none); range; closing speed on a bar with the safe band (green within the safe speed, caution to 1.5 times, warning beyond, as the corridor today); sideways offset; angle off | G arm and ask, H next port, 5 helm docks |
+| DOCK | The navigation target can be docked with, it is within 5 km (`PlayerDocking.READOUT_RANGE`), and a port is armed, clearance asked, or the helm ordered to dock | Your port (n of N, size, active or passive, jammed); the port you were given and clearance (given, asked, refused, none); range; closing speed on a bar banded safe (up to the safe speed), caution (to 1.5 times) and warning (beyond), the bands the corridor uses today; sideways offset; angle off | G arm and ask, H next port, 5 helm docks |
 | BURN | A planned burn starts within 3 minutes (the helmsman's 120 s turn lead plus a minute), or one is being flown | Burn n of N; countdown to the start of the turn and of the burn; delta-v still to go and burn time; pointing error (and the align marker in the world); who flies it: you, the flight computer (hands off), or the helmsman | / warp to burn |
 | WARP | Rails warp | The warp rate, the next stop and its time, what would hold it back. Everything else the instrument shows is hidden: nothing to steer at 10,000x | , slower, . faster |
-| CRUISE | Otherwise | The frame (the locked target when it has a body in the bubble, else a dock target within 5 km, else the orbit) and the speed in it; delta-v left on a bar marked with what home takes and what the plan needs; rotation assist on or off; main engine and RCS firing | none: the hint line has them |
+| CRUISE | Otherwise | The frame and the speed in it; delta-v left on a bar marked with what home takes and what the plan needs; rotation assist on or off; main engine and RCS firing | none: the hint line has them |
 
+- **The frame** is the first of: the locked target, when it has a body in the bubble; the navigation target, within 5 km (`PlayerDocking.READOUT_RANGE`); the nearest station within 5 km; else the orbit about the body you are in. "Near" is always that 5 km. FLT names the frame (`Highport, 3.0 km`, `orbit, Earth`). The prograde and retrograde markers follow the same frame; today they follow the orbit unless a target is locked, so this is a change.
 - **Gunnery:** FLT is hidden and HLM takes its place, because the helmsman flies. The gunner's motion numbers (range, closing, closest approach) are the target card's.
 - **Speed against closing:** FLT gives the speed in the frame (how fast I move relative to the target: what matching velocity zeroes); the target card gives range and closing (how fast the gap shrinks: what a fight turns on). They are different numbers with one home each.
 - **Not shown in any mode:** the ship's heading in degrees (its nose is on screen; BURN gives the pointing error instead), the view mode (the view shows it), orbital speed in CRUISE unless the frame is the orbit, apoapsis and periapsis (map).
@@ -353,17 +356,26 @@ Shows one subject: the combat target (Tab) when one is locked, else the navigati
 
 Serves C3, C4, C5, C6, C9.
 
-- **Compact (helm):** one pip per gun (ready, not ready, not working), missiles left and ready, decoys left, shields up or down. The pip row is enough to know whether pulling the trigger does anything.
-- **Expanded (gunnery):** one row per mount: where it is and what it is (`NOSE coilgun`); who works it (`HAND`, a gunner's name, `CONSOLE` for the weapons console at half skill, `TRIGGER` when nobody works it and it waits for yours, `AUTO` for point defense); its state (`READY`, `RELOAD 0.8 s`, `NO POWER`, `STUNNED 12 s`, `SHORTED`, `DAMAGED`, `OUT OF ARC`, `NO TARGET`, `HOLD` while docked); whether the target is inside its effective range; time of flight. Then the launcher (type, left of capacity, reload, seeker lock), decoys (left, ready), point defense (tracks engaged), and shields: up, down or stowing; cloud as a share of capacity; trim; four sectors (bow, port, stern, starboard) by thickness; heat.
-- **Visible:** compact at the helm while the ship has guns and is in combat or has a hostile locked; expanded at gunnery always. Hidden docked and while warping.
-- **Acts:** the existing keys (Space, R, F, 9, 8); clicking a row at gunnery takes that gun in hand alone.
+Every weapon mount gets one row, launchers and point defence included: point defence is not a separate system but the mounts whose weapon has `point_defense` set (the starter corvette's two autocannons).
+
+- **Compact (helm):** one pip per mount (ready, waiting, not working), the launcher's rounds left and ready, the decoy ready or its countdown, shields up or down. The pip row is enough to know whether pulling the trigger does anything.
+- **Expanded (gunnery):** a header saying what is in hand (`guns in hand, point defence automatic` at the weapons console; `this gun` at a turret mount). Then one row per mount:
+  - where it is and what it is (`NOSE coilgun`, `FWD PORT autocannon`, `AFT STBD laser`);
+  - who works it: `HAND` (in the captain's hand); a gunner's name; `CONSOLE` (a crew member at the weapons console works it at half skill); `TRIGGER` (nobody works it: it aims at the locked target and waits for the captain's trigger); `AUTO` (point defence, which stays automatic at the weapons console and goes in hand only when the captain sits at that mount, as `PlayerGunnery.inHand` has it);
+  - its state: `READY`, `RELOAD 0.8 s`, `CHARGING` (the power store can't yet pay its next shot, which takes `power_draw` times its cooldown all at once), `NO POWER`, `STUNNED 12 s`, `SHORTED`, `DAMAGED`, `OUT OF ARC`, `OUT OF RANGE` (past `max_range`, which is a guide for guns and a hard limit for beams), `NO TARGET`, `HOLD` while docked; for point defence `ENGAGING 2` or `IDLE`;
+  - for a gun with a target, its time of flight (`tof 1.1 s`);
+  - for a launcher, rounds left of its magazine (`3/4`) and the seeker's lock.
+- Then the **decoy**: `READY`, or seconds until it is. Decoys are unlimited, one every 3 s (`PlayerGunnery.DECOY_COOLDOWN`), so there is no count.
+- Then, on a ship with an emitter, the **shields**: up, down or stowing; the cloud as a share of capacity; trim; four sectors (bow, port, stern, starboard) by thickness; heat, or tripped and for how long.
+- **Visible:** compact at the helm while the ship has weapons and is in combat or has a hostile locked; expanded at gunnery always. Hidden docked and while warping.
+- **Acts:** the existing keys (Space, R, F, 9, 8). New: clicking rows picks which of the guns in hand the trigger fires (all of them by default), the "selected weapon" the lead reticle follows.
 - **Replaces:** the status column's `Missile: ready (4 left)` and `(gun reloading)`.
 
 ### HNT: Hint line (Z9)
 
 Serves G4.
 
-- **Shows:** at most four keys for what can be done here and now, from `HintRegistry` contexts, then `F1 controls`. A key the player has used three times in that context drops off; setting `Hints: full / learning / off` (default learning). A mode's own keys live in that mode (FLT, CRS, BRD) and never repeat here.
+- **Shows:** at most four keys for what can be done here and now, from `HintRegistry` contexts, then `F1 controls`: five items in all. A key the player has used three times in that context drops off; setting `Hints: full / learning / off` (default learning). A mode's own keys live in that mode (FLT, CRS, BRD) and never repeat here.
 - **Visible:** every post; fades to a dim state after 10 s without a change of context.
 - **Replaces:** the hint line and every key named outside it: `[V]` and `[Tab]` in the FLIGHT panel, `N plans a burn / Q picks a navigation target` in the orbit panel, the station banner's keys.
 
@@ -379,15 +391,26 @@ Serves S3, S6, E8.
 
 Serve F1, F3, F5, C1 to C5, S2, B2. These already exist; the spec sets rules for them.
 
-- **Contact markers.** Shape says what a thing is; treatment says its relation (section 9.4). Labels show only for: the locked target, the navigation target, hostiles within 50 km, contract-related objects, and whatever the pointer is over. Everything else is a glyph. Glyphs within 24 px of each other merge into one with a count; ships docked at a station fold into its label (`Highport  2 docked`).
+- **Contact markers.** Shape says what a thing is; treatment says its relation (section 9.4). Labels show only for: stations (few, large, and the landmarks a pilot steers by), the locked target, the navigation target, hostiles within 50 km, contract-related objects, and whatever the pointer is over. Everything else, passing freighters included, is a glyph. Glyphs within 24 px of each other merge into one with a count; ships docked at a station fold into its label (`Highport  2 docked`).
 - **Edge arrows** only for hostiles, inbound missiles (with seconds to impact), the locked target, the navigation target and contract waypoints.
 - **Velocity markers.** Prograde and retrograde in the frame FLT names, the frame told apart by shape, not colour alone.
 - **Burn arrows.** The next burn in full with its label; later burns faint and labelled only on hover.
-- **Lead reticle** for the guns in hand; one reticle per distinct muzzle speed, at most two.
+- **Lead reticle** for the guns in hand that need one (not beams, not point defence): one per distinct muzzle speed, at most two. The starter corvette shows one, for its coilgun.
 - **Missile paths** and impact marks, incoming and outgoing told apart; the point-defence kill ring.
 - **Docking corridor** from the given port, banded by safe speed.
-- **Deck overlays:** fire, smoke, thin air, vacuum, breaches and shorts drawn in their tiles; a tag on each hazard naming who is working it (`Bo`, `Ada: reset 6 s`) or `nobody`; off-screen arrows at the view's edge for hazards out of sight; crew names and jobs on hover; boarders on a latched ship.
+- **Deck overlays:** fire, smoke, thin air, vacuum, breaches and shorts drawn in their tiles; a tag on each hazard with the progress of whoever is working it (the bar crew already show over their work, `showProgress`), or `nobody`; the worker is the figure standing there, and the alert band names them; off-screen arrows at the view's edge for hazards out of sight; crew names and jobs on hover; boarders on a latched ship.
 - **EVA:** crew outside and their tethers, in both views.
+
+### Room names
+
+Alerts, the personal status, the schematic and the book all name rooms, and the game's compartments have no names. Every widget uses one rule, in this order:
+
+1. A name given in the chassis data (an optional `name` per room: new).
+2. The room holding the helm is the **Bridge**; a small room holding nothing but a docking port or an airlock is the **Airlock** (with the port's number when there are two or more). A port that opens straight into a bigger room doesn't rename it.
+3. Otherwise the system that fills the most tiles in it: Reactor room, Life support, Weapons room, Engine room, Shield room, Tank room, Pod bay, Hold (cargo bays), or a gun's position for a turret mount alone (`Fwd port gun`).
+4. Otherwise its place in the hull from the ship's middle: Fore, Mid or Aft, with port or starboard when the hull splits there.
+
+Two rooms with one name are numbered fore to aft (`Hold 1`, `Hold 2`). On the starter corvette the rule gives two rooms: the **Bridge** forward (helm, weapons console, life support, reactor, the guns' mounts) and the **Hold** aft of the wall (cargo bays, tanks, engines). The samples and wireframes in this spec use that ship.
 
 ### CRS: Crisis panel (centre top, below the band)
 
@@ -397,6 +420,7 @@ Serves S9.
 - **Stranded:** not disabled but the tow is offered (`DistressBeacon.refusal()` is null): the same panel with only the tow and the delta-v short.
 - **Abandoning:** the countdown to launch, seats filled per pod, and where the captain is against the nearest pod with a free seat (`you are 12 m from the pod`); P launches now.
 - **Visible:** whenever one of the three holds, on every post and over screens (it is a crisis).
+- **No repeats:** the alert band carries the title and the reason (`SHIP DISABLED  reactor down`); the panel starts at what the crew is doing and the choices.
 - **Size:** disabled is the full panel, and the one widget allowed into the top of the clear zone: a disabled ship can't be flown, so the centre has nothing to steer by. Stranded and abandoning are three lines and stay above the clear zone, since the ship can still move.
 - **Replaces:** the red `SHIP DISABLED` and `ABANDON SHIP` lines, and the pause menu's `Call a tow`.
 
@@ -425,7 +449,7 @@ Serves N1 to N5, F6, F8. Opened with M from any post.
 | Part | Shows | Acts |
 |---|---|---|
 | Orbit canvas | As today: paths after the plan's last burn, patched conics through spheres of influence, apsides, encounters, burns with their handles, the traffic layer | Click the path to plan a burn, drag handles, drag a burn along its orbit, click a contact to make it the destination |
-| MAP.1 Destination | The navigation target as the target card shows a station or ship, plus its distance and contract | Q, Shift+Q; `list` opens every candidate grouped (contracts, stations, known pirates, craft in the bubble, freighters) |
+| MAP.1 Destination | The navigation target as the target card shows a station or ship, plus its distance and the contract it serves, by name (the time left is MAP.2's comparison) | Q, Shift+Q; `list` opens every candidate grouped (contracts first with their time left, then stations, known pirates, craft in the bubble, freighters) |
 | MAP.2 Plan | The proposal or the planned burns: count; delta-v needed against left; left after the plan and what home takes from the arrival; arrival time against any deadline, `LATE by 22h 40m` when it is; one row per burn | ; plan, Enter accept, Backspace discard |
 | MAP.3 Fly it | Warp to the next burn, helm flies the burns, autopilot; each greyed with its reason when it can't be given | /, 1, 6 |
 | MAP.4 Selected burn | The selected burn's components and time | Drag, Shift finer, Delete |
@@ -511,7 +535,7 @@ What each post shows. `on` always; `when` while its trigger (section 6) holds; `
 |---|---|---|---|---|---|---|
 | CHR chronometer | on | on | on | on | on | on |
 | ALR alert band | when | when | when | when | when | when |
-| OBJ objectives | when | when | when | when | - | - |
+| OBJ objectives | when | when | when | - | - | - |
 | NTF news | when | when | when | - | - | - |
 | ANN annunciator | on | on | on | - | - | - |
 | PER personal | when | - | - | - | - | - |
@@ -546,8 +570,9 @@ The at-rest test: flying near Highport with nothing targeted, nothing planned an
 
 | Level | For | Where | Sound | Lasts |
 |---|---|---|---|---|
-| Warning | Harm within about a minute, or the ship or captain lost without action | The band's top row, one at a time | `UI_WARNING`, repeated every 5 s until acknowledged | Until the condition clears |
+| Warning | Harm within about a minute, or the ship or captain lost without action | The band's top row, one at a time | `UI_WARNING`, at most three times (9.3) | Until the condition clears |
 | Caution | Something wrong that needs a decision, not a reflex | The band's second row, up to three | `UI_NOTICE` once | Until it clears or is acknowledged; then as a lit lamp |
+| Advisory | Normal but worth knowing (crew outside, morale low, a system switched off) | A softly lit lamp only | None | While it holds |
 | News | Something happened | NTF and the log | `UI_NOTICE` for important | 5 or 8 s, then the log |
 
 Warnings are ordered by time to harm (a missile in 6 s beats air in 50 s); cautions by severity, then age. A new warning pushes the shown one into the caution row if it is more urgent. Every alert has an id; the same condition never shows twice.
@@ -563,21 +588,21 @@ Two rules keep the band from repeating the rest of the HUD:
 |---|---|---|---|---|
 | MISSILE | Warning under 20 s to impact, else caution | Missiles inbound (`FlightWarnings.inbound`) | `MISSILE  2 inbound  impact 14 s  bearing 080   F decoy` | - |
 | COLLISION | Warning | Time to contact under 10 s at more than the safe speed | `COLLISION  Highport in 6 s   brake` | - |
-| IMPACT | Warning under 10 min, else caution | Periapsis below the surface | `SURFACE IMPACT in 8:20   raise periapsis (M)` | PROP |
+| IMPACT | Warning under 10 min, else caution | Periapsis below the surface | `SURFACE IMPACT in 8:20   raise periapsis (M)` | - |
 | DISABLED | Warning | The ship is disabled | `SHIP DISABLED  reactor down   see options` (opens CRS) | as the cause |
 | ABANDON | Warning | Abandon ship ordered | `ABANDON SHIP  pods launch in 22 s   P now` | CREW |
 | CAPTAIN AIR | Warning | Captain's suit air under 60 s, or their room unbreathable without a suit | `YOUR AIR  48 s   E at a locker, or leave the room` | - |
 | CAPTAIN HURT | Warning | Captain critical or bleeding | `YOU ARE BLEEDING   find a medic` | CREW |
 | EVA BURN | Warning | Crew outside and a burn under way or due in 30 s | `CREW OUTSIDE  Ada on the hull   hold the burn; I: call them in` | EVA |
-| FIRE | Caution; warning when large or in the captain's room | Any fire | `FIRE  Galley   Bo on it` | FIRE |
-| VENTING | Caution | Air venting to space | `VENTING  Cargo bay   crew patching` | AIR |
-| POWER | Caution; warning at no power | A short, a stunned or tripped reactor, the store emptying | `POWER  reactor shorted   Ada resetting` | POWER |
+| FIRE | Caution; warning when large or in the captain's room | Any fire | `FIRE  Hold   Bo on it` (or `nobody on it`) | FIRE |
+| VENTING | Caution | Air venting to space | `VENTING  Bridge   nobody: no patches left (Y at a yard)` | AIR |
+| POWER | Caution; warning when no reactor feeds anything | As the POWER lamp (never the store's level) | `POWER  Bridge conduit short   Ada resetting`; `NO POWER  reactor shorted   Ada resetting; breaker recloses in 41 s` | POWER |
 | PROPELLANT | Caution | Below 1.25 times home, or short of the plan | `PROPELLANT  500 m/s left, home takes 410` | PROP |
 | BURN MISSED | Caution | A planned burn missed or cut short | `BURN 1 MISSED   replan (M)` | - |
 | HELM | Caution | An order waits with no helmsman, or was dropped by a threat | `HELM ORDER DROPPED  shot at   1 to re-give` | - |
 | CONTRACT | Caution | A contract's arrival is after its deadline, or under 6 h left with no plan | `LATE  Delivery to Freehold by 22 h   M` | - |
 | SHIELD | Caution | Shields down in combat, tripped, or under a quarter | `SHIELD TRIPPED  back in 8 s` | SHLD |
-| COLLAR | Caution | The selected port's collar jammed | `PORT 1 JAMMED   H next port` | DRIVE |
+| COLLAR | Caution | The selected port's collar jammed | `PORT 1 JAMMED   H next port` | - |
 | WOUNDED | Caution | Crew wounded with nobody treating them | `CREW  Ivo wounded, no medic free` | CREW |
 
 The game's WARNING-kind notices that are not on this list (for example `PIRATES intercept you`) become cautions with a sensible action, or news if they need no action; implementation decides case by case and records it here.
@@ -632,7 +657,7 @@ Contract involvement is a tag over any class, not a class of its own.
 
 **One at a time.** One screen at a time; opening another replaces it. Panels close when a screen opens, and reopen when it closes if their condition still holds.
 
-**Gamepad.** Screens and panels use `FocusNav` as now. In a screen, the bumpers change tab and B goes back. The Back-held layer's A, B, X and Y open the terminal's Contracts, the boarding panel, the terminal's Market and Yard, as they open those windows today.
+**Gamepad.** Screens and panels use `FocusNav` as now. In a screen, the bumpers change tab and B goes back. The Back-held layer's A, B, X and Y open the terminal's Contracts, the boarding panel, the terminal's Market and Yard, as they open those windows today. Everything a click does on the HUD (acknowledge the band, open the book on a lamp, list the helm orders, set a contract as destination) the pad reaches through **HUD focus**: L3, the one button free in the flying layer, puts focus on the HUD; the d-pad then moves through ALR, ANN, HLM and OBJ, A does what a click would, and B or L3 again leaves.
 
 **Pointer.** Everything in the world can be hovered for its details and clicked to select. Hover never shows a number that is not also somewhere a keyboard player can reach.
 
@@ -708,7 +733,7 @@ Done last, against the design above. The current HUD in flight near Highport wit
 | F6 Skip time | What stops warp is only learned by being refused |
 | F7 Hand over the helm | Which orders can be given here is only in F1; their state is one line among many |
 | C3, C9 Shoot, man the guns | One `(gun reloading)` for all guns; nothing says which guns are crewed, powered or in arc |
-| C5 Survive missiles | Decoys left are never shown |
+| C5 Survive missiles | Whether the decoy is ready is never shown (decoys are unlimited, one every 3 s) |
 | C6 Shields | No gauge at all (combat-sys: "Not built yet: the HUD gauge and coverage overlay") |
 | S3 Step in or not | The alert list says what is wrong, never who is on it |
 | S6 My own body | The captain's health, suit and air are shown nowhere |
@@ -736,7 +761,7 @@ Done last, against the design above. The current HUD in flight near Highport wit
 - Diegetic framing: whether the HUD reads as a helmet, a bezel, a console, a CRT or a printout. A style can tie a widget's look to the post (the helm looks like the helm console) since posts already change the HUD.
 - Whether screens are full-bleed or framed windows.
 
-**Every widget needs these states drawn:** hidden, compact (where it has one), normal, caution, warning, unavailable with its reason, keyboard or pad focus, hover, pressed. Relation classes need five distinct treatments, severity three, and both need a colour-blind-safe variant that differs by more than hue.
+**Every widget needs these states drawn:** hidden, compact (where it has one), normal, caution, warning, unavailable with its reason, keyboard or pad focus, hover, pressed. Relation classes need five distinct treatments; lamps need four states (dark, advisory, caution, warning) and the band two levels (caution, warning). All of them need a colour-blind-safe variant that differs by more than hue.
 
 **Text room.** Names come from data (ships, stations, crew, mods), so every text field must take a name half again as long as the samples here, and say what it does when one is longer (cut with an ellipsis, never wrap into the next row). Numbers keep their width as they change (fixed-width digits), so a countdown doesn't jitter.
 
@@ -752,12 +777,13 @@ Data the widgets need that no provider gives the UI today. Each line names where
 |---|---|---|
 | An alert registry: id, level, condition, text, action, lamp | ALR, ANN | New in core; fed by `FlightWarnings`, `ThreatProvider`, `ShipDisablement`, `AbandonShip`, `Spacewalks.statusLine`, `HelmOrders`, `DamageControl` |
 | The captain's status: health and wound, suit kind and air, the room's air | PER, CAPTAIN alerts | ai-crew's health and suits, interior-grid's compartments |
-| Per-mount weapon status: who works it, readiness, arc, effective range, power; launcher; decoys; point defence | WPN | `GunCrews`, `WeaponControlSystem`, `PlayerGunnery`, launcher and decoy counts in core |
+| Per-mount weapon status: who works it, readiness (including whether the store can pay the next shot), arc, range, point defence engagements; launcher magazine; the decoy's countdown | WPN | `GunCrews`, `WeaponControlSystem`, `PlayerGunnery` (`inHand`, `DECOY_COOLDOWN`), `SubsystemComponent.tryDrawPower` |
 | Shield status: state, cloud against capacity, four sectors, trim, heat | WPN, SHLD lamp | `ShieldCloudComponent.line` (96 segments into four), `ShieldModel` |
 | Target information: relation, state, hull band, firing on you, contract | TGT, markers | `HudMarkerComponent`, `DisabledComponent`, `HostileComponent`, `Struck`, `ContractBoard` |
 | Reach of a destination: delta-v and travel time from here, arrival against deadline | TRM Contracts, MAP.2, OBJ, CONTRACT alert | `RoutePlanner.estimate`, `Navigation.returnDeltaV`, `PlayerTransfer` |
 | Warp's next stop and hold reason | CHR, FLT WARP | `Navigation.nextDropOutTime`, rails warp guards' refusals, `AutopilotComponent` |
-| Who is working each hazard, and progress | Deck overlays, BOOK Ship | `ShipTaskBoardComponent` claims |
+| Who is working each hazard, and progress | Deck overlays, ALR, BOOK Ship | `ShipTaskBoardComponent` claims, the crew's `showProgress` |
+| Room names | Every widget that names a room | New: the rule in section 6, and an optional `name` per room in chassis data |
 | Departure readiness | FLT DEPARTURE | Aggregate of the above and `YardProvider` |
 | What the player paid for cargo | TRM Market | New: a cost basis on the player's `TraderComponent` |
 | Time to contact with bubble bodies | COLLISION | New |
@@ -786,3 +812,4 @@ Each has the default this spec assumes until he answers.
 | Round | Changes |
 |---|---|
 | 1 | First version |
+| 2 | From the Nasa-punk thread's round 1 notes, checked against the code: WPN has one row per mount, point defence included (it is the mounts with `point_defense`, automatic at the weapons console), with `CHARGING` and `OUT OF RANGE` states, launcher magazines and the decoy as a countdown (decoys are unlimited); the lead reticle is only for guns that need lead. The power store no longer lights POWER (it empties on every laser pulse); POWER's warning is "no reactor feeds anything", which covers a one-reactor ship with its reactor shorted. A rule for naming rooms, which the game doesn't. The flight frame is defined ("near" is 5 km) and the markers follow it. Stations always get labels. Hazard tags show progress, not seconds. Z9 is a full-width strip and every zone ends above it; Z5 is 300 x 150. Colour words left the spec. From this designer's own review: lamps gain an advisory state, so normal things (crew outside) stop looking like trouble; the map hides OBJ and owns the deadline comparison; comparisons may quote what they compare against; the crisis panel doesn't repeat the band; IMPACT and COLLAR light no lamp; the pad reaches the HUD through L3. Every sample now follows the starter corvette as the game builds it: two rooms (Bridge and Hold), a 40 m3 hold, no shield emitter, a launcher magazine of 4, eight RCS blocks. Wireframes redrawn to match. |
