@@ -38,6 +38,8 @@ public interface ThreatProvider {
         public float range = Float.NaN, closingSpeed = Float.NaN;
         /** Motor burning (drawn brighter). */
         public boolean burning;
+        /** Who launched it, by its marker's label ("Raider"), or "" when unknown. */
+        public String shooter = "";
     }
 
     final class ThreatFrame {
@@ -52,6 +54,7 @@ public interface ThreatProvider {
             m.range = Float.NaN;
             m.closingSpeed = Float.NaN;
             m.burning = false;
+            m.shooter = "";
             missiles.add(m);
             return m;
         }
