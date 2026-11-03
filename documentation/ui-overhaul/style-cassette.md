@@ -4,7 +4,7 @@
 
 Artist 3 of 3 in the UI overhaul. This document sets the visual and interaction language. It does not
 decide *what* information exists or *when* it is visible; the three functional specs in
-`documentation/ui-overhaul/` do that. Section 13 says how a functional spec is translated into this
+`documentation/ui-overhaul/` do that. Section 14 says how a functional spec is translated into this
 language, and that is where this style is more than a skin.
 
 ![The flight console in the Yard Standard style](cassette/mockup-flight.png)
@@ -275,7 +275,7 @@ on a CRT.
   instruments on a 4-unit grid · bay title engraved top-left at `legend` size, 6 units from the edge ·
   screws in the corners, 6 units in.
 * **Deck heights:** at 16:9 the deck is 216 units tall at UI scale 1 on a 1080-unit-tall screen (20%).
-  The deck has three densities the player can choose (and `F` style hotkey to cycle):
+  The deck has three densities the player can choose in settings, and cycle with one key:
   * **Full deck** – everything above.
   * **Low profile** – the deck folds to a 96-unit strip: counters, master caution and warning, the
     switch row and the scope shrunk to a 88-unit tube. Needles become edgewise meters.
@@ -610,8 +610,8 @@ Written so this can be built on the existing `ui-hud` module without a rewrite o
   `FlightReadoutSystem` text → counters and compass; `RadarScope` → a `CrtScreen` with a PPI
   `VectorPage`; `AlertList` and `WireframeMinimap`'s alert list → annunciator tiles; `TradeWindow`,
   `YardWindow`, `MissionWindow`, `BoardingWindow`, `CrewWindow` → `RasterPage`s; `ManeuverMap` and
-  `OrbitMap` → big-screen `VectorPage`; `ThreatOverlay` and `NavMarkers` → the gunsight projection
-  layer.
+  `OrbitMap` → big-screen `VectorPage`; `ShipyardWindow` (the ship editor) → a big-screen page;
+  `ThreatOverlay` and `NavMarkers` → the gunsight projection layer.
 * **Persistence cost:** one extra frame buffer per CRT (at most four on screen); deck CRTs render at
   their native line count (e.g. 320×240) and are upscaled, which is both cheaper and more authentic.
 * **Power wiring:** a `ConsolePowerProvider` maps bay ids to `PowerCircuit` state; every instrument
