@@ -104,9 +104,10 @@ const W = {
     const k = 7, cx = x + w / 2, cy = y + h / 2;
     s += path(`M${cx - 14} ${cy} h8 M${cx + 6} ${cy} h8 M${cx} ${cy - 14} v8 M${cx} ${cy + 6} v8`, C.white, 1);
     s += path(`M${x + 4} ${y + 4 + k} V${y + 4} H${x + 4 + k} M${x + w - 4 - k} ${y + 4} H${x + w - 4} V${y + 4 + k} M${x + w - 4} ${y + h - 4 - k} V${y + h - 4} H${x + w - 4 - k} M${x + 4 + k} ${y + h - 4} H${x + 4} V${y + h - 4 - k}`, C.white, 1);
-    s += text(x + 6, y + 14, o.tl || '', { size: 9, bold: true, fill: C.white, track: 0.6 });
+    const cs = fs(9);
+    s += text(x + 6, y + 4 + cs, o.tl || '', { size: 9, bold: true, fill: C.white, track: 0.6 });
     s += text(x + w - 6, y + h - 7, o.br || '', { size: 9, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
-    if (o.tr) s += text(x + w - 6, y + 14, o.tr, { size: 9, bold: true, fill: o.trColor || C.dim, anchor: 'end', track: 0.6 });
+    if (o.tr) s += text(x + w - 6, y + 4 + cs, o.tr, { size: 9, bold: true, fill: o.trColor || C.dim, anchor: 'end', track: 0.6 });
     return s;
   },
 };
@@ -137,27 +138,28 @@ const O = {
   // A callout or message line on its own glass slip: loop tag box, speaker, text.
   callout: (x, y, tag, speaker, msg, sev = 'advisory', o = {}) => {
     const col = SEV[sev];
-    const tagW = tag.length * 7.4 + 10, spW = speaker ? speaker.length * 7.0 + 6 : 0;
-    const w = o.w || (tagW + 8 + spW + msg.length * 6.9 + 14);
+    const bs = o.fs || 12, tagW = tw(tag, fs(10), true, 0.6) + 10, spW = speaker ? tw(speaker, bs, true) + 7 : 0;
+    const w = o.w || (tagW + 8 + spW + tw(msg, bs) + 14), th = Math.max(14, fs(10) + 4);
     let s = rect(x, y, w, 20, { fill: 'rgba(5,7,10,0.92)' });
-    s += rect(x + 4, y + 3, tagW, 14, { stroke: sev === 'advisory' ? C.dim : col, sw: 1 }) + text(x + 4 + tagW / 2, y + 14, tag, { size: 10, bold: true, fill: sev === 'advisory' ? C.dim : col, anchor: 'middle', track: 0.6 });
+    s += rect(x + 4, y + 10 - th / 2, tagW, th, { stroke: sev === 'advisory' ? C.dim : col, sw: 1 }) + text(x + 4 + tagW / 2, y + 14.3, tag, { size: 10, bold: true, fill: sev === 'advisory' ? C.dim : col, anchor: 'middle', track: 0.6 });
     let tx = x + tagW + 12;
-    if (speaker) { s += text(tx, y + 14.5, speaker, { size: 12, bold: true, fill: C.white }); tx += spW; }
-    s += text(tx, y + 14.5, msg, { size: 12, fill: col });
+    if (speaker) { s += text(tx, y + 14.5, speaker, { size: bs, bold: true, fill: C.white }); tx += spW; }
+    s += text(tx, y + 14.5, msg, { size: bs, fill: col });
     if (o.count) s += text(x + w - 6, y + 14.5, o.count, { size: 11, bold: true, fill: C.dim, anchor: 'end' });
     return s;
   },
   // Console prompt: a small hardware plate with key caps.
   prompt: (cx, y, name, verbs) => {
-    const parts = verbs.map(([k, v]) => ({ k, v, w: k.length * 7 + 10 + v.length * 7.2 + 6 }));
-    const nameW = name.length * 8 + 14;
+    const kwOf = k => tw(k, fs(10.5), true) + 10;
+    const parts = verbs.map(([k, v]) => ({ k, v, w: kwOf(k) + 5 + tw(v, fs(11.5)) + 2 }));
+    const nameW = tw(name, 12, true, 1) + 16;
     const w = nameW + parts.reduce((a, p) => a + p.w + 10, 0) + 6;
     const x = cx - w / 2;
     let s = bezelBody(x, y, w, 26, 3) + rect(x + 3, y + 3, 2, 20, { fill: C.kapton });
     s += text(x + 11, y + 17.5, name, { size: 12, bold: true, fill: C.stencil, track: 1 });
     let px = x + nameW + 4;
     parts.forEach(p => {
-      const kw = p.k.length * 7 + 10;
+      const kw = kwOf(p.k);
       s += softKey(px, y + 5, kw, 16, false) + text(px + kw / 2, y + 17, p.k, { size: 10.5, bold: true, fill: C.stencil, anchor: 'middle' });
       s += text(px + kw + 5, y + 17.5, p.v, { size: 11.5, fill: '#C9CCC6' });
       px += p.w + 10;
@@ -168,12 +170,12 @@ const O = {
   response: (cx, y, msg) => { const w = msg.length * 6.9 + 20; return rect(cx - w / 2, y, w, 22, { fill: 'rgba(5,7,10,0.92)', stroke: C.dim, sw: 1 }) + text(cx, y + 15, msg, { size: 12, fill: C.white, anchor: 'middle' }); },
   // Suit display (the EMU's chest DCM): light suit-grey bezel, small glass.
   dcm: (x, y, rows, o = {}) => {
-    const w = o.w || 220, h = 34 + rows.length * 18;
+    const w = o.w || 220, pitch = Math.max(18, fs(10) + 7), h = 34 + rows.length * pitch;
     let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#B9BDB8"/>` + `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="none" stroke="#8E928D" stroke-width="1"/>`;
-    s += text(x + 10, y + 13, 'DCM  SUIT', { size: 8.5, bold: true, fill: '#26282A', track: 1.4 }) + rect(x + w - 30, y + 6, 20, 8, { fill: C.orange, r: 1 });
+    s += text(x + 10, y + 13, 'DCM  SUIT', { size: 8.5, bold: true, fill: '#26282A', track: 1.4, legend: true }) + rect(x + w - 30, y + 6, 20, 8, { fill: C.orange, r: 1 });
     s += rect(x + 8, y + 20, w - 16, h - 28, { fill: C.glass });
     rows.forEach((r, i) => {
-      const yy = y + 36 + i * 18;
+      const yy = y + 36 + i * pitch;
       s += text(x + 16, yy, r[0], { size: 10, bold: true, fill: C.dim, track: 0.6 });
       s += text(x + w - 16, yy, r[1], { size: 13, bold: true, fill: SEV[r[2] || 'nominal'], anchor: 'end' });
     });
@@ -426,6 +428,169 @@ function deckView(x0, y0, k, o = {}) {
     s += `<circle cx="${T(tx)}" cy="${U(ty)}" r="${k * 0.62}" fill="none" stroke="${C.cyan}" stroke-width="1.5"/>` + person(tx, ty, '#5D7086', true);
   }
   if (o.outline) { const r = rooms[o.outline[0]]; s += rect(T(r[0]) + 3, U(r[1]) + 3, r[2] * k - 6, r[3] * k - 6, { stroke: o.outline[1] === 'warning' ? C.red : C.amber, sw: 2, dash: '7 4' }); }
-  if (o.labels) Object.values(rooms).forEach(([tx, ty, w, h, n]) => s += text(T(tx + w / 2), ty >= 7 ? U(ty) + 14 : U(ty + h) - 6, n, { size: 8, bold: true, fill: 'rgba(200,205,210,0.35)', anchor: 'middle', track: 1 }));
+  if (o.labels) Object.values(rooms).forEach(([tx, ty, w, h, n]) => s += text(T(tx + w / 2), ty >= 7 ? U(ty) + 14 : U(ty + h) - 6, n, { size: 8, bold: true, fill: 'rgba(200,205,210,0.35)', anchor: 'middle', track: 1, legend: true }));
+  return s;
+}
+
+// ---------- the Patrol Corvette as the game builds it ----------
+// From assets/data/chassis.toml [chassis.corvette] and assets/art/hulls/corvette.svg. Tiles are
+// 1 m. Chassis x runs stern to bow (0..17) and y starboard to port (0..5), so on screen the nose
+// points right and port is up. Footprints follow MountFootprint (auxiliary S 1x2 and M 2x3,
+// swapped when rotated; primary S 1x1 and M 2x2; a Small port 3 along the hull). One wall at
+// x 8, with a door at y 3, splits the interior into two rooms: the Hold aft and the Bridge
+// forward. There is no shield emitter and no airlock: the docking port cycles as one.
+const CORVETTE = {
+  // the hull art's outline, in its own units (64 a tile, centred on chassis corner (13, 3), y down)
+  hull: '-704,192 -729.6,262.4 -684.8,262.4 -563.2,192 320,192 384,115.2 441.6,32 460.8,0 441.6,-32 384,-115.2 320,-192 -563.2,-192 -684.8,-262.4 -729.6,-262.4 -704,-192 -704,-51.2 -780.8,-32 -780.8,32 -704,51.2',
+  rooms: { hold: [3, 1, 5, 4], bridge: [8, 1, 9, 4] },
+  parts: [
+    ['dock', 7, 5, 3, 1], ['engine', 0, 4, 2, 1], ['engine', 0, 1, 2, 1],
+    ['helm', 9, 4, 2, 1], ['weapons', 9, 3, 2, 1], ['life', 9, 1, 1, 2], ['prop', 8, 1, 1, 2],
+    ['turret', 11, 4, 1, 1], ['turret', 14, 4, 1, 1], ['turret', 16, 2, 1, 1], ['turret', 11, 1, 1, 1], ['turret', 14, 1, 1, 1],
+    ['cargo', 12, 4, 2, 1], ['cargo', 15, 1, 2, 1], ['cargo', 5, 3, 3, 2], ['cargo', 5, 1, 3, 2],
+    ['n2', 3, 3, 2, 1], ['o2', 3, 2, 2, 1], ['reactor', 15, 3, 2, 2], ['pod', 12, 0, 1, 2],
+  ],
+  // power conduits (tile centres) and the one in the wall
+  conduits: [[[8, 4], [9, 4]], [[14, 4], [15, 4]], [[11, 2], [14, 2]], [[3, 1], [11, 1]], [[3, 1], [3, 4]], [[8, 4], [8, 5]], [[9, 1], [9, 4]], [[11, 1], [11, 4]], [[14, 1], [14, 4]], [[16, 2], [16, 3]]],
+};
+
+// The corvette's deck, drawn top-down at k px a tile with the hull's top (chassis y 6) at oy and
+// chassis x 0 at ox. o: { fire:[[tx,ty,r]], fireRoom, smoke:[[tx,ty,r]], breach:[tx,ty] (a hull
+// tile blown out), short:[tx,ty], thin:[room], vacuum:[room], battle (Red battle lighting),
+// alarm:[[tx,ty,angle]], glow:{helm|weapons|life|reactor: 'caution'|'warning'}, door:'ok'|'bad'|'shut',
+// crew:[[tx,ty,name,bubble]], avatar:[tx,ty], labels, dark, unpowered }. Points are chassis
+// corner coordinates (a tile's centre is x + 0.5, y + 0.5).
+function corvetteDeck(ox, oy, k, o = {}) {
+  const X = tx => ox + tx * k, Y = ty => oy + (6 - ty) * k;
+  const box = (tx, ty, w, h) => [X(tx), Y(ty + h), w * k, h * k];
+  const id = o.id || 'cv';
+  let s = `<defs><radialGradient id="${id}flame"><stop offset="0" stop-color="#FFE7A0"/><stop offset="0.35" stop-color="#FF9A2E"/><stop offset="0.75" stop-color="#E5401A" stop-opacity="0.8"/><stop offset="1" stop-color="#E5401A" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="${id}soot"><stop offset="0" stop-color="#050505" stop-opacity="0.9"/><stop offset="0.6" stop-color="#0A0A0A" stop-opacity="0.55"/><stop offset="1" stop-color="#0A0A0A" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="${id}beam"><stop offset="0" stop-color="#FF5030" stop-opacity="0.55"/><stop offset="1" stop-color="#FF5030" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="${id}core"><stop offset="0" stop-color="#BFF3FF"/><stop offset="0.5" stop-color="#3CCBE6" stop-opacity="0.6"/><stop offset="1" stop-color="#3CCBE6" stop-opacity="0"/></radialGradient>`
+    + `<pattern id="${id}tiles" width="${k}" height="${k}" patternUnits="userSpaceOnUse" x="${ox}" y="${oy}"><rect width="${k}" height="${k}" fill="#1D2125"/><path d="M0 0 H${k} M0 0 V${k}" stroke="#272C31" stroke-width="1"/></pattern>`
+    + `<pattern id="${id}carpet" width="${k}" height="${k}" patternUnits="userSpaceOnUse" x="${ox}" y="${oy}"><rect width="${k}" height="${k}" fill="#22262C"/><path d="M0 0 H${k} M0 0 V${k}" stroke="#2A2F35" stroke-width="1"/><path d="M0 ${k / 2} H${k}" stroke="#262A30" stroke-width="0.6"/></pattern>`
+    + `<pattern id="${id}hazard" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" fill="#2A2A22"/><rect width="5" height="10" fill="#6B5A1E"/></pattern></defs>`;
+  // engines hang off the stern, outside the hull: two nozzle bells
+  CORVETTE.parts.filter(p => p[0] === 'engine').forEach(([, tx, ty]) => {
+    const [x, y, , h] = box(tx, ty, 2, 1), x0 = x + k * 0.55;
+    // a nozzle bell: throat at the stern, flaring aft, dark inside its rim
+    s += path(`M${X(2)} ${y + h * 0.3} L${x0} ${y + h * 0.04} L${x0} ${y + h * 0.96} L${X(2)} ${y + h * 0.7} Z`, '#15181B', 1.5, { fill: '#2E3237' });
+    s += path(`M${X(2) - 3} ${y + h * 0.36} L${x0 + 4} ${y + h * 0.14} L${x0 + 4} ${y + h * 0.86} L${X(2) - 3} ${y + h * 0.64} Z`, 'none', 1, { fill: '#121417' });
+    s += line(x0, y + h * 0.04, x0, y + h * 0.96, '#5B636D', 2.5);
+  });
+  // hull
+  const g = `translate(${X(13)} ${Y(3)}) scale(${k / 64})`;
+  s += `<polygon transform="${g}" points="${CORVETTE.hull}" fill="#3A3F46" stroke="#1E2125" stroke-width="${2 * 64 / k}"/>`;
+  // floor, with carpet through the crew spaces (coverings x 9..14, y 1..4)
+  s += rect(X(3), Y(5), 14 * k, 4 * k, { fill: `url(#${id}tiles)` });
+  s += rect(X(9), Y(5), 6 * k, 4 * k, { fill: `url(#${id}carpet)` });
+  // room light: thin air and vacuum tint their room; Red battle lighting reddens the deck
+  const room = n => { const [tx, ty, w, h] = CORVETTE.rooms[n]; return box(tx, ty, w, h); };
+  (o.thin || []).forEach(n => { const [x, y, w, h] = room(n); s += rect(x, y, w, h, { fill: 'rgba(70,100,140,0.16)' }); });
+  (o.vacuum || []).forEach(n => { const [x, y, w, h] = room(n); s += rect(x, y, w, h, { fill: 'rgba(10,20,40,0.55)' }); });
+  if (o.fireRoom) { const [x, y, w, h] = room(o.fireRoom); s += rect(x, y, w, h, { fill: 'rgba(255,70,20,0.12)' }); }
+  // conduits under the deck plates: faint lines, the shorted run lit
+  CORVETTE.conduits.forEach(([[x1, y1], [x2, y2]]) => s += line(X(x1 + 0.5), Y(y1 + 0.5), X(x2 + 0.5), Y(y2 + 0.5), '#2C3B44', 2, { dash: '2 3' }));
+  // parts
+  const consoleGlow = n => { const al = (o.glow || {})[n]; return al === 'warning' ? C.red : al === 'caution' ? C.amber : o.unpowered ? '#14181C' : null; };
+  CORVETTE.parts.forEach(([kind, tx, ty, w, h]) => {
+    if (kind === 'engine') return;
+    const [x, y, ww, hh] = box(tx, ty, w, h), m = k * 0.1;
+    if (kind === 'cargo') {
+      s += rect(x + 2, y + 2, ww - 4, hh - 4, { fill: `url(#${id}hazard)`, r: 1 }) + rect(x + 5, y + 5, ww - 10, hh - 10, { fill: '#1D2125' });
+      const n = Math.max(1, Math.round(w * h / 2));
+      for (let i = 0; i < n; i++) { const cx = x + 7 + (i % w) * (ww - 14) / w, cy = y + 7 + Math.floor(i / w) * (hh - 14) / h; s += rect(cx, cy, (ww - 14) / w - 3, (hh - 14) / Math.max(1, Math.ceil(n / w)) - 3, { fill: '#4B4436', stroke: '#2E2A22', sw: 1 }) + line(cx + 2, cy + 2, cx + (ww - 14) / w - 5, cy + (hh - 14) / Math.max(1, Math.ceil(n / w)) - 5, '#3A3428', 1); }
+    } else if (kind === 'n2' || kind === 'o2' || kind === 'prop') {
+      s += rect(x + m, y + m, ww - 2 * m, hh - 2 * m, { fill: kind === 'o2' ? '#3E5566' : kind === 'n2' ? '#4A4E5C' : '#5A4A3A', stroke: '#15181B', sw: 1.2, r: Math.min(ww, hh) / 2 - m });
+      const vert = h > w;
+      for (let i = 1; i < 3; i++) s += vert ? line(x + m, y + hh * i / 3, x + ww - m, y + hh * i / 3, '#15181B', 1) : line(x + ww * i / 3, y + m, x + ww * i / 3, y + hh - m, '#15181B', 1);
+      s += text(x + ww / 2, y + hh / 2 + 4, kind === 'prop' ? 'PROP' : kind.toUpperCase(), { size: 9, bold: true, fill: 'rgba(230,235,240,0.5)', anchor: 'middle', legend: true });
+    } else if (kind === 'reactor') {
+      s += rect(x + m, y + m, ww - 2 * m, hh - 2 * m, { fill: '#2B3138', stroke: '#5B636D', sw: 1.5, r: 3 });
+      if (!o.unpowered) s += `<circle cx="${x + ww / 2}" cy="${y + hh / 2}" r="${k * 0.85}" fill="url(#${id}core)"/>`;
+      s += `<circle cx="${x + ww / 2}" cy="${y + hh / 2}" r="${k * 0.38}" fill="#2B3138" stroke="#5B636D" stroke-width="1.5"/>`;
+      const gl = consoleGlow('reactor'); if (gl) s += `<circle cx="${x + ww / 2}" cy="${y + hh / 2}" r="${k * 1.1}" fill="${gl}" opacity="0.18"/>`;
+    } else if (kind === 'turret') {
+      s += `<circle cx="${x + ww / 2}" cy="${y + hh / 2}" r="${k * 0.4}" fill="#30353C" stroke="#5B636D" stroke-width="1.5"/><circle cx="${x + ww / 2}" cy="${y + hh / 2}" r="${k * 0.18}" fill="#1D2125" stroke="#454B53" stroke-width="1"/>`;
+    } else if (kind === 'pod') {
+      s += rect(x + m, y + m, ww - 2 * m, hh - 2 * m, { fill: '#4A5058', stroke: '#15181B', sw: 1.2, r: (ww - 2 * m) / 2 });
+      s += rect(x + ww * 0.25, y + hh - k * 0.55, ww * 0.5, k * 0.3, { fill: '#1D2125', stroke: '#E5531A', sw: 1.2 });
+    } else if (kind === 'dock') {
+      s += rect(x + 2, y + hh * 0.15, ww - 4, hh * 0.7, { fill: '#2E3338', stroke: '#15181B', sw: 1.2 });
+      s += `<circle cx="${x + ww / 2}" cy="${y + hh / 2}" r="${k * 0.3}" fill="#1D2125" stroke="#7E8792" stroke-width="1.5"/>`;
+    } else {
+      // consoles (helm, weapons) and life support: a cabinet with its screen glowing
+      s += rect(x + m, y + m, ww - 2 * m, hh - 2 * m, { fill: '#2C3238', stroke: '#15181B', sw: 1 });
+      const gl = consoleGlow(kind) || (kind === 'life' ? '#2E6B5A' : '#2B6F80');
+      if (kind === 'life') { s += rect(x + m + 3, y + m + 3, ww - 2 * m - 6, k * 0.35, { fill: gl, r: 1 }); s += `<circle cx="${x + ww / 2}" cy="${y + hh * 0.62}" r="${k * 0.28}" fill="#1D2125" stroke="#454B53" stroke-width="1.2"/>` + line(x + ww / 2 - k * 0.2, y + hh * 0.62, x + ww / 2 + k * 0.2, y + hh * 0.62, '#454B53', 1.2) + line(x + ww / 2, y + hh * 0.62 - k * 0.2, x + ww / 2, y + hh * 0.62 + k * 0.2, '#454B53', 1.2); }
+      else s += rect(x + ww - m - k * 0.32, y + m + 3, k * 0.22, hh - 2 * m - 6, { fill: gl, r: 1 });
+      if ((o.glow || {})[kind]) s += `<circle cx="${x + ww / 2}" cy="${y + hh / 2}" r="${k * 1.1}" fill="${gl}" opacity="0.18"/>`;
+    }
+  });
+  // walls: the hull's inner face, and the one bulkhead at x 8 with its door at y 3
+  const wall = (x1, y1, x2, y2) => line(X(x1), Y(y1), X(x2), Y(y2), '#59616A', 4);
+  s += rect(X(3), Y(5), 14 * k, 4 * k, { stroke: '#6A727C', sw: 5 });
+  s += wall(8, 1, 8, 3) + wall(8, 4, 8, 5);
+  const doorBad = o.door === 'bad' || o.door === 'shut';
+  if (o.door === 'shut') s += line(X(8), Y(3), X(8), Y(4), '#8A6A2A', 4);
+  s += `<circle cx="${X(8) - 6}" cy="${Y(4) + 6}" r="2.6" fill="${doorBad ? '#FF3B30' : '#3DDC7A'}"/>`;
+  // battle lighting: the deck lit red at condition Red
+  if (o.battle) s += `<polygon transform="${g}" points="${CORVETTE.hull}" fill="rgba(255,40,20,0.10)"/>`;
+  if (o.dark) s += `<polygon transform="${g}" points="${CORVETTE.hull}" fill="rgba(0,0,0,${o.dark})"/>`;
+  // breach: a hull tile blown out, air streaming through it
+  if (o.breach) {
+    const [bx, by] = o.breach, out = by < 3 ? 1 : -1, cx = X(bx + 0.5), hy = by < 3 ? Y(1) : Y(5);
+    s += rect(cx - k * 0.35, hy - (out > 0 ? 0 : 6), k * 0.7, 6, { fill: '#000' }) + rect(cx - k * 0.35, by < 3 ? Y(1) : Y(6), k * 0.7, k, { fill: 'rgba(0,0,0,0.85)' });
+    for (let i = 0; i < 7; i++) { const dx = (i - 3) * k * 0.12; s += path(`M${cx + dx * 2.2} ${hy - out * k * (0.9 + (i % 2) * 0.3)} Q${cx + dx} ${hy} ${cx + dx * 0.6} ${hy + out * k * (1.1 + (i % 3) * 0.35)}`, 'rgba(220,230,240,0.5)', 1.2, { dash: '5 4' }); }
+  }
+  if (o.short) {
+    const [sx, sy] = [X(o.short[0]), Y(o.short[1])];
+    s += `<circle cx="${sx}" cy="${sy}" r="${k * 0.45}" fill="#FFC84A" opacity="0.16"/>`;
+    s += path(`M${sx - 6} ${sy - 9} L${sx + 1} ${sy - 1} L${sx - 3} ${sy + 1} L${sx + 6} ${sy + 9}`, '#FFE08A', 2.2);
+    [[-9, -2], [8, -5], [-4, 9], [10, 6]].forEach(([dx, dy]) => s += `<circle cx="${sx + dx}" cy="${sy + dy}" r="1.4" fill="#FFE08A"/>`);
+  }
+  // scorch: a system wrecked by a hit (disabled or destroyed), soot over it and cracks in the plates
+  (o.scorch || []).forEach(([tx, ty]) => {
+    const cx = X(tx), cy = Y(ty);
+    s += `<circle cx="${cx}" cy="${cy}" r="${k * 0.62}" fill="url(#${id}soot)"/>`;
+    [[0.2, 0.5], [1.9, 0.42], [3.6, 0.55], [4.7, 0.38]].forEach(([a, r]) => s += line(cx + Math.cos(a) * k * 0.12, cy + Math.sin(a) * k * 0.12, cx + Math.cos(a) * k * r, cy + Math.sin(a) * k * r, '#0B0C0D', 1.3));
+  });
+  (o.fire || []).forEach(([tx, ty, r]) => s += `<circle cx="${X(tx)}" cy="${Y(ty)}" r="${r * k}" fill="url(#${id}flame)"/>`);
+  (o.smoke || []).forEach(([tx, ty, r]) => s += `<circle cx="${X(tx)}" cy="${Y(ty)}" r="${r * k}" fill="rgba(150,150,150,0.22)"/>`);
+  (o.alarm || []).forEach(([tx, ty, a]) => {
+    const R = 3.2 * k;
+    s += `<path d="M${X(tx)} ${Y(ty)} L${X(tx) + R * Math.cos(a - 0.35)} ${Y(ty) + R * Math.sin(a - 0.35)} A${R} ${R} 0 0 1 ${X(tx) + R * Math.cos(a + 0.35)} ${Y(ty) + R * Math.sin(a + 0.35)} Z" fill="url(#${id}beam)"/>`;
+    s += `<circle cx="${X(tx)}" cy="${Y(ty)}" r="3.5" fill="#FF5030" stroke="#3A0E08" stroke-width="1"/>`;
+  });
+  // people: crew in orange suits; the captain blue-grey with a cyan ring
+  const person = (tx, ty, suit, helmet) => `<ellipse cx="${X(tx)}" cy="${Y(ty)}" rx="${k * 0.36}" ry="${k * 0.26}" fill="${suit}" stroke="#1A1A1A" stroke-width="1"/><circle cx="${X(tx)}" cy="${Y(ty)}" r="${k * 0.17}" fill="${helmet ? '#DDE3E8' : '#C99A78'}" stroke="#1A1A1A" stroke-width="0.8"/>`;
+  (o.crew || []).forEach(([tx, ty]) => s += person(tx, ty, '#E06A2C'));
+  if (o.avatar) { const [tx, ty] = o.avatar; s += `<circle cx="${X(tx)}" cy="${Y(ty)}" r="${k * 0.55}" fill="none" stroke="${C.cyan}" stroke-width="1.5"/>` + person(tx, ty, '#5D7086', true); }
+  if (o.labels) [['HOLD', 'hold'], ['BRIDGE', 'bridge']].forEach(([n, r]) => { const [tx, ty, w] = CORVETTE.rooms[r]; s += text(X(tx + w / 2), Y(ty + 4) + 15, n, { size: 9, bold: true, fill: 'rgba(200,205,210,0.4)', anchor: 'middle', track: 2, legend: true }); });
+  return s;
+}
+
+// The corvette as a synoptic plan: hull outline, the two rooms (hatched by the severity of what is
+// in them), crew dots (amber when hurt), the captain ringed, a hull hit flashing where it landed.
+// o: { hold|bridge: { state, sev }, crew:[[tx,ty,color]], captain:[tx,ty], hit:[tx,ty], breach:[tx,ty], short:[tx,ty] }
+function corvettePlan(x0, y0, k, o = {}) {
+  const X = tx => x0 + tx * k, Y = ty => y0 + (6 - ty) * k, id = o.id || 'cp';
+  const pat = (pid, c) => `<pattern id="${pid}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="${c}" stroke-width="1.6" opacity="0.7"/></pattern>`;
+  let s = `<defs>${pat(id + 'w', C.red)}${pat(id + 'c', C.amber)}</defs>`;
+  s += `<polygon transform="translate(${X(13)} ${Y(3)}) scale(${k / 64})" points="${CORVETTE.hull}" fill="none" stroke="#5B636D" stroke-width="${1.2 * 64 / k}"/>`;
+  ['hold', 'bridge'].forEach(n => {
+    const [tx, ty, w, h] = CORVETTE.rooms[n], st = (o[n] || {}).state, sev = (o[n] || {}).sev || (st ? 'caution' : null);
+    const col = sev === 'warning' ? C.red : sev === 'caution' ? C.amber : '#5B636D';
+    if (st) s += rect(X(tx), Y(ty + h), w * k, h * k, { fill: `url(#${id}${sev === 'warning' ? 'w' : 'c'})` });
+    s += rect(X(tx), Y(ty + h), w * k, h * k, { stroke: col, sw: st ? 1.5 : 1 });
+  });
+  // the door in the bulkhead
+  s += line(X(8), Y(3) - 1, X(8), Y(4) + 1, C.glass, 3);
+  if (o.breach) s += path(`M${X(o.breach[0] + 0.5) - 4} ${Y(o.breach[1]) - 4} l8 8 M${X(o.breach[0] + 0.5) + 4} ${Y(o.breach[1]) - 4} l-8 8`, C.amber, 1.8);
+  if (o.short) s += path(`M${X(o.short[0]) - 3} ${Y(o.short[1]) - 5} l4 4 l-3 1 l4 5`, C.amber, 1.5);
+  (o.crew || []).forEach(([tx, ty, c]) => s += `<circle cx="${X(tx)}" cy="${Y(ty)}" r="2.6" fill="${c || C.white}"/>`);
+  if (o.captain) s += `<circle cx="${X(o.captain[0])}" cy="${Y(o.captain[1])}" r="5.5" fill="none" stroke="${C.cyan}" stroke-width="1.5"/><circle cx="${X(o.captain[0])}" cy="${Y(o.captain[1])}" r="2.6" fill="${C.white}"/>`;
+  if (o.hit) { const [hx, hy] = o.hit; s += `<circle cx="${X(hx)}" cy="${Y(hy)}" r="7" fill="${C.red}" opacity="0.35"/><circle cx="${X(hx)}" cy="${Y(hy)}" r="3" fill="${C.red}"/>`; }
   return s;
 }

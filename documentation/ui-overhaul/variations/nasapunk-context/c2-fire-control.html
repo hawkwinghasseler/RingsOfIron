@@ -10,19 +10,21 @@
 <script>
 // Walkthrough 11.5: at the weapons console in a fight. Bea holds the helm. One missile inbound with
 // point defence on it; nothing is wrong with the ship, so P2 draws nothing and H4's lenses stay dark.
+// Mounts as the game's Patrol Corvette carries them (ships.toml): coilgun in the nose, laser aft to
+// starboard and the harpoon launcher aft to port are in hand at the weapons console; the two
+// autocannons are point defence and fire by themselves (PlayerGunnery.inHand, GunCrews).
 let s = space({ px: 1500, py: 1500, pr: 1100, seed: 9 });
 const SX = 640, SY = 405, HDG = 90;
 
-// W5: fire arcs of the guns in hand, hit lanes to the lock, lead reticle with the hit chance
-s += W.fireArc(SX, SY, HDG - 30, HDG + 30, 150);
-s += W.fireArc(SX, SY, HDG - 150, HDG - 30, 96);
-s += W.fireArc(SX, SY, HDG + 30, HDG + 150, 96);
+// W5: the hit lane to the lock and the lead reticle with the hit chance. One reticle: the coilgun
+// is the only gun in hand with a muzzle speed (the laser is a beam). No fire arcs: the guns' arcs
+// are 300 degrees, so a wedge would claim a limit that isn't there.
 s += hull(SX, SY, HDG, 0.9);
 const TX = 868, TY = 292;
 s += raiderHull(TX, TY, 250, 0.42);
 // W1: the lock, labelled with name and range (range shows only for lock, nav and hostiles)
-s += W.contact('hostile', TX, TY, { locked: true, label: ['RAIDER', '7.7 KM'], lx: 26, ly: -4 });
-s += W.hitLane(SX + 30, SY - 6, 846, 262) + W.hitLane(SX + 18, SY - 14, 846, 262);
+s += W.contact('hostile', TX, TY, { locked: true, label: ['RAIDER', '2.8 KM'], lx: 26, ly: -4 });
+s += W.hitLane(SX + 30, SY - 6, 846, 262);
 s += W.lead(846, 262, 64);
 // A second raider, further out: class and range
 s += W.contact('hostile', 1180, 470, { label: ['RAIDER 2', '14 KM'], lx: -14, ly: -16, anchor: 'end' });
@@ -51,7 +53,7 @@ s += du(12, 176, 308, 132, {
     c += text(L + 96, gy + 20, 'T−21 S', { size: V, bold: true, fill: C.white }) + text(L + 160, gy + 20, '040°', { size: B, fill: C.white });
     c += I.box(R - 64, gy + 7, 64, 17, 'PD ON IT', 'engaged', { size: 10 });
     c += line(gx + 4, gy + 30, gx + gw - 4, gy + 30, C.graticule, 1);
-    const ships = [['RAIDER', '7.7 KM', 'KITING', true], ['RAIDER 2', '14 KM', 'CLOSING']];
+    const ships = [['RAIDER', '2.8 KM', 'KITING', true], ['RAIDER 2', '14 KM', 'CLOSING']];
     ships.forEach(([n, r, st, lock], i) => {
       const yy = gy + 52 + i * 22;
       c += sym.diamond(L + 6, yy - 4.5, 5, C.red, 1.4, lock ? C.red : null);
@@ -97,10 +99,11 @@ s += du(330, 632, 620, 156, {
     const pips = (n) => { let p = ''; for (let i = 0; i < 3; i++) p += `<circle cx="${i * 9}" cy="0" r="3" fill="${i < n ? C.cyan : 'none'}" stroke="${C.cyan}" stroke-width="1"/>`; return p; };
     const rows = [
       [true, 'NOSE', 'COILGUN MK1', ['READY', 'normal'], [3, 'GOOD'], 'YOU'],
-      [true, 'PORT', 'AUTOCANNON MK1', ['RELOAD 0.4 S', 'normal'], [2, 'FAIR'], 'YOU'],
-      [true, 'STBD', 'AUTOCANNON MK1', ['OUT OF ARC', 'off'], null, 'YOU'],
-      [false, 'PORT', 'HARPOON LAUNCHER', ['READY  3 LEFT', 'normal'], null, 'YOU'],
-      [false, 'STBD', 'LASER MK1', ['NO POWER', 'caution'], null, '—'],
+      // the laser burns 5 MW against a 3 MW reactor: between pulses it waits on the store
+      [true, 'AFT S', 'LASER MK1', ['CHARGING', 'normal'], [3, 'GOOD'], 'YOU'],
+      [true, 'AFT P', 'HARPOON LAUNCHER', ['READY  3 OF 4', 'normal'], null, 'YOU'],
+      [false, 'PORT', 'AUTOCANNON MK1', ['PD ENGAGING', 'engaged'], null, 'AUTO'],
+      [false, 'STBD', 'AUTOCANNON MK1', ['PD ENGAGING', 'engaged'], null, 'AUTO'],
     ];
     rows.forEach(([hand, m, wpn, [st, stS], hit, by], i) => {
       const yy = gy + 35 + i * 18;
@@ -119,7 +122,7 @@ s += du(330, 632, 620, 156, {
     c += line(gx + 4, gy + 114, gx + gw - 4, gy + 114, C.graticule, 1);
     // the rack's foot: decoys (unlimited in the game, on a 3 s cooldown: ready or seconds) and point defence
     c += text(gx + 26, gy + 130, 'DECOY', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(gx + 76, gy + 130, 'READY', { size: B, bold: true, fill: C.white });
-    c += text(gx + 160, gy + 130, 'POINT DEFENCE', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + I.box(gx + 268, gy + 117, 52, 17, 'AUTO', 'engaged', { size: 10 });
+    c += text(gx + 160, gy + 130, 'SEEKER', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + I.box(gx + 214, gy + 117, 52, 17, 'LOCK', 'engaged', { size: 10 });
     return c;
   },
 }).svg;
@@ -136,15 +139,16 @@ s += du(960, 176, 308, 210, {
     c += I.box(R - 70, gy + 8, 70, 18, 'HOSTILE', 'warning', { size: 10.5 });
     c += text(L + 20, gy + 40, 'FIRING ON YOU  ·  KITING', { size: 11.5, bold: true, fill: C.white, track: 0.5 });
     c += line(gx + 4, gy + 50, gx + gw - 4, gy + 50, C.graticule, 1);
-    c += text(L, gy + 70, 'RNG', { size: 11, bold: true, fill: C.dim }) + text(L + 34, gy + 70, '7.7 KM', { size: V, bold: true, fill: C.white });
+    c += text(L, gy + 70, 'RNG', { size: 11, bold: true, fill: C.dim }) + text(L + 34, gy + 70, '2.8 KM', { size: V, bold: true, fill: C.white });
     c += text(L + 124, gy + 70, 'CLOSING', { size: 11, bold: true, fill: C.dim }) + text(R, gy + 70, '12 M/S', { size: V, bold: true, fill: C.white, anchor: 'end' });
     c += text(L, gy + 90, 'REL', { size: 11, bold: true, fill: C.dim }) + text(L + 34, gy + 90, '38 M/S', { size: B, bold: true, fill: C.white }) + text(L + 124, gy + 90, 'TOWARD', { size: 11, bold: true, fill: C.dim }) + text(R, gy + 90, '220°', { size: B, bold: true, fill: C.white, anchor: 'end' });
     c += line(gx + 4, gy + 100, gx + gw - 4, gy + 100, C.graticule, 1);
-    const guns = [['NOSE', 'COILGUN', 'IN ARC', 3, 'GOOD'], ['PORT', 'AUTOCAN', 'IN ARC', 2, 'FAIR'], ['STBD', 'AUTOCAN', 'OUT OF ARC', 0, '']];
+    // the guns in hand against this target: the coilgun, the laser inside its 3 km reach, the launcher
+    const guns = [['NOSE', 'COILGUN', 'IN ARC', 3, 'GOOD'], ['AFT S', 'LASER', 'IN REACH', 3, 'GOOD'], ['AFT P', 'HARPOON', 'LOCKED', 0, '']];
     guns.forEach(([m, w, arc, n, h], i) => {
       const yy = gy + 120 + i * 20;
       c += text(L, yy, m, { size: B, bold: true, fill: C.white }) + text(L + 50, yy, w, { size: B, fill: C.white });
-      c += text(L + 132, yy, arc, { size: 11.5, bold: true, fill: arc === 'IN ARC' ? C.white : C.dim, track: 0.4 });
+      c += text(L + 132, yy, arc, { size: 11.5, bold: true, fill: C.white, track: 0.4 });
       if (n) { for (let k = 0; k < 3; k++) c += `<circle cx="${R - 64 + k * 9}" cy="${yy - 4.5}" r="3" fill="${k < n ? C.cyan : 'none'}" stroke="${C.cyan}" stroke-width="1"/>`; c += text(R, yy, h, { size: B, bold: true, fill: C.cyan, anchor: 'end' }); }
     });
     c += line(gx + 4, gy + 172, gx + gw - 4, gy + 172, C.graticule, 1);

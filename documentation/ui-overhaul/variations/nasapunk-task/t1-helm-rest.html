@@ -8,44 +8,50 @@
 <script src="../../nasapunk/mockups/kit.js"></script>
 <script src="task.js"></script>
 <script>
-// The at-rest test (section 8): near Highport, nothing targeted, planned or wrong. CHR, ten dark
-// lamps, FLT in CRUISE, the scope, and the hint line. About ten lines of text.
+// The at-rest test (section 8): flying near Highport with nothing targeted, planned or wrong. CHR,
+// nine dark lamps (the corvette has no shield emitter), FLT in CRUISE, the scope, four keys and F1.
+// About ten lines of text.
+//
+// The frame is Highport, 3.0 km off: the nearest station within 5 km (FLT's frame rule), so the
+// speed is the drift against the station and the velocity markers follow it. Stations always get
+// a label; the passing freighter is a glyph.
 let s = space({ px: 1400, py: 1650, pr: 1100, seed: 21 });
 const SX = 640, SY = 390;
 s += hull(SX, SY, 90, 0.9);
-// OVL: prograde in the orbit frame (frame told apart by shape); contacts as glyphs only, since
-// nothing is targeted and the pointer rests on nothing
-s += W.pro(SX + 70, SY - 2) + W.retro(SX - 70, SY + 2);
-s += stationHull(530, 300, 0.22) + W.contact('station', 530, 300, {});
-s += W.contact('neutral', 742, 486, { leader: [-18, 14] });
+// OVL: prograde and retrograde in the station frame, told apart from the orbit frame's by the
+// station tick on the marker's crown
+s += W.pro(SX + 58, SY - 40, C.green) + line(SX + 58, SY - 40 - 13, SX + 58, SY - 40 - 17, C.halo, 4) + line(SX + 58 - 3, SY - 40 - 17, SX + 58 + 3, SY - 40 - 17, C.green, 2);
+s += W.retro(SX - 58, SY + 40);
+s += stationHull(500, 300, 0.22) + W.contact('station', 500, 300, { label: ['HIGHPORT'], lx: 22, ly: -10 });
+s += W.contact('neutral', 742, 486, {});
 
 s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1X' });
 s += annunciatorPanel({});
 
-// FLT in CRUISE: the mode named FMA-style, the frame and speed in it, delta-v against home,
+// FLT in CRUISE: the mode named FMA-style, the frame and the speed in it, delta-v against home,
 // rotation assist, the main engine and RCS lamps (dark: idle)
-s += du(ZT.flt.x, ZT.flt.y - 8, ZT.flt.w, 108, {
+s += du(ZT.flt.x, ZT.flt.y, ZT.flt.w, ZT.flt.h, {
   id: 'flt', b: 8, title: 'FLIGHT',
   content: (gx, gy, gw) => {
     let c = '';
     const L = gx + 10, R = gx + gw - 10;
-    c += I.box(L, gy + 7, 70, 19, 'CRUISE', 'engaged', { size: 11 });
-    c += text(L + 82, gy + 22, 'ORBIT', { size: 10.5, bold: true, fill: C.dim, track: 0.6 }) + text(L + 128, gy + 22, 'EARTH', { size: TB, bold: true, fill: C.white, track: 0.4 });
-    c += text(R - 34, gy + 23, '7,672', { size: 19, bold: true, fill: C.white, anchor: 'end' }) + text(R, gy + 23, 'M/S', { size: 10.5, fill: C.dim, anchor: 'end' });
-    c += line(gx + 4, gy + 33, gx + gw - 4, gy + 33, C.graticule, 1);
+    c += I.box(L, gy + 7, 76, 20, 'CRUISE', 'engaged', { size: 12 });
+    c += text(L + 90, gy + 22, 'HIGHPORT', { size: TB, bold: true, fill: C.white, track: 0.4 }) + text(L + 90 + tw('HIGHPORT', TB, true, 0.4) + 10, gy + 22, '3.0 KM', { size: 12, bold: true, fill: C.dim, track: 0.3 });
+    c += text(R - 40, gy + 23, '0.4', { size: 19, bold: true, fill: C.white, anchor: 'end' }) + text(R, gy + 23, 'M/S', { size: 12, fill: C.dim, anchor: 'end' });
+    c += line(gx + 4, gy + 34, gx + gw - 4, gy + 34, C.graticule, 1);
     // delta-v left, with the notch at what the trip home takes
-    const max = 8000, bx = L + 150, bw = gw - 190;
-    c += text(L, gy + 58, 'ΔV', { size: 10.5, bold: true, fill: C.dim, track: 0.6 }) + text(L + 100, gy + 59, '7,007', { size: TV, bold: true, fill: C.white, anchor: 'end' }) + text(L + 104, gy + 59, 'M/S', { size: 10, fill: C.dim });
-    c += I.hbar(bx, gy + 60, bw, 7007 / max, { notch: 410 / max });
-    c += text(bx + bw * 410 / max + 6, gy + 49, 'HOME 410', { size: 9.5, bold: true, fill: C.dim, track: 0.4 });
-    c += line(gx + 4, gy + 70, gx + gw - 4, gy + 70, C.graticule, 1);
-    c += I.box(L, gy + 75, 64, 16, 'ASSIST', 'engaged', { size: 10 });
-    c += lens(R - 86, gy + 75, 40, 16, 'MAIN', null) + lens(R - 40, gy + 75, 40, 16, 'RCS', null);
+    const max = 8000, bx = L + 160, bw = gw - 200;
+    c += text(L, gy + 62, 'ΔV', { size: 12, bold: true, fill: C.dim, track: 0.5 }) + text(L + 104, gy + 63, '7\u2009007', { size: TV, bold: true, fill: C.white, anchor: 'end' }) + text(L + 110, gy + 63, 'M/S', { size: 12, fill: C.dim });
+    c += I.hbar(bx, gy + 64, bw, 7007 / max, { notch: 410 / max });
+    c += text(bx + bw * 410 / max + 6, gy + 51, 'HOME 410', { size: 12, bold: true, fill: C.dim, track: 0.3 });
+    c += line(gx + 4, gy + 73, gx + gw - 4, gy + 73, C.graticule, 1);
+    c += I.box(L, gy + 78, 72, 18, 'ASSIST', 'engaged', { size: 12 });
+    c += lens(R - 100, gy + 78, 48, 18, 'MAIN', null) + lens(R - 48, gy + 78, 48, 18, 'RCS', null);
     return c;
   },
 }).svg;
 
-// SNS: the scope, range automatic (nothing hostile: the nearest contact)
+// SNS: the scope, range automatic (nothing hostile, nothing locked: the nearest contact)
 s += du(ZT.sns.x, ZT.sns.y, ZT.sns.s, ZT.sns.s, {
   id: 'sns', b: 8, title: 'SCOPE',
   content: (gx, gy, gw, gh) => I.scope(gx + gw / 2, gy + gh / 2, gw / 2 - 8, [
@@ -53,8 +59,8 @@ s += du(ZT.sns.x, ZT.sns.y, ZT.sns.s, ZT.sns.s, {
   ], { heading: 90, range: '10 KM' }),
 }).svg;
 
-// up to four keys (section 8's at-rest test; the wireframe shows five)
-s += hintLine([['W/S', 'THRUST'], ['A/D', 'TURN'], ['M', 'MAP'], ['F1', 'CONTROLS']]);
+// four keys, then F1 (section 6, HNT)
+s += hintLine([['W/S', 'THRUST'], ['A/D', 'TURN'], ['M', 'MAP'], ['Q', 'DESTINATION'], ['F1', 'CONTROLS']]);
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>

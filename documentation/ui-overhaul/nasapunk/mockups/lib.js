@@ -9,11 +9,30 @@ const SANS = "B612, sans-serif", MONO = "'B612 Mono', monospace";
 
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
 
+// The smallest glass text a page allows: a functional spec's legibility floor, set by the page.
+// Hardware legends (bezel titles, part plates, printed key letters, floor stencils) pass legend: true.
+let TEXT_FLOOR = 0;
+
+// Text width in UI units, from B612's advance widths (measured per character at 100 px), so a
+// layout can fit its text before the font has loaded. Kerning is ignored; B612 has little.
+const B612_CHARS = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·‘’Δ−… ×▲◆›°—–";
+const B612_ADV = { r: [350,350,400,850,550,900,700,200,450,450,550,600,250,450,300,550,650,650,650,650,650,650,650,650,650,650,300,250,650,500,650,550,1000,650,650,600,650,600,550,650,700,300,450,600,550,900,750,800,600,800,650,550,600,700,650,950,650,600,600,450,550,500,750,550,550,525,600,500,600,550,400,600,600,300,300,550,350,900,600,600,600,600,400,450,400,600,550,750,550,550,500,649,200,600,750,250,350,350,643,550,750,200,800,990,1051,450,300,1050,550], b: [350,350,400,850,550,900,700,200,450,450,550,600,250,450,300,550,650,650,650,650,650,650,650,650,650,650,300,250,650,500,650,550,1000,650,650,600,650,600,550,650,700,300,450,600,550,900,750,800,600,800,650,550,600,700,650,950,650,600,600,450,550,500,750,550,550,525,600,500,600,550,400,600,600,300,300,550,350,900,600,600,600,600,400,450,400,600,550,750,550,550,500,649,200,600,750,250,350,350,627,550,750,200,800,990,1051,450,300,1050,550] };
+function tw(s, size = 12, bold = false, track = 0) {
+  const t = B612_ADV[bold ? 'b' : 'r'];
+  let w = 0;
+  for (const ch of String(s)) { const i = B612_CHARS.indexOf(ch); w += (i >= 0 ? t[i] : 650) / 1000 * size; }
+  return w + track * String(s).length;
+}
+
+// The size a text call draws at once the page's floor applies (hardware legends are exempt).
+function fs(size, legend) { return Math.max(size, legend ? 0 : TEXT_FLOOR); }
+
 function text(x, y, s, o = {}) {
-  const size = o.size || 12, fill = o.fill || C.white, anchor = o.anchor || 'start';
+  const size = Math.max(o.size || 12, o.legend ? 0 : TEXT_FLOOR), fill = o.fill || C.white, anchor = o.anchor || 'start';
   const family = o.mono ? MONO : SANS, weight = o.bold ? 700 : 400;
   const ls = o.track ? `letter-spacing="${o.track}"` : '';
-  return `<text x="${x}" y="${y}" font-family="${family}" font-weight="${weight}" font-size="${size}" fill="${fill}" text-anchor="${anchor}" ${ls}>${esc(s)}</text>`;
+  const lg = o.legend ? ' data-legend="1"' : '';
+  return `<text x="${x}" y="${y}" font-family="${family}" font-weight="${weight}" font-size="${size}" fill="${fill}" text-anchor="${anchor}" ${ls}${lg}>${esc(s)}</text>`;
 }
 
 // A value with its unit in dim, right-aligned at x.
@@ -81,7 +100,7 @@ function du(x, y, w, h, o = {}) {
       const L = typeof lg === 'string' ? { t: lg } : lg;
       s += softKey(kx, ky, kw, kh, L.state === 'on');
       // A slot's fixed keyboard key, printed on the cap where the spec wants bindings visible.
-      if (L.k) s += text(kx + kw / 2, ky + kh - 2.2, L.k, { size: 7, bold: true, fill: C.stencil, anchor: 'middle', track: 0.4 });
+      if (L.k) s += text(kx + kw / 2, ky + kh - 2.2, L.k, { size: 7, bold: true, fill: C.stencil, anchor: 'middle', track: 0.4, legend: true });
       if (!L.t || L.state === 'na') return;
       const fill = L.state === 'cur' ? C.white : L.state === 'on' ? C.green : C.dim;
       legends.push(text(lx, ly, L.t, { size: 11, bold: true, fill, anchor, track: 0.6 }));
@@ -92,11 +111,11 @@ function du(x, y, w, h, o = {}) {
     });
   };
   ['top', 'bottom', 'left', 'right'].forEach(sd => kb[sd] && edge(kb[sd], sd));
-  if (o.title) s += text(x + w / 2, y + b - 3, o.title, { size: 8.5, bold: true, fill: C.stencil, anchor: 'middle', track: 1.4 });
+  if (o.title) s += text(x + w / 2, y + b - 3, o.title, { size: o.titleSize || 8.5, bold: true, fill: C.stencil, anchor: 'middle', track: 1.4, legend: true });
   if (o.plate) {
     const py = y + h - 13;
     s += rect(x + 18, py, 3, 8, { fill: C.kapton });
-    s += text(x + 25, py + 7, o.plate, { size: 7.5, bold: true, fill: C.stencil, track: 1 });
+    s += text(x + 25, py + 7, o.plate, { size: 7.5, bold: true, fill: C.stencil, track: 1, legend: true });
   }
   s += `<g clip-path="url(#clip${o.id})">${o.content ? o.content(gx, gy, gw, gh) : ''}</g>`;
   s += legends.join('');
@@ -104,12 +123,16 @@ function du(x, y, w, h, o = {}) {
   return { svg: s, gx, gy, gw, gh };
 }
 
+// A lens annunciator. lit: a colour (lit hard: dark legend on the colour), 'advisory' (lit softly:
+// a light legend on a grey lens) or nothing (dark).
 function lens(x, y, w, h, legend, lit) {
-  const fill = lit ? lit : C.lensOff, ink = lit ? '#0A0A0A' : C.lensLegend;
+  const adv = lit === 'advisory';
+  const fill = adv ? '#3D454E' : lit ? lit : C.lensOff, ink = adv ? C.white : lit ? '#0A0A0A' : C.lensLegend;
   const lines = legend.split('\n');
   let s = rect(x - 1, y - 1, w + 2, h + 2, { fill: '#151719', r: 2 }) + rect(x, y, w, h, { fill, r: 1.5 });
-  if (lit) s += rect(x, y, w, h * 0.35, { fill: 'rgba(255,255,255,0.12)', r: 1.5 });
-  lines.forEach((l, i) => { s += text(x + w / 2, y + h / 2 + 4 + (i - (lines.length - 1) / 2) * 10, l, { size: lines.length > 1 ? 8.5 : 10, bold: true, fill: ink, anchor: 'middle', track: 0.5 }); });
+  if (lit) s += rect(x, y, w, h * 0.35, { fill: adv ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)', r: 1.5 });
+  const size = Math.max(lines.length > 1 ? 8.5 : 10, TEXT_FLOOR), pitch = Math.max(10, size + 1);
+  lines.forEach((l, i) => { s += text(x + w / 2, y + h / 2 + size * 0.36 + (i - (lines.length - 1) / 2) * pitch, l, { size, bold: true, fill: ink, anchor: 'middle', track: TEXT_FLOOR ? 0.2 : 0.5 }); });
   return s;
 }
 
