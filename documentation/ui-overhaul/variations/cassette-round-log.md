@@ -6,7 +6,7 @@ Each functional design (Ship Stations, Context-driven, Task-driven) is combined 
 |---|---|---|---|---|
 | [Ship Stations × Cassette](stations-cassette/README.md) | Stations round 2 | 1 | C helm, E weapons, B deck, G docked | 5 style, 5 functional |
 | [Context-driven × Cassette](context-cassette/README.md) | Context v2 | 1 | 01 cruise, 03 approach, 04 combat, 07 deck emergency, 12 orders menu | 6 style, 13 functional |
-| Task-driven × Cassette | Task round 1 | – | – | – |
+| [Task-driven × Cassette](task-cassette/README.md) | Task round 3 | 1 | 01 helm at rest, 02 gunnery, 03 deck, 04 terminal, 05 map, 06 crisis, 07 FLT modes and lamp states | 5 style, 9 functional |
 
 ## Round 0: the style guide itself
 
@@ -57,3 +57,21 @@ Notes sent to the context designer:
 13. Labels (legends, units, key names) have no size; can they be 12?
 
 Plus where a real control surface helps: the orders menu (interlocked keys, guarded switches for the press-twice orders), the emergency card, H5's range keys, H1's frame pin, F3's trim, and D2's guarded switches for reactor and life support.
+
+## Round 1: Task-driven
+
+Task spec round 3. Seven sheets: the six reference screens the spec suggests (helm at rest, gunnery in combat, deck in damage control, the docked terminal, the map with a late plan, the crisis panel) and a sheet of FLT's five modes, the compact weapons strip and the lamp states. The spec changes the HUD by post, so each post is a **fit** of units in its own finish (yard beige for the helm, blue-grey for the guns, avocado for the captain's own kit), and four repeaters are the same everywhere: the master unit, the visor, the incoming rack and the key sill. Critique and changes are in the [variation's README](task-cassette/README.md#round-1-critique).
+
+Checked against the game data this round: the corvette's two rooms and tile layout (for the deck view and the schematic), the starting crew (Ada, Bea, Cole), the faction names (Void Raiders, Selene Mining Combine), Shackleton Ice's yard and hiring, and the shield emitter's heat (it exists, so the spec is right to show it).
+
+Notes sent to the task designer:
+
+1. WARP repeats CHR's rate and next stop on the same screen.
+2. BURN repeats HLM: HLM's countdown, and "flown by" when a helmsman flies.
+3. The flight-modes wireframe shows "end Ap" in BURN and "closing" in CRUISE.
+4. Section 8 and HNT disagree on whether the crisis keys repeat in the hint line.
+5. An alert's or a prompt's key repeats in HNT ("F decoy" at gunnery; "E sit" on deck).
+6. Three cautions get about 22 characters each at 13 units. They need a short form.
+7. DEPARTURE's "crew aboard against berths" never reads ok on a ship with spare berths.
+8. "Bo" in the FIRE samples isn't a crew name the game gives.
+9. The gunnery wireframe's missile path repeats the band's impact time in the world.
