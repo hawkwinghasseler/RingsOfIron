@@ -9,6 +9,7 @@ import com.ringsofiron.combatsys.ContactState;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
 import com.ringsofiron.combatsys.fire.ImpactTime;
+import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 
 /**
@@ -24,6 +25,7 @@ public class CombatThreats implements ThreatProvider {
     static final float MAX_LOOKAHEAD = 60f;
 
     private static final ComponentMapper<MissileComponent> MISSILES = ComponentMapper.getFor(MissileComponent.class);
+    private static final ComponentMapper<HudMarkerComponent> MARKERS = ComponentMapper.getFor(HudMarkerComponent.class);
     private static final ComponentMapper<ProjectileComponent> PROJECTILES = ComponentMapper.getFor(ProjectileComponent.class);
 
     private final GameContext ctx;
@@ -47,6 +49,8 @@ public class CombatThreats implements ThreatProvider {
             t.x = p.pos.x;
             t.y = p.pos.y;
             t.burning = m.throttle > 0f;
+            HudMarkerComponent shooter = m.launcher == null ? null : MARKERS.get(m.launcher);
+            if (shooter != null && shooter.label != null) t.shooter = shooter.label;
             Entity target = m.seekerLock != null ? m.seekerLock : m.target;
             float tca = ContactState.read(target, targetPos, targetVel)
                     ? closestApproach(p.pos.x - targetPos.x, p.pos.y - targetPos.y, p.vel.x - targetVel.x, p.vel.y - targetVel.y)

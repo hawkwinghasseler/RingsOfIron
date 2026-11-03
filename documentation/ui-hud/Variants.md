@@ -78,7 +78,7 @@ their contents.
 | `shieldStatus` | raised, lowered for dock, stock, capacity, cloud, scattered, adrift, stowed, trim, the four sectors' density against the mean, emitters fitted, holding and tripped, the hottest one, power stunned |
 | `powerFrame` | per circuit: reactors, rated and actual output, store and capacity, systems fed; plus every system that needs power and is not working, with its fault, timer (a short's reclose, a stun), health, room and tile |
 | `targetStatus` | the locked target: label, relation, state, range, closing, relative speed, closest approach and its time, bearing, aspect, firing on us, hull, track age |
-| `threatFrame` | missiles in flight: side, position, path, **time to impact with the missile's closing burn in it**, closest approach, range, closing speed, burning |
+| `threatFrame` | missiles in flight: side, who launched it, position, path, **time to impact with the missile's closing burn in it**, closest approach, range, closing speed, burning |
 | `alerts` | `AlertRegistry`: everything wrong now, as rows |
 | `messages` | `MessageFeed`: what the game has told the player lately |
 | `roomAt(x, y)`, `roomNames()` | the player's rooms' names (`RoomNames`) |
