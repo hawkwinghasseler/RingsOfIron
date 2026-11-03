@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Screens of a FILAMENT (VFD) HUD in the running game, for review against its mockups
-# (documentation/ui-overhaul/vfd): the docked start at the helm, cruising, the MFD keys, a raider
-# locked, its missiles inbound, the deck, the weapons console, and damage. Needs Xvfb, xdotool and
-# ImageMagick's import. Waits on the game rather than the clock where it can, since a software-
-# rendered game under Xvfb runs its sim well below real time.
+# (documentation/ui-overhaul/vfd): the docked start at the helm, cruising, the HUD's own keys (as
+# tools/playtest/hud-vfd-<spec>.sh gives them in spec_keys), a raider locked, its missiles inbound,
+# the deck, the weapons console, and damage. Needs Xvfb, xdotool and ImageMagick's import. Waits on
+# the game rather than the clock where it can, since a software-rendered game under Xvfb runs its
+# sim well below real time.
 #   tools/playtest/hud-vfd.sh <stations|context|task> [out-dir] [WxH] [ui-scale]
 # Run from the repository root.
 set -u
@@ -16,8 +17,9 @@ UI_SCALE=${4:-}
 export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Dhud.variant=vfd.$SPEC"
 . tools/playtest/lib.sh
 
-# Alt with a key: the MFD keys (functional-stations 16.2)
-alt() { xdotool keydown Alt_L; pause 0.1; key "$1"; xdotool keyup Alt_L; pause 0.2; }
+# The HUD's own keys, shot after cruising: its file gives spec_keys, else there are none
+spec_keys() { :; }
+if [ -f "tools/playtest/hud-vfd-$SPEC.sh" ]; then . "tools/playtest/hud-vfd-$SPEC.sh"; fi
 
 # Walks the standing captain to the weapons console and sits there, as raid-by-hand.sh does:
 # measures one step of W and of D on deck, walks the offset `seat` reads, then tries V
@@ -49,9 +51,7 @@ key Up; key Return; key Down Down; key Return
 until_docked 180; pause 3; shot v-01-docked
 key u; pause 8; shot v-02-undocked
 cmd away 3000; await 30 "PLAYTEST away"; pause 5; shot v-03-cruise
-# The MFD keys: Alt+3 puts TAC's first page on the right MFD, Alt+1 the helm's, Shift+Alt+2 NAV on the left.
-# Alt with a digit must not give the helm's order for that digit (#266)
-alt 3; alt 1; xdotool keydown Shift_L; alt 2; xdotool keyup Shift_L; pause 2; shot v-04-mfd-keys
+spec_keys
 # A raider with dart racks 2 km out, hunting us; locked
 cmd raider 2 raider_darts; await 30 "PLAYTEST raider"; pause 3; key Tab; pause 2; shot v-05-raider
 pause 30; shot v-06-missiles
