@@ -1,0 +1,136 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Stations: reactor console in a fire</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="stations.js"></script>
+<script>
+// Walkthroughs B and F together: on deck at the reactor console with the Engineering panel open,
+// a fire in the galley (Okafor on it), cargo 2 venting (nobody on it), two missiles inbound,
+// and a short in the galley that has cut the starboard turret off. The deck stays live beside the panel.
+let s = rect(0, 0, 1280, 800, { fill: '#07090B' });
+
+// The world: the ship's interior (a stand-in for the game's deck art), left of the panel
+s += deckView(40, 300, 22, {
+  fire: true, breach: true, breachDoor: 'open', smoke: true,
+  alarm: [[14.6, 7.6, 0.6], [3.6, 0.6, 0.9]],
+  avatar: [11.5, 1.2],
+  crew: [[16.2, 10.2, 'Okafor', 'ON IT.'], [26.0, 6.0, 'Ruiz'], [25.4, 2.0, 'Chen']],
+  // consoles glow in their station's alert role: reactor (Engineering: BREACH), weapons (Tactical: MISSILE)
+  alerts: { 0: 'warning', 3: 'warning' },
+  labels: true,
+});
+
+// Top-centre column, recentred left of the panel (6.3 rule 2): tiles at y 44, ticker at y 148
+const CX = 392;
+s += annunciator(CX, 44, [
+  ['MISSILE', '2  0:37', 'warning'],
+  ['BREACH', 'CARGO 2', 'warning'],
+  ['FIRE', 'GALLEY', 'caution'],
+  ['SHORT', 'GALLEY', 'caution'],
+  ['STUN', 'NOSE 14', 'caution'],
+], { warning: true, caution: true });
+s += ticker(CX - 360, 148, [
+  ['ENG', 'Okafor:', "fire in the galley, I'm on it.", 'caution'],
+  ['TAC', 'SHIP:', 'two missiles inbound, port side, 37 seconds.', 'warning'],
+  ['ENG', 'SHIP:', 'cargo 2 venting, nobody on it.', 'warning'],
+]);
+
+// Suit readout (Z6): the captain's suit display, bottom left
+s += O.dcm(16, 714, [['SUIT AIR', '4:10', 'caution'], ['ROOM', '31 KPA  O2 LOW', 'caution']], { w: 220 });
+
+// The Engineering panel: the reactor console's face, full height on deck (Z4)
+const P = { x: 784, y: 16, w: 480, h: 768 };
+s += consoleFace(P.x, P.y, P.w, P.h, {
+  id: 'eng', b: 14, title: 'ENGINEERING  ·  REACTOR CONSOLE', plate: 'DU-6  ENG  P/N 5210-03',
+  tabs: [{ t: 'POWER', state: 'cur' }, 'ATMOS', 'DAMAGE', 'SYSTEMS', 'TANKS', 'SHIELDS'],
+  footer: [{ t: 'SWITCH', k: 'ENT' }, { t: '' }, { t: '' }, { t: '' }, { t: 'CLOSE', k: 'ESC' }],
+  content: (gx, gy, gw, gh) => {
+    let c = '';
+    const L = gx + 12, R = gx + gw - 12;
+    // Status strip: the page's one most important state
+    c += text(L, gy + 40, 'CIRCUIT A', { size: 11, bold: true, fill: C.white, track: 0.8 });
+    c += text(R, gy + 40, '1 UNPOWERED  ·  1 STUNNED', { size: 11, bold: true, fill: C.amber, anchor: 'end', track: 0.5 });
+    c += line(gx + 4, gy + 48, gx + gw - 4, gy + 48, C.graticule, 1);
+
+    // Synoptic: the deck plan with the power network drawn on it
+    const k = 13.6, X = (tx) => gx + 14 + tx * k, Y = (ty) => gy + 70 + ty * k;
+    c += `<path d="M${X(0)} ${Y(0)} H${X(28)} L${X(31)} ${Y(6)} L${X(28)} ${Y(12)} H${X(0)} Z" fill="none" stroke="${C.graticule}" stroke-width="1.5"/>`;
+    [[3, 0, 6, 5], [3, 7, 6, 5], [9, 0, 5, 5], [9, 7, 5, 5], [14, 0, 5, 5], [14, 7, 5, 5], [19, 0, 4, 5], [19, 7, 4, 5]].forEach(([tx, ty, w, h]) => c += rect(X(tx), Y(ty), w * k, h * k, { stroke: C.graticule, sw: 1 }));
+    c += line(X(23), Y(0), X(23), Y(12), C.graticule, 1) + line(X(3), Y(2), X(0), Y(2), C.graticule, 1) + line(X(3), Y(10), X(0), Y(10), C.graticule, 1);
+    c += text(X(16.5), Y(11.2), 'GALLEY', { size: 9, bold: true, fill: C.amber, anchor: 'middle', track: 0.8 });
+    // energised conduits (white), dead ones (dim, dashed)
+    const live = (pts) => c += path('M' + pts.map(([a, b]) => `${X(a)} ${Y(b)}`).join(' L'), C.white, 1.6);
+    const dead = (pts) => c += path('M' + pts.map(([a, b]) => `${X(a)} ${Y(b)}`).join(' L'), C.dim, 1.4, { dash: '3 3' });
+    live([[11.5, 2.8], [11.5, 6]]); live([[1.5, 6], [28.6, 6]]);
+    live([[1.5, 6], [1.5, 3.6]]); live([[1.5, 6], [1.5, 8.4]]); live([[11.5, 6], [11.5, 9.4]]);
+    live([[24.6, 6], [24.6, 1.6]]); live([[24.6, 6], [24.6, 10.4]]); live([[21, 6], [21, 1.4]]);
+    live([[16.5, 6], [16.5, 8.6]]); dead([[16.5, 9.4], [21, 9.4], [21, 10.6]]);
+    // the short: where the conduit faulted, in the galley
+    c += `<circle cx="${X(16.5)}" cy="${Y(9)}" r="6" fill="${C.glass}" stroke="${C.amber}" stroke-width="1.6"/>` + line(X(16.5) - 3.5, Y(9) - 3.5, X(16.5) + 3.5, Y(9) + 3.5, C.amber, 1.6) + line(X(16.5) - 3.5, Y(9) + 3.5, X(16.5) + 3.5, Y(9) - 3.5, C.amber, 1.6);
+    // the source: reactor 1
+    c += `<circle cx="${X(11.5)}" cy="${Y(2.8)}" r="11" fill="${C.glass}" stroke="${C.white}" stroke-width="1.6"/>` + text(X(11.5), Y(2.8) + 3.5, 'R1', { size: 10, bold: true, fill: C.white, anchor: 'middle' });
+    c += text(X(11.5) + 16, Y(2.8) - 2, 'RCTR 1', { size: 9.5, bold: true, fill: C.dim, track: 0.4 }) + text(X(11.5) + 16, Y(2.8) + 10, '3.0 MW', { size: 11, bold: true, fill: C.white });
+    // loads: [tx, ty, label, state, side]
+    const load = (tx, ty, label, st = 'ok', lx = 8, anchor = 'start', ly = 4) => {
+      const col = st === 'ok' ? C.white : st === 'stun' ? C.amber : C.dim;
+      c += rect(X(tx) - 4.5, Y(ty) - 4.5, 9, 9, { fill: C.glass, stroke: col, sw: 1.5, dash: st === 'dead' ? '2 2' : '' });
+      c += text(X(tx) + lx, Y(ty) + ly, label, { size: 9.5, bold: true, fill: st === 'ok' ? C.dim : col, anchor, track: 0.4 });
+    };
+    load(1.5, 3.6, 'ENG 1', 'ok', 8, 'start', -2); load(1.5, 8.4, 'ENG 2', 'ok', 8, 'start', 10);
+    load(11.5, 9.4, 'LIFE', 'ok', 8);
+    load(21, 1.4, 'TUR P', 'ok', 8); load(24.6, 1.6, 'WPN', 'ok', 8); load(27.2, 6, 'HELM', 'ok', 0, 'middle', -9);
+    load(24.6, 10.4, 'SHLD', 'ok', 8); load(21, 10.6, 'TUR S', 'dead', 8);
+    load(29.8, 6, 'TUR N', 'stun', 0, 'middle', 18);
+
+    // Instruments: reactor output against its rating, the circuit's store
+    const iy = gy + 268;
+    c += line(gx + 4, iy - 18, gx + gw - 4, iy - 18, C.graticule, 1);
+    c += text(L, iy + 4, 'OUTPUT', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+    c += I.hbar(L + 80, iy + 6, 220, 1.0, { notch: 1.0 });
+    c += text(L + 312, iy + 8, '3.0', { size: 14, bold: true, fill: C.white }) + text(L + 340, iy + 8, 'OF 3.0 MW', { size: 10, fill: C.dim });
+    c += text(L, iy + 40, 'STORE', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+    c += I.hbar(L + 80, iy + 42, 220, 0.62, {});
+    c += text(L + 312, iy + 44, '62 %', { size: 14, bold: true, fill: C.white }) + text(L + 356, iy + 44, 'FULL 0.8 S', { size: 10, fill: C.dim });
+
+    // Not operational: only the exceptions, with the cause and what clears it (dark cockpit)
+    const ty0 = iy + 78;
+    c += line(gx + 4, ty0 - 12, gx + gw - 4, ty0 - 12, C.graticule, 1);
+    c += text(L, ty0 + 6, 'NOT OPERATIONAL', { size: 10, bold: true, fill: C.dim, track: 0.8 });
+    const rows = [
+      { sys: 'TURRET STBD', st: 'NO POWER', col: C.amber, cause: 'SHORT IN GALLEY', clear: 'RECLOSES 0:31', sel: true },
+      { sys: 'TURRET NOSE', st: 'STUN', col: C.amber, cause: 'ION HIT', clear: 'BACK IN 0:14' },
+    ];
+    rows.forEach((r, i) => {
+      const yy = ty0 + 34 + i * 40;
+      if (r.sel) c += rect(L - 6, yy - 16, gw - 12, 36, { stroke: C.cyan, sw: 1.4 });
+      c += text(L, yy, r.sys, { size: 12.5, bold: true, fill: C.white, track: 0.5 });
+      c += I.box(L + 150, yy - 13, 84, 18, r.st, 'caution');
+      c += text(R, yy, r.clear, { size: 12.5, bold: true, fill: C.white, anchor: 'end' });
+      c += text(L, yy + 15, r.cause, { size: 10.5, fill: C.dim, track: 0.4 });
+    });
+    c += text(L, ty0 + 128, 'SWITCHED OFF', { size: 10, bold: true, fill: C.dim, track: 0.8 }) + text(R, ty0 + 128, 'NONE', { size: 11, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+
+    // Next: what changes on its own, on a timeline
+    const ny = ty0 + 186;
+    c += line(gx + 4, ny - 30, gx + gw - 4, ny - 30, C.graticule, 1);
+    c += text(L, ny + 4, 'NEXT', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+    c += I.timeline(L + 52, ny, 360, [
+      { t: 14 / 60, label: 'NOSE  0:14', sub: 'BACK', color: C.white, shape: 'tick' },
+      { t: 31 / 60, label: 'STBD  0:31', sub: 'BREAKER RECLOSES', color: C.white, shape: 'tick' },
+      { t: 37 / 60, label: 'MSL  0:37', sub: '', color: C.red, anchor: 'start' },
+    ], { end: '+1 MIN' });
+
+    // Footer response: the answer to the key the player just pressed, in the panel (13.6)
+    c += line(gx + 4, gy + gh - 46, gx + gw - 4, gy + gh - 46, C.graticule, 1);
+    c += text(gx + gw / 2, gy + gh - 28, 'STBD TURRET IS CUT OFF: SWITCHING WILL NOT POWER IT', { size: 11.5, fill: C.white, anchor: 'middle' });
+    return c;
+  },
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

@@ -1,21 +1,28 @@
-// Renders each mockup HTML in this folder to a PNG beside it at 2x.
-// Usage: node documentation/ui-overhaul/nasapunk/mockups/render.js [name ...]
+// Renders Nasa-punk mockup pages (HTML, 1280 x 800 UI units) to PNGs beside them at 2x.
+// Usage: node documentation/ui-overhaul/nasapunk/mockups/render.js [file.html | dir ...]
+// With no arguments it renders every page in this folder.
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
 (async () => {
-  const dir = __dirname;
-  const names = process.argv.slice(2).length ? process.argv.slice(2)
-    : fs.readdirSync(dir).filter(f => f.endsWith('.html')).map(f => f.replace(/\.html$/, ''));
+  const args = process.argv.slice(2).length ? process.argv.slice(2) : [__dirname];
+  const pages = [];
+  for (const a of args) {
+    const p = path.resolve(a);
+    if (fs.statSync(p).isDirectory()) fs.readdirSync(p).filter(f => f.endsWith('.html')).forEach(f => pages.push(path.join(p, f)));
+    else pages.push(p);
+  }
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2 });
-  for (const n of names) {
-    await page.goto('file://' + path.join(dir, n + '.html'));
+  page.on('pageerror', e => console.error('page error:', e.message));
+  for (const file of pages) {
+    await page.goto('file://' + file);
     await page.evaluate(() => document.fonts.ready);
-    await page.waitForTimeout(200);
-    await page.screenshot({ path: path.join(dir, n + '.png'), clip: { x: 0, y: 0, width: 1280, height: 800 } });
-    console.log('wrote', n + '.png');
+    await page.waitForTimeout(150);
+    const out = file.replace(/\.html$/, '.png');
+    await page.screenshot({ path: out, clip: { x: 0, y: 0, width: 1280, height: 800 } });
+    console.log('wrote', path.relative(process.cwd(), out));
   }
   await browser.close();
 })();

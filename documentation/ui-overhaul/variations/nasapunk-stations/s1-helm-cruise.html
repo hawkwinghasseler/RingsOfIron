@@ -1,0 +1,94 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Stations: helm, cruise</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="stations.js"></script>
+<script>
+// Context C: seated at the helm, cruising, condition Green. Nothing is wrong, so the overlay is
+// empty and both MFDs are folded to their rails. The cluster and the world carry everything.
+let s = space({ px: 1180, py: 1500, pr: 1000 });
+const SX = 640, SY = 308, HDG = 75;
+s += hull(SX, SY, HDG, 0.9);
+
+// Neutral traffic: icon only in Green
+s += W.contact('neutral', 380, 190, { leader: [26, 14] });
+s += W.contact('neutral', 300, 470, { leader: [-20, 18] });
+
+// Velocity markers in the ORBIT frame, 70 from the ship
+const at = (deg, r) => [SX + r * Math.sin(deg * Math.PI / 180), SY - r * Math.cos(deg * Math.PI / 180)];
+const [px, py] = at(HDG, 70), [rx, ry] = at(HDG + 180, 70);
+s += W.pro(px, py) + W.retro(rx, ry);
+// Burn 1 cue: along prograde, its number and countdown
+// the burn arrow stops short of the prograde marker; its label sits off to the side
+const [bax, bay] = at(HDG, 16);
+s += haloed((c, w) => line(bax, bay, ...at(HDG, 50), c, w), C.magenta, 2.5);
+{ const [ex, ey] = at(HDG, 52), r = HDG * Math.PI / 180, ax = ex - 10 * Math.sin(r + 0.45), ay = ey + 10 * Math.cos(r + 0.45), cx2 = ex - 10 * Math.sin(r - 0.45), cy2 = ey + 10 * Math.cos(r - 0.45); s += haloed((c, w) => path(`M${ax} ${ay} L${ex} ${ey} L${cx2} ${cy2}`, c, w), C.magenta, 2.5); }
+s += text(...at(HDG + 32, 52), '1  T−12:04', { size: 11, bold: true, fill: C.magenta });
+
+// Highport: nav target, name, range, closing (always for the nav target)
+const HX = 930, HY = 250;
+s += stationHull(HX, HY, 0.28);
+s += W.contact('station', HX, HY, { nav: true, label: ['HIGHPORT'], lx: 26, ly: 4, lineColor: C.magenta });
+// Long-range optics on the nav target: a CCTV feed
+s += haloed((c, w) => line(HX + 12, HY - 14, 1040, 196, c, w), 'rgba(238,241,243,0.5)', 1);
+s += W.cctv(1040, 116, 136, 96, {
+  id: 1, tl: 'OPT 2  NAV', br: 'HIGHPORT  ×24', tr: 'TV',
+  picture: (cx, cy) => `<g opacity="0.85" filter="url(#mono)">${stationHull(cx, cy, 0.62)}</g>`,
+});
+
+// Prompt line, 8 above the band: learning hints, quiet
+const hints = [['N', 'PLAN A BURN'], ['M', 'PLOT'], ['Q', 'NAV TARGET']];
+let hx = 640 - 150;
+hints.forEach(([k, t]) => { s += softKey(hx, Z.prompt.y, 16, 14, false) + text(hx + 8, Z.prompt.y + 11, k, { size: 9.5, bold: true, fill: C.stencil, anchor: 'middle' }) + text(hx + 22, Z.prompt.y + 11, t, { size: 11, bold: true, fill: C.dim, track: 0.6 }); hx += 26 + t.length * 7.6 + 14; });
+
+// Band: folded MFD rails either side of the helm cluster
+s += foldedRail(Z.mfdL.x, Z.mfdL.y, [{ t: 'NAV' }, { t: 'PLAN' }, { t: 'PIN' }, { t: 'FOLD', state: 'cur' }]);
+s += foldedRail(Z.mfdR.x, Z.mfdR.y, [{ t: 'SNS' }, { t: 'WPN' }, { t: 'DEF' }, { t: 'PIN' }, { t: 'FOLD', state: 'cur' }]);
+
+const cl = du(Z.cluster.x, Z.cluster.y, 480, 160, {
+  id: 3, b: 8, title: 'HELM',
+  content: (gx, gy, gw, gh) => {
+    // Five fixed slots, top to bottom: Velocity, Reference, Next event, Delta-v, Trigger.
+    // A slot with nothing to show goes dark in place; nothing moves (8.1).
+    let c = '';
+    const L = gx + 10, R = gx + gw - 10, row = (i) => gy + 4 + i * 28;
+    for (let i = 1; i < 5; i++) c += line(gx + 4, row(i), gx + gw - 4, row(i), C.graticule, 1);
+    // 1 Velocity: frame tag, speed, control chip, assist chip, thruster lamps
+    c += I.box(L, row(0) + 5, 52, 17, 'ORBIT', 'normal');
+    c += text(L + 62, row(0) + 21, '7.67', { size: 19, bold: true, fill: C.white }) + text(L + 106, row(0) + 21, 'KM/S', { size: 10.5, fill: C.dim });
+    c += I.box(R - 196, row(0) + 5, 62, 17, 'MANUAL', 'normal') + I.box(R - 128, row(0) + 5, 56, 17, 'ASSIST', 'engaged');
+    c += lens(R - 64, row(0) + 6, 30, 15, 'THR', null) + lens(R - 30, row(0) + 6, 30, 15, 'RCS', null);
+    // 2 Reference: the nav target; name, range, closing, CPA (truncates from the right)
+    c += `<circle cx="${L + 6}" cy="${row(1) + 14}" r="5.5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/><circle cx="${L + 6}" cy="${row(1) + 14}" r="1.4" fill="${C.magenta}"/>`;
+    c += text(L + 18, row(1) + 18.5, 'HIGHPORT', { size: 12, bold: true, fill: C.magenta, track: 0.6 });
+    c += text(L + 104, row(1) + 18.5, 'RNG', { size: 10, bold: true, fill: C.dim, track: 0.5 }) + text(L + 132, row(1) + 18.5, '1.2 KM', { size: 13, bold: true, fill: C.white });
+    c += text(L + 196, row(1) + 18.5, 'CLOSING', { size: 10, bold: true, fill: C.dim, track: 0.5 }) + text(L + 250, row(1) + 18.5, '3.9 M/S', { size: 13, bold: true, fill: C.white });
+    c += text(R - 122, row(1) + 18.5, 'CPA', { size: 10, bold: true, fill: C.dim, track: 0.5 }) + text(R, row(1) + 18.5, '140 M IN 2:10', { size: 13, bold: true, fill: C.white, anchor: 'end' });
+    // 3 Next event: what, when, how much
+    c += text(L, row(2) + 18.5, 'NEXT', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+    c += path(`M${L + 46} ${row(2) + 8} l6 6 l-6 6 l-6 -6 z`, C.magenta, 1.5, { fill: C.glass });
+    c += text(L + 60, row(2) + 18.5, 'BURN 1', { size: 12, bold: true, fill: C.magenta, track: 0.5 }) + text(L + 122, row(2) + 18.5, 'IN 12:04', { size: 13, bold: true, fill: C.white });
+    c += text(R, row(2) + 18.5, '210 M/S PROGRADE', { size: 11, bold: true, fill: C.dim, anchor: 'end', track: 0.4 });
+    // 4 Delta-v: pointer, plan bracket, home notch
+    c += text(L, row(3) + 18.5, 'DELTA-V', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+    c += text(L + 118, row(3) + 18.5, '1 840', { size: 14, bold: true, fill: C.white, anchor: 'end' }) + text(L + 122, row(3) + 18.5, 'M/S', { size: 10, fill: C.dim });
+    const bx = L + 160, bw = R - bx - 70, max = 2500;
+    c += I.hbar(bx, row(3) + 19, bw, 1840 / max, { bracket: [(1840 - 210) / max, 1840 / max], notch: 1210 / max });
+    c += text(bx + bw * 1840 / max + 8, row(3) + 11, 'PLAN 210', { size: 9, bold: true, fill: C.magenta, track: 0.4 });
+    c += text(bx + bw * 1210 / max, row(3) + 9.5, 'HOME', { size: 9, bold: true, fill: C.dim, anchor: 'middle', track: 0.4 });
+    c += text(R - 28, row(3) + 18.5, 'MARGIN', { size: 9, bold: true, fill: C.dim, anchor: 'end', track: 0.4 }) + text(R, row(3) + 18.5, '420', { size: 13, bold: true, fill: C.white, anchor: 'end' });
+    // 5 Trigger: dark in Green with no target locked (the slot holds its place)
+    return c;
+  }
+});
+s += cl.svg;
+
+s += stationBoard([[1, 'HELM', '', 'you'], [2, 'NAV', '', 'you'], [3, 'TAC', '--', 'empty'], [4, 'ENG', 'OKAFOR', 'crew'], [5, 'COMMS', '', 'you'], [6, 'CMD', '', 'crew']], { condition: 'GREEN', day: 'DAY 3', time: '14:22:05' });
+
+document.getElementById('out').innerHTML = svgPage(`<defs><filter id="mono"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="1.5"/><feFuncG type="linear" slope="1.5"/><feFuncB type="linear" slope="1.5"/></feComponentTransfer></filter></defs>` + s);
+</script>
+</body></html>

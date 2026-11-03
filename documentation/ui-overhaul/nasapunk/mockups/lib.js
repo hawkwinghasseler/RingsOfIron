@@ -59,7 +59,7 @@ function softKey(x, y, w, h, pressed) {
 // a string, or {t, state} with state 'cur' (white), 'on' (boxed green), 'na' (hidden), default dim.
 // Returns svg; o.content(gx, gy, gw, gh) draws the glass content.
 function du(x, y, w, h, o = {}) {
-  const b = 12, keyRow = 14;
+  const b = o.b || 12, keyRow = 14;
   const kb = o.keys || {};
   const padT = kb.top ? keyRow : 0, padB = kb.bottom ? keyRow : 0, padL = kb.left ? keyRow : 0, padR = kb.right ? keyRow : 0;
   const gx = x + b + padL, gy = y + b + padT, gw = w - 2 * b - padL - padR, gh = h - 2 * b - padT - padB - (o.plate ? 10 : 0);
@@ -75,11 +75,13 @@ function du(x, y, w, h, o = {}) {
       const c = (long ? gx : gy) + step * (i + 0.5);
       let kx, ky, lx, ly, anchor;
       if (side === 'bottom') { kx = c - kw / 2; ky = gy + gh + (o.plate ? 2 : 3); lx = c; ly = gy + gh - 6; anchor = 'middle'; }
-      if (side === 'top') { kx = c - kw / 2; ky = y + b - 1; lx = c; ly = gy + 14; anchor = 'middle'; }
+      if (side === 'top') { kx = c - kw / 2; ky = y + b - 1; lx = c; ly = gy + 15; anchor = 'middle'; }
       if (side === 'left') { kx = x + b - 2; ky = c - kh / 2; lx = gx + 6; ly = c + 4; anchor = 'start'; }
       if (side === 'right') { kx = gx + gw + 3; ky = c - kh / 2; lx = gx + gw - 6; ly = c + 4; anchor = 'end'; }
       const L = typeof lg === 'string' ? { t: lg } : lg;
       s += softKey(kx, ky, kw, kh, L.state === 'on');
+      // A slot's fixed keyboard key, printed on the cap where the spec wants bindings visible.
+      if (L.k) s += text(kx + kw / 2, ky + kh - 2.2, L.k, { size: 7, bold: true, fill: C.stencil, anchor: 'middle', track: 0.4 });
       if (!L.t || L.state === 'na') return;
       const fill = L.state === 'cur' ? C.white : L.state === 'on' ? C.green : C.dim;
       legends.push(text(lx, ly, L.t, { size: 11, bold: true, fill, anchor, track: 0.6 }));
@@ -90,6 +92,7 @@ function du(x, y, w, h, o = {}) {
     });
   };
   ['top', 'bottom', 'left', 'right'].forEach(sd => kb[sd] && edge(kb[sd], sd));
+  if (o.title) s += text(x + w / 2, y + b - 3, o.title, { size: 8.5, bold: true, fill: C.stencil, anchor: 'middle', track: 1.4 });
   if (o.plate) {
     const py = y + h - 13;
     s += rect(x + 18, py, 3, 8, { fill: C.kapton });
