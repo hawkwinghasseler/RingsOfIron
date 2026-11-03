@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 13.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 14.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -418,7 +418,7 @@ Z3b while seated at the helm. Five fixed slots. A slot with nothing to show goes
 
 | Slot | Content | Lit |
 |---|---|---|
-| **Reference** | With a locked target, else the nav target: name, range, closing speed, closest approach ("CPA 140 m in 2:10"). With neither: the orbit's Ap and Pe, live while the engine or RCS fires and for 5 s after. When space runs short, keep in this order: name, range, closing, CPA | When there is something to show |
+| **Reference** | With a locked target, else the nav target: name, range, closing speed, closest approach ("CPA 140 m in 5:03"). With neither: the orbit's Ap and Pe, live while the engine or RCS fires and for 5 s after. When space runs short, keep in this order: name, range, closing, CPA | When there is something to show |
 | **Next event** | The next thing due: "Burn 1 in 12:04  210 m/s prograde", "Autopilot: Shackleton Ice, leg 2", "SOI change in 2.4 d (Moon)". Within 60 s of a burn: alignment error and time to ignition. Priority: what, when, how much | When something is due |
 | **Velocity** | Speed in the active frame, with the frame's tag: "ORBIT 7.67 km/s", "TARGET 3.9 m/s closing", "PORT 2.4 m/s closing", "DOCKED". Rotation rate when above 0.5°/s. Mode chips (3.5): **control** (MANUAL: the player flies; BURN 1: the flight computer is flying planned burn 1 while the player's hands are off the stick; HELD APPROACH: an order waiting while the player has the helm), **ASSIST** (on, or OFF flagged), and THR and RCS lamps while they fire | Always while seated |
 | **Trigger** | The pilot's trigger: GUNS ready or reloading, with how they fire besides the trigger, a mode (3.5): AT WILL while a crew member works a gun, HOLD while the captain holds fire (20.7), TRIGGER with nobody on them; MSL left and ready or seconds; DECOY ready or seconds (decoys are unlimited, with a 3 s cooldown); and SHIELDS when lowered, on a hull with an emitter | With a target locked, or in Red |
@@ -532,7 +532,7 @@ Budget: six tiles of 150 (900), the chronometer 188.
 | WEAPONS | Tactical | Mounts by position (13.2): weapon, ammunition where limited, state, who works it and so how it fires (AT WILL, YOURS, TRIGGER, HOLD, PD AUTO); with a target locked, each gun's time of flight and hit chance on it | Hold fire: no gun but point defense fires at will (new as a control: the game has the switch, `GunCrews.holdFire`, but only its tests set it, and a captain wanting a prize undamaged needs it) | Hold fire (new) |
 | DEFENSE | Tactical | On a hull with a shield emitter: shield ring (96 segments), mass, trim, emitters. Decoy readiness; point defense | Raise, lower, trim | None |
 | DAMAGE | Engineering | Ship plan: integrity, breaches, fires, smoke, venting, patches, repairs and who is on each (from the crew task queue, new) | Damage-control priority (new) | Damage-control priority |
-| POWER | Engineering | Each reactor's output against its rating (it falls with damage); each circuit's store, its charge and time to full. Then only the systems that are not working, each with its cause and what clears it: switched off; no power (conduit cut, or shorted, with the breaker's reclose countdown, `DamageStates.AUTO_RESET`); stunned (countdown); disabled (under 30% health); destroyed. A NEXT line names the soonest that comes back by itself | Switches | None |
+| POWER | Engineering | Each reactor's output against its rating (it falls with damage); each circuit's store, its charge and time to full. Then only the systems that are not working, in the order they come back: those that come back by themselves first, soonest at the top, then those that need work, so the top row is the next and needs no NEXT line of its own. Each with its state and what clears it: switched off; shorted (its breaker's reclose countdown, `DamageStates.AUTO_RESET`, sooner if the crew reset it); no power (its conduit cut, or shorted with that countdown); stunned (countdown); disabled (under 30% health, repair); destroyed. The states are the same words the gun chips use (8.3) | Switches | None |
 | ATMOS | Engineering | Rooms: pressure, oxygen, smoke; tanks; hours of air | None | None |
 | COMMS | Comms & Cargo | Clearance, ports, beacon, standing with the local faction | Ask clearance, beacon | None |
 | CARGO | Comms & Cargo | Hold: volume, each cargo, value | None | None |
@@ -918,7 +918,7 @@ The status strip says RED, because missiles are inbound. FIRE is a caution (Ada 
 |                         -> 1                                                             |
 |                                                                                          |
 |          +---------------------------------------------+                                 |
-|          | Highport 1.2 km  closing 3.9  CPA 140 m 2:10|                                 |
+|          | Highport 1.2 km  closing 3.9  CPA 140 m 5:03|                                 |
 |          | Burn 1 in 12:04   210 m/s prograde          |                                 |
 |          | ORBIT 7.67 km/s      MANUAL  ASSIST         |                                 |
 |          |                 (Trigger: dark)             |                                 |
@@ -989,20 +989,20 @@ The Raider is labelled with its name only; its range and closing are in the Targ
 +------------------------------------------------------------------------------------------+
 |  (C) [  FIRE  ] [ POWER  ]                    |  ENGINEERING   Reactor                   |
 |      [ BRIDGE ] [ 1 SYS  ]                    |  [Power] [Atmos] [Damage] [Systems] ...  |
-|  ENG   Ada: fire in the bridge, I'm on it.    |                                          |
-|  ENG   SHIP: aft starboard gun shorted,       |  Reactor   2.6 of 3.0 MW (damaged)       |
-|        resets itself.                         |  Store     full                          |
+|  ENG   SHIP: aft starboard gun shorted,       |                                          |
+|        resets itself.                         |  Reactor   2.6 of 3.0 MW (damaged)       |
+|  ENG   Ada: fire in the bridge, I'm on it.    |  Store     full                          |
 |                                               |  --------------------------------------- |
 |      (deck view stays live:                   |  Not working                             |
-|       crew fighting the fire)                 |  AFT STBD gun  NO POWER  short, 37 s     |
+|       crew fighting the fire)                 |  AFT STBD gun  SHORTED   back in 37 s    |
 |                                               |  NOSE gun      DISABLED  24%, repair     |
-|              [avatar]                         |  NEXT  AFT STBD gun back in 37 s         |
+|              [avatar]                         |                                          |
 |                                               |                                          |
 |                                               |  [Enter] Switch   [Esc] Close            |
 +------------------------------------------------------------------------------------------+
 ```
 
-Both alerts are cautions: the crew are on the fire, and the short's breaker recloses by itself in 37 s. This is 8 s after the short: its callout holds for 10 s, so it is still up, and the store, which the short emptied, refilled within 2 s with nothing drawing on it. The power page lists only what is not working, with the cause and what clears it; working systems are not listed. The corvette has two rooms, the bridge forward and the hold aft of the wall (13.2), so this fire is in the room the player is standing in. The world shifts 240 left so the deck stays centred in what the panel leaves (6.2).
+Both alerts are cautions: the crew are on the fire, and the short's breaker recloses by itself in 37 s. This is 8 s after the short: its callout holds for 10 s, so it is still up, and the store, which the short emptied, refilled within 2 s with nothing drawing on it. The short's sparks lit the fire (`DamageStates.SHORT_FIRE_CHANCE`), so Ada's call is the newer and sits below the ship's. The power page lists what is not working in the order it comes back, so its top row is the next: the shorted gun by itself in 37 s, then the nose gun, which needs a repair. The power page lists only what is not working, with the cause and what clears it; working systems are not listed. The corvette has two rooms, the bridge forward and the hold aft of the wall (13.2), so this fire is in the room the player is standing in. The world shifts 240 left so the deck stays centred in what the panel leaves (6.2).
 
 ### G. Docked: Station link
 
@@ -1222,6 +1222,15 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 14 (Nasa-punk artist's round 4 notes, checked)
+
+| Problem found | Change |
+|---|---|
+| F's POWER page gave one countdown twice: the shorted gun's row, then a NEXT line naming the same gun. Each row has its own countdown, so NEXT always repeats one | Rows in the order they come back, timed ones soonest first, then those that need work; the top row is the next, and NEXT is gone (9.2, F) |
+| One state, two words: the chip said shorted, POWER said no power with "short" as the cause | SHORTED on both; NO POWER is kept for a system whose conduit is cut or shorted (9.2, F) |
+| C's closest approach: Highport at 1.2 km, closing at 3.9 m/s and passing at 140 m, is 5:03 away at constant velocity (closing x range / speed²), not 2:10 | 5:03 (8.1, C) |
+| F's ticker had Ada's line above the ship's, though the stack puts the newest at the bottom; a short's sparks can light the tile beside it (`DamageStates.SHORT_FIRE_CHANCE`) | The short lit the fire, so Ada's call is the newer and sits below (F) |
 
 ### Round 13 (VFD artist's round 3 notes)
 
