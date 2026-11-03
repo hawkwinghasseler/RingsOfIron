@@ -5,7 +5,7 @@ Each functional design (Ship Stations, Context-driven, Task-driven) is combined 
 | Variation | Spec version used | Round | Screens | Open criticism |
 |---|---|---|---|---|
 | [Ship Stations × Cassette](stations-cassette/README.md) | Stations round 9 | 2 | C helm, D approach, E weapons, B deck, G docked; kit sheets K, K2, K3 | 1 style, 9 functional |
-| [Context-driven × Cassette](context-cassette/README.md) | Context v2 | 1 | 01 cruise, 03 approach, 04 combat, 07 deck emergency, 12 orders menu | 6 style, 13 functional |
+| [Context-driven × Cassette](context-cassette/README.md) | Context v7 | 2 | 01 cruise, 03 approach, 04 combat, 05 fire control, 07 deck emergency, 08 docked, 12 orders menu, 13 boarding | 3 style, 6 functional |
 | [Task-driven × Cassette](task-cassette/README.md) | Task round 3 | 1 | 01 helm at rest, 02 gunnery, 03 deck, 04 terminal, 05 map, 06 crisis, 07 FLT modes and lamp states | 5 style, 9 functional |
 
 ## Round 0: the style guide itself
@@ -99,3 +99,20 @@ Notes sent to the stations designer:
 7. Wireframe G lists a Shipyard at Highport, which has none, and leaves out the Infirmary; its rows are out of catalog order.
 8. The cluster holds the corvette's weapons; the frigate and destroyer carry more launchers and guns.
 9. (Minor) A crew callout shows twice on deck, in the bubble and the ticker.
+
+## Round 2: Context-driven
+
+Context spec version 7 (built against version 6, with version 7's two changes taken in: "point defense" as the game spells it, and H7's missile count totalled across launchers). Eight screens: the five of round 1 redrawn, and fire control (05), docked (08) and boarding (13) drawn for the first time. Critique and changes are in the [variation's README](context-cassette/README.md#round-2-critique).
+
+All five style points from round 1 are fixed: flush rail windows, headless bars, notched frame tags, lighter world labels and 14-unit thruster lamps. The render found thirteen more faults, fixed in the round. The biggest were the closing gauge, whose scale now spans the top half only so the FAST flag and the distance counter have the lower face, and F2's master cue, which covered two column heads and now stands on a glareshield bracket above the rack. Every number moved to a drum at the spec's 15-unit value size, which turned H4's text readings into instruments.
+
+One fix to the shared kit's use came out of this round, and applies to the other two variations: on a printed flap face (YOU on yellow), the flaps' seam is drawn pale, behind the ink, since a dark seam reads as a strike-through.
+
+Notes sent to the context designer:
+
+1. Wireframe 03's sample can't happen: the corvette's port is S and Highport's port 6 is M, and at 820 m the safe speed is 12.8 m/s, so 6.2 isn't fast. Suggested: port 2 at 120 m, 6.2 against 4.9, T-19 s.
+2. X1's "Shipyard 3 ships · 3 to hire" at Highport, which has no shipyard; hiring needs its own line.
+3. F4's missile bearing has no stated reference (the task design dropped its bearing for this reason).
+4. Does 12.4's 15-unit value size apply to numbers inside sentences?
+5. H4's POWER line doesn't fit at 15 units beside a bar; the capacity could move to the hover.
+6. F2 has no room for the master cue; the 40 units above the rack would hold it.

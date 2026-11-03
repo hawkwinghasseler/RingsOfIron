@@ -1,8 +1,8 @@
 # Context-driven × Cassette-futurism
 
-The **Context-driven** functional design ([functional-context.md](../../functional-context.md), version 2, branch `claude/project-thread-ukjzrp`) built in the **Yard Standard** design language ([style-cassette.md](../../style-cassette.md)).
+The **Context-driven** functional design ([functional-context.md](../../functional-context.md), version 7, branch `claude/project-thread-ukjzrp`) built in the **Yard Standard** design language ([style-cassette.md](../../style-cassette.md)).
 
-**Status: round 1.** This round's critique and what changes next are at the end. The round log for all three Cassette variations is [cassette-round-log.md](../cassette-round-log.md).
+**Status: round 2.** This round's critique and what changes next are at the end. The round log for all three Cassette variations is [cassette-round-log.md](../cassette-round-log.md).
 
 The spec decides what is shown, where and when. This variation decides what each element is made of. Where the hardware needs something the spec doesn't say, or the spec asks for something hardware does badly, it is listed under [Adaptations](#adaptations) and was sent to the context designer.
 
@@ -12,49 +12,70 @@ The stations design puts a console band across the bottom of the screen. The con
 
 - The **header rail** across the top edge is P1. It is the only thing always on screen, as the spec says.
 - **Top units hang from the rail on rods**: the caution board (P2), the threat unit (P3), the emergency placard (X3) and the intercom (P4). With nothing to show they are drawn up into the rail.
-- **Side units ride slide rails** on the screen's left and right edges: the contract clipboard (P5), the navigation tube (H2), the lock card (H6) and the armament strip (H7). They slide off the edge when their context ends.
-- **Bottom units stand on the coaming**, the top edge of the seat's console: the lamp bar (H4), the flight pod (H1) or docking pod (H3), and the scope (H5). On deck there is no seat, so there is no coaming.
+- **Side units ride slide rails** on the screen's left and right edges: the contract clipboard (P5), the navigation tube (H2), the lock card (H6), the armament strip (H7), the threat list (F4), the station panel (X1) and the boarding panel (X2). They slide off the edge when their context ends.
+- **Bottom units stand on the coaming**, the top edge of the seat's console: the ship-condition light strip (H4), the flight pod (H1), the docking pod (H3) or the weapons rack (F2), and the scope (H5). On deck there is no seat, so there is no coaming.
 
 The view stays as empty as the spec wants it. Nothing floats, because every unit hangs, slides or stands on something.
 
 ## The screens
 
+Eight screens, one for each of the spec's wireframes 01, 03, 04, 05, 07, 08, 12 and 13.
+
 ### 01 Helm, cruise
 
 ![Helm, cruise: the header rail, the clipboard and navigation tube on the left pillar, and three units on the coaming](01-helm-cruise.jpg)
 
-The dark canopy. The rail shows the seat on split flaps, the clock and the warp rate on drums, and two dark tubes for helm authority and a warp hold, which light only when someone else flies or warp is held. The tracked contract is its printout on a clipboard, with the time left on a drum counter fixed to the clip. The four ship-condition lamps are dark, and the scope has sunk into the coaming, leaving a key that counts the contacts beyond 50 km. About ten readings on screen, as the spec intends.
+The dark canopy. The rail shows the seat on split flaps and the clock and warp rate on drums. Its two message windows are set flush and plain while they have nothing to say: helm authority lights only when someone other than the captain flies, and the warp-hold window only when warp is held. The tracked contract is its printout on a clipboard, with the time left on a timer clipped to it. The navigation tube carries its own row names (ORBIT, NAV, NEXT, PLAN) in dim phosphor. The next burn is a double chevron in the world, with no number, since NEXT has the countdown. The corvette has no shield emitter, so the condition strip has a blanking plate where SHIELDS would be, and all three lights are dark.
 
 ### 03 Helm, docking approach
 
-![Approach: the docking pod with an alignment dial and a closing gauge, the corridor in the world](03-helm-approach.jpg)
+![Approach: the docking pod with an alignment dial and a closing gauge, the master caution lit](03-helm-approach.jpg)
 
-The docking pod takes the flight pod's place and grows to 190 units. The **alignment dial** shows the ship as an orange symbol between the corridor's rails, moved by the lateral offset and turned by the angle error, so the job is "fly the symbol to the centre". The **closing gauge** has the safe band marked and an orange bug at the safe speed for this distance, which moves as the ship gets closer. The needle in the amber band means "fast", and so do the dashed rails of the world corridor and the P2 board. The capture sequence is three lamps, HOLD, DRAW IN and DOCKED, which light in turn on capture.
+The docking pod takes the flight pod's place. The **alignment dial** shows the ship 2.2 m left of the corridor and turned 4°. The **closing gauge** has two bugs on its bezel that move as the ship closes: avocado at the safe speed for the distance and red at twice it. The needle is at 6.2 m/s against a safe 4.9, so a **FAST** flag has dropped into the face. The distance to the port is a counter in the face, 120 m, the way an airspeed indicator carries an odometer. Because H3 is on screen, P2 leaves the FAST APPR caution out, as the spec says, and the gauge lights the **master caution** on the pod instead. The foot strip carries the flight pod's thruster group (back thrust firing), assist and Δv.
 
 ### 04 Helm, combat
 
 ![Combat: threat unit and caution board down, lock card and armament on the right, ship condition expanded](04-helm-combat.jpg)
 
-A raider fires two missiles and one hit holes cargo 1. The **threat unit** drops from the rail at once, with its MISSILE light flashing (allowed, since inbound missiles are time-critical), the count and impact time on a red tube, and the DECOY key and PD lamp beside it. The **caution board** drops with one row: the HULL BREACH flap, where, and one crew member's figure in the handling window. The **master alert cue** on the flight pod lit red with the code when the breach came. The lamp bar rose into the **expanded face**: the ship's plan on a green tube, with the breach and the crew sealing it, and four level meters. The lock card's **hit chance** is a three-zone scale, POOR, FAIR and GOOD, with a pointer, so it reads without colour.
+The gunship, with a raider firing two missiles and a hit that holed the engine room. The **threat unit** drops from the rail at once: the count and impact time on a red line at 26 units, then "decoy ready F · point defense engaging". The **caution board** has one row: BREACH, ENGINES and one crew dot. The **master warning** on the flight pod reads BREACH. The HULL light is lit, so the condition unit has risen above its light strip with the ship's plan (the breach, the crew sealing it, the captain on the bridge) and the four rows: each a level bar and its reading on drums. The **lock card** shows HOSTILE on flaps and FIRING ON YOU as its own red lens. The hit chance is a number and three printed windows with FAIR lit. The **armament strip** reads guns ready, you fire; 7 missiles left across both launchers, ready; shields raised, trim bow on a five-jewel rose.
+
+### 05 Fire control, combat
+
+![Fire control: the weapons rack with a module per mount, shield control, the threat list and the target card](05-fire-control.jpg)
+
+The same gunship from the weapons console, while Bea holds the heading (the rail's authority window says so). The **weapons rack** has a row per mount. Mount and weapon names are Dymo tape, because a refit changes them. A white lamp marks the mounts in the gunner's hand. The point-defense autocannons read PD and are never in hand. The rack's rows fill it, so the **master cue stands on a glareshield bracket** above the rack's right end, in the gunner's eyeline. **Shield control** pairs a green ring of eight sectors (drawn thicker where the cloud is thicker, here at the bow) with the mass on drums, interlocked trim keys and the emitter's HOLDING lens and heat. The **threat list** is a red and amber tube. The **target card** adds speed, course and a two-line tube for what the target is doing and its known damage. The condition strip shows HULL, POWER and LIFE SUP only, since shields are on shield control.
 
 ### 07 Deck, emergency
 
-![Deck emergency: the placard with two guarded switches, the caution board full, the suit unit](07-deck-emergency.jpg)
+![Deck emergency: the placard with two guarded switches, the caution board full, the condition unit and the suit unit](07-deck-emergency.jpg)
 
-No power: the deck is lit only by battery lamps, consoles are dark, and the stunned reactor's lamp blinks on its own battery. The **emergency placard** hangs from the rail in hazard stripes, with the two ways out as **guarded switches**: lifting the guard is the first press of P or B, throwing the switch is the second, so the spec's pending confirmation is a guard standing open. The **caution board** is full, five rows and "+1 more", each with who is handling it: figures and a count, or a barber-pole flag for nobody (VACUUM). The captain's state is the **forearm suit unit** from the stations variation, with the air where they stand as a three-zone scale.
+The reactor is wrecked, the hold is open to vacuum, Ada is down in it and the bridge is on fire. The deck is lit only by battery lamps. The **emergency placard** hangs from the rail in hazard stripes, with the two ways out as **guarded switches**: lifting the guard is the first press of P or B, and throwing the switch is the second. The tow's price is on drums. Under the placard everything dims except the placard, the caution board, the threat unit, the condition unit, the suit unit, the deck's tags and the master cue. The **caution board** is full: five rows, warnings that need you first (YOU printed on yellow flaps), then those crew are on (a dot each), then "+1 more: SMOKE". The **condition unit** shows on deck only while a light is lit. It has no plan, because the deck is the plan. The **master warning** stands alone at the bottom centre. The **suit unit** shows a light wound, suit on with 9:40 of air, and thin air here.
+
+### 08 Docked
+
+![Docked at Highport: the station panel on the right rail, the master cue alone at the bottom](08-docked.jpg)
+
+The **station panel** is a typed card in a holder (name and owner), the port on a drum and the standing on flaps and a drum. Below it is one row per service the station offers. Highport has no shipyard, so the rows close up without it. Market, yard and missions have keys; hiring and the infirmary are tabs in the terminal, so they have none. Credits, hold and UNDOCK sit at the foot. The intercom keeps the station's welcome bright and the autosave dim, since it is older.
 
 ### 12 Orders menu, helm in cruise
 
-![Orders panel: interlocked helm keys, shield toggle and trim keys, crew toggles, guarded ship switches](12-orders-menu.jpg)
+![Orders panel: interlocked helm keys, autopilot and shield buttons, crew buttons, guarded ship buttons, the reasons tube](12-orders-menu.jpg)
 
-The context designer asked where a widget needs a real control surface. This is the clearest case. The orders menu is a **panel that swings up** from the flight pod's lip when O is pressed:
+The orders menu is a **panel that swings up** from the flight pod when O is pressed:
 
-- **Helm orders are interlocked latching keys**, like the preset buttons on an old radio. One stays down while its order flies, and 0 releases it. A key that can't be pressed now has a barber-pole flag on its face.
+- **Helm orders are interlocked latching keys**, like the preset buttons on an old radio. One stays down while its order flies, and 0 releases it. A key that can't be pressed now has a barber-pole tab beside it, and its legend is greyed.
 - **Approach Nav has a thumbwheel** for its distance, 500 m.
-- **Shields:** a toggle for raised or lowered, and five interlocked keys for the trim.
-- **Crew:** two toggles, one for suits at battle stations and one for EVA.
-- **Ship:** two guarded switches, the same as on the emergency placard. The tow's guard is locked with a flag.
-- **The message line** at the panel's foot says why the locked orders can't be given, once for each reason, not once for each order.
+- **The autopilot** has its own latching button, with a HELD lens.
+- **Shields:** a latching button for raised, and five interlocked trim keys. All are barred on the corvette, which has no emitter.
+- **Crew:** latching buttons for suits at battle stations and holding everyone in from EVA.
+- **Ship:** guarded buttons for abandoning ship and calling a tow, with the tow's price on drums.
+- **The reasons tube** at the foot gives each reason once, with the keys it bars in reverse cells.
+
+### 13 Boarding, latched
+
+![Boarding: the latched raider in the lock bracket, the boarding panel on the right rail](13-boarding.jpg)
+
+The raider lies latched over the port side, nose aft, in the lock bracket. The **boarding panel** takes the lock card's place. It shows the other ship on flaps, with LATCHED lit and BY EVA dark, and its state as a sentence on a tube. Below are the party (2 aboard, holding), salvage (3 parts marked, 1 off), cargo (2 lots coming across) and a lit PRISONERS lens. The K BOARDING and U CAST OFF keys sit at the foot. The bounty's clipboard has no timer, because the contract has none.
 
 ## The element kit
 
@@ -62,76 +83,94 @@ How each element of the spec is built.
 
 | Spec element | Yard Standard object |
 |---|---|
-| P1 status strip | The header rail, chassis with an orange stripe. Seat and warp on split flaps; clock on drums; helm authority and warp hold on strip tubes, dark when empty; BATTLE STATIONS and PAUSED as lenses |
-| P2 caution and warning | The caution board: split-flap rows like a departure board, hung from the rail. Each row: a severity lens (◆ red, ▲ amber), code flaps (15), detail flaps (9), a handling window, a drum timer. New rows clatter in. "+n more" is the last row's flaps |
-| Handling | A small window: a lit figure and the number of crew on it, or a barber-pole flag when nobody is. Blank when the code has no handling |
-| Master alert cue | A lens on the primary instrument reading MASTER when dark; lit red with the code for a warning, amber with no code for a caution. On deck, the same lens on the suit unit |
-| P3 threat alert | The threat unit: a MISSILE push-light, a red-phosphor tube (count and impact, 23 to 25 units), the DECOY key with its READY light (F), a PD ENGAGING lamp |
-| P4 message feed | The intercom repeater, as in the stations variation: an amber strip tube, source tag in reverse video |
-| P5 objective | The contract's printout on a clipboard, typed. The time left is on drums fixed to the clip, because paper doesn't change and the clock does |
-| P6 prompt | The engraved nameplate with key caps, as in the stations variation *(round 2 mockup)* |
-| C1 orders menu | A panel that swings up from the flight pod: interlocked keys, toggles, guarded switches, one message line for the reasons |
-| H1 flight display | The flight pod: FRAME on flaps (tag and name), a PIN latch (down and orange when pinned), the master cue lens, speed on drums with CLOSING or OPENING on flaps, a thrust diagram of six lamps around a ship outline, ROT ASSIST push-light (an OFF flag when off), Δv on drums over a propellant level |
-| H2 navigation | A tube with the row names (ORBIT, NAV, NEXT, PLAN) engraved on the plate beside it, so the names never move. Under warp the rows gain keys for warp-to *(round 2 mockup)* |
-| H3 docking display | The docking pod: port line on flaps, ARMED push-light, clearance on flaps; alignment dial; closing gauge with a safe-speed bug; distance and contact time on drums; three capture lamps; a HELM DOCKING lens; H1's speed and thrust as a strip at its foot |
-| H4 ship condition | Compact: four lenses on a pod, dark when nominal, lit with ◆ or ▲. Expanded: the plan tube rises behind the lamp bar, with four level meters between |
-| H5 contact scope | A round green tube in a square pod, range on flaps between − and + keys (24 units). Collapsed: a SCOPE key with the count on a drum |
-| H6 lock card | A plate on the right rail: the lock bracket engraved beside LOCK, name on flaps, allegiance on a lens with its glyph, state on flaps with a red lamp for FIRING ON YOU, range and closing on drums, shot time on drums, hit chance on the three-zone scale |
-| H7 armament | A plate under the lock card: guns' READY lamp and who fires on flaps, decoy READY lamp, missiles and reload on drums, shields on flaps with the trim |
-| X3 emergency card | The emergency placard: hazard-striped frame, red tube headline, the ways out on guarded switches with their keys and costs |
-| D1 captain vitals | The forearm suit unit: condition on flaps, SUIT ON lens, air on drums, air here on a three-zone scale, what is carried on flaps |
-| D3 off-screen pointers | Red edge chevrons with the subject and distance in tiles |
-| W1 to W6 | Amber reflector-sight projection, threats in red, as in style guide 7.2. Lock is corner brackets, Nav is side brackets with a chevron. The corridor's safe, fast and danger states differ by line (solid, dashed, dotted) as well as colour |
-| Full-screen modes | The station terminal, the ship's book and the map are terminals and printouts, as in style guide 9 *(round 2 mockup)* |
+| P1 status strip | The header rail. Seat and warp on split flaps; day and time on drums; helm authority and warp hold in windows let flush into the rail, plain while dark, phosphor when they speak; BATTLE STATIONS, RAILS and PAUSED as lenses |
+| P2 caution and warning | The caution board: split-flap rows like a departure board, hung from the rail. Each row: a severity lens (◆ red, ▲ amber), code flaps (11), detail flaps (10), handling (3), a timer drum. The sixth row is a key and "+n more" on flaps |
+| Handling | Three flaps: YOU printed on yellow faces; a dot per crew member on it, or ●4; BCK when it clears by itself, with the recovery timer beside it |
+| Master alert cue | One MASTER lens with a red and an amber lamp behind it, the newest warning's code or CAUTION on ten flaps, and the `\` key. It sits on the seat's primary instrument: in H1's top row, in H3's right column, on a glareshield bracket above F2. On deck, docked or latched it stands alone at the bottom centre |
+| P3 threat alert | The threat unit: a red line at 26 units (count and impact), and an amber line with the decoy key in a reversed cell |
+| P4 message feed | The intercom repeater: an amber tube, the source in reverse video, older lines dim |
+| P5 objective | The contract's printout on a clipboard, typed. The time left is a bakelite timer clipped to it, because paper doesn't change and the clock does |
+| C1 orders menu | A panel that swings up from the flight pod: interlocked latching keys, latching push buttons, guarded push buttons, barber tabs for barred orders, a reasons tube |
+| H1 flight display | The flight pod: frame and name on flaps, the PIN latch, the master cue, speed on drums, the thruster group (notched darts round a ship drawn nose right), ASSIST OFF push-light, Δv on drums over the propellant bar |
+| H2 navigation | A tube with the row names on it in dim phosphor, so the compact face (one line, NAV or NEXT) carries its own name |
+| H3 docking display | The docking pod: port line on flaps and drums, ARMED lens, clearance on flaps; the alignment dial; the closing gauge with moving bugs, a FAST or DANGER flag and a distance counter in the face; contact time on drums; three capture lamps; HELM DOCKING lens and phase flaps; a foot strip with thrusters, assist and Δv |
+| H4 ship condition | Compact: a strip of lights, dark when nominal; the light's film shows ◆ lit red and ▲ lit amber; a blanking plate where SHIELDS would be on a hull without an emitter. Expanded: a unit rises above the strip with the plan tube and four rows, each a level bar and its reading on drums. On deck: the same rows without the plan |
+| H5 contact scope | A round green tube in a square pod, range on flaps between − and + keys. Missiles are a dot with a leader and a chevron; contacts beyond the range are ticks on the rim. Collapsed: a SCOPE key with the count |
+| H6 lock card | A plate on the right rail: LOCK and the name on flaps, the state on flaps, FIRING ON YOU as a red lens, range, rate and shot time on drums, the hit chance as a number and three printed windows |
+| H7 armament | A plate under the lock card: the guns' lamp, state and who fires them; missiles left across every launcher; shields with the trim on a five-jewel rose. A blanking plate for shields on a hull without an emitter |
+| F1 target card | The lock card with speed, course and a two-line tube for what the target is doing and its damage |
+| F2 weapons rack | A row per mount: in-hand lamp, mount and weapon on Dymo tape, state lamp and flaps, seconds, hit chance, missiles left, who fires it |
+| F3 shield control | A green ring of eight sectors around the ship, beside a plate with SHIELDS, the mass, the trim keys, the emitter and its heat |
+| F4 threat list | A tube on the left rail: missiles in red, ships in amber |
+| X1 station panel | A typed card in a holder, the port and standing, a row per service offered, credits, hold and UNDOCK |
+| X2 boarding panel | Board flaps, LATCHED and BY EVA lenses, the state on a tube, party, salvage and cargo on drums, PRISONERS lens, the two keys |
+| X3 emergency card | The emergency placard: hazard-striped frame, red tube headline, the ways out on guarded switches, the tow's price on drums |
+| D1 captain vitals | The forearm suit unit: condition on flaps, bleed-out on a drum or a closed shutter, SUIT ON lens, air on drums, the air here as three printed windows, what is carried on flaps |
+| D3 hazard tags | Projected tags on the deck in red (amber for smoke), one per room and code |
+| W1 to W6 | Amber reflector-sight projection at a lighter weight than tube text, threats in red. Frame tags sit in a notch on the prograde marker; neutrals are notched darts; burns are double chevrons; the corridor's states differ by line as well as colour |
 
 ## Adaptations
 
-Places where the hardware changes the spec's geometry or behaviour. These went to the context designer as round 1 notes.
+Places where the hardware changes the spec's geometry or behaviour.
 
-1. **The coaming and side rails use the margins.** The coaming fills the 12 units below the zones (y 788 to 800), and the slide rails fill 7 of the 12 units at each side edge. No zone loses space. Section 12.2 allows "the seat's console frame around the view".
-2. **Units arrive from their edge.** Units brought by a warning (P2, P3, X3) drop at once, spring-loaded, with the flap clatter. Units brought by anything else ease in for 300 ms on their rods or rails, as 5.3 allows.
-3. **P2's fields have fixed widths:** code 15 characters, detail 9, handling a count, timer a drum. Details need a short form: CARGO 1, +1.4 M/S, 42 KG.
-4. **H2's long lines are split.** At 13 units, ORBIT and NAV take three rows each, and the time values are right-aligned in their own column.
-5. **H4's shield meter shows only the cloud's mass.** H7 owns raised and trim at the helm, so the same values aren't shown twice.
-6. **H7's decoys show ready or seconds to ready.** The game's decoys never run out: `PlayerGunnery` gives them a 3 s cooldown and no count.
-7. **C1 is 620 × 248** (the bottom-centre zone's width). The wireframe draws it 400 wide, which doesn't fit four groups of controls at 13 units.
-8. **Drums carry no thousands separator** (1240). Text keeps the formats in 5.4.
+1. **The coaming and side rails use the margins.** The coaming fills the 12 units below the zones (y 788 to 800), and the slide rails fill 7 of the 12 units at each side edge. No zone loses space.
+2. **Units arrive from their edge.** Units brought by a warning (P2, P3, X3) drop at once, with the flap clatter. Others ease in for 300 ms on their rods or rails.
+3. **Every number is on a drum at 15 units**, as 12.4 asks for values. That made H4's rows into instruments (a bar, then drums) instead of a line of text, because "store 92% · 3.0 of 3.0 MW" at 15 units doesn't fit beside a bar. POWER shows the store as the bar and its percentage, then GEN 3.0 MW, without the "of 3.0" capacity.
+4. **Drums carry no thousands separator** (5000 CR). Text keeps the formats in 5.4.
+5. **H3 is 196 tall from y 592** (the spec's 190, plus 3%), so its foot strip can carry the thruster group.
+6. **F2's master cue stands on a bracket above the rack**, at y 602 to 636, inside the bottom-centre zone. The rack's five rows fill its 150 units.
+7. **C1 is 620 × 262** (the spec's 250, plus 5%), so the ship buttons and the three-line reasons tube fit at their sizes.
+8. **H4 on deck keeps its light strip** under the rows. The wireframe draws each row with its light. The strip is the same hardware as at the helm, so the lights don't move between screens.
 
-## Round 1 critique
+## Round 1 critique, resolved
+
+All five style points from round 1 are fixed:
+
+- The rail's windows are flush and plain while dark.
+- The bars have a hairline index and no head.
+- Frame tags sit in a notch on the prograde marker.
+- World labels are lighter than tube text.
+- Thruster lamps are 14 units.
+
+Round 2 also draws fire control, docked and boarding. The designer answered all 13 functional notes in versions 3 to 6.
+
+## Round 2 critique
 
 What this round got wrong or left weak, in the style and in the combination.
 
-**Style**
+**Style (for round 3)**
 
-- **The rail's two dark tubes read as dead equipment.** In quiet flight they are about 600 units of black glass across the top of the screen. Round 2: set them flush with the rail, with no glass highlight while dark, and shorten the authority tube to the longest real phrase.
-- **The level meters in H4 look like sliders.** Four stacked edgewise scales with orange pointers read as controls. Round 2: a hairline pointer with no head, and a filled bar behind it.
-- **The world's frame tags (LOCK, PORT) float.** They are small dim words beside the prograde marker. Round 2: set them into a notch on the marker's ring.
-- **World labels and tube text still look the same.** This was carried over from the stations round 1 critique. Round 2 fixes it for both: projection text gets a lighter weight.
-- **The thrust diagram's lamps are too small at UI scale 1.** At 10 units they work at 1.5x but not at 1x. Round 2: 14 units.
-- **Not drawn yet:** fire control (F1 to F4, the design's biggest new instrument), docked with X1, warp, hover cards (W1, D2), P6 prompts, the inset views and the full-screen modes' frame. Round 2 draws fire control and docked.
+- **H3's thruster group is scaled down.** In the foot strip it is drawn at 0.68, so its darts are about 10 units against the 14 set for H1. It reads at 1.5x, but is marginal at UI scale 1. Round 3: give the strip the full-size group, either by dropping the THRUST legend, since the group explains itself, or by moving ASSIST OFF into the right column.
+- **The weapons rack reads as a sparse table.** HIT and MSL are empty in most rows, because a gun has no missiles and a launcher has no hit chance. Round 3: draw each row as a module of its own kind. A gun module has a hit window, a launcher module has a LEFT counter, and a point-defense module has neither. Each gap gets a blanking plate, as the hardware rule asks.
+- **The gunship's plan is small.** In the expanded condition unit it is drawn at 9 units a tile, so the room names nearly touch the walls. It is enough to place a breach, but a crew dot and the captain's ring are close to the floor of legibility.
+- **Not drawn yet:** warp (H2's warp keys), hover cards (W1, D2), P6 prompts, the inset views, a gun seat (F2 with one gun), and the full-screen modes, where P1's chip is the master cue. Round 3 draws warp, a P6 prompt on deck and the full-screen frame.
 
-**Fixed during the round**
+**Fixed during the round (found on render)**
 
-- Dim phosphor text was 3.8:1 against the tube. It is now 5.4:1, and the guide's token changed with it.
-- The tube scanlines were coarse enough to strike through 13-unit text at 1x. They are finer now.
+- **The closing gauge.** Its numerals ran into the FAST flag. The scale now spans the top half only (0 at nine o'clock, 12 at three), so the needle never sweeps the lower face, where the flag and the distance counter sit.
+- **The foot strip's thrusters** were six darts in a row that didn't read as directions. They are now the flight pod's thruster group, with a grey hull on the dark strip so that only the lamps read as lit.
+- **The alignment dial** drew the ship right of the corridor for "2.2 m left".
+- **F2's master cue** covered the HIT and MSL column heads. It is now on the glareshield bracket.
+- **The rack's ENGAGING MSL lamp** was dark. Lamp states are now matched by their first word.
+- **The deck condition unit** had a row hidden behind its light strip. It is now sized from its rows.
+- **YOU on yellow flaps** read as struck through, because the flaps' dark seam crossed the ink. The seam is pale on a printed face.
+- **The emitter's legend** on shield control was dark on the dark pod. It is now light, with S as a key.
+- **The orders panel.** Its ship buttons overlapped, its reasons tube cut the third line, and its trim keys squeezed STERN.
+- **The station panel's UNDOCK row** fell outside the plate. Absent services now close up, as the spec says, instead of keeping a blanking plate.
+- **The boarding panel's keys** crowded its cargo row. Its rows are now 24 apart.
+- **The target card.** Its "what it is doing" and "condition" lines overprinted. The hit percentage touched its windows.
+- **Number sizes.** About twenty drums were drawn at 12.5 to 14 units. They are now at the 15 that 12.4 asks for values.
 
 **Combination (sent to the designer)**
 
-- **The spec's examples don't fit its columns at its own text floor.** The wireframes draw rows at 10.5 units. At 13, a 308 column holds about 34 characters, but H2's ORBIT line as written is 57, P2's PROPELLANT LOW example is 46, and P1's autopilot example is 47. Each text field needs a maximum length and a short form.
-- **P2 ranks recovery timers first.** "Rows with a timer by time left" puts NO POWER (stunned, the reactor recovers by itself in 0:12) above CREW CRITICAL (Ada bleeds out in 3:40). Some timers count toward harm (bleed-out, impact, suit air) and some toward recovery (stun, emitter trip). Only harm timers should rank. Recovery timers could read "back in 0:12". Wireframe 07 doesn't follow the stated order either: it lists FIRE first.
-- **Wireframe 07 contradicts the catalogue.** H4 shows life support on EMERGENCY 42 kg with a caution light. EMERGENCY O2 is a warning, and it isn't in P2's list. Cassette drew it as a warning row, which pushes SMOKE into "+1 more".
-- **"+n more" is clickable but 22 units tall.** Six rows in 132 units leaves 22 each, under 12.4's 24.
-- **An approach shows several values two or three times.** Time to contact is in P2's APPROACH FAST row and in H3. Closing speed is on H3's gauge and in H3's foot strip, because during an approach the frame is PORT, so H1's speed is the closing speed. The distance is in the Nav's world label, H2's NAV line and H3.
-- **Shields show twice at the helm in combat.** H4's expanded bar and H7 both carry raised and trim.
-- **Decoys don't run out.** H7 says "Decoys: left" and wireframe 04 shows DECOY 2. In the game they have a 3 s cooldown and no count.
-- **Power has no demand figure.** H4's power bar is "output against demand", but `PowerCircuit` has output, the store's charge and what was drawn. There is no demand.
-- **P1 at the helm by hand:** the table says the authority field is empty, but wireframe 12 shows "Helm order: none".
-- **P3 and P4 both report an intercept:** P3's "1 down" and P4's "PD: 1 down".
-- **H2's compact face:** section 7 says NAV and NEXT, but 11.4 and wireframe 04 show NEXT only.
-- **The deck's master cue sits "beside D1's slot"**, but D1 is hidden on a healthy captain, so the cue needs its own place.
-- **Labels have no size.** 12.4 sets body text at 13 and values at 15. Cassette uses 12 for engraved legends, units and key names, as the stations spec allows.
+1. **Wireframe 03's sample can't happen.** The corvette's docking port is size S, and Highport's port 6 is M, so clearance would give port 1 or 2. At 820 m the safe speed is 12.8 m/s (`safeSpeed`), so 6.2 m/s isn't fast there. Cassette draws port 2 at 120 m, 6.2 against a safe 4.9, contact T-19 s. P4's "port 6" and X1's "port 6" change with it.
+2. **X1's "Shipyard 3 ships · 3 to hire" at Highport.** Highport has no shipyard (Anvil Yards has one), so the line would be left out, taking hiring with it. Hiring works at any non-hostile station, so it needs its own line.
+3. **F4's "brg 040" has no stated reference** (the ship's nose, or the plot's north). The task design dropped its missile bearing in its round 7 for this reason. The direction is drawn in the world and on the scope.
+4. **12.4's "values at least 15" isn't drawn by the wireframes**, which set every value at 13. Does it apply to numbers inside sentences too (H2's "1,240 km · opening 220 m/s", P3's second line, X3's price)? If it does, H2 and X3 are over budget. Cassette reads it as every standalone readout. Sentences keep their numbers at the sentence's size.
+5. **H4's POWER line doesn't fit at 15 units.** "store 92% · 3.0 of 3.0 MW" is too long beside a bar. The capacity never changes for a ship, so "of 3.0" could move to the hover.
+6. **F2 has no room for the master cue.** P2's section puts the cue on the seat's primary instrument (H1, H3 or F2), and the rack's rows fill its 620 × 150. The zone's 40 units above the rack would hold it. Cassette's bracket stands there.
 
 ## Files
 
-- `mockups.html`: the five screens, drawn with the shared kit in `../../cassette/kit.js`.
+- `mockups.html`: the eight screens, drawn with the shared kit in `../../cassette/kit.js`.
 - Render: `NODE_PATH=$(npm root -g) node ../../cassette/render.js mockups.html 1.5 jpeg`.
