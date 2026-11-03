@@ -1,0 +1,701 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Context-driven in Yard Standard</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow+Semi+Condensed:wght@600&family=Big+Shoulders+Stencil+Display:wght@800&family=IBM+Plex+Mono:wght@400;500&family=Special+Elite&family=VT323&family=Inter:wght@400;600&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #0a0b0c; }
+  svg { display: block; margin-bottom: 8px; }
+  .legend { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .crt { font-family: 'IBM Plex Mono', monospace; }
+  .vt { font-family: 'VT323', monospace; }
+  .drum { font-family: 'Barlow Condensed', sans-serif; font-weight: 500; }
+  .dymo { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: 0.08em; }
+  .paper { font-family: 'Special Elite', monospace; }
+  .stencil { font-family: 'Big Shoulders Stencil Display', sans-serif; font-weight: 800; }
+  .ooc { font-family: 'Inter', sans-serif; }
+</style>
+</head>
+<body>
+<!-- Context-driven functional design (v2) built in Yard Standard. 1280 x 800 UI units. -->
+<svg id="01-helm-cruise" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="03-helm-approach" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="04-helm-combat" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="07-deck-emergency" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="12-orders-menu" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<script src="../../cassette/kit.js"></script>
+<script>
+// =====================================================================
+// The canopy. The context design has no console band: widgets come and go by seat and situation.
+// So the hardware is a frame around the view, and each widget is a unit that mounts on the frame by
+// its zone: top units hang from the header rail on rods, side units ride slide rails on the screen's
+// edges, bottom units stand on the coaming (the top edge of the seat's console). A unit with nothing
+// to show is put away: drawn up into the rail, slid off the edge, or lowered into the coaming.
+// =====================================================================
+const lg = (x, y, t, o = {}) => tag(x, y, t, { fill: C.inkLight, ...o });   // legend painted on chassis
+
+function rodsG(xs, y0, y1) {
+  return xs.map(x => `<rect x="${x - 2}" y="${y0}" width="4" height="${y1 - y0}" fill="${C.alu}"/><rect x="${x - 2}" y="${y0}" width="1.3" height="${y1 - y0}" fill="#fff" opacity="0.35"/>`).join('');
+}
+function sideRailG(side, y, h) {
+  const L = side === 'L', rx = L ? 0 : 1273, cx = L ? 6 : 1267;
+  let s = `<rect x="${rx}" y="${y - 6}" width="7" height="${h + 12}" rx="2" fill="${C.chassisDeep}"/><rect x="${L ? rx + 5 : rx}" y="${y - 6}" width="2" height="${h + 12}" fill="${C.alu}" opacity="0.7"/>`;
+  [y + 8, y + h - 16].forEach(cy => s += `<rect x="${cx}" y="${cy}" width="7" height="8" rx="1" fill="${C.alu}"/>`);
+  return s;
+}
+function coamingG() {
+  return `<g filter="url(#deckshadow)"><rect x="0" y="788" width="1280" height="12" fill="url(#chassisG)"/></g><rect x="0" y="788" width="1280" height="3" fill="url(#lipG)"/>`;
+}
+
+// ---------------- P1: the header rail ----------------
+function railG({ seat = 'HELM', auth = null, authCaution = false, battle = false, day = '000', time = '00:33', warp = '1X', held = null, paused = false } = {}) {
+  let s = `<g filter="url(#shadow)"><rect x="0" y="0" width="1280" height="26" fill="url(#chassisG)"/></g>
+   <rect x="0" y="21.5" width="1280" height="1" fill="#211b17"/><rect x="0" y="22.5" width="1280" height="3.5" fill="${C.orange}"/>`;
+  s += lg(10, 15.5, 'SEAT') + flapG(42, 3, seat.padEnd(12), { cw: 9.4, ch: 16, size: 13.5 });
+  // who flies, when it is not the captain at the helm by hand
+  const t = tubeG(172, 3, 376, 16, { r: 2, bezel: 2.5 });
+  s += t.under + (auth ? tt(180, 15.5, (authCaution ? '▲ ' : '') + auth, { size: 13 }) : '') + t.over;
+  s += pushG(563, 3, 128, 16, ['BATTLE STATIONS'], { color: 'amber', lit: battle });
+  s += lg(706, 15.5, 'DAY') + drumG(733, 3, day, { cw: 11, ch: 16, size: 15 }) + drumG(775, 3, time, { cw: 11, ch: 16, size: 15, dimLead: false });
+  s += lg(842, 15.5, 'WARP') + flapG(878, 3, warp.padEnd(6), { cw: 9.4, ch: 16, size: 13.5 });
+  const th = tubeG(944, 3, 240, 16, { r: 2, bezel: 2.5 });
+  s += th.under + (held ? tt(952, 15.5, held, { size: 13 }) : '') + th.over;
+  s += pushG(1199, 3, 72, 16, ['PAUSED'], { color: 'white', lit: paused });
+  return s;
+}
+
+// ---------------- P2: the caution board (split flaps, hung from the rail) ----------------
+function sevLensG(x, y, w, h, sev, fresh) {
+  const [on] = LAMP[sev === 'warning' ? 'red' : 'amber'];
+  return `<rect x="${x - 1.5}" y="${y - 1.5}" width="${w + 3}" height="${h + 3}" rx="1.5" fill="${C.alu}"/>
+   ${fresh ? `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${on}" filter="url(#lampglow)"/>` : ''}
+   <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1" fill="${on}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#glassG)"/>
+   <text x="${x + w / 2}" y="${y + h / 2 + 4.5}" text-anchor="middle" font-size="12.5" fill="#2a1606">${sev === 'warning' ? '◆' : '▲'}</text>`;
+}
+// handling: null = this code has none; 0 = nobody on it (barber flag); n = crew on it
+function handG(x, y, w, h, hand) {
+  let s = `<rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="1.5" fill="#0d0b0a"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#24211f"/>`;
+  if (hand === null || hand === undefined) return s;
+  if (hand === 0) return s + `<rect x="${x}" y="${y + 2}" width="${w}" height="${h - 4}" fill="url(#barber)"/>`;
+  const fx = x + 9, fy = y + h / 2;
+  s += `<circle cx="${fx}" cy="${fy - 3.6}" r="2.6" fill="${LAMP.white[0]}"/><path d="M${fx - 4.2} ${fy + 6}Q${fx - 4.2} ${fy - 0.4} ${fx} ${fy - 0.4}Q${fx + 4.2} ${fy - 0.4} ${fx + 4.2} ${fy + 6}Z" fill="${LAMP.white[0]}"/>`;
+  s += `<text x="${x + w - 9}" y="${y + h / 2 + 5}" text-anchor="middle" class="drum" font-size="15" fill="#F3EEE2">${hand}</text>`;
+  return s;
+}
+function cwBoardG(rows, { more = 0 } = {}) {
+  const x = 12, y = 38, w = 308, rh = 21, n = rows.length + (more ? 1 : 0), h = n * rh + 5;
+  let s = rodsG([46, 286], 22, y + 3);
+  s += `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#14110e"/></g>
+   <rect x="${x + 0.75}" y="${y + 0.75}" width="${w - 1.5}" height="${h - 1.5}" rx="3" fill="none" stroke="${C.alu}" stroke-width="1.5"/>`;
+  rows.forEach((r, i) => {
+    const yy = y + 4 + i * rh, ch = rh - 5;
+    s += sevLensG(x + 6, yy, 20, ch, r.sev, r.fresh);
+    s += flapG(x + 32, yy, r.code.padEnd(15).slice(0, 15), { cw: 7.8, ch, size: 13 });
+    s += flapG(x + 153, yy, (r.detail || '').padEnd(9).slice(0, 9), { cw: 7.8, ch, size: 13 });
+    s += handG(x + 228, yy, 34, ch, r.hand);
+    if (r.timer) s += drumG(x + 271, yy, r.timer, { cw: 9, ch, size: 15, dimLead: false });
+  });
+  if (more) {
+    const yy = y + 4 + rows.length * rh;
+    s += flapG(x + 32, yy, ('+' + more + ' MORE').padEnd(15), { cw: 7.8, ch: rh - 5, size: 13, fill: '#c9c0ac' });
+  }
+  return s;
+}
+
+// ---------------- P3: the threat unit (hung from the rail, top centre) ----------------
+function threatUnitG({ count = 2, impact = 'T-37 S', decoy = 'READY', pd = true } = {}) {
+  const x = 390, y = 38, w = 500, h = 64;
+  let s = rodsG([430, 850], 22, y + 3);
+  s += `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="url(#chassisG)"/></g><rect x="${x}" y="${y + h - 3}" width="${w}" height="3" rx="1" fill="${C.red}"/>`;
+  s += pushG(x + 9, y + 8, 54, h - 18, ['MISSILE'], { color: 'red', lit: true });
+  const tx = x + 74, tw = 268, t = tubeG(tx, y + 7, tw, h - 16, { r: 4, bezel: 4 });
+  s += t.under + `<text x="${tx + tw / 2}" y="${y + 30}" class="vt" font-size="25" text-anchor="middle" fill="${PH.red}" filter="url(#glow)">MISSILES INBOUND · ${count}</text>
+   <text x="${tx + tw / 2}" y="${y + 51}" class="vt" font-size="23" text-anchor="middle" fill="${PH.red}" filter="url(#glow)">IMPACT ${impact}</text>` + t.over;
+  s += pushG(x + 354, y + 8, 56, h - 18, ['DECOY', decoy], { color: 'green', lit: decoy === 'READY' });
+  s += keyG(x + 421, y + 25, 'F');
+  s += pushG(x + 435, y + 8, 56, h - 18, ['PD', 'ENGAGING'], { color: 'white', lit: pd });
+  return s;
+}
+
+// ---------------- P4: the intercom repeater (hung from the rail, top right) ----------------
+function intercomG(lines, { x = 960, y = 38, w = 308 } = {}) {
+  const h = 16 + lines.length * 18;
+  let s = rodsG([x + 40, x + w - 40], 22, y + 3);
+  const t = tubeG(x + 6, y + 5, w - 12, h - 10, { r: 4, bezel: 4 });
+  s += `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="${C.bakelite}"/></g>` + t.under;
+  lines.forEach((l, i) => {
+    const yy = y + 22 + i * 18;
+    s += tt(x + 15, yy, l.tag.padEnd(4), { rev: true, w: 40, size: 12.5 });
+    s += tt(x + 62, yy, l.text, { size: 13, c: l.old ? 'dim' : 'amber' });
+  });
+  return s + t.over;
+}
+
+// ---------------- X3: the emergency placard (hung from the rail, top centre) ----------------
+function placardG({ head = 'SHIP DISABLED: NO POWER', tow = '3,400 CR · −3 STANDING', pending = null } = {}) {
+  const x = 390, y = 38, w = 500, h = 136;
+  let s = rodsG([430, 850], 22, y + 3);
+  s += `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="url(#hazard)"/></g>`;
+  s += `<rect x="${x + 7}" y="${y + 7}" width="${w - 14}" height="${h - 14}" rx="3" fill="url(#chassisG)"/>`;
+  const t = tubeG(x + 18, y + 16, w - 36, 32, { r: 3, bezel: 4 });
+  s += t.under + `<text x="${x + w / 2}" y="${y + 41}" class="vt" font-size="27" text-anchor="middle" fill="${PH.red}" filter="url(#glow)">${esc(head)}</text>` + t.over;
+  // the two ways out, each a guarded switch: lifting the guard is the first press, throwing it the second
+  const way = (cx, title, key, line2, open) => {
+    let g = plateG(cx - 116, y + 60, 228, 62, { screws: false });
+    g += toggleG(cx - 86, y + 92, { up: false, guard: true, guardOpen: open });
+    g += tag(cx - 58, y + 80, title, { size: 13.5 });
+    g += keyG(cx - 58, y + 88, key, { anchor: 'start' }) + tag(cx - 36, y + 100, 'TWICE');
+    if (line2) g += tag(cx - 58, y + 116, line2, { fill: '#5a4f42' });
+    return g;
+  };
+  s += way(x + 130, 'ABANDON SHIP', 'P', null, pending === 'P');
+  s += way(x + 370, 'CALL A TOW', 'B', tow, pending === 'B');
+  return s;
+}
+
+// ---------------- P5: the tracked contract, clipped to the left pillar ----------------
+function clipG({ y = 176, head, left, unit = 'D' }) {
+  const x = 12, w = 308, h = 54;
+  let s = sideRailG('L', y, h);
+  s += `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#6f5f49"/></g>`;
+  s += `<rect x="${x + 6}" y="${y + 9}" width="${w - 12}" height="${h - 13}" fill="${C.paper}"/>`;
+  for (let yy = y + 14; yy < y + h - 6; yy += 9) s += `<circle cx="${x + 11}" cy="${yy}" r="1.6" fill="#6f5f49"/><circle cx="${x + w - 11}" cy="${yy}" r="1.6" fill="#6f5f49"/>`;
+  s += `<rect x="${x + 6}" y="${y + 9}" width="${w - 12}" height="${h - 13}" fill="url(#greenbar)" opacity="0.35"/>`;
+  // the clip, with the contract clock on it
+  s += `<g filter="url(#shadow)"><rect x="${x + 176}" y="${y + 1}" width="120" height="20" rx="4" fill="url(#screwG)"/></g>`;
+  s += tag(x + 186, y + 15.5, 'LEFT', { fill: '#3a352e' }) + drumG(x + 222, y + 3, left, { cw: 12, ch: 16, size: 15, dimLead: false, unit, unitGap: 5 });
+  s += `<text x="${x + 20}" y="${y + 41}" class="paper" font-size="13.5" fill="#2a2420">${esc(head)}</text>`;
+  return s;
+}
+
+// ---------------- H2: navigation tube with engraved row legends ----------------
+function navG(rows, { y = 240 } = {}) {
+  const x = 12, w = 308, lh = 16, th = rows.length * lh + 10, h = th + 14;
+  let s = sideRailG('L', y, h) + plateG(x, y, w, h, { screws: false });
+  const tx = x + 62, tw = w - 70, t = tubeG(tx, y + 7, tw, th, { r: 4, bezel: 4 });
+  s += t.under;
+  rows.forEach((r, i) => {
+    const yy = y + 7 + 17 + i * lh;
+    if (r.t) s += tt(tx + 7, yy, r.t, { c: r.c || 'amber', size: 13 });
+    if (r.r) s += tt(tx + tw - 7, yy, r.r, { c: r.c || 'amber', size: 13, anchor: 'end' });
+  });
+  s += t.over;
+  rows.forEach((r, i) => { if (r.lg) s += tag(x + 10, y + 7 + 17 + i * lh, r.lg); });
+  return s;
+}
+
+// ---------------- H1: the flight pod ----------------
+function pinLatchG(x, y, pinned) {
+  return `<rect x="${x}" y="${y}" width="28" height="18" rx="2" fill="${C.alu}"/><g filter="url(#shadow)"><rect x="${x + 2}" y="${y + 2 + (pinned ? 1.5 : 0)}" width="24" height="13" rx="2" fill="${pinned ? C.orange : C.bakelite}"/></g>
+   <text x="${x + 14}" y="${y + 13 + (pinned ? 1.5 : 0)}" text-anchor="middle" class="legend" font-size="12" fill="${pinned ? '#2a1606' : C.inkLight}">PIN</text>`;
+}
+// master alert cue: a dark lens reading MASTER; lit red with the warning's code, or amber with no code
+function cueG(x, y, w, h, cue) {
+  const lit = !!cue, col = cue && cue.sev === 'caution' ? 'amber' : 'red', [on, off] = LAMP[col];
+  let s = `<rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="2" fill="${C.alu}"/>`;
+  if (lit) s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${on}" filter="url(#lampglow)"/>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="${lit ? on : LAMP.red[1]}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#glassG)"/>`;
+  const txt = lit ? (cue.code ? '◆ ' + cue.code : 'MASTER CAUTION') : 'MASTER';
+  s += `<text x="${x + w / 2}" y="${y + h / 2 + 4.4}" text-anchor="middle" class="legend" font-size="12.5" fill="${lit ? '#2a0d06' : 'rgba(240,220,200,0.35)'}">${esc(txt)}</text>`;
+  return s;
+}
+function triLampG(x, y, a, on) {
+  const p = 'M0 -5L5 4H-5Z';
+  return `<g transform="translate(${x},${y}) rotate(${a})">${on ? `<path d="${p}" fill="${LAMP.white[0]}" filter="url(#lampglow)"/>` : ''}<path d="${p}" fill="${on ? LAMP.white[0] : '#3d3a35'}" stroke="#1a1614" stroke-width="0.8"/></g>`;
+}
+// which thrusters fire: main forward and back, turn left and right, strafe left and right
+function thrustG(cx, cy, th = {}) {
+  let s = `<path d="M${cx} ${cy - 11}L${cx + 4.5} ${cy - 4}V${cy + 10}H${cx - 4.5}V${cy - 4}Z" fill="#cfc4a8" stroke="${C.ink}" stroke-width="1.3"/>`;
+  s += triLampG(cx, cy + 16, 0, th.fwd) + triLampG(cx, cy - 17, 180, th.back);
+  s += triLampG(cx - 12, cy + 4, 270, th.sl) + triLampG(cx + 12, cy + 4, 90, th.sr);
+  // turn: curved arrows at the nose
+  const arc = (dir, on) => {
+    const sx = cx + dir * 8, c = on ? LAMP.white[0] : '#3d3a35';
+    return `<path d="M${sx} ${cy - 2}Q${sx + dir * 6} ${cy - 9} ${sx + dir * 1} ${cy - 14}" stroke="${c}" stroke-width="2.4" fill="none" ${on ? 'filter="url(#lampglow)"' : ''}/><path d="M${sx + dir * 1} ${cy - 14}l${-dir * 5} 1l${dir * 3} 4z" fill="${c}"/>`;
+  };
+  s += arc(-1, th.tl) + arc(1, th.tr);
+  return s;
+}
+// a level on a short horizontal edgewise scale
+function levelG(x, y, w, frac, { h = 10, zones = [] } = {}) {
+  let s = `<rect x="${x - 3}" y="${y - 3}" width="${w + 6}" height="${h + 6}" rx="2" fill="${C.bakelite}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#F2ECDC"/>`;
+  for (const z of zones) s += `<rect x="${x + z.from * w}" y="${y + h - 3}" width="${(z.to - z.from) * w}" height="3" fill="${z.color}"/>`;
+  for (let i = 0; i <= 10; i++) s += `<line x1="${x + w * i / 10}" y1="${y}" x2="${x + w * i / 10}" y2="${y + (i % 5 ? 3 : 6)}" stroke="${C.ink}" stroke-width="${i % 5 ? 0.7 : 1.2}"/>`;
+  const px = x + Math.max(0, Math.min(1, frac)) * w;
+  s += `<rect x="${x}" y="${y + h / 2 - 1.5}" width="${px - x}" height="3" fill="${C.ink}" opacity="0.75"/><path d="M${px} ${y + 1}V${y + h - 1}" stroke="${C.orange}" stroke-width="2.4"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#glassG)"/>`;
+  return s;
+}
+function flightG({ frame = 'ORBIT', name = 'EARTH', pinned = false, speed = '7672', dir = '', thrust = {}, assist = true, dv = '1240', prop = 0.72, cue = null } = {}) {
+  const x = 440, y = 688, w = 400, h = 100;
+  let s = podG(x, y, w, h) + plateG(x + 6, y + 10, w - 12, h - 16, { screws: false });
+  s += tag(x + 14, y + 28, 'FRAME') + flapG(x + 58, y + 15, frame.padEnd(5), { cw: 10, ch: 17, size: 14 });
+  s += flapG(x + 114, y + 15, name.padEnd(14).slice(0, 14), { cw: 8.4, ch: 17, size: 13.5 });
+  s += pinLatchG(x + 238, y + 14, pinned);
+  s += cueG(x + 276, y + 14, 110, 19, cue);
+  s += drumG(x + 16, y + 46, speed, { cw: 16, ch: 28, size: 21 }) + tag(x + 16 + drumW(speed, 16) + 7, y + 64, 'M/S');
+  s += flapG(x + 112, y + 52, dir.padEnd(7), { cw: 9, ch: 17, size: 13.5 });
+  s += tag(x + 213, y + 47, 'THRUST', { anchor: 'middle' }) + thrustG(x + 213, y + 74, thrust);
+  s += pushG(x + 250, y + 46, 44, 38, ['ROT', 'ASSIST'], { color: 'white', lit: false, flag: !assist });
+  s += tag(x + 304, y + 50, 'ΔV') + drumG(x + 304, y + 55, dv, { cw: 14, ch: 21, size: 16 }) + tag(x + 304 + drumW(dv, 14) + 6, y + 70, 'M/S');
+  s += levelG(x + 304, y + 80, 80, prop, { h: 8, zones: [{ from: 0, to: 0.2, color: C.mustard }] });
+  return s;
+}
+
+// ---------------- H3: the docking pod ----------------
+function alignG(cx, cy, r, { lat = 0, ang = 0, tol = 1, range = 5 } = {}) {
+  // ship symbol displaced by the lateral offset and turned by the angle error, between the corridor's rails
+  const k = (r - 10) / range;
+  let s = `<circle cx="${cx}" cy="${cy}" r="${r + 5}" fill="${C.bakelite}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#F2ECDC"/>`;
+  s += `<rect x="${cx - tol * k}" y="${cy - r + 6}" width="${2 * tol * k}" height="${2 * r - 12}" fill="${C.avocado}" opacity="0.22"/>`;
+  s += `<path d="M${cx - tol * k} ${cy - r + 6}V${cy + r - 6}M${cx + tol * k} ${cy - r + 6}V${cy + r - 6}" stroke="${C.avocado}" stroke-width="1.4"/>`;
+  for (let m = -range; m <= range; m++) { if (!m) continue; const xx = cx + m * k; s += `<line x1="${xx}" y1="${cy - 2.5}" x2="${xx}" y2="${cy + 2.5}" stroke="${C.ink}" stroke-width="${m % 5 ? 0.8 : 1.4}"/>`; }
+  s += `<line x1="${cx}" y1="${cy - r + 4}" x2="${cx}" y2="${cy - r + 12}" stroke="${C.ink}" stroke-width="1.6"/><path d="M${cx - 4} ${cy - r + 15}l4 -6l4 6" stroke="${C.ink}" stroke-width="1.3" fill="none"/>`;
+  s += tag(cx - r + 8, cy + 16, 'L', { fill: '#6b6254' }) + tag(cx + r - 14, cy + 16, 'R', { fill: '#6b6254' });
+  s += `<g filter="url(#shadow)" transform="translate(${cx + lat * k},${cy}) rotate(${ang})"><path d="M0 -15L5 -7V12H-5V-7Z" fill="${C.orange}" stroke="#1a1614" stroke-width="1"/><path d="M-11 4H11" stroke="#1a1614" stroke-width="2"/></g>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#glassG)"/>`;
+  return s;
+}
+function closingG(cx, cy, r, { v = 6.2, safe = 4.8, max = 12 } = {}) {
+  const zones = [{ from: 0, to: safe, color: C.avocado }, { from: safe, to: safe * 2, color: C.mustard }, { from: safe * 2, to: max, color: C.red }];
+  let s = gaugeG(cx, cy, r, { min: 0, max, value: v, zones, ends: true });
+  const a = (150 + safe / max * 240) * Math.PI / 180;
+  s += `<g filter="url(#shadow)" transform="translate(${cx + (r + 1) * Math.cos(a)},${cy + (r + 1) * Math.sin(a)}) rotate(${150 + safe / max * 240 + 90})"><path d="M0 0L-5 -8H5Z" fill="${C.orange}" stroke="#1a1614" stroke-width="0.7"/></g>`;
+  return s;
+}
+function dockG({ ours = '1 S', theirs = 'HIGHPORT #6', armed = true, clear = 'GRANTED', lat = 2.2, ang = 4, v = 6.2, safe = 4.8, dist = '820', contact = '48', capture = 0, order = null, thrust = {} } = {}) {
+  const x = 440, y = 598, w = 400, h = 190;
+  let s = podG(x, y, w, h) + plateG(x + 6, y + 10, w - 12, h - 16, { screws: false });
+  s += tag(x + 14, y + 28, 'PORT') + flapG(x + 46, y + 15, ours.padEnd(3), { cw: 9.4, ch: 17, size: 14 });
+  s += tag(x + 79, y + 28, '→') + flapG(x + 92, y + 15, theirs.padEnd(11), { cw: 8.4, ch: 17, size: 13.5 });
+  s += pushG(x + 191, y + 15, 48, 17, ['ARMED'], { color: 'white', lit: armed });
+  s += tag(x + 249, y + 28, 'CLEARANCE') + flapG(x + 316, y + 15, clear.padEnd(7), { cw: 9.4, ch: 17, size: 13.5 });
+  s += alignG(x + 70, y + 92, 48, { lat, ang });
+  s += tag(x + 70, y + 155, 'ALIGN', { anchor: 'middle' });
+  s += closingG(x + 190, y + 92, 48, { v, safe });
+  s += tag(x + 190, y + 155, 'CLOSING M/S', { anchor: 'middle' });
+  // right column: distance, time to contact, capture, helm order
+  const rx = x + 262;
+  s += tag(rx, y + 56, 'TO PORT') + drumG(rx, y + 62, dist, { cw: 14, ch: 21, size: 16 }) + tag(rx + drumW(dist, 14) + 6, y + 77, 'M');
+  s += tag(rx + 70, y + 56, 'CONTACT') + tag(rx + 70, y + 77, 'T-') + drumG(rx + 84, y + 62, contact, { cw: 14, ch: 21, size: 16, dimLead: false }) + tag(rx + 84 + drumW(contact, 14) + 5, y + 77, 'S');
+  s += tag(rx, y + 96, 'CAPTURE');
+  ['HOLD', 'DRAW IN', 'DOCKED'].forEach((c, i) => { s += lampG(rx + 62, y + 92 + i * 14, 4, 'white', capture > i) + tag(rx + 72, y + 96 + i * 14, c, { size: 12 }); });
+  s += pushG(rx, y + 136, 120, 16, [order ? 'HELM: ' + order : 'HELM DOCKING'], { color: 'white', lit: !!order });
+  // foot strip: H1's speed and thrust fields
+  s += `<rect x="${x + 10}" y="${y + 160}" width="${w - 20}" height="22" rx="2" fill="${C.chassisDeep}"/>`;
+  s += flapG(x + 16, y + 163, 'PORT ', { cw: 9.4, ch: 16, size: 13.5 }) + drumG(x + 70, y + 163, '6.2', { cw: 12, ch: 16, size: 15 }) + lg(x + 104, y + 175.5, 'M/S') + flapG(x + 132, y + 163, 'CLOSING', { cw: 9, ch: 16, size: 13.5 });
+  s += lg(x + 214, y + 175.5, 'THR');
+  ['fwd', 'back', 'tl', 'tr', 'sl', 'sr'].forEach((k, i) => { s += triLampG(x + 244 + i * 15, y + 171, [0, 180, 300, 60, 270, 90][i], thrust[k]); });
+  s += lg(x + 336, y + 175.5, 'ASSIST') + lampG(x + 380, y + 171, 4, 'white', false);
+  return s;
+}
+
+// ---------------- H4: ship condition, compact lamp bar and expanded face ----------------
+function lightsRowG(x, y, lights, { w = 68, gap = 6, h = 24 } = {}) {
+  const names = ['HULL', 'SHIELDS', 'POWER', 'LIFE SUP'];
+  return names.map((n, i) => {
+    const sev = lights[n];
+    return pushG(x + i * (w + gap), y, w, h, [(sev === 'warning' ? '◆ ' : sev === 'caution' ? '▲ ' : '') + n], { color: sev === 'warning' ? 'red' : 'amber', lit: !!sev });
+  }).join('');
+}
+function condCompactG(lights = {}) {
+  return podG(12, 748, 300, 40) + lightsRowG(20, 757, lights, { w: 66 });
+}
+function planTubeG(x, y, w, h, marks = {}) {
+  const t = tubeG(x, y, w, h, { r: 5, bezel: 5 });
+  let s = t.under + `<g filter="url(#glow)" fill="none" stroke="${PH.green}" stroke-width="1.3">`;
+  const cx = x + w / 2, cy = y + h / 2;
+  // hull outline, nose to the right
+  s += `<path d="M${cx - 112} ${cy - 30}H${cx + 70}Q${cx + 118} ${cy - 30} ${cx + 126} ${cy}Q${cx + 118} ${cy + 30} ${cx + 70} ${cy + 30}H${cx - 112}Q${cx - 124} ${cy + 30} ${cx - 124} ${cy + 18}V${cy - 18}Q${cx - 124} ${cy - 30} ${cx - 112} ${cy - 30}Z"/>`;
+  s += `<path d="M${cx - 80} ${cy - 30}V${cy + 30}M${cx - 30} ${cy - 30}V${cy + 30}M${cx + 20} ${cy - 30}V${cy + 30}M${cx + 70} ${cy - 30}V${cy + 30}M${cx - 80} ${cy}H${cx + 70}" stroke="${PH.gdim}"/></g>`;
+  const rooms = [['ENG', cx - 102], ['CARGO', cx - 55], ['REACT', cx - 5], ['GALLEY', cx + 45], ['BRIDGE', cx + 96]];
+  rooms.forEach(([n, rx]) => { s += tt(rx, cy - 12, n, { c: 'gdim', size: 12, anchor: 'middle', glow: false }); });
+  if (marks.breach) { const [bx, by] = marks.breach; s += `<g filter="url(#glow)"><path d="M${bx} ${by - 7}L${bx + 7} ${by}L${bx} ${by + 7}L${bx - 7} ${by}Z" fill="${PH.red}"/><circle cx="${bx}" cy="${by}" r="12" stroke="${PH.red}" stroke-width="1.2" fill="none"/></g>`; }
+  (marks.crew || []).forEach(([px, py, work]) => { s += `<g filter="url(#glow)"><circle cx="${px}" cy="${py}" r="3" fill="${PH.amber}"/>${work ? `<path d="M${px + 5} ${py - 5}l5 -5" stroke="${PH.amber}" stroke-width="1.4"/>` : ''}</g>`; });
+  return s + t.over;
+}
+function condExpandedG({ lights = {}, bars = [], marks = {} } = {}) {
+  const x = 12, y = 558, w = 308, h = 230;
+  let s = podG(x, y, w, h);
+  s += planTubeG(x + 11, y + 15, w - 22, 100, marks);
+  s += plateG(x + 6, y + 124, w - 12, 62, { screws: false });
+  bars.forEach((b, i) => {
+    const yy = y + 138 + i * 14;
+    s += tag(x + 14, yy + 4, b.n, { size: 12 }) + levelG(x + 82, yy - 5, 120, b.f, { h: 9 }) + tag(x + 212, yy + 4, b.v, { size: 13, cls: 'drum' });
+  });
+  s += lightsRowG(x + 10, y + 196, lights, { w: 68, gap: 7 });
+  return s;
+}
+
+// ---------------- H5: contact scope ----------------
+function scopeKeyG(count) {
+  const x = 1220, y = 740;
+  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="48" height="48" rx="4" fill="${C.bakelite}"/></g><rect x="${x + 3}" y="${y + 2}" width="42" height="40" rx="3" fill="#2d2824"/>`
+    + lg(x + 24, y + 15, 'SCOPE', { anchor: 'middle', size: 12 }) + drumG(x + 17, y + 20, String(count), { cw: 14, ch: 18, size: 15, dimLead: false });
+}
+function scopeG({ range = '10 KM', contacts = [], heading = 0, navBearing = null } = {}) {
+  const x = 1068, y = 588, w = 200, h = 200;
+  let s = podG(x, y, w, h);
+  const cx = x + w / 2, cy = y + 88, r = 72;
+  const t = tubeG(cx - r, cy - r, 2 * r, 2 * r, { round: true, bezel: 6 });
+  s += t.under + `<g filter="url(#glow)">`;
+  [0.5, 1].forEach(k => s += `<circle cx="${cx}" cy="${cy}" r="${r * k - (k === 1 ? 2 : 0)}" fill="none" stroke="${PH.gdim}" stroke-width="0.9"/>`);
+  for (let i = 0; i < 12; i++) { const a = i * 30 * Math.PI / 180; s += `<line x1="${cx + (r - 2) * Math.sin(a)}" y1="${cy - (r - 2) * Math.cos(a)}" x2="${cx + (r - (i % 3 ? 6 : 10)) * Math.sin(a)}" y2="${cy - (r - (i % 3 ? 6 : 10)) * Math.cos(a)}" stroke="${PH.gdim}" stroke-width="1"/>`; }
+  const ha = heading * Math.PI / 180;
+  s += `<path d="M${cx} ${cy}L${cx + 18 * Math.sin(ha)} ${cy - 18 * Math.cos(ha)}" stroke="${PH.green}" stroke-width="1.2"/>` + sym('own', cx, cy, 4, PH.green, { w: 1.3 });
+  for (const c of contacts) {
+    const px = cx + c.d * (r - 2) * Math.sin(c.b * Math.PI / 180), py = cy - c.d * (r - 2) * Math.cos(c.b * Math.PI / 180);
+    if (c.k === 'msl') s += `<g transform="translate(${px},${py}) rotate(${c.dir || 0})"><path d="M-5 0H5M1 -4L6 0L1 4" stroke="${PH.red}" stroke-width="1.8" fill="none"/></g>`;
+    else s += sym(c.k, px, py, c.s || 4, c.stale ? PH.gdim : PH.green, { fill: c.fill, w: 1.3 });
+    if (c.lock) s += sym('bracket', px, py, 9, PH.green, { w: 1.2 });
+    if (c.nav) s += `<path d="M${px - 9} ${py - 8}h-2v16h2M${px + 9} ${py - 8}h2v16h-2" stroke="${PH.green}" stroke-width="1.2" fill="none"/>`;
+  }
+  if (navBearing !== null) { const a = navBearing * Math.PI / 180, px = cx + (r - 4) * Math.sin(a), py = cy - (r - 4) * Math.cos(a); s += `<g transform="translate(${px},${py}) rotate(${navBearing})"><path d="M-5 4L0 -4L5 4" stroke="${PH.green}" stroke-width="1.6" fill="none"/></g>`; }
+  s += `</g>` + t.over;
+  // range: minus, the flap, plus (24 units, clickable)
+  const ky = y + h - 30;
+  s += keyBtnG(x + 12, ky, 26, 24, '−') + flapG(cx - 27, ky + 4, range.padEnd(6), { cw: 9, ch: 16, size: 13.5 }) + keyBtnG(x + w - 38, ky, 26, 24, '+');
+  return s;
+}
+function keyBtnG(x, y, w, h, t) {
+  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${C.bakelite}"/></g><rect x="${x + 2}" y="${y + 1.5}" width="${w - 4}" height="${h - 6}" rx="2" fill="#3a3430"/>
+   <text x="${x + w / 2}" y="${y + h / 2 + 3.5}" text-anchor="middle" class="drum" font-size="17" fill="${C.inkLight}">${t}</text>`;
+}
+
+// ---------------- H6: the lock card; H7: the armament strip (right column, on slide rails) ----------------
+function hitMeterG(x, y, w, sel) {
+  const names = ['POOR', 'FAIR', 'GOOD'], cw = w / 3;
+  let s = `<rect x="${x - 3}" y="${y - 3}" width="${w + 6}" height="22" rx="2" fill="${C.bakelite}"/>`;
+  names.forEach((n, i) => {
+    s += `<rect x="${x + i * cw + 0.5}" y="${y}" width="${cw - 1}" height="16" fill="${i === sel ? '#F2ECDC' : '#8f877a'}"/>`;
+    s += `<text x="${x + i * cw + cw / 2}" y="${y + 12.2}" text-anchor="middle" class="legend" font-size="12" fill="${i === sel ? C.ink : '#3f3a33'}">${n}</text>`;
+  });
+  const px = x + sel * cw + cw / 2;
+  s += `<path d="M${px - 6} ${y + 22}L${px} ${y + 15}L${px + 6} ${y + 22}Z" fill="${C.orange}" stroke="#1a1614" stroke-width="0.7"/>`;
+  return s;
+}
+function lockCardG({ y = 176, name = 'RAIDER', alleg = 'HOSTILE', state = 'FIRING ON YOU', range = '7.7', unit = 'KM', closing = '12', dir = 'CLOSING', shot = '1.3', hit = 1 } = {}) {
+  const x = 960, w = 308, h = 110;
+  let s = sideRailG('R', y, h) + plateG(x, y, w, h, { screws: false });
+  s += `<g transform="translate(${x + 20},${y + 19})">${sym('bracket', 0, 0, 7, C.ink, { w: 1.6 })}</g>` + tag(x + 34, y + 23.5, 'LOCK');
+  s += flapG(x + 74, y + 10, name.padEnd(14), { cw: 10, ch: 19, size: 15 });
+  s += pushG(x + 14, y + 38, 84, 18, [alleg], { color: 'red', lit: alleg === 'HOSTILE' });
+  s += `<g transform="translate(${x + 25},${y + 47})">${sym('hostile', 0, 0, 4.2, '#2a0d06', { w: 1.4 })}</g>`;
+  s += flapG(x + 110, y + 39, state.padEnd(13), { cw: 8.6, ch: 17, size: 13.5 });
+  if (state === 'FIRING ON YOU') s += lampG(x + 233, y + 47.5, 5, 'red', true);
+  s += tag(x + 14, y + 80, 'RANGE') + drumG(x + 58, y + 65, range, { cw: 13, ch: 21, size: 16 }) + tag(x + 58 + drumW(range, 13) + 6, y + 80, unit);
+  s += drumG(x + 150, y + 65, closing, { cw: 13, ch: 21, size: 16 }) + tag(x + 150 + drumW(closing, 13) + 6, y + 80, 'M/S') + flapG(x + 216, y + 67, dir.padEnd(7), { cw: 9, ch: 17, size: 13.5 });
+  s += tag(x + 14, y + 101, 'SHOT') + drumG(x + 58, y + 88, shot, { cw: 13, ch: 18, size: 15 }) + tag(x + 58 + drumW(shot, 13) + 6, y + 101, 'S');
+  s += tag(x + 150, y + 101, 'HIT') + hitMeterG(x + 178, y + 88, 116, hit);
+  return s;
+}
+function armG({ y = 292, guns = 'READY', firer = 'YOU FIRE', msl = '3', reload = '4', decoy = true, shield = 'RAISED', trim = 'BOW' } = {}) {
+  const x = 960, w = 308, h = 70;
+  let s = sideRailG('R', y, h) + plateG(x, y, w, h, { screws: false });
+  // row 1: guns and who fires them; decoys (ready, or seconds to ready: the game's decoys never run out)
+  s += tag(x + 14, y + 24, 'GUNS') + lampG(x + 56, y + 19.5, 4.5, 'green', guns === 'READY') + tag(x + 66, y + 24, guns) + flapG(x + 112, y + 11, firer.padEnd(8), { cw: 9, ch: 17, size: 13.5 });
+  s += tag(x + 204, y + 24, 'DECOY') + lampG(x + 250, y + 19.5, 4.5, 'green', decoy === true) + tag(x + 260, y + 24, decoy === true ? 'READY' : decoy + ' S');
+  // row 2: missiles left and reload; shields and trim
+  s += tag(x + 14, y + 57, 'MSL') + drumG(x + 46, y + 43, msl, { cw: 13, ch: 19, size: 15, dimLead: false }) + tag(x + 68, y + 57, 'RELOAD') + drumG(x + 116, y + 43, reload, { cw: 13, ch: 19, size: 15, dimLead: false }) + tag(x + 134, y + 57, 'S');
+  s += tag(x + 158, y + 57, 'SHIELDS') + flapG(x + 210, y + 44, shield.padEnd(6), { cw: 9, ch: 17, size: 13.5 }) + tag(x + 270, y + 57, trim);
+  return s;
+}
+
+// ---------------- C1: the orders panel (swings up from the flight pod's lip) ----------------
+function latchKeyG(x, y, w, h, num, { down = false, locked = false } = {}) {
+  let s = `<rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="2.5" fill="${C.alu}"/>`;
+  s += `<g filter="url(#shadow)"><rect x="${x}" y="${y + (down ? 2 : 0)}" width="${w}" height="${h - 2}" rx="2" fill="${down ? LAMP.white[0] : '#e9e2cf'}"/></g>`;
+  s += `<text x="${x + w / 2}" y="${y + h / 2 + 5.5 + (down ? 2 : 0)}" text-anchor="middle" class="drum" font-size="16" fill="${C.ink}">${num}</text>`;
+  if (locked) s += `<rect x="${x}" y="${y + h / 2 - 4}" width="${w}" height="8" fill="url(#barber)" opacity="0.95"/>`;
+  return s;
+}
+function rotaryG(cx, cy, r, positions, sel, { arc = [-120, 120], size = 12 } = {}) {
+  let s = '';
+  const n = positions.length;
+  positions.forEach((p, i) => {
+    const a = (arc[0] + (arc[1] - arc[0]) * i / (n - 1) - 90) * Math.PI / 180;
+    s += `<line x1="${cx + (r + 3) * Math.cos(a)}" y1="${cy + (r + 3) * Math.sin(a)}" x2="${cx + (r + 8) * Math.cos(a)}" y2="${cy + (r + 8) * Math.sin(a)}" stroke="${C.ink}" stroke-width="1.5"/>`;
+    const tx = cx + (r + 14) * Math.cos(a), ty = cy + (r + 14) * Math.sin(a);
+    s += `<text x="${tx}" y="${ty + 4}" text-anchor="${Math.cos(a) > 0.3 ? 'start' : Math.cos(a) < -0.3 ? 'end' : 'middle'}" class="legend" font-size="${size}" fill="${i === sel ? C.ink : '#6b6254'}">${esc(p)}</text>`;
+  });
+  const a = arc[0] + (arc[1] - arc[0]) * sel / (n - 1);
+  s += `<g filter="url(#shadow)"><circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#knobG)"/><g transform="rotate(${a} ${cx} ${cy})"><rect x="${cx - r * 0.2}" y="${cy - r}" width="${r * 0.4}" height="${r * 2}" rx="${r * 0.18}" fill="#14110f"/><line x1="${cx}" y1="${cy - r * 0.92}" x2="${cx}" y2="${cy - r * 0.4}" stroke="${C.inkLight}" stroke-width="2.2"/></g></g>`;
+  return s;
+}
+function pianoG(x, y, labels, sel, { kw = 44, h = 22, gap = 3 } = {}) {
+  // interlocked keys, one down
+  let s = `<rect x="${x - 3}" y="${y - 3}" width="${labels.length * (kw + gap) - gap + 6}" height="${h + 6}" rx="2.5" fill="${C.bakelite}"/>`;
+  labels.forEach((l, i) => {
+    const kx = x + i * (kw + gap), dn = i === sel;
+    s += `<g filter="url(#shadow)"><rect x="${kx}" y="${y + (dn ? 2 : 0)}" width="${kw}" height="${h - 2}" rx="2" fill="${dn ? '#cfc4a8' : '#ece4ce'}"/></g>`;
+    if (dn) s += `<rect x="${kx}" y="${y + h - 4}" width="${kw}" height="3" fill="${C.orange}"/>`;
+    s += `<text x="${kx + kw / 2}" y="${y + h / 2 + 4.5 + (dn ? 1.5 : 0)}" text-anchor="middle" class="legend" font-size="12" fill="${C.ink}">${esc(l)}</text>`;
+  });
+  return s;
+}
+function ordersG() {
+  const x = 330, y = 434, w = 620, h = 248;
+  let s = `<rect x="${x + 150}" y="${y + h - 2}" width="20" height="10" rx="2" fill="${C.alu}"/><rect x="${x + w - 170}" y="${y + h - 2}" width="20" height="10" rx="2" fill="${C.alu}"/>`;
+  s += `<g filter="url(#deckshadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="url(#chassisG)"/></g><rect x="${x}" y="${y}" width="${w}" height="5" rx="2" fill="url(#lipG)"/><rect x="${x}" y="${y + 5}" width="${w}" height="2.5" fill="${C.orange}"/>`;
+  s += lg(x + 12, y + 24, 'ORDERS', { size: 13 }) + keyG(x + 70, y + 12, 'O', { anchor: 'start' });
+  s += lg(x + w - 12, y + 24, 'AN ORDER, O OR ESC CLOSES', { anchor: 'end' });
+  // HELM: interlocked latching keys, one down at a time; 0 releases them
+  const hx = x + 8, hy = y + 32, hw = 304;
+  s += plateG(hx, hy, hw, 182, { screws: false, title: 'HELM' });
+  const orders = [['1', 'FLY THE PLANNED BURNS'], ['2', 'MATCH VELOCITY WITH NAV', 1], ['3', 'HOLD POSITION ON NAV', 1], ['4', 'APPROACH NAV', 1], ['5', 'DOCK AT NAV', 1], ['6', 'AUTOPILOT TO NAV'], ['0', 'CANCEL ORDER']];
+  orders.forEach(([k, t, lock], i) => {
+    const yy = hy + 24 + i * 22;
+    s += latchKeyG(hx + 10, yy, 32, 20, k, { locked: !!lock });
+    s += tag(hx + 52, yy + 14.5, t, { size: 13, fill: lock ? '#857a68' : C.ink });
+  });
+  // the thumbwheel that sets the approach distance
+  s += drumG(hx + 150, hy + 24 + 3 * 22 + 1.5, '500', { cw: 12, ch: 17, size: 15, dimLead: false }) + tag(hx + 192, hy + 24 + 3 * 22 + 14.5, 'M');
+  // the four orders that need the Nav in the bubble are bracketed; why is on the message line
+  const by0 = hy + 24 + 22, by1 = hy + 24 + 4 * 22 + 20;
+  s += `<path d="M${hx + hw - 22} ${by0}h6V${by1}h-6" stroke="${C.ink}" stroke-width="1.4" fill="none"/>`;
+  // SHIELDS: a toggle for raised or lowered, five interlocked keys for the trim
+  const rx = hx + hw + 8, rw = x + w - 8 - rx;
+  s += plateG(rx, hy, rw, 72, { screws: false, title: 'SHIELDS' }) + keyG(rx + 74, hy + 4, '9', { anchor: 'start' });
+  s += toggleG(rx + 26, hy + 48, { up: true }) + tag(rx + 42, hy + 44, 'RAISED') + tag(rx + 42, hy + 64, 'LOWERED', { fill: '#6b6254' });
+  s += tag(rx + 106, hy + 30, 'TRIM') + keyG(rx + 140, hy + 18, '8', { anchor: 'start' });
+  s += pianoG(rx + 106, hy + 38, ['EVEN', 'BOW', 'PORT', 'STERN', 'STBD'], 0, { kw: 34.6, h: 24, gap: 2 });
+  // CREW
+  s += plateG(rx, hy + 78, rw, 50, { screws: false, title: 'CREW' });
+  s += toggleG(rx + 76, hy + 104, { up: true }) + tag(rx + 92, hy + 100, 'SUITS AT') + tag(rx + 92, hy + 114, 'BATTLE STATIONS');
+  s += toggleG(rx + 196, hy + 104, { up: false }) + tag(rx + 212, hy + 96, 'EVA: HOLD IN', { fill: '#6b6254' }) + tag(rx + 212, hy + 121, 'LET OUT');
+  // SHIP: guarded switches; lifting the guard is the first press, throwing the switch the second
+  s += plateG(rx, hy + 134, rw, 48, { screws: false, title: 'SHIP' });
+  s += toggleG(rx + 76, hy + 158, { up: false, guard: true }) + tag(rx + 94, hy + 154, 'ABANDON') + keyG(rx + 94, hy + 159, 'P', { anchor: 'start' }) + tag(rx + 112, hy + 171, 'TWICE');
+  s += toggleG(rx + 206, hy + 158, { up: false, guard: true }) + `<rect x="${rx + 195}" y="${hy + 153}" width="22" height="10" fill="url(#barber)"/>` + tag(rx + 222, hy + 154, 'CALL TOW', { fill: '#857a68' }) + keyG(rx + 222, hy + 159, 'B', { anchor: 'start' }) + tag(rx + 240, hy + 171, 'TWICE', { fill: '#857a68' });
+  // the message line: why the locked orders can't be given
+  const t = tubeG(x + 12, y + h - 26, w - 24, 18, { r: 3, bezel: 3 });
+  s += t.under + tt(x + 22, y + h - 12.5, '2–5', { rev: true, w: 34, size: 12.5 }) + tt(x + 62, y + h - 12.5, 'NAV NOT IN THE BUBBLE', { size: 13 }) + tt(x + 330, y + h - 12.5, 'TOW', { rev: true, w: 34, size: 12.5 }) + tt(x + 370, y + h - 12.5, 'THE SHIP CAN FLY HOME', { size: 13 }) + t.over;
+  return s;
+}
+
+// ---------------- D1: the captain's forearm suit unit (deck) ----------------
+function suitG({ cond = 'LIGHT WOUND', suit = true, air = '3:20', here = 1, carry = '', cue = null } = {}) {
+  const x = 12, y = 698, w = 308, h = 90;
+  let s = `<rect x="${x + 40}" y="${y - 8}" width="38" height="${h + 16}" rx="6" fill="${C.rubber}"/><rect x="${x + 226}" y="${y - 8}" width="38" height="${h + 16}" rx="6" fill="${C.rubber}"/>`;
+  s += plateG(x, y, w, h, { screws: true });
+  s += tag(x + 14, y + 22, 'CONDITION') + flapG(x + 82, y + 9, cond.padEnd(11), { cw: 9, ch: 17, size: 13.5 });
+  s += pushG(x + 190, y + 9, 50, 17, ['SUIT ON'], { color: 'white', lit: suit });
+  s += cueG(x + 248, y + 9, 50, 17, cue);
+  s += tag(x + 14, y + 50, 'SUIT AIR') + drumG(x + 14, y + 56, air, { cw: 16, ch: 26, size: 20, dimLead: false });
+  // the air where the captain stands: three zones, no number
+  s += tag(x + 96, y + 50, 'AIR HERE');
+  const zx = x + 96, zw = 150;
+  ['VACUUM', 'THIN', 'NORMAL'].forEach((n, i) => {
+    s += `<rect x="${zx + i * zw / 3 + 0.5}" y="${y + 58}" width="${zw / 3 - 1}" height="16" fill="${i === here ? '#F2ECDC' : '#8f877a'}"/><text x="${zx + i * zw / 3 + zw / 6}" y="${y + 70}" text-anchor="middle" class="legend" font-size="12" fill="${i === here ? C.ink : '#3f3a33'}">${n}</text>`;
+  });
+  const px = zx + here * zw / 3 + zw / 6;
+  s += `<path d="M${px - 6} ${y + 81}L${px} ${y + 74}L${px + 6} ${y + 81}Z" fill="${C.orange}" stroke="#1a1614" stroke-width="0.7"/>`;
+  s += tag(x + 258, y + 50, 'CARRY') + flapG(x + 258, y + 58, (carry || '').padEnd(4), { cw: 9, ch: 16, size: 13 });
+  return s;
+}
+// H4 on deck: no plan (the deck is the plan), shown only while a light is lit
+function condDeckG({ lights = {}, bars = [], worst = '' } = {}) {
+  const x = 12, y = 566, w = 308, h = 120;
+  let s = sideRailG('L', y, h) + plateG(x, y, w, h, { screws: false });
+  s += lightsRowG(x + 10, y + 10, lights, { w: 68, gap: 7, h: 22 });
+  bars.forEach((b, i) => {
+    const yy = y + 52 + i * 17;
+    s += tag(x + 14, yy + 4, b.n) + (b.flag ? `<rect x="${x + 82}" y="${yy - 6}" width="120" height="11" fill="url(#barber)"/>` : levelG(x + 82, yy - 5, 120, b.f, { h: 9 })) + tag(x + 212, yy + 4, b.v, { size: 13, cls: 'drum' });
+  });
+  if (worst) s += tag(x + 14, y + 112, 'WORST ROOM') + tag(x + 96, y + 112, worst, { size: 13, cls: 'drum' });
+  return s;
+}
+
+// ---------------- the world ----------------
+function shipG(x, y, rot, k = 0.62) { return hullG(x, y, rot, k); }
+function frameTagG(x, y, t) { return wtext(x, y, t, { c: 'dim', size: 12 }); }
+function edgeMarkG(x, y, ang, lines, { col = 'amber', mark = null } = {}) {
+  let s = edgeG(x, y, ang, lines, { col });
+  if (mark) {
+    const right = !(ang > 90 || ang < -90), tw = Math.max(...lines.map(l => l.length)) * 7.8;
+    const mx = right ? x - 14 - tw - 16 : x + 14 + tw + 16;
+    s += mark === 'nav' ? navBracketG(mx, y, 8, PH[col]) : tgtBracketG(mx, y, 8, PH[col]);
+  }
+  return s;
+}
+function corridorW4(x, y0, y1, state) {
+  // safe, fast and danger differ by line as well as colour: solid, dashed, dotted
+  const col = state === 'safe' ? PH.green : state === 'fast' ? PH.amber : PH.red;
+  const dash = state === 'safe' ? '' : state === 'fast' ? 'stroke-dasharray="10 6"' : 'stroke-dasharray="3 4"';
+  let s = `<g filter="url(#glow)" stroke="${col}" stroke-width="1.5" fill="none" opacity="0.9"><path d="M${x - 14} ${y0}V${y1}M${x + 14} ${y0}V${y1}" ${dash}/>`;
+  for (let yy = y1 - 26; yy > y0 + 12; yy -= 38) s += `<path d="M${x - 6} ${yy + 4}L${x} ${yy - 3}L${x + 6} ${yy + 4}"/>`;
+  return s + `</g>`;
+}
+
+// =====================================================================
+// 01 Helm, cruise: the dark canopy
+// =====================================================================
+const NAV_FULL = [
+  { lg: 'ORBIT', t: 'EARTH   ALT 400 KM' }, { t: 'AP 403 KM', r: 'T-24:10', c: 'dim' }, { t: 'PE 397 KM', r: 'T-1 H 10 M', c: 'dim' },
+  { lg: 'NAV', t: 'SHACKLETON ICE', r: '1,240 KM' }, { t: 'OPENING', r: '220 M/S' }, { t: 'CLOSEST 3.2 KM', r: 'T-2 H 05 M', c: 'dim' },
+  { lg: 'NEXT', t: 'BURN 1 OF 2  420 M/S', r: 'T-12:05' }, { t: 'FLOWN BY HELM', c: 'dim' },
+  { lg: 'PLAN', t: 'ΔV NEED 860', r: 'HAVE 1,240' }];
+function cruiseWorld() {
+  let s = DEFS + spaceG(1280, 800, { seed: 11 });
+  s += shipG(640, 400, 90) + progradeG(712, 400) + retrogradeG(568, 400);
+  s += burnG(682, 352, 45, 'BURN 1  T-12:05');
+  s += edgeMarkG(1262, 306, 0, ['SHACKLETON ICE', '1,240 KM'], { mark: 'nav' });
+  return s;
+}
+function scene01() {
+  let s = cruiseWorld();
+  s += railG({});
+  s += clipG({ head: 'Deliver 120 water → Shackleton Ice', left: '1.4' });
+  s += navG(NAV_FULL, { y: 240 });
+  s += coamingG();
+  s += condCompactG({});
+  s += flightG({});
+  s += scopeKeyG(3);
+  return s;
+}
+
+// =====================================================================
+// 03 Helm, approach: the docking pod
+// =====================================================================
+function scene03() {
+  let s = DEFS + spaceG(1280, 800, { seed: 4 });
+  s += stationG(640, 120, 1.7);
+  s += `<rect x="632" y="196" width="16" height="10" fill="#7a7d79"/>`;
+  s += corridorW4(640, 210, 352, 'fast');
+  s += shipG(641, 400, 4, 0.62) + progradeG(641, 328) + frameTagG(656, 318, 'PORT');
+  s += navBracketG(640, 120, 70) + wtext(720, 64, 'HIGHPORT  820 M');
+  s += railG({ time: '00:41' });
+  s += cwBoardG([{ sev: 'caution', code: 'APPROACH FAST', detail: '+1.4 M/S', hand: null, timer: '0:48' }]);
+  s += intercomG([{ tag: 'STN', text: 'CLEARANCE GRANTED, PORT 6' }]);
+  s += navG([{ lg: 'NAV', t: 'HIGHPORT  820 M', r: 'CLOSING' }], { y: 176 });
+  s += coamingG();
+  s += condCompactG({});
+  s += dockG({ thrust: { back: true } });
+  s += scopeG({ range: '2 KM', heading: 4, contacts: [{ k: 'station', b: 0, d: 0.41, s: 5, nav: true }, { k: 'neutral', b: 118, d: 0.78, s: 4 }] });
+  return s;
+}
+
+// =====================================================================
+// 04 Helm, combat: missiles inbound, cargo holed, crew sealing it
+// =====================================================================
+function scene04() {
+  let s = DEFS + spaceG(1280, 800, { seed: 5 });
+  const ox = 640, oy = 400, hd = 60, na = (hd - 90) * Math.PI / 180, ar = 230, half = 16 * Math.PI / 180;
+  // W5: the guns' arc from the nose, shown at the helm in combat with a lock
+  const p1 = [ox + ar * Math.cos(na - half), oy + ar * Math.sin(na - half)], p2 = [ox + ar * Math.cos(na + half), oy + ar * Math.sin(na + half)];
+  s += `<g filter="url(#glow)" opacity="0.5" stroke="${PH.amber}" fill="none" stroke-width="1"><path d="M${ox} ${oy}L${p1[0]} ${p1[1]}A${ar} ${ar} 0 0 1 ${p2[0]} ${p2[1]}Z" stroke-dasharray="2 5"/></g>`;
+  s += shipG(ox, oy, hd);
+  // the raider: locked, hostile, so its label carries the range
+  const rx = 812, ry = 292;
+  s += wsym('hostile', rx, ry, 10) + tgtBracketG(rx, ry, 24) + wtext(rx - 30, ry - 18, 'RAIDER  7.7 KM', { anchor: 'end' });
+  s += `<path d="M${ox + 22} ${oy - 20}L${rx - 30} ${ry + 24}" stroke="${PH.dim}" stroke-width="1" stroke-dasharray="3 5" filter="url(#glow)"/>` + leadG(rx - 30, ry + 24);
+  // W6: two missiles inbound, their predicted paths and the intercept cross
+  const msl = (d, hx, hy) => threatG(d, [hx, hy, Math.atan2(oy - hy, ox - hx) * 180 / Math.PI - 180]);
+  s += msl(`M${rx + 4} ${ry + 18} Q760 330 ${ox + 14} ${oy - 10}`, 744, 334) + msl(`M${rx + 10} ${ry + 22} Q772 372 ${ox + 18} ${oy - 4}`, 718, 368);
+  s += impactG(ox + 16, oy - 8);
+  // W2: velocity markers in the lock's frame, tagged with it
+  s += progradeG(706, 428) + frameTagG(722, 452, 'LOCK') + retrogradeG(574, 372);
+  s += edgeMarkG(1262, 432, 0, ['SHACKLETON ICE', '1,240 KM'], { mark: 'nav' });
+  s += railG({ battle: true, time: '00:41' });
+  s += cwBoardG([{ sev: 'warning', code: 'HULL BREACH', detail: '1 CARGO', hand: 1, fresh: true }]);
+  s += threatUnitG({});
+  s += intercomG([{ tag: 'GUN', text: 'PD: 1 DOWN' }]);
+  s += navG([{ lg: 'NAV', t: 'SHACKLETON ICE', r: '1,240 KM' }, { lg: 'NEXT', t: 'BURN 1 OF 2  420 M/S', r: 'T-12:05' }], { y: 176 });
+  s += lockCardG({});
+  s += armG({});
+  s += coamingG();
+  s += condExpandedG({
+    lights: { HULL: 'warning' },
+    bars: [{ n: 'HULL', f: 0.81, v: '81%' }, { n: 'SHIELDS', f: 0.77, v: '230 / 300 KG' }, { n: 'POWER', f: 0.9, v: '3.0 MW' }, { n: 'LIFE SUP', f: 1, v: '100%' }],
+    marks: { breach: [113, 652], crew: [[121, 660, true], [178, 644], [262, 640], [250, 664]] }
+  });
+  s += flightG({ frame: 'LOCK', name: 'RAIDER', speed: '12', dir: 'CLOSING', thrust: { fwd: true, sr: true }, cue: { sev: 'warning', code: 'HULL BREACH' } });
+  s += scopeG({ range: '10 KM', heading: 60, contacts: [{ k: 'hostile', b: 58, d: 0.77, s: 4.5, fill: true, lock: true }, { k: 'msl', b: 62, d: 0.5, dir: 242 }, { k: 'msl', b: 70, d: 0.42, dir: 250 }], navBearing: 96 });
+  return s;
+}
+
+// =====================================================================
+// 07 Deck, emergency: no power, fire off screen, crew down off screen
+// =====================================================================
+function deckInteriorG() {
+  let s = `<rect width="1280" height="800" fill="#08090b"/>`;
+  const T = 24;
+  // the deck: an upper row of rooms, the corridor, a lower row
+  s += `<rect x="0" y="210" width="1280" height="460" fill="#24272a"/>`;
+  s += `<g opacity="0.5">`;
+  for (let x = 0; x <= 1280; x += T) s += `<line x1="${x}" y1="210" x2="${x}" y2="670" stroke="#2f3337" stroke-width="1"/>`;
+  for (let y = 210; y <= 670; y += T) s += `<line x1="0" y1="${y}" x2="1280" y2="${y}" stroke="#2f3337" stroke-width="1"/>`;
+  s += `</g>`;
+  const R = [[-10, 210, 410, 186, 'QUARTERS'], [400, 210, 380, 186, 'REACTOR'], [780, 210, 510, 186, 'FWD PORT'], [-10, 420, 410, 250, 'LIFE SUPPORT'], [400, 420, 380, 250, 'CARGO 1'], [780, 420, 510, 250, 'CARGO 2']];
+  for (const [x, y, w, h, n] of R) s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#111315" stroke-width="7"/><text x="${x + 18}" y="${y + h - 14}" class="stencil" font-size="18" letter-spacing="1.5" fill="#55595d">${n}</text>`;
+  s += `<rect x="0" y="396" width="1280" height="24" fill="#2b2f33"/>`; // corridor
+  // furnishings, so the deck reads as a place
+  const box = (x, y, w, h, r = 0, f = '#33373b') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="${f}" stroke="#151719" stroke-width="2" transform="rotate(${r} ${x + w / 2} ${y + h / 2})"/>`;
+  [40, 130, 220, 310].forEach(x => s += box(x, 226, 72, 30) + `<rect x="${x + 4}" y="230" width="18" height="22" rx="3" fill="#3d4246"/>`);
+  [[90, 520], [230, 520]].forEach(([x, y]) => s += `<circle cx="${x}" cy="${y}" r="40" fill="#2f3337" stroke="#151719" stroke-width="3"/><circle cx="${x}" cy="${y}" r="24" fill="none" stroke="#3d4246" stroke-width="5"/>`);
+  s += `<path d="M130 520H190M90 560V640M230 560V640" stroke="#3a3e42" stroke-width="8"/>`;
+  [[436, 470, 48, 48, 18], [520, 590, 44, 44, -24], [664, 452, 52, 40, 9], [700, 560, 40, 40, 30]].forEach(([x, y, w, h, r]) => s += box(x, y, w, h, r, '#3a3a33'));
+  [[820, 470], [868, 470], [820, 518], [916, 470], [868, 518], [820, 566], [1000, 480], [1048, 480]].forEach(([x, y]) => s += box(x, y, 46, 46, 0, '#3a3a33'));
+  [[840, 230], [880, 230], [920, 230]].forEach(([x, y]) => s += box(x, y, 34, 52, 0, '#30363a'));
+  // doors
+  [[470, 396], [700, 396], [600, 420], [880, 420], [250, 396], [250, 420]].forEach(([x, y]) => s += `<rect x="${x - 14}" y="${y - 4}" width="28" height="8" fill="#2b2f33"/>`);
+  // no power: consoles dark, only battery lamps light the deck in amber pools
+  [[540, 236], [650, 236], [150, 646]].forEach(([x, y]) => s += `<rect x="${x - 18}" y="${y - 9}" width="36" height="18" rx="2" fill="#16181a" stroke="#3a3e41"/><rect x="${x - 13}" y="${y - 5}" width="26" height="10" fill="#1d2120"/>`);
+  [[430, 400], [760, 400], [200, 400], [1000, 400]].forEach(([x, y]) => s += `<radialGradient id="bl${x}" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffb060" stop-opacity="0.32"/><stop offset="1" stop-color="#ffb060" stop-opacity="0"/></radialGradient><circle cx="${x}" cy="${y + 4}" r="70" fill="url(#bl${x})"/><rect x="${x - 6}" y="${y - 3}" width="12" height="5" fill="#ffcf8a" filter="url(#lampglow)"/>`);
+  // the stunned reactor: housing dark, its stun lamp blinking on battery
+  s += `<rect x="540" y="268" width="100" height="92" rx="6" fill="#1a1c1e" stroke="#4b4f52" stroke-width="2"/><circle cx="590" cy="314" r="26" fill="#121415" stroke="#3a3e41" stroke-width="2"/>`;
+  s += `<circle cx="626" cy="282" r="4" fill="${LAMP.amber[0]}" filter="url(#lampglow)"/>`;
+  // cargo 1 at vacuum: frost, the breach in the bottom wall, nobody on it
+  s += `<rect x="404" y="424" width="372" height="242" fill="#1c2b44" opacity="0.6"/>`;
+  s += `<g stroke="#b8d4ff" stroke-width="1" opacity="0.55">${[0, 1, 2, 3, 4, 5, 6].map(i => `<path d="M${560 + i * 9} 666 l${-8 + i * 2.5} ${20 + i * 3}"/>`).join('')}</g><path d="M548 670 l12 -8 l10 9 l12 -7 l9 6" stroke="#050607" stroke-width="5" fill="none"/>`;
+  s += `<g fill="#9cc7ff" opacity="0.5">${[[470, 480], [520, 560], [640, 500], [700, 600], [610, 620]].map(([x, y]) => `<rect x="${x}" y="${y}" width="10" height="7" transform="rotate(20 ${x} ${y})"/>`).join('')}</g>`;
+  // smoke in the corridor
+  s += `<rect x="0" y="390" width="1280" height="36" fill="#9a968e" opacity="0.18"/><ellipse cx="820" cy="406" rx="260" ry="30" fill="#9a968e" opacity="0.14"/>`;
+  // crew: Bea on her way to the reactor
+  s += `<circle cx="472" cy="408" r="9" fill="#d9cfb4" stroke="#2a2420" stroke-width="1.5"/><text x="472" y="412" text-anchor="middle" class="legend" font-size="9" fill="#2a2420">BE</text><path d="M480 400 l14 -10" stroke="#d9cfb4" stroke-width="1.5" stroke-dasharray="2 3"/>`;
+  // the captain, suited
+  s += `<circle cx="604" cy="408" r="10" fill="${C.orange}" stroke="#1a1614" stroke-width="2"/><path d="M604 398 l0 -8" stroke="#1a1614" stroke-width="2"/>`;
+  return s;
+}
+function scene07() {
+  let s = DEFS + deckInteriorG();
+  s += railG({ seat: 'DECK', auth: 'HELM: NOBODY, DRIFTING', authCaution: true, battle: true, time: '01:12' });
+  s += cwBoardG([
+    { sev: 'warning', code: 'NO POWER', detail: 'STUNNED', hand: 1, timer: '0:12' },
+    { sev: 'warning', code: 'CREW CRITICAL', detail: 'ADA', hand: 1, timer: '3:40' },
+    { sev: 'warning', code: 'FIRE', detail: 'GALLEY', hand: 2 },
+    { sev: 'warning', code: 'VACUUM', detail: 'CARGO 1', hand: 0 },
+    { sev: 'warning', code: 'EMERGENCY O2', detail: '42 KG', hand: null }], { more: 1 });
+  s += placardG({});
+  s += intercomG([{ tag: 'CREW', text: 'BEA TO THE REACTOR' }]);
+  s += edgeMarkG(1262, 408, 0, ['FIRE  14 TILES'], { col: 'red' });
+  s += edgeG(640, 780, 90, [], { col: 'red' }) + wtext(656, 776, 'ADA DOWN  9 TILES', { c: 'red' });
+  s += condDeckG({ lights: { HULL: 'warning', POWER: 'warning', 'LIFE SUP': 'warning' }, bars: [{ n: 'HULL', f: 0.54, v: '54%' }, { n: 'POWER', flag: true, v: 'NO POWER' }, { n: 'LIFE SUP', f: 0.42, v: 'RESERVE 42 KG' }], worst: 'CARGO 1 VACUUM' });
+  s += suitG({});
+  return s;
+}
+
+// =====================================================================
+// 12 Orders menu at the helm, cruise
+// =====================================================================
+function scene12() {
+  let s = cruiseWorld();
+  s += railG({});
+  s += clipG({ head: 'Deliver 120 water → Shackleton Ice', left: '1.4' });
+  s += navG([{ lg: 'ORBIT', t: 'EARTH   ALT 400 KM' }, { lg: 'NAV', t: 'SHACKLETON ICE', r: '1,240 KM' }, { lg: 'NEXT', t: 'BURN 1 OF 2  420 M/S', r: 'T-12:05' }, { lg: 'PLAN', t: 'ΔV NEED 860', r: 'HAVE 1,240' }], { y: 240 });
+  s += coamingG();
+  s += condCompactG({});
+  s += ordersG();
+  s += flightG({});
+  s += scopeKeyG(3);
+  return s;
+}
+
+document.getElementById('01-helm-cruise').innerHTML = scene01();
+document.getElementById('03-helm-approach').innerHTML = scene03();
+document.getElementById('04-helm-combat').innerHTML = scene04();
+document.getElementById('07-deck-emergency').innerHTML = scene07();
+document.getElementById('12-orders-menu').innerHTML = scene12();
+</script>
+</body>
+</html>

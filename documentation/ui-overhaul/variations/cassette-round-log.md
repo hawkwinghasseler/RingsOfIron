@@ -5,7 +5,7 @@ Each functional design (Ship Stations, Context-driven, Task-driven) is combined 
 | Variation | Spec version used | Round | Screens | Open criticism |
 |---|---|---|---|---|
 | [Ship Stations × Cassette](stations-cassette/README.md) | Stations round 2 | 1 | C helm, E weapons, B deck, G docked | 5 style, 5 functional |
-| Context-driven × Cassette | Context v2 | – | – | – |
+| [Context-driven × Cassette](context-cassette/README.md) | Context v2 | 1 | 01 cruise, 03 approach, 04 combat, 07 deck emergency, 12 orders menu | 6 style, 13 functional |
 | Task-driven × Cassette | Task round 1 | – | – | – |
 
 ## Round 0: the style guide itself
@@ -30,3 +30,30 @@ Stations spec round 2. Four screens: helm in Green, weapons console in Red, the 
 7. The station board has no place for the layered DOCKED and EMERG states.
 8. Does the ticker stay put when the annunciator is empty?
 9. With both MFDs folded the band is still as tall as the cluster (160 + board), so "the shift follows" changes nothing. Is a smaller shift intended?
+
+## Round 1: Context-driven
+
+Context spec version 2. Five screens: helm in cruise, the docking approach, helm in combat, the deck in an emergency, and the orders menu. The spec has no console band, so the hardware is a frame around the view: a header rail (P1), a coaming along the bottom edge, and slide rails on the side edges, with every widget a unit that hangs, slides or stands on that frame by its zone. Critique and changes are in the [variation's README](context-cassette/README.md#round-1-critique).
+
+Two fixes to the shared kit came out of this round. They also apply to the stations variation:
+
+- **Dim phosphor text was too faint.** It was 3.8:1 against the tube. The `p3-amber-dim` token is now `#B27B2C`, 5.4:1.
+- **Tube scanlines struck through small text.** They are now a 2-unit pitch at lower opacity.
+
+Notes sent to the context designer:
+
+1. The spec's examples don't fit its 308 columns at its own 13-unit floor (the wireframes use 10.5): H2's ORBIT line, P2's PROPELLANT LOW, P1's autopilot line. Each text field needs a maximum length.
+2. P2's "by time left" puts recovery timers (stun) above harm timers (bleed-out). Wireframe 07 doesn't follow the stated order either.
+3. Wireframe 07's life support is on EMERGENCY with a caution light, but EMERGENCY O2 is a warning missing from P2.
+4. "+n more" is clickable but 22 units tall.
+5. An approach shows the time to contact twice, the closing speed twice and the distance three times.
+6. Shield raised and trim show in both H4 and H7 at the helm in combat.
+7. Decoys don't run out in the game (3 s cooldown).
+8. The game's power model has no demand.
+9. P1 at the helm by hand: empty field, or "Helm order: none" as in wireframe 12?
+10. P3 and P4 both report an intercept.
+11. H2's compact face: NAV and NEXT, or NEXT only?
+12. The deck's master cue needs its own place when D1 is hidden.
+13. Labels (legends, units, key names) have no size; can they be 12?
+
+Plus where a real control surface helps: the orders menu (interlocked keys, guarded switches for the press-twice orders), the emergency card, H5's range keys, H1's frame pin, F3's trim, and D2's guarded switches for reactor and life support.

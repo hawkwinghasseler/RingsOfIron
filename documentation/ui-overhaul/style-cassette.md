@@ -150,7 +150,7 @@ identifies the style at a glance, the way a livery stripe identifies a vehicle.
 | Token | Hex | Use |
 |---|---|---|
 | `p3-amber` | `#FFB23F` | Raster CRT text and the gunsight. The *voice* of the ship. |
-| `p3-amber-dim` | `#9A6420` | Secondary text, gridlines, unselected list rows. |
+| `p3-amber-dim` | `#B27B2C` | Secondary text, gridlines, unselected list rows. At least 5:1 against `crt-black`, so secondary text stays readable. |
 | `p3-amber-ghost` | `#4A300F` | Afterglow trails, burn-in. |
 | `p1-green` | `#7CFF6A` | Vector CRTs: the scope, the orbit map, trajectories. |
 | `p1-green-dim` | `#2F8A35` | Range rings, grids, predicted (not yet real) paths. |

@@ -16,7 +16,7 @@ const path = require('path');
   await page.waitForTimeout(400);
   const ids = await page.$$eval('svg[id]', els => els.map(e => e.id));
   for (const id of ids) {
-    const el = await page.$('#' + id);
+    const el = await page.$(`svg[id="${id}"]`);
     const out = path.join(path.dirname(file), `${id}.${type === 'jpeg' ? 'jpg' : 'png'}`);
     await el.screenshot(type === 'jpeg' ? { path: out, type, quality: 88 } : { path: out });
     console.log(out);

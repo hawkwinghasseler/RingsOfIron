@@ -6,7 +6,7 @@ const C = {
   enamel:'#D9CFB4', enamelShade:'#B8AD92', enamelLight:'#ECE4CE', chassis:'#4A3F36', chassisDeep:'#2B241F',
   bakelite:'#1E1A17', alu:'#A9A69E', rubber:'#3A3734', ink:'#2A2420', inkLight:'#EFE8D6',
   orange:'#D9602B', red:'#B8352B', mustard:'#D9A637', avocado:'#6E7846',
-  amber:'#FFB23F', amberDim:'#9A6420', amberGhost:'#4A300F', green:'#7CFF6A', greenDim:'#2F8A35',
+  amber:'#FFB23F', amberDim:'#B27B2C', amberGhost:'#4A300F', green:'#7CFF6A', greenDim:'#2F8A35',
   crtBlack:'#0E100C', crtOff:'#22251F',
   lampRed:'#FF4A35', lampRedOff:'#5A1E18', lampAmber:'#FFA733', lampAmberOff:'#5A3B16',
   lampGreen:'#8CFF5A', lampGreenOff:'#24401C', lampWhite:'#FFF3D6', lampWhiteOff:'#4A4740',
@@ -64,8 +64,8 @@ const DEFS = `
   <linearGradient id="drumG" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0" stop-color="#050505"/><stop offset="0.25" stop-color="#2a2725"/><stop offset="0.5" stop-color="#34302d"/><stop offset="0.75" stop-color="#2a2725"/><stop offset="1" stop-color="#050505"/>
   </linearGradient>
-  <pattern id="scan" width="4" height="3" patternUnits="userSpaceOnUse">
-    <rect width="4" height="1" y="2" fill="#000" opacity="0.35"/>
+  <pattern id="scan" width="4" height="2" patternUnits="userSpaceOnUse">
+    <rect width="4" height="0.6" y="1.4" fill="#000" opacity="0.3"/>
   </pattern>
   <pattern id="hazard" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <rect width="8" height="16" fill="${'#D9A637'}"/><rect x="8" width="8" height="16" fill="#1E1A17"/>
@@ -279,7 +279,7 @@ function crtGlass(x,y,w,h,{round=false}={}){
   if (round){ const cx=x+w/2, cy=y+h/2, r=w/2;
     return `<clipPath id="cp${Math.round(x)}${Math.round(y)}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>
     <g clip-path="url(#cp${Math.round(x)}${Math.round(y)})"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#scan)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#vignette)"/></g>
-    <ellipse cx="${cx-r*0.35}" cy="${cy-r*0.45}" rx="${r*0.45}" ry="${r*0.22}" transform="rotate(-30 ${cx-r*0.35} ${cy-r*0.45})" fill="#fff" opacity="0.06"/>`; }
+    <ellipse cx="${cx-r*0.35}" cy="${cy-r*0.45}" rx="${r*0.45}" ry="${r*0.22}" transform="rotate(-30 ${cx-r*0.35} ${cy-r*0.45})" fill="#fff" opacity="0.035"/>`; }
   return `<clipPath id="cr${Math.round(x)}${Math.round(y)}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14"/></clipPath>
   <g clip-path="url(#cr${Math.round(x)}${Math.round(y)})"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#scan)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#vignette)"/>
   <path d="M${x} ${y}h${w*0.55}l-${w*0.25} ${h*0.5}h-${w*0.3}z" fill="#fff" opacity="0.035"/></g>`;
@@ -318,7 +318,7 @@ function sym(kind,x,y,s,col,{fill=false,w=1.6}={}){
 // Every piece of text is 12 units or more (tags) and 13 or more (body), the floor the
 // functional specs set for legibility at UI scale 1.
 // =====================================================================
-const PH = { amber: '#FFB23F', dim: '#9A6420', green: '#7CFF6A', gdim: '#2F8A35', red: '#FF5A3C', white: '#F4EAD2' };
+const PH = { amber: '#FFB23F', dim: '#B27B2C', green: '#7CFF6A', gdim: '#2F8A35', red: '#FF5A3C', white: '#F4EAD2' };
 const LAMP = {
   red:   ['#FF4A35', '#4E1B16'], amber: ['#FFA733', '#4E3414'],
   green: ['#8CFF5A', '#203A19'], white: ['#FFF3D6', '#47443D']
@@ -364,7 +364,7 @@ function tubeG(x, y, w, h, { r = 7, bezel = 6, dead = false, round = false } = {
       <circle cx="${cx}" cy="${cy}" r="${rr + 1.5}" fill="#070806"/><circle cx="${cx}" cy="${cy}" r="${rr}" fill="${dead ? C.crtOff : C.crtBlack}"/>
       <clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${rr}"/></clipPath><g clip-path="url(#${id})">`;
     over = `</g><g clip-path="url(#${id})"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#scan)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#vignette)"/></g>
-      <ellipse cx="${cx - rr * 0.35}" cy="${cy - rr * 0.45}" rx="${rr * 0.45}" ry="${rr * 0.2}" transform="rotate(-30 ${cx - rr * 0.35} ${cy - rr * 0.45})" fill="#fff" opacity="0.06"/>`;
+      <ellipse cx="${cx - rr * 0.35}" cy="${cy - rr * 0.45}" rx="${rr * 0.45}" ry="${rr * 0.2}" transform="rotate(-30 ${cx - rr * 0.35} ${cy - rr * 0.45})" fill="#fff" opacity="0.035"/>`;
   } else {
     under = `<rect x="${x - bezel}" y="${y - bezel}" width="${w + 2 * bezel}" height="${h + 2 * bezel}" rx="${r + 2}" fill="${C.bakelite}"/>
       <rect x="${x - bezel}" y="${y - bezel}" width="${w + 2 * bezel}" height="${h + 2 * bezel}" rx="${r + 2}" fill="url(#glassG)"/>
