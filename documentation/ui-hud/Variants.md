@@ -1,0 +1,147 @@
+# HUD variants: the shared framework
+
+The UI overhaul is nine HUDs: three functional specs by three art directions. The player picks one
+in **Settings → Interface → HUD**, or keeps the HUD the game has shipped with so far ("Classic",
+the default). This document is the contract between the framework and the nine builds.
+
+The functional specs live beside this file:
+
+| Spec | Document | Package |
+|---|---|---|
+| Ship stations, diegetic consoles | `documentation/ui-overhaul/functional-stations.md` | `…variants.<style>.stations` |
+| By player context (seat, situation, mode) | `documentation/ui-overhaul/functional-context.md` | `…variants.<style>.context` |
+| By the player's tasks and decisions | `documentation/ui-overhaul/functional-task.md` | `…variants.<style>.task` |
+
+Styles are `nasapunk`, `vfd` and `cassette`, so the nine packages are
+`com.ringsofiron.uihud.variants.<style>.<spec>`, each holding one class listed in
+`HudVariants`. Until a combination is built its class extends `StubVariant`: the classic HUD with a
+small tag saying which combination is picked.
+
+## Writing a variant
+
+```java
+public class VfdTaskHud implements HudVariant {
+    private HudVariantHost host;
+
+    @Override public void attach(HudVariantHost host) {
+        this.host = host;           // build your actors in host.layer()
+    }
+
+    @Override public void update(float delta) {
+        HudData d = host.data();    // this frame's snapshot; lay out from it
+    }
+
+    @Override public void resize(int width, int height, float uiScale) { }  // rebuild fonts here
+
+    @Override public boolean keyDown(int keycode) { return false; }         // soft keys
+
+    @Override public Set<ClassicPart> keeps() { return EnumSet.noneOf(ClassicPart.class); }
+}
+```
+
+Life cycle, all on the render thread:
+
+1. `attach` when the variant is picked, or the game starts with it. Everything you add to the stage
+   goes in `host.layer()`, a `Group` filling the stage above the classic panels and the world
+   markers and below the windows and the map. The host clears it on detach.
+2. `update(delta)` once a frame, after the game has updated and the data layer has been refreshed,
+   before the stage acts and draws.
+3. `resize(width, height, uiScale)` when the window or the UI scale changes. The stage's units are
+   already resized; this is where a variant that generates its own fonts rebuilds them.
+4. `keyDown` for keys the classic HUD did not use, before the game's own bindings see them. Not
+   called while a window or the map has the keys.
+5. `detach` to let go of fonts and textures.
+
+A variant that throws from `attach` leaves the classic HUD up rather than none, and says so in the log.
+
+### What the variant hides
+
+`keeps()` returns the classic pieces that stay up under the variant (`ClassicPart`): the flight
+panel, the gauges, the radar, the ship panel, the orbit panel, the missile banner, the threat
+overlay, the world markers, the game's status column, the key hint line, the docked banner and the
+E prompt. Everything not in the set is hidden for you, each frame. Windows (market, yard, missions,
+crew, boarding, the console window and the map) and the world overlays the game draws under the HUD (burn
+arrows, fire arcs, picture-in-picture) stay until a variant replaces them in its own PR.
+
+## The common data layer
+
+`host.data()` is one `HudData`, refreshed once a frame before `update`. A variant reads it and never
+reaches into the game. Each snapshot is valid for the frame it was read in: hold the objects, not
+their contents.
+
+| Field | What it holds |
+|---|---|
+| `ctx` | `UiContextProvider.UiContext`: presence (helm, weapons, gun, deck, aboard another ship, EVA), condition (green, yellow, red), docked and the station's name, latched, warp rate and rails, next stop and hold reason, combat, missiles inbound, emergency, disabled reason, abandoning, crew outside, hold fire, helmsman, helm order, helm fault, burn being flown, sim seconds |
+| `shipStatus` | propellant, structure, power, oxygen, emergency oxygen, worst cabin pressure |
+| `captainStatus` | health, state, wound, bleed-out, suit and its air, the room's name, pressure, oxygen and smoke, what is carried |
+| `weaponFrame` | one row per mount: name by place ("FWD GUN", "PORT PD 2"), weapon, kind, state (destroyed, refit, shorted, stunned, no power, empty, reloading, charging, ready), controller (player, crew, console, auto, nobody), cooldown and reload, ammunition and magazine, engaging, defending, weapons free, in arc, hit chance on the lock, range, hardpoint and arc, health, tile; plus missiles left, the decoy's countdown, point defense active, hold fire, the target's label |
+| `shieldStatus` | raised, lowered for dock, stock, capacity, cloud, scattered, adrift, stowed, trim, the four sectors' density against the mean, emitters fitted, holding and tripped, the hottest one, power stunned |
+| `powerFrame` | per circuit: reactors, rated and actual output, store and capacity, systems fed; plus every system that needs power and is not working, with its fault, timer (a short's reclose, a stun), health, room and tile |
+| `targetStatus` | the locked target: label, relation, state, range, closing, relative speed, closest approach and its time, bearing, aspect, firing on us, hull, track age |
+| `threatFrame` | missiles in flight: side, who launched it, position, path, **time to impact with the missile's closing burn in it**, closest approach, range, closing speed, burning |
+| `alerts` | `AlertRegistry`: everything wrong now, as rows |
+| `messages` | `MessageFeed`: what the game has told the player lately |
+| `roomAt(x, y)`, `roomNames()` | the player's rooms' names (`RoomNames`) |
+| `key("FIRE")` | the key bound to an action, for a prompt |
+| `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
+| `dockHint` | the docked banner's text, or "" when not docked |
+
+`targeting`, `orbitInfo`, `interactor` and `physics` are the classic providers, set on `UiHud` as
+before and mirrored here.
+
+### Alerts
+
+`AlertRegistry` is the one list of what is wrong: the annunciator, the alert band, the caution panel
+and the ticker all read it. The game raises every condition that holds once a frame; one not raised
+has cleared. An alert keeps `since` and `acknowledged` while it holds, so it does not flash again
+each frame; a worse level clears the acknowledgement.
+
+Each row has an id naming the condition and the instance (`fire:BRIDGE`, `missile`,
+`sys:REACTOR:3,5`), a level (advisory, caution, warning), a category (flight, nav, tactical,
+engineering, life support, crew, captain, comms, ship), a short code in capitals, one line of text,
+a room and tile where it has one, a countdown and whether that countdown is to harm or to recovery,
+a count, and the crew working on it where the game can say. `all()` is worst first then oldest,
+`of(category, out)` filters, `master()` is the worst level not yet acknowledged (the master lamp),
+`acknowledgeAll()` puts it out.
+
+Raised today: missiles inbound (with the burn-aware impact time), propellant against the trip home,
+each room's fire, breach, pressure and smoke, the hull, every system that needs power and is not
+working, the ship disabled or abandoning, the captain bleeding or low on suit air, crew bleeding
+out, crew outside, the helm's fault, a hostile with you locked, the shield's emitters and a shield
+down in combat, oxygen, and empty launchers.
+
+### Room names
+
+`RoomNames` (interior-grid) names a room in capitals, at most 10 characters, by the first rule that
+applies: the room with the helm is BRIDGE; else the kind of system that fills most of its tiles
+(HOLD, REACTOR, ENGINES, TANKS, LIFE SUP, SHIELDS, GUNS, AIRLOCK, PODS, MEDBAY); else its place in
+the hull (FWD, MID, AFT, with PORT or STBD off the centreline); and two rooms with the same name are
+numbered from the bow. Names are worked out from the layout and kept with it, so they do not change
+under the player in a fight. Weapon mounts are named the same way, by the hardpoint's place.
+
+### Time to impact
+
+The closest approach at the present speed runs long while a missile's motor burns: a harpoon from
+7.7 km reads 37 s five seconds after launch when it lands in about 17. `ImpactTime` (combat-sys)
+solves `t = (−v + √(v² + 2ad)) / a` with `a` the missile's `closingBurn` while its fuel above the
+terminal reserve lasts, then a coast at the speed it ends on. `ThreatProvider.MissileTrack` carries
+both: `timeToImpact` (burn counted) and `closestApproach` (the old number), with the range and
+closing speed they came from.
+
+## The setting
+
+`GameSettings.hudVariant` keeps the id ("classic", or "`<style>.<spec>`"). The shell sets
+`HudVariants.setChosen` on start and on apply, as it does `UiScale`; `UiHud` switches on its next
+frame. `-Dhud.variant=vfd.task` overrides it for a run, for playtests and screenshots. An unknown id
+falls back to the classic HUD.
+
+## Adding a combination
+
+1. Replace your class's body in `com.ringsofiron.uihud.variants.<style>.<spec>`: implement
+   `HudVariant` instead of extending `StubVariant`, and return from `keeps()` the classic pieces you
+   still want.
+2. Needed data that no provider gives: add the interface in `com.ringsofiron.uihud.providers`, the
+   implementation in core's `game` or `wiring` package, set it on `HudData` in `GameHud`, and
+   document it here so the other eight can use it.
+3. Keep a layout test in the shape of `UiScaleTest`: nothing overlaps at 1280x800 or at the largest
+   scale, and the centre of the view stays clear.

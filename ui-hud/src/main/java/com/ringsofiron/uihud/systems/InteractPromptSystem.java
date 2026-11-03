@@ -101,12 +101,14 @@ public class InteractPromptSystem extends EntitySystem {
 
     @Override
     public void update(float deltaTime) {
+        action = "";
         nearest = enabled ? findNearest() : null;
         using = enabled && interaction != null ? interaction.prompt() : null;
         if (using != null && nearest != null && interaction.distance2() > nearestDist2) using = null;
         if (using != null) {
             nearest = null;
-            String text = "Press [E] to " + using;
+            action = "to " + using;
+            String text = "Press [E] " + action;
             if (!prompt.textEquals(text)) prompt.setText(text);
             prompt.setVisible(true);
             return;
@@ -117,9 +119,20 @@ public class InteractPromptSystem extends EntitySystem {
         }
         InteractableConsoleComponent c = MAPPER.get(nearest);
         String more = promptExtra == null ? null : promptExtra.apply(c);
-        String text = "Press [E] for the " + c.title + " panel" + (more == null ? "" : more);
+        action = "for the " + c.title + " panel" + (more == null ? "" : more);
+        String text = "Press [E] " + action;
         if (!prompt.textEquals(text)) prompt.setText(text);
         prompt.setVisible(true);
+    }
+
+    private String action = "";
+
+    /**
+     * What E does here, as the prompt words it after the key ("to put on a pressure suit", "for the
+     * Helm panel"), or "" when there is nothing in reach. For HUD variants that draw their own prompt.
+     */
+    public String getAction() {
+        return action;
     }
 
     /** The console currently in reach, or null. */

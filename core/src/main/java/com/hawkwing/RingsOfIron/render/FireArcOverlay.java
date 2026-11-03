@@ -80,7 +80,12 @@ public class FireArcOverlay {
         float range, flight;
         /** 0 (red) .. 1 (green), from {@link HitChance#tint}. */
         float tint;
+        /** Chance a shot hits while the target dodges, 0..1. */
+        float chance;
     }
+
+    private final Dodge probe = new Dodge();
+    private final Vector2 probeVel = new Vector2(), probeMuzzle = new Vector2();
 
     /** The player's locked target, or null. */
     private Entity locked() {
@@ -169,7 +174,23 @@ public class FireArcOverlay {
         float dodging = HitChance.rated(def, HitChance.perShot(def, round, beam, m.gunnerySkill, out.range, radius, evasion));
         float still = HitChance.rated(def, HitChance.perShot(def, round, beam, m.gunnerySkill, out.range, radius, 0f));
         out.tint = HitChance.tint(dodging, still);
+        out.chance = dodging;
         return true;
+    }
+
+    /**
+     * The chance a shot from {@code m} fired now hits {@code target} while it dodges, 0..1, as the
+     * dodge lines are tinted; NaN with no track of it. Writes the range to the intercept, m, into
+     * {@code range[0]} when given. For the HUD's weapon rows.
+     */
+    public float hitChance(WeaponMountComponent m, Entity target, float[] range) {
+        Body body = target == null ? null : docking.bodyOf(ctx.player());
+        if (body == null) return Float.NaN;
+        PhysicsManager.getVelocity(body, probeVel);
+        muzzle(m, body, probeMuzzle);
+        if (!dodge(m, probeMuzzle, target, probeVel, probe)) return Float.NaN;
+        if (range != null && range.length > 0) range[0] = probe.range;
+        return probe.chance;
     }
 
     /** The arc's two edges, {@code length} out from the muzzle; nothing for a gun that turns all the way round. */

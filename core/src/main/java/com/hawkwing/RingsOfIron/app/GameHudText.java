@@ -23,6 +23,7 @@ import com.ringsofiron.orbital.warp.TimeWarpController;
 import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
+import com.ringsofiron.uihud.variants.ClassicPart;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.text.HudText;
 
@@ -77,6 +78,12 @@ final class GameHudText {
         double t = world.engine.getSimSeconds();
         // Each planned burn's number and countdown, by its arrow on the outside view
         pipeline.navOverlay().drawLabels(batch, font, (x, y) -> viewports.worldToUi(x, y, tmp2));
+        // A HUD variant that draws its own status has the column hidden (and the hints, unless it keeps them)
+        if (!session.hud.keepsClassic(ClassicPart.STATUS_COLUMN)) {
+            drawHints(batch, font);
+            text.endStatus(viewports.getUiViewport().getWorldHeight());
+            return;
+        }
         font.setColor(Color.WHITE);
         font.draw(batch, String.format("Day %d  %02d:%02d:%02d    Warp %dx%s", (long) (t / 86400),
                 (long) (t / 3600) % 24, (long) (t / 60) % 60, (long) t % 60, warp.getWarp(),
@@ -92,12 +99,7 @@ final class GameHudText {
                         : reload > 0f ? String.format("%.0f s", reload) : "ready")
                         + (missiles > 0 ? "   (" + missiles + " left)" : ""),
                 left, top - 40f);
-        // Key hints for where the player is, from the registry, sit to the right of the ship panel,
-        // which only shows outside
-        Actor shipPanel = session.hud.getMinimapPanel();
-        float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
-        font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, placing.isPlacing() ? placing.hint() : world.hints.line(hintContexts(), session::key), hintX, 24f);
+        drawHints(batch, font);
         // Rank, sponsor and the weekly budget
         font.draw(batch, world.budget.describe(), left, top - 60f);
         // On deck there is no threat overlay: the missile warning goes up here, between the flight
@@ -169,6 +171,18 @@ final class GameHudText {
             below = text.statusLine(eva, left, below);
         }
         text.endStatus(below);
+    }
+
+    /**
+     * Key hints for where the player is, from the registry, to the right of the ship panel (which only
+     * shows outside); nothing under a HUD variant that hides them.
+     */
+    private void drawHints(SpriteBatch batch, BitmapFont font) {
+        if (!session.hud.keepsClassic(ClassicPart.KEY_HINTS)) return;
+        Actor shipPanel = session.hud.getMinimapPanel();
+        float hintX = shipPanel.isVisible() ? shipPanel.getX() + shipPanel.getWidth() + 12f : 10f;
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, placing.isPlacing() ? placing.hint() : world.hints.line(hintContexts(), session::key), hintX, 24f);
     }
 
     /** The panel over the game, if one is up: the crash screen, else the notice log, else the controls. */

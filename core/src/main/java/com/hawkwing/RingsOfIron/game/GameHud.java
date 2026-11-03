@@ -31,6 +31,10 @@ public class GameHud implements Disposable {
 
     /** The docked station's yard, as the yard window sees it. */
     public final YardWork yard;
+    /** The weapon rows the HUD variants read; the game gives it the player's fire control. */
+    public final PlayerWeaponStatus weapons;
+    /** Raises the HUD variants' alerts each frame. */
+    public final GameAlerts alerts;
 
     public GameHud(GameWorld world, UiHud hud) {
         this.world = world;
@@ -70,6 +74,19 @@ public class GameHud implements Disposable {
         hud.setThreats(new CombatThreats(world.context));
         intercepts = (signal, hit) -> hud.flashIntercept(hit.point.x, hit.point.y, hit.destroyed);
         world.combatEvents.intercepts.add(intercepts);
+
+        // The common data layer the HUD variants read (Settings, Interface, HUD); the classic HUD
+        // does not use it, and it is only read while a variant is up.
+        com.ringsofiron.uihud.data.HudData data = hud.getData();
+        data.context = new PlayerUiContext(world.context, hud.getViewMode(), world.timeWarp, world.universe, world.nav, world.bridge,
+                world.avatar, world.docking, world.spacewalks, world.gunCrews, world.pirateBase);
+        data.captain = new PlayerCaptainStatus(world.avatar);
+        data.weapons = weapons = new PlayerWeaponStatus(world.context, world.gunCrews, world.crew, world.bridge, world.docking, world.sensors);
+        data.shields = new PlayerShieldStatus(world.context);
+        data.power = new PlayerPowerStatus(world.context);
+        data.target = new PlayerTargetStatus(world.context, world.docking, world.sensors, world.pirateBase);
+        alerts = new GameAlerts(world.context, world.warnings, world.spacewalks, world.crew, data);
+        data.afterRefresh = alerts::update;
     }
 
     /** The mod-script trust prompt as a dialog; pass to {@link GameWorld.Modules#modTrust} before loading content. */

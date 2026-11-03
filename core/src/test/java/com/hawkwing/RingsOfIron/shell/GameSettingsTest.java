@@ -24,6 +24,7 @@ class GameSettingsTest {
         s.windowWidth = 1920;
         s.windowHeight = 1080;
         s.gamepad = false;
+        s.hudVariant = "cassette.context";
         KeyBindings keys = new KeyBindings();
         keys.bind(Action.FIRE, Input.Keys.J);
         s.setBindings(keys);
@@ -38,6 +39,7 @@ class GameSettingsTest {
         assertEquals(1920, read.windowWidth);
         assertEquals(1080, read.windowHeight);
         assertFalse(read.gamepad);
+        assertEquals("cassette.context", read.hudVariant);
         assertEquals(Input.Keys.J, read.bindings().keyOf(Action.FIRE));
     }
 
@@ -62,5 +64,14 @@ class GameSettingsTest {
         assertEquals("auto", s.hrtf);
         assertEquals(1280, s.windowWidth);
         assertEquals(800, s.windowHeight);
+    }
+
+    @Test
+    void anUnknownHudIsTheClassicOne(@TempDir Path dir) {
+        FileHandle file = new FileHandle(dir.resolve(GameSettings.FILE_NAME).toFile());
+        GameSettings s = new GameSettings();
+        s.hudVariant = "no.such.hud";
+        s.save(file);
+        assertEquals("classic", GameSettings.load(file).hudVariant);
     }
 }
