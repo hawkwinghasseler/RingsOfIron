@@ -12,7 +12,7 @@ at 1280 x 800.
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14 | Converged in round 5 |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 9 | Converged in round 5 |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 8 | Converged in round 5 (one sample-text note open) |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 9 | Converged in round 5; round 9 drawn in round 6 |
 
 ## Round 1 (3 November 2026)
 
@@ -250,6 +250,22 @@ then changed only H6's sample and wireframe 04, neither drawn here), and all 3 b
 in any of them that the spec or the style can answer. The task note changes nothing drawn. The two
 open context notes (the trim selector is never live on the corvette, and C3's floor path is world
 art) are coverage and world art, not faults in what is drawn.
+
+## Round 6 (3 November 2026, task only)
+
+**The designer's answer.** Round 9 of the task spec took the round 5 note (a ship is named in full
+wherever it is named) and corrected two samples from its own review against the code: a shot at
+the ship or a missile launched at it drops every helm order but hold position and match velocity
+(`HelmOrders.threat`), so round 8's approach could not stand under fire; and no warp guard holds
+for hostiles, so the gunnery and deck clocks read `held: fire aboard`.
+
+**Drawn:** T2's helm holds the heading with no order, and its warp is held by the fire aboard. The
+at-rest scope keeps `5 KM` without the spec's `(auto)`: automatic is the normal state, so the style
+marks a range set by hand instead, in cyan. That is argued in the task README's deviations.
+
+**Findings sent to the designer:** none.
+
+**State.** All three variations stay converged.
 
 ## Next
 

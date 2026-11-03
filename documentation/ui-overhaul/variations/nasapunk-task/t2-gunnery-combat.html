@@ -44,7 +44,8 @@ s += W.track(`M 740 387 Q 700 399 ${SX + 18} ${SY + 14}`) + W.missile(740, 387, 
 // the hit already taken: an impact mark on the port side aft
 s += W.impact(SX - 30, SY - 4);
 
-s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×', note: 'HELD: HOSTILES NEAR' });
+// Warp is held by the fire, the game's own guard reason; no guard holds warp for hostiles (spec round 9)
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×', note: 'HELD: FIRE ABOARD' });
 s += annunciatorPanel({ FIRE: 'caution', CREW: 'caution' });
 
 // ALR: the warning row with its one number and its action; the caution row under it, each caution
@@ -141,12 +142,12 @@ s += du(ZT.sch.x, ZT.sch.y, ZT.sch.w, ZT.sch.h, {
   },
 }).svg;
 
-// HLM: at gunnery FLT is hidden; who flies and the order take its place. Bea flies the spec's
-// order (round 8): an approach to 2,000 m (HelmOrderComponent.Mode.APPROACH, one of
-// HelmOrders.APPROACH_DISTANCES), which the target card's closing 41 m/s fits. Boxed green, as an
-// order being flown. The target keeps its whole name, as on the card and its label (word list rule
-// 1), so the strip spans the gap between SHIP and WEAPONS, 12 clear of each.
-s += helmStatus(328, 736, 380, 'BEA', "APPROACHING RAIDER 'VEX' TO 2 000 M", 'engaged');
+// HLM: at gunnery FLT is hidden; who flies and the order take its place. Under fire no approach can
+// stand: a shot at the ship or a missile launched at it drops every order but hold position and
+// match velocity (HelmOrders.threat), so Bea holds the heading with no order, as on T3 (spec round
+// 9). The strip spans the gap between SHIP and WEAPONS, 12 clear of each, so a standing order with
+// a whole contact name fits when there is one.
+s += helmStatus(328, 736, 380, 'BEA', 'HOLDING HEADING', 'normal', 'NO ORDER');
 
 // F is the warning's own action, so it doesn't repeat here (round 4)
 s += hintLine([['SPACE', 'FIRE'], ['R', 'MISSILE'], ['TAB', 'NEXT TARGET'], ['F1', 'CONTROLS']]);
