@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 2.** What changed since round 1 is listed in [the changelog](#21-changelog).
+**Revision: round 3.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -102,6 +102,10 @@ Whether the player must act depends on whether someone aboard already is. An ale
 
 ### 3.8 One fact, one home
 Each fact has one home widget. Other widgets may summarise it or link to it (an annunciator tile summarises a fire; the damage page is its home), but the same full readout never appears twice on one screen. Callouts follow the same rule (13.5).
+
+Two consequences that apply everywhere:
+- **The world identifies; the instruments measure.** While seated, the object whose numbers are in the cluster (the Reference or Target row) is labelled in the world with its name only. Its range, closing speed and the rest live in the cluster, where they hold still and can be read.
+- **One countdown per missile salvo on screen.** The annunciator tile owns the count and the soonest impact. A missile track on screen carries no countdown of its own (its impact cross shows where); an edge marker keeps its seconds, because the track is off screen; the SENSORS list keeps each missile's time, because it is the table of every contact.
 
 ### 3.9 Decision-ready numbers
 Show the number the player decides with, not the one the simulation stores:
@@ -280,11 +284,11 @@ In UI units on the 1280 x 800 layout grid that `UiScale` already scales. Margins
 ```
 x: 0    16            280                                   1000          1264 1280
    +---------------------------------------------------------------------------+  y 0
-   |  Z5 guide    |  Z1  annunciator   720 x 36 (x2 rows)  |                   |  16
-   |  card        |  Z1e emergency banner row (above, 28)   |                   |
-   |  248 wide    |  Z1w warp strip     720 x 24            |                   |
-   |  (out of     |  Z2  callout ticker 720 x 66 (3 lines)  |                   |  ...230 worst case
-   |  fiction)    |                                         |                   |
+   |  Z5 guide    |  Z1e emergency banner   720 x 24        |                   |  16
+   |  card        |  Z1  annunciator row 1  720 x 36        |                   |  44
+   |  248 wide    |  Z1  annunciator row 2  720 x 36        |                   |  84
+   |  (out of     |  Z1w warp strip         720 x 20        |                   |  124
+   |  fiction)    |  Z2  callout ticker     720 x 60        |                   |  148..208
    |                                                                           |
    |                          Z0  world and symbology                          |
    |                                                                           |
@@ -300,17 +304,19 @@ x: 0    16            280                                   1000          1264 1
 
 | Zone | Size (units) | Anchor | Notes |
 |---|---|---|---|
-| Z1 annunciator | 720 x 36, a second row 40 more | Top centre, y 16 | Master lamps 56 x 36 at each end; 6 tiles of 94 x 36 per row with 6 gaps |
-| Z1e emergency banner | 720 x 28 | Above Z1, pushing it down | Only in Emergency |
-| Z1w warp strip | 720 x 24 | Under Z1 | Only in warp |
-| Z2 callout ticker | 720 x 66 | Under Z1w (or Z1) | Three lines, left-aligned within the column |
+| Z1e emergency banner | 720 x 24 | Top centre, y 16 | Only in Emergency |
+| Z1 annunciator | 720 x 36, a second row of 36 at y 84 | Top centre, y 44 | Master lamps 56 x 36 at each end; 6 tiles of 94 x 36 per row with 6 gaps |
+| Z1w warp strip | 720 x 20 | Top centre, y 124 | Only in warp |
+| Z2 callout ticker | 720 x 60 | Top centre, y 148 | Three lines, left-aligned within the column |
 | Z5 guide card | 248 wide, grows down | Top left | Moves under the ticker when a panel is open |
 | Z4 panel | 480 wide | Right, 16 in | On deck: full height. Seated: stops 8 above the band. Plot and Yard: full screen |
 | Z7 prompt line | 720 x 24 | Bottom centre: y 760 on deck, 8 above the band seated | Response, else learning hints (console prompts sit in the world, by the console) |
 | Z6 suit readout | 200 x 80 | Bottom left | Deck only |
-| Z3 seated band | 1088 x 184 | Bottom centre | MFDs 288 x 160, cluster 480 x 160, 16 apart; station board 1088 x 20 under them, 4 below |
+| Z3 seated band | 1088 x 184 | Bottom centre, 16 above the edge or flush with it (y 616 to 800): the style's choice | MFDs 288 x 160, cluster 480 x 160, 16 apart; station board 1088 x 20 under them, 4 below |
 
-While seated, the camera's centre moves up by half the band's height (92 units), so the ship stays in the middle of the visible world (new, `CameraFollowSystem`). When both MFDs are folded (9.1) the band is only as tall as the cluster, and the shift follows.
+**Slots hold still.** Every slot in the top column has a fixed place. When something is absent its slot is dark (or, if the style prefers, retracts), but nothing below it moves up to fill the gap and nothing moves down when it appears: the ticker is always at y 148 whether or not a tile is lit. The same holds for the rows of the clusters (8.1). Stable positions are worth more to a player's eye than the space saved by closing gaps, and a dark slot still meets 3.4.
+
+While seated, the camera's centre moves up by half the band's height (92 units), so the ship stays in the middle of the visible world (new, `CameraFollowSystem`). The band's height does not change while seated (folding the MFDs leaves the cluster's 160 standing), so neither does the shift.
 
 ### 6.3 Collision rules
 
@@ -337,8 +343,8 @@ What can be on screen in every context, including on deck. When nothing is wrong
 | One tile per kind | Several instances of one kind share a tile: the tag, the worst instance and a count ("FIRE" / "GALLEY+1") | |
 | Rows | 6 tiles a row, 2 rows at most; past 12, the last tile reads "+n MORE" and opens the list | |
 | Order | Warnings first, then cautions; within each, newest first. Advisories never take a tile | |
-| Master WARNING lamp | Left end. Lit and flashing (2 Hz or slower) while any warning is unacknowledged | Only when lit |
-| Master CAUTION lamp | Right end, the same for cautions | Only when lit |
+| Master WARNING lamp | Left end. Lit and flashing (2 Hz or slower) while any warning is unacknowledged | Only when lit (a style may show both lamps unlit whenever any tile is up) |
+| Master CAUTION lamp | Right end, the same for cautions | As above |
 | Interaction | **Acknowledge** (16.2) stops the flashing and the repeating alarm; the tiles stay while their conditions hold. Clicking a tile shows its home page (13.2) | |
 
 A condition that clears removes its tile with a short fade and leaves a line in the log.
@@ -391,37 +397,38 @@ The tutorial layer (First Play objectives and the opening walkthrough) is **out 
 
 ### 8.1 Helm cluster
 
-Z3b while seated at the helm. Five rows at most; empty rows fold away.
+Z3b while seated at the helm. Five fixed slots. A slot with nothing to show goes dark in place; the others never move (6.2, "slots hold still"). The slots' arrangement inside the 480 x 160 cluster is the style's choice; their content and priority are not.
 
-| Row | Content | Visible |
+| Slot | Content | Lit |
 |---|---|---|
-| **Velocity** | Speed in the active frame, with the frame's tag: "ORBIT 7.67 km/s", "TARGET 3.9 m/s closing", "PORT 2.4 m/s closing". Mode chips: ASSIST (on or OFF), the helm order or AUTOPILOT in force. Rotation rate when above 0.5°/s. Throttle and RCS indicators while firing | Always while seated |
-| **Reference** | With a locked target or nav target: name, range, closing speed, closest approach ("CPA 140 m in 2:10"). With a target locked or in Red, the pilot's trigger: GUNS ready or reloading, MSL count and ready, shields if lowered. With neither: the orbit's Ap and Pe, live while the engine or RCS fires and for 5 s after | When there is something to show |
+| **Reference** | With a locked target, else the nav target: name, range, closing speed, closest approach ("CPA 140 m in 2:10"). With neither: the orbit's Ap and Pe, live while the engine or RCS fires and for 5 s after. When space runs short, keep in this order: name, range, closing, CPA | When there is something to show |
+| **Next event** | The next thing due: "Burn 1 in 12:04  210 m/s prograde", "Autopilot: Shackleton Ice, leg 2", "SOI change in 2.4 d (Moon)". Within 60 s of a burn: alignment error and time to ignition. Priority: what, when, how much | When something is due |
+| **Velocity** | Speed in the active frame, with the frame's tag: "ORBIT 7.67 km/s", "TARGET 3.9 m/s closing", "PORT 2.4 m/s closing", "DOCKED". Rotation rate when above 0.5°/s. Mode chips (3.5): **control** (MANUAL: the player flies; BURN 1: the flight computer is flying planned burn 1 while the player's hands are off the stick; HELD APPROACH: an order waiting while the player has the helm), **ASSIST** (on, or OFF flagged), and THR and RCS lamps while they fire | Always while seated |
+| **Trigger** | The pilot's trigger: GUNS ready or reloading, MSL count and ready or seconds, DECOY count, and SHIELDS when lowered | With a target locked, or in Red |
 | **Δv** | Δv left in the tanks (m/s), with a notch at what the trip home needs (`Navigation`'s return estimate; no notch when it has none) and the planned burns' total as a bracket | Always while seated |
-| **Next event** | The next thing due: "Burn 1 in 12:04  210 m/s prograde", "Helm: APPROACH, holding at 200 m", "Autopilot: Shackleton Ice, leg 2", "SOI change in 2.4 d (Moon)". Within 60 s of a burn: alignment error and time to ignition | When something is due |
-| **Chronometer** | Day and time; the warp level when not 1x | Always while seated |
 
-The velocity frame follows the existing marker rule (`NavMarkerSystem`): the orbit, or the locked target when it has a body in the bubble, plus a new PORT frame during a docking approach.
+The chronometer is not in the cluster: it sits at the right end of the station board (8.5), the same at every seat.
+
+The velocity frame follows the existing marker rule (`NavMarkerSystem`): the orbit, or the locked target when it has a body in the bubble, plus a new PORT frame during a docking approach and DOCKED once latched.
 
 ### 8.2 Docking approach mode
 
-Replaces the Reference and Next event rows when the selected port is armed, or a free port is within `PlayerDocking.READOUT_RANGE` (5 km) of a station that is the nav target.
+Takes over the Reference and Next event slots when the selected port is armed, or a free port is within `PlayerDocking.READOUT_RANGE` (5 km) of a station that is the nav target. It ends when the ports latch.
 
-| Field | Content |
-|---|---|
-| Port | Own port selected (n of m, size) and the target port ("Highport port 2, S") |
-| Clearance | Not asked, asked, granted, refused (with the reason) |
-| Range and closing | Range to the port; closing speed against the safe closing speed for that range, as a bar with the limit marked |
-| Alignment | Lateral offset (m) and angle error (degrees) |
-| Docked | Once latched: "Docked at Highport". Collar strain shows only above 25%, and becomes a caution above 60% |
+| Field | Slot | Content |
+|---|---|---|
+| Ports | Reference | Own port selected (n of m, size), the target port ("Highport port 2, S") and clearance: not asked, asked, granted, refused (with the reason) |
+| Approach | Next event | Range to the port; closing speed against the safe closing speed for that range, as a bar with the limit marked; lateral offset (m) and angle error (degrees) |
+
+Once latched, the Velocity slot's frame reads DOCKED and both slots go dark. Where the ship is berthed, its port and the collar's strain live on the DOCK page (its home, and the left MFD's default while docked); strain over 60% is a caution tile.
 
 World symbology: the approach corridor (`NavOverlay`), coloured by safety as now.
 
 ### 8.3 Tactical cluster
 
-Z3b while seated at the weapons console.
+Z3b while seated at the weapons console. Fixed slots, as at the helm.
 
-| Row | Content |
+| Slot | Content |
 |---|---|
 | **Mount chips** | One chip per gun: position (Nose, Port...), state (ready, reloading, no power, stunned, destroyed), who works it (you, a gunner's initials, the console), mode (AT WILL or HELD). Point-defence mounts marked PD, with AUTO or YOURS |
 | **Launchers** | Each launcher: missiles left, ready or seconds to ready |
@@ -444,18 +451,28 @@ Seated at a gun. No MFDs and no station board beyond the gun's own tile: a delib
 Z3d, a strip under the band at a command seat; a row at the top of the slate's Ship tab everywhere else.
 
 ```
- 1 HELM you    2 NAV you    3 TAC Chen 3/4 guns    4 ENG Okafor (!)    5 COMMS you    6 CMD        RED
+ 1 HELM you   2 NAV you   3 TAC Chen 3/4   4 ENG Okafor (!)   5 COMMS you   6 CMD    Day 3 14:22:05   [DOCKED]  RED
 ```
 
 | Tile state | Meaning |
 |---|---|
-| you | The player is at a console hosting it |
-| initials | A crew member mans it |
-| empty | Nobody; automated only |
-| caution, warning | The station has an active alert; the tile shows it in that role |
+| you | The player is at a console hosting it (lit) |
+| name | A crew member mans it (unlit: crewed is normal) |
+| empty | Nobody; automated only (unlit) |
+| caution, warning | The station has an active alert; the tile lights in that role |
 | struck through | Its console is destroyed or unpowered |
 
-Each tile is a soft key: clicking it (or Alt with its number, 16.2) puts that station's first page on the right MFD; again cycles its pages. The condition word sits at the right end.
+Each tile is a soft key: clicking it (or Alt with its number, 16.2) puts that station's first page on the right MFD; again cycles its pages.
+
+The right end of the board, from left to right:
+
+| Element | Content |
+|---|---|
+| Chronometer | Day and time (the warp level is in the warp strip) |
+| State lamp | The layered state (12), one lamp showing the most pressing: EMERG, else LATCHED, else DOCKED. Unlit when none holds |
+| Condition | GREEN, YELLOW or RED |
+
+Budget: six tiles of 136 (816), the right end 272.
 
 ---
 
@@ -583,7 +600,8 @@ Today every marked contact carries a name and a range. New rules:
 
 | Contact | Label |
 |---|---|
-| Locked target, nav target | Name, range, closing; always |
+| Locked target, nav target | Name only, always; their numbers are in the cluster (3.8). In the Plot, where there is no cluster: name and range |
+| Missile | Its track and impact cross; no countdown on screen (3.8) |
 | Hostile | Class and range in Yellow and Red; icon only in Green |
 | Contract objective | Name; always |
 | Station | Name; range only when the nav target |
@@ -641,7 +659,7 @@ Two states layer over the condition:
 
 **Battle stations** (new action, 16.2) sets Red until the player stands down or the ship docks. Whether it should also send the crew to their stations is an open question (20.5).
 
-The condition shows as a word at the right end of the station board, and as the band's frame role (artists choose how). Its thresholds (50 km, weapons range) are tunables.
+The condition shows as a word at the right end of the station board, with the layered state on a lamp beside it (8.5), and may also colour the band's frame (the style's choice). Its thresholds (50 km, weapons range) are tunables.
 
 ---
 
@@ -783,9 +801,9 @@ A response shows where the player is looking: on the prompt line (Z7), or in the
 
 | State | Changes |
 |---|---|
-| Docked | Berth card for 8 s; Station link available anywhere aboard; helm cluster shows docking mode's Docked line; MFD defaults DOCK and CARGO; combat symbology off unless Red |
-| Latched to a ship | Slate's Boarding tab appears; COMMAND tile shows a badge; CARGO shows the other ship's hold |
-| Warp above 1x | Warp strip. The seated band folds to the cluster's Next event and Chronometer rows and folded MFD rails (nothing on them changes fast enough to read); any caution or warning restores it |
+| Docked | Berth card for 8 s; Station link available anywhere aboard; the board's state lamp reads DOCKED; the helm's frame reads DOCKED; MFD defaults DOCK and CARGO; combat symbology off unless Red |
+| Latched to a ship | Slate's Boarding tab appears; the CMD tile shows a badge; the state lamp reads LATCHED; CARGO shows the other ship's hold |
+| Warp above 1x | Warp strip. The cluster's slots go dark except Next event, and the MFDs fold (nothing on them changes fast enough to read); any caution or warning restores them |
 | Yellow, Red | Symbology and MFD defaults as in 11.1 and 9.1 |
 | Emergency | Banner row above the annunciator |
 | A side panel open while seated | The band stays; the panel stops above it; the top-centre column recentres left of it |
@@ -844,21 +862,21 @@ FIRE is a caution (Okafor is on it); BREACH is a warning (nobody is). Clicking B
 |                                                                                          |
 |                                                                                          |
 |                              o                                                          |
-|                                [ship]                      [ Highport ]  1.2 km          |
+|                                [ship]                      [ Highport ]                 |
 |                                     x                                                   |
 |                         -> 1  12:04                                                     |
 |                                                                                          |
 |           +---------------------------------------------+                                |
-|           | ORBIT 7.67 km/s                   ASSIST     |                                |
 |           | Highport  1.2 km  closing 3.9  CPA 140 m 2:10|                                |
-|           | DELTA-V 1,840  |=========|====   home 1,210  |                                |
 |           | Burn 1 in 12:04   210 m/s prograde           |                                |
-|  [NAV][PLAN]  [pin][-]       Day 3  14:22:05     [SNS][WPN][DEF]  [pin][-]               |
-| 1 HELM you   2 NAV you   3 TAC --   4 ENG Okafor   5 COMMS you   6 CMD          GREEN    |
+|           | ORBIT 7.67 km/s      MANUAL  ASSIST          |                                |
+|           |                 (Trigger: dark)              |                                |
+|  [NAV][PLAN][pin][-]  DELTA-V 1,840 |======|=== home 1,210   [SNS][WPN][DEF][pin][-]    |
+| 1 HELM you  2 NAV you  3 TAC --  4 ENG Okafor  5 COMMS you  6 CMD   Day 3 14:22:05  GREEN |
 +------------------------------------------------------------------------------------------+
 ```
 
-Both MFDs are folded to their rails: in Green there is nothing on them the player needs until they ask.
+Both MFDs are folded to their rails: in Green there is nothing on them the player needs until they ask. Highport is labelled with its name only; its numbers are in the Reference slot. With no target locked and no threat, the Trigger slot is dark.
 
 ### D. Seated at the helm, docking approach
 
@@ -871,13 +889,13 @@ Both MFDs are folded to their rails: in Green there is nothing on them the playe
 |                               [ship]                                                    |
 |                                                                                          |
 +---------------------+---------------------------------------------+----------------------+
-| DOCK                | PORT 2.4 m/s closing     ASSIST             | SENSORS (folded)     |
-| Port 1/1  S  armed  | Highport port 2 (S)    clearance GRANTED     |                      |
-| Clearance granted   | 312 m   closing |=====|==  safe 3.1 m/s     |                      |
-|                     | lateral +0.8 m    angle -1.5 deg             |                      |
-| [DOCK] [HELM]       | Day 3  14:41:10                              | [SNS][WPN][DEF]      |
+| DOCK                | Port 1/1 S armed > Highport 2 (S)  GRANTED  | (folded)             |
+| Port 1/1  S  armed  | 312 m  closing |=====|== safe 3.1  +0.8 m -1.5 deg               |
+| Highport 2 (S)      | PORT 2.4 m/s closing     MANUAL  ASSIST     |                      |
+| Clearance granted   |                 (Trigger: dark)             |                      |
+| [DOCK] [HELM] [pin] | DELTA-V 1,780 |=====|==   home 1,210        | [SNS][WPN][DEF][pin] |
 +---------------------+---------------------------------------------+----------------------+
-| 1 HELM you   2 NAV you   3 TAC --   4 ENG Okafor   5 COMMS you   6 CMD          GREEN    |
+| 1 HELM you  2 NAV you  3 TAC --  4 ENG Okafor  5 COMMS you  6 CMD   Day 3 14:41:10  GREEN |
 +------------------------------------------------------------------------------------------+
 ```
 
@@ -889,20 +907,20 @@ Both MFDs are folded to their rails: in Green there is nothing on them the playe
 |              [2  0:37 ] [ FIRING ]                                                       |
 |          TAC    Chen: dart down.                                                         |
 |          HELM   Ruiz: holding position under fire.                                       |
-|                           .  .  .  .  . (threat track, impact cross)                     |
-|                [ship]  ----- lead ---->  <Raider>  7.7 km  64%                           |
+|                           .  .  .  .  . (threat track, impact cross, no countdown)       |
+|                [ship]  ----- lead ---->  <Raider>                                        |
 +---------------------+---------------------------------------------+----------------------+
-| SENSORS             | NOSE ready   PORT 1.2   STBD Chen AT WILL   | DEFENSE              |
-| Raider    7.7 km  H | PD AUTO    MSL 4 ready    DECOY 6           | (shield ring around  |
-| Dart      2.1 km  H | SHIELD RAISED 82%   trim BOW                |  the hull, weak to   |
-| Dart      3.0 km  H | Raider  7.7 km  closing 2  ToF 1.3 s  64%   |  port)               |
-| [SNS] [WPN] [DEF]   | Day 3  15:02:44                              | [SNS] [WPN] [DEF]    |
+| SENSORS             | NOSE you ready   PORT you 1.2   STBD Chen   | DEFENSE              |
+| MSL x2   0:37     H | PD AUTO    MSL 4 ready    DECOY 6           | (shield ring around  |
+| Raider   7.7 km   H | SHIELD RAISED 82%   trim BOW                |  the hull, weak to   |
+| Dart     2.1 km   H | Raider  7.7 km  closing 2  ToF 1.3 s  64%   |  port)               |
+| [SNS] [WPN] [DEF]   |                                             | [SNS] [WPN] [DEF]    |
 +---------------------+---------------------------------------------+----------------------+
-| 1 HELM Ruiz   2 NAV --   3 TAC you   4 ENG Okafor (!)   5 COMMS --   6 CMD          RED  |
+| 1 HELM Ruiz  2 NAV --  3 TAC you  4 ENG Okafor (!)  5 COMMS --  6 CMD  Day 3 15:02:44  RED |
 +------------------------------------------------------------------------------------------+
 ```
 
-A hull hit would turn the right MFD to DAMAGE unless the player pinned DEFENSE; the left would then take it if unpinned.
+The Raider is labelled with its name only; its range, closing, time of flight and hit chance are in the Target slot. The missiles' countdown is on the tile and, per missile, in the SENSORS list. A hull hit would turn the right MFD to DAMAGE unless the player pinned DEFENSE; the left would then take it if unpinned.
 
 ### F. At the reactor console
 
@@ -949,13 +967,13 @@ A hull hit would turn the right MFD to DAMAGE unless the player pinned DEFENSE; 
 |                                  (outside view)                                          |
 |                                                                                          |
 |           +---------------------------------------------+                                |
+|           |                (dark)                       |                                |
 |           | Burn 2 in 4:12   410 m/s retrograde          |                                |
-|  [NAV][PLAN]  [pin][-]  Day 5  02:10:44   1,000x  [SNS][WPN][DEF]  [pin][-]              |
-| 1 HELM you   2 NAV you   3 TAC --   4 ENG Okafor   5 COMMS you   6 CMD          GREEN    |
+|           |                (dark)                       |                                |
+|  [NAV][PLAN][pin][-]             (dark)                 [SNS][WPN][DEF][pin][-]          |
+| 1 HELM you  2 NAV you  3 TAC --  4 ENG Okafor  5 COMMS you  6 CMD   Day 5 02:10:44  GREEN |
 +------------------------------------------------------------------------------------------+
 ```
-
----
 
 ## 16. Input
 
@@ -1021,9 +1039,9 @@ The artists change how this looks, not what it says or where it is. A style may 
 4. **Motion is limited**: flashing at 2 Hz or slower, only the master lamps and newly raised tiles; a "reduce motion" setting turns flashing into a steady lit state.
 5. **Elements to design**, the full kit:
    - Overlay: annunciator tile (raised, acknowledged, clearing, "+n MORE"); master lamps; emergency banner; warp strip; ticker line with station tag and speaker; prompt line; response; suit readout; guide card; berth card.
-   - Seats: cluster rows (velocity with mode chips, reference, Δv bar with home notch and plan bracket, next event, chronometer); docking approach (closing-speed bar with its limit, alignment); mount chip; launcher chip; shield rose; gunner sight readout.
+   - Seats: cluster slots, lit and dark (reference, next event, velocity with mode chips, trigger, Δv bar with home notch and plan bracket); docking approach (closing-speed bar with its limit, alignment); mount chip; launcher chip; shield rose; gunner sight readout.
    - MFDs: frame with title and soft keys; folded rail; pin; dead screen; radar scope; contact list; ship plan; shield ring; small orbit drawing.
-   - Station board tile in five states, and the condition word.
+   - Station board tile in five states; the board's right end: chronometer, state lamp (DOCKED, LATCHED, EMERG), condition word.
    - Panels: side and full frames with title bar, tabs and footer; table rows; quantity control.
    - World: markers, brackets, lead reticle, intercept lines, fire arcs, threat track, impact cross, PD kill, corridor, nameplate, cluster label, edge marker, PiP ring, collision cue; deck marks for crew who need help, room outline.
    - In-world cues: console glow, door lights, alarm beacons, speech bubble.
@@ -1047,7 +1065,7 @@ The artists change how this looks, not what it says or where it is. A style may 
 | RADAR | Moved | SENSORS page |
 | ORBIT minimap and its hints | Moved | NAV page; the hints dropped (learning hints cover them) |
 | SHIP wireframe minimap, HULL %, ALL SYSTEMS NOMINAL | Moved | DAMAGE page, auto-paged on damage; "nominal" text dropped |
-| Status column: clock and warp | Moved | Chronometer row; warp strip |
+| Status column: clock and warp | Moved | Chronometer on the station board; warp strip |
 | Status column: Target line, "FIRING ON YOU" | Dropped, changed | Duplicate dropped; HOSTILE / FIRING caution |
 | Status column: Missile line | Moved | Tactical launcher chips; pilot's trigger in the Reference row |
 | Status column: rank and budget | Moved | Slate: Career, and its title bar |
@@ -1136,6 +1154,20 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 3 (Cassette artist's notes on Ship Stations x Cassette)
+
+| Problem found | Change |
+|---|---|
+| Seated, the nav target's and target's world labels repeated the cluster's numbers; a missile countdown showed three times | The world identifies, the instruments measure: seated, the reference object is labelled by name only; on-screen missiles carry no countdown (3.8, 11.2) |
+| The Reference row had three alternative contents and room for one | The pilot's trigger has its own slot; Reference has a priority order for truncation; the chronometer moved to the station board to keep five slots (8.1) |
+| Rows that fold away make the layout jump | Fixed slots that go dark in place, in the clusters and the top column alike (6.2, 8.1) |
+| No label for "no helm order" | A control mode chip: MANUAL, BURN n, or HELD with the waiting order (8.1) |
+| The berth was shown in the cluster and on the DOCK page | Docking mode ends at latch; the frame reads DOCKED; the DOCK page is the berth's home (8.2) |
+| No place on the board for the layered states | One state lamp beside the condition: EMERG, else LATCHED, else DOCKED (8.5) |
+| Unclear whether the ticker moves when the annunciator is empty | It never moves: every top-column slot has a fixed place (6.2) |
+| Folding both MFDs was said to shrink the band, but the cluster keeps it 160 tall | Band height and camera shift are constant while seated (6.2) |
+| Hardware styles don't float | The band may sit flush with the bottom edge or 16 above it (6.2) |
 
 ### Round 2 (self-critique)
 
