@@ -3,8 +3,8 @@
 <rect x="0" y="0" width="1280" height="800" rx="0" fill="#e9e9e6" stroke="#9a9a9a" stroke-width="1"/>
 <text x="1270" y="11" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="normal" fill="#888" text-anchor="end" xml:space="preserve" style="white-space:pre">TERMINAL (docked; T / J / Y open it on their tab)</text>
 <rect x="16" y="16" width="240" height="48" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
-<text x="23" y="31" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">CHR  Day 3  14:22:05</text>
-<text x="23" y="47" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">WARP 1x</text>
+<text x="23" y="30" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">CHR  Day 3  14:22:05</text>
+<text x="23" y="44" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">WARP 1x</text>
 <rect x="320" y="16" width="640" height="76" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
 <text x="327" y="31" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">ALR  (alerts stay visible over every screen, both rows)</text>
 <rect x="16" y="100" width="1248" height="52" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>

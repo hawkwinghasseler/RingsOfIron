@@ -1,6 +1,6 @@
 # UI Overhaul: Task-Driven Functional Spec
 
-Functional designer 2 of 3. Round 8.
+Functional designer 2 of 3. Round 9.
 
 This spec rebuilds the game's interface from the decisions a player makes, not from the panels the game has today. It says what each widget and screen contains, where it sits, and when it is visible. It says nothing about how anything looks: three artist threads (Nasa-punk, 90s VFD, Cassette-futurism) skin it, and section 12 lists what they are free to change and what they must keep.
 
@@ -127,7 +127,7 @@ Every row is a decision the game asks of the player. "Minimum information" is wh
 | N1 | Choose a destination | Where do I need to go next? | Contract destinations first, then stations with what they offer, how far and how friendly | Q, click | min |
 | N2 | Plan the trip | What will it cost, how long, will I make the deadline? | Delta-v needed against left, what is left after and what home takes from there; arrival against the deadline | ; Enter Backspace | min |
 | N3 | Shape a burn | What does this burn do to my path? | The path after it: periapsis, apoapsis, encounters; the burn's delta-v and time | Drag handles, [ ], arrows, Delete | min |
-| N4 | Carry it out | Who flies the burns, and when can I warp? | Next burn countdown, helmsman available, autopilot ready or why not | /, 1, 6 | min |
+| N4 | Carry it out | Who flies the burns, and when can I warp? | Next burn countdown, helmsman available, autopilot ready or why not | /, 6 | min |
 | N5 | Mind the route | Are pirates about? | Known pirates and when last seen; tension if it matters | Plan around, arm up | h/d |
 
 ### E. Earning and growing (docked)
@@ -220,9 +220,9 @@ Each widget gives what it serves (decision IDs), what it shows, its states, when
 
 Serves F6, N4, E1.
 
-- **Shows:** game day and time (`Day 3  14:22:05`); warp rate and kind (`1x`, `10x physics`, `10,000x rails`); the **next stop**, the event warp will drop out for, with its countdown (the next burn less the 60 s lead, a sphere-of-influence change, the autopilot's arrival, the closest approach); and, when warp is refused or held, **why** in a few words, from the same reason the game gives: `held: fire aboard`, `held: crew on EVA`, `held: hostiles near`, `held: burn coming`.
+- **Shows:** game day and time (`Day 3  14:22:05`); warp rate and kind (`1x`, `10x physics`, `10,000x rails`); the **next stop**, the event warp will drop out for, with its countdown (a minute before the helm turns onto the next burn, a sphere-of-influence change, a surface impact, the autopilot's arrival, the next craft forecast to come within 20 km); and, when warp is refused or held, **why** in a few words, from the same reason the game's warp guards give: `held: fire aboard`, `held: Ada is outside`, `held: air venting`, `held: burn coming up`. No guard holds warp for hostiles: a craft crossing into 20 km drops it, which is a next stop, and one already inside does not.
 - **States:** normal; warping (the rate is the loudest part); held (the reason replaces the next stop).
-- **One home for each time:** at the helm, within 3 minutes of a burn, FLT's BURN mode owns its countdown and the chronometer shows the stop after it, if any; on the other posts the chronometer keeps it. HLM never shows a countdown. Over the map, the chronometer shows only the clock and warp; the plan's times are the map's.
+- **One home for each time:** while FLT shows its BURN mode, it owns the burn's countdown and the chronometer shows the stop after it, if any; otherwise (another post, or FLT in DOCK) the chronometer keeps it. HLM never shows a countdown. Over the map, the chronometer shows only the clock and warp; the plan's times are the map's.
 - **Visible:** always in the game, over every screen.
 - **Acts:** comma and period step warp; slash warps to the next burn; clicking the next stop opens the map with the plan timeline on that event.
 - **Replaces:** the status column's clock line and the warp refusal notices.
@@ -306,12 +306,12 @@ Serves F1 to F8, C10.
 
 ![The flight instrument's four modes](functional-task/flight-modes.svg)
 
-One instrument, four modes, hidden in rails warp. It shows the first mode that applies, in this order:
+One instrument, four modes, hidden in rails warp. It shows the first mode that applies, in this order, with one exception: a burn being flown (the turn onto it, from 2 minutes before its start, then the burn) beats DOCK. The helmsman flies a planned burn ahead of any order, docking included (`HelmOrders.flyPlannedBurn`), and so does the flight computer while the captain at the helm keeps their hands off, so the ship is doing the burn and FLT must say so. A burn's countdown does not beat DOCK: a captain docking by hand keeps the docking instrument, and the chronometer keeps the countdown.
 
 | Mode | Applies when | Shows | Keys shown in the mode |
 |---|---|---|---|
 | DEPARTURE | Docked at a station | Where you are berthed; undock clearance; four readiness checks, each `ok` or what is short with a link to the terminal tab that fixes it: delta-v left against the furthest held contract's need, repairs, the whole roster aboard (or who is still ashore, and why), missiles against the launcher. The contracts themselves are OBJ's | U undock, T terminal |
-| DOCK | The navigation target can be docked with, it is within 5 km (`PlayerDocking.READOUT_RANGE`), and a port is armed, clearance asked, or the helm ordered to dock | Your port (n of N, size, active or passive, jammed); the port you were given and clearance (given, asked, refused, none); range; closing speed on a bar banded safe (up to the safe speed), caution (to 1.5 times) and warning (beyond), the bands the corridor uses today; sideways offset; angle off | G arm and ask, H next port, 5 helm docks |
+| DOCK | The navigation target can be docked with, it is within 5 km (`PlayerDocking.READOUT_RANGE`), and a port is armed, clearance asked, or the helm ordered to dock | Your port (n of N, size, active or passive, jammed); the port you were given and clearance (given, asked, refused, none); range; closing speed on a bar banded safe (up to the safe speed), caution (to 1.5 times) and warning (beyond), the bands the corridor uses today; sideways offset; angle off | G arm and ask, H next port (with two ports or more), 5 helm docks |
 | BURN | A planned burn starts within 3 minutes (the helmsman's 120 s turn lead plus a minute), or one is being flown | Burn n of N; countdown to the start of the turn and of the burn; delta-v still to go and burn time; pointing error (and the align marker in the world); who flies it when that is you or the flight computer (hands off), since a helmsman flying it is HLM's line | / warp to burn |
 | CRUISE | Otherwise | The frame and the speed in it; delta-v left on a bar marked with what home takes and what the plan needs; rotation assist only when it is off; main engine and RCS as indicators, lit while firing | none: the hint line has them |
 
@@ -326,7 +326,9 @@ One instrument, four modes, hidden in rails warp. It shows the first mode that a
 
 Serves F7, F9.
 
-- **Shows:** who has the helm (`you`, a named helmsman, or `nobody`) and the standing order with its state: `holding heading`, `flying burns`, `matching Raider`, `holding 1,000 m off Highport`, `approaching to 500 m`, `docking: lining up on port 6`, `autopilot to Shackleton Ice, holding: raider near`. A waiting order says why (`waiting: no helmsman`, `waiting: you are at the helm`).
+- **Shows:** who has the helm (`you`, a named helmsman, or `nobody`) and the standing order with its state: `holding heading`, `flying burn 1, 412 m/s to go`, `matching Raider 'Vex'`, `holding 1,000 m off Highport`, `approaching to 500 m`, `docking: lining up on port 6`, `autopilot to Shackleton Ice, holding: raider near`. A waiting order says why (`waiting: no helmsman`, `waiting: you are at the helm`).
+- **Burns are flown whatever the order.** A helmsman flies every planned burn ahead of any order (`HelmOrders.flyPlannedBurn`), so while one is flown HLM says so, with or without order 1. Today's bridge line says the helmsman holds the heading then, while the ship turns and burns.
+- **Under fire.** A shot at the ship or a missile launched at it drops every order but hold position and match velocity (`HelmOrders.threat`). In a fight the line reads `holding heading` unless one of those two stands, and the HELM caution says what was dropped.
 - **Visible:** on deck and gunnery whenever the ship is undocked (someone else is flying it); at the helm only while an order or the autopilot stands, as FLT's first line.
 - **Acts:** clicking it opens a short list of the orders with their number keys, each greyed with its reason when it can't be given (`approach: no target`, `dock: beyond 50 km`). The number keys stay the way to give them.
 - **Replaces:** the status column's bridge line and helm notices.
@@ -395,8 +397,8 @@ Serve F1, F3, F5, C1 to C5, S2, B2. These already exist; the spec sets rules for
 - **Edge arrows** only for hostiles, inbound missiles, the locked target, the navigation target and contract waypoints. Markers and arrows carry names, never numbers: the time to impact is the band's (principle 4).
 - **Velocity markers.** Prograde and retrograde in the frame FLT names, the frame told apart by shape, not colour alone.
 - **Burn arrows.** The next burn in full with its label; later burns faint and labelled only on hover.
-- **Lead reticle:** one, for the selected gun in hand that needs the most lead (not beams, not point defense). At fight ranges the lead is tens of metres, so reticles for two muzzle speeds would sit a few units apart on one target and read as neither. The starter corvette's is its coilgun's.
-- **Missile paths** and impact marks, incoming and outgoing told apart; the point-defence kill ring.
+- **Lead reticle:** one, for the selected gun in hand that needs the most lead (not beams, not point defense). At fight ranges the lead is metres to tens of metres, so the reticle sits on or just beside the target's hull, inside its lock mark: the gunnery sample's raider crosses the line of sight at about 8 m/s, and the coilgun's 1.1 s of flight gives about 9 m of lead on an 18 m hull. Reticles for two muzzle speeds would sit a few units apart there and read as neither. The starter corvette's is its coilgun's.
+- **Missile paths** and impact marks, incoming and outgoing told apart; the point defense kill ring.
 - **Docking corridor** from the given port, banded by safe speed.
 - **Deck overlays:** fire, smoke, thin air, vacuum, breaches and shorts drawn in their tiles; a tag on each hazard with the progress of whoever is working it (the bar crew already show over their work, `showProgress`), or `nobody`; the worker is the figure standing there, and the alert band names them; off-screen arrows at the view's edge for hazards out of sight; crew names and jobs on hover; boarders on a latched ship.
 - **EVA:** crew outside and their tethers, in both views.
@@ -451,7 +453,7 @@ Serves N1 to N5, F6, F8. Opened with M from any post.
 | Orbit canvas | As today: paths after the plan's last burn, patched conics through spheres of influence, apsides, encounters, burns with their handles, the traffic layer | Click the path to plan a burn, drag handles, drag a burn along its orbit, click a contact to make it the destination |
 | MAP.1 Destination | The navigation target as the target card shows a station or ship, plus its distance and the contract it serves, by name (the time left is MAP.2's comparison) | Q, Shift+Q; `list` opens every candidate grouped (contracts first with their time left, then stations, known pirates, craft in the bubble, freighters) |
 | MAP.2 Plan | The proposal or the planned burns: count; delta-v needed against left; left after the plan and what home takes from the arrival; arrival time against any deadline, `LATE by 22h 40m` when it is; one row per burn | ; plan, Enter accept, Backspace discard |
-| MAP.3 Fly it | Warp to the next burn, helm flies the burns, autopilot; each greyed with its reason when it can't be given | /, 1, 6 |
+| MAP.3 Fly it | Who will fly the next burn: the helmsman by name, you at the helm hands off, or nobody, so it will be missed (a helmsman flies every planned burn, order or none, so order 1 only names it); warp to the burn; the autopilot; each greyed with its reason when it can't be given | /, 6 |
 | MAP.4 Selected burn | The selected burn's components and time | Drag, Shift finer, Delete |
 | MAP.5 Plan timeline | A strip from now to arrival on a log scale, with every event the plan meets: burns, sphere changes, closest approach, arrival, contract deadlines, payday | Click centres the map on the event; double-click warps to it |
 | MAP.6 Layers | Stations, traffic, pirates, derelicts and pods, faction tension, each on or off | Toggle |
@@ -478,7 +480,7 @@ Off a station, Y keeps today's two uses as a terminal with only the tab that app
 
 ### BOOK: Ship's book
 
-Serves S2 to S8, E6, E7, G5. Opened from any post: I on the last tab used (Crew the first time), J on Contracts while undocked, L on Log; a lamp or the schematic opens it on Ship.
+Serves S2 to S8, E6, E7, G5. Opened from any post: I on Crew, J on Contracts while undocked, L on Log; a lamp or the schematic opens it on Ship.
 
 ![Ship's book](functional-task/book.svg)
 
@@ -603,10 +605,10 @@ Every alert has a full text, which names its action, and a short form of about 2
 | POWER | Caution; warning when no reactor feeds anything | As the POWER lamp (never the store's level) | `POWER  Bridge conduit short   Ada resetting`; `NO POWER  reactor shorted   Ada resetting; breaker recloses in 41 s` | `POWER Bridge  Ada` | POWER |
 | PROPELLANT | Caution | Below 1.25 times home, or short of the plan | `PROPELLANT  500 m/s left, home takes 410` | `PROP 500 m/s  home 410` | PROP |
 | BURN MISSED | Caution | A planned burn missed or cut short | `BURN 1 MISSED   replan (M)` | `BURN 1 MISSED  M` | - |
-| HELM | Caution | An order waits with no helmsman, or was dropped by a threat | `HELM ORDER DROPPED  shot at   1 to re-give` | `HELM DROPPED  1` | - |
-| CONTRACT | Caution | A contract's arrival is after its deadline, or under 6 h left with no plan | `LATE  Delivery to Freehold by 22 h   M` | `LATE Freehold  M` | - |
+| HELM | Caution | An order waits with no helmsman, or a shot dropped it (every order but hold position and match velocity) | `HELM ORDER DROPPED  approach, shot at   4 when clear; 3 holds under fire` | `HELM DROPPED  4` | - |
+| CONTRACT | Caution | A contract's arrival is after its deadline, or under 6 h left with no plan | `LATE  Delivery to Shackleton Ice by 22 h   M` | `LATE Shackleton Ice  M` | - |
 | SHIELD | Caution | Shields down in combat, tripped, or under a quarter | `SHIELD TRIPPED  back in 8 s` | `SHIELD TRIPPED  8 s` | SHIELD |
-| COLLAR | Caution | The selected port's collar jammed | `PORT 1 JAMMED   H next port` | `PORT 1 JAMMED  H` | - |
+| COLLAR | Caution | The selected port's collar jammed (the crew free it on EVA, but at battle stations only someone sent out; a yard refits it) | `PORT 1 JAMMED   Ada freeing it on EVA` (at battle stations `nobody   I: send someone out`; with a second port, `H next port`) | `PORT 1 JAMMED  Ada` | - |
 | WOUNDED | Caution | Crew wounded with nobody treating them | `WOUNDED  Cole, no medic free` | `WOUNDED Cole  no medic` | CREW |
 
 **Time to impact.** Every impact countdown (the band, the 20 s threshold) must include the missile's own acceleration. Today's figure, `CombatThreats.timeToImpact`, is the closest approach at the present relative speed, but a harpoon closes under its burn (`MissileDef.closingBurn`, 30 m/s² unless `weapons.toml` sets it) after a short dark start, so the figure runs long and then falls faster than the clock: from 7.7 km it reads 20 s with 12 s left. While a missile still burns, the time is `t = (−v + √(v² + 2ad)) / a` for closing speed v, range d and burn a; afterwards the closest approach is right. With that, 20 s means 20 s.
@@ -650,7 +652,7 @@ Contract involvement is a tag over any class, not a class of its own.
 | Station market (T) | The terminal on Market, while docked |
 | Station yard (Y) | The terminal on Yard while docked; off a station, the field refit or the prize handover |
 | Mission board (J) | The terminal on Contracts while docked; else the book on Contracts |
-| Crew roster (I) | The book on its last tab (Crew the first time) |
+| Crew roster (I) | The book on Crew, so an alert's `I:` lands where its action is |
 | Notice log (L) | The book on Log |
 | Boarding window (K) | The boarding panel |
 | Controls (F1) | The controls reference |
@@ -789,7 +791,8 @@ Data the widgets need that no provider gives the UI today. Each line names where
 | Shield status: state, cloud against capacity, four sectors, trim, heat | WPN, SHIELD lamp | `ShieldCloudComponent.line` (96 segments into four), `ShieldModel` |
 | Target information: relation, state, hull band, firing on you, contract | TGT, markers | `HudMarkerComponent`, `DisabledComponent`, `HostileComponent`, `Struck`, `ContractBoard` |
 | Reach of a destination: delta-v and travel time from here, arrival against deadline | TRM Contracts, MAP.2, OBJ, CONTRACT alert | `RoutePlanner.estimate`, `Navigation.returnDeltaV`, `PlayerTransfer` |
-| Warp's next stop and hold reason | CHR | `Navigation.nextDropOutTime`, rails warp guards' refusals, `AutopilotComponent` |
+| Warp's next stop and hold reason | CHR | `Navigation.nextDropOutTime`, `MacroSimulation.nextDropOutTime` (the encounter forecast), rails warp guards' refusals, `AutopilotComponent` |
+| Who flies a planned burn | HLM, MAP.3 | `HelmOrderComponent.burning` and `Bridge.helmsman`; `HelmOrders.describe` gives nothing while a burn is flown with no order |
 | Who is working each hazard, and progress | Deck overlays, ALR, BOOK Ship | `ShipTaskBoardComponent` claims, the crew's `showProgress` |
 | Room names | Every widget that names a room | New: the rule in section 6, and an optional `name` per room in chassis data |
 | Departure readiness | FLT DEPARTURE | Aggregate of the above and `YardProvider` |
@@ -827,3 +830,4 @@ Each has the default this spec assumes until he answers.
 | 6 | From the Nasa-punk thread's round 3 notes, checked against the code: every impact countdown includes the missile's burn, since today's constant-speed estimate reads 20 s with 12 s left from 7.7 km, so the 20 s warning now means 20 s; the scope's automatic range holds every inbound missile and the locked target, with a new 5 km step for the corvette's 4 km reach; the lamp is SHIELD, as the alert and the prose are; point defense is spelled as the game spells it. |
 | 7 | From the VFD thread's round 3 notes: the gunnery samples now agree with 9.2's time-to-impact formula (harpoons just thrown from 3.2 km land in about 14 s; at 1.4 km they would be 4 s away). The missile alert no longer gives a bearing, which had no stated reference (north-up view, a ship's bow, or the console's counterclockwise convention could each be meant): direction is drawn in the world, by the missile's path or an edge arrow, and on the scope (principle 5), so the band carries the count, the time and the action. |
 | 8 | From the Nasa-punk thread's round 4 notes, checked against the code: the scope's minus and plus buttons are back (round 7 cut that sentence by mistake); the 5 km step's reason is corrected, since fights reach 5 km (the coilgun's `max_range` 5,000 m, a kiting ship holding 4,500 m), not 4 km; one lead reticle, for the selected gun needing the most lead, since two would overlap at fight ranges. From this designer's own check: the gunnery card's closest approach reads 1:15, which is what 3.2 km closing at 41 m/s with 0.6 km at closest gives, and the helm line reads `approaching Raider to 2,000 m`, which fits a closing range. |
+| 9 | From the Nasa-punk thread's round 5 note: a ship is named in full wherever it is named (`Raider 'Vex'`, not `Raider`). From this designer's own review against the code: a shot at the ship, or a missile launched at it, drops every helm order but hold position and match velocity (`HelmOrders.threat`), so round 8's gunnery helm line could not stand and reads `holding heading`; a helmsman flies every planned burn whatever the order, so HLM shows a burn being flown with or without order 1, MAP.3 says who will fly the next burn, and a burn being flown beats FLT's DOCK mode (its countdown does not); the HELM caution's sample is an approach, whose drop matters, and names what carries on under fire; the lead reticle is drawn on the target's hull inside its lock mark (about 9 m of lead at 3.2 km); the jammed-collar caution names who frees it on EVA, since the corvette's one port has no next port, and DOCK offers H only with two ports or more; the chronometer's hold reasons are the game's warp guards' (none holds warp for hostiles), so the gunnery and deck samples read `held: fire aboard`, and its next stops gain the encounter forecast and lose the closest approach; I opens the book on Crew, so an alert's `I:` lands where its action is; the CONTRACT sample matches the map's late plan; the at-rest scope reads 5 km, the step its rule gives for Highport at 3.0 km; the wireframes' chronometer had clipped its third line since round 1 and now shows it, which also removed a next stop from the map's chronometer that the map owns. |

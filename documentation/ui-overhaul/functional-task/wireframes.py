@@ -77,7 +77,13 @@ class Svg:
 # ---- shared widgets ---------------------------------------------------------------------------
 
 def chr_(s, warp="WARP 1x", nxt="next stop: burn 1 in 1:29:51"):
-    s.box(16, 16, 240, 48, "CHR", "Day 3  14:22:05", [warp + "   " + nxt[:18], nxt[18:]] if len(nxt) > 18 and False else [warp, nxt])
+    """Clock, warp, and the next stop or what holds warp. Drawn by hand: box() keeps to two lines at
+    this height, which clipped the next stop in every wireframe up to round 8."""
+    s.rect(16, 16, 240, 48)
+    s.text(23, 30, "CHR  Day 3  14:22:05", size=11.5, weight="bold", fill="#111")
+    s.text(23, 44, warp, size=11, fill="#333")
+    if nxt:
+        s.text(23, 58, nxt, size=11, fill="#333")
 
 
 BAND_X, BAND_W = 320, 640
@@ -135,6 +141,23 @@ def hnt(s, text, note=None):
         s.text(1252, 784, note, size=9.5, fill="#999", anchor="end", style="italic")
 
 
+def target_lock(s, cx, cy, name):
+    """The locked target as the world draws it: its glyph, the lock mark round it, and the one lead
+    reticle on the hull. At 3.2 km the coilgun's lead is about 9 m, so the reticle sits inside the mark."""
+    s.add(f'<polygon points="{cx+18},{cy-6} {cx-12},{cy-6} {cx-20},{cy} {cx-12},{cy+6} {cx+18},{cy+6}" '
+          f'fill="#d6d6d2" stroke="#777" stroke-width="1.1"/>')
+    for sx, sy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        x, y = cx + sx * 36, cy + sy * 22
+        s.add(f'<polyline points="{x - sx * 10},{y} {x},{y} {x},{y - sy * 8}" fill="none" stroke="#8a8a8a" stroke-width="1.3"/>')
+    rx, ry = cx - 9, cy + 2
+    s.add(f'<circle cx="{rx}" cy="{ry}" r="4" fill="none" stroke="#555" stroke-width="1.1"/>')
+    s.add(f'<line x1="{rx - 7}" y1="{ry}" x2="{rx + 7}" y2="{ry}" stroke="#555" stroke-width="1"/>')
+    s.add(f'<line x1="{rx}" y1="{ry - 7}" x2="{rx}" y2="{ry + 7}" stroke="#555" stroke-width="1"/>')
+    s.text(cx, cy - 28, name, size=10, fill="#666", anchor="middle", style="italic")
+    s.text(cx, cy + 38, "lead reticle: about 9 m, on the hull,", size=9.5, fill="#888", anchor="middle", style="italic")
+    s.text(cx, cy + 50, "inside the lock mark", size=9.5, fill="#888", anchor="middle", style="italic")
+
+
 def legend(s, y=None):
     y = y if y is not None else H - 22
     s.rect(16, y - 10, 12, 10, fill="#fff", stroke="#3a3a3a")
@@ -181,7 +204,7 @@ def helm_quiet(out):
         "frame Highport (station, 3.0 km)   speed 0.4 m/s",
         "dv left 7,007 m/s   |----------|^---|  home 410",
         "[main] [RCS]   (indicators, dark at rest)"])
-    s.box(1088, 584, 176, 176, "SNS", "Scope 10 km", [])
+    s.box(1088, 584, 176, 176, "SNS", "Scope 5 km (auto)", [])  # Highport, the nearest contact, is 3.0 km off
     s.box(500, 300, 70, 28, "", "Highport", kind="world")
     s.add('<polygon points="720,470 732,476 720,482" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>')
     s.text(740, 480, "freighter: a glyph, no label", size=9.5, fill="#888", style="italic")
@@ -199,7 +222,7 @@ def gunnery_combat(out):
     s.screen_bg("GUNNERY, in combat (weapons console)")
     s.clear_zone()
     s.ship(640, 390)
-    chr_(s, "WARP 1x (held: hostiles)", "battle stations")
+    chr_(s, "WARP 1x", "held: fire aboard")
     alr(s, ("MISSILE  2 inbound  impact 14 s", "F decoy   point defense engaging"),
         ("FIRE Hold  Ada", "WOUNDED Cole  no medic"))
     ann(s, [("FIRE", "caut"), ("CREW", "caut")], shields=False)
@@ -223,9 +246,9 @@ def gunnery_combat(out):
         "(a ship with an emitter adds a",
         " shields row: state, %, trim, 4 sectors)"])
     s.box(1088, 584, 176, 176, "SNS", "Scope 5 km (auto)", ["", "", "", "", "", "", "", "1 hostile"])
-    s.box(400, 734, 360, 26, "HLM", "Helm: Bea   approaching Raider to 2,000 m", kind="cond")
-    s.box(760, 250, 110, 30, "", "[ Raider 'Vex' ]", kind="world")
-    s.box(812, 300, 64, 24, "", "lead +", kind="world")
+    # A shot at the ship drops an approach order (HelmOrders.threat), so the helmsman holds the heading
+    s.box(400, 734, 360, 26, "HLM", "Helm: Bea   holding heading", kind="cond")
+    target_lock(s, 815, 292, "Raider 'Vex'")
     s.box(420, 230, 150, 28, "", "missile path", kind="world")
     hnt(s, "Space fire   R missile   Tab next target   V stand up   F1 controls", "note: F decoy is not repeated, the band names it")
     legend(s, 470)
@@ -247,9 +270,9 @@ def flt_modes(out):
     s.box(664, 44, 600, 112, "2", "DOCK  (dockable target within 5 km, port armed or dock order)", [
         "your port 1/1 (S, active)  >  Highport port 6   CLEARED",
         "range 312 m     closing 6.1 m/s   safe up to 7.9 m/s",
-        "|-----------[====safe====]---o------| ",
+        "|====== safe =====o==|~ caution ~|!! warning !!|",
         "offset  L 2.2 m     angle  turn 4 deg left",
-        "[G] arm/ask   [H] next port   [5] helm: dock for me"])
+        "[G] arm/ask   [5] helm: dock for me   (H only with 2+ ports)"])
     s.box(16, 176, 600, 112, "3", "BURN  (next burn starts within 3 min, or one is being flown)", [
         "Burn 1 of 2     T-1:52   (turn starts T-2:00)",
         "dv to go 3,084 m/s   burn time 4:17",
@@ -257,7 +280,7 @@ def flt_modes(out):
         "flown by: flight computer (hands off)",
         "[/] warp to burn"])
     s.box(664, 176, 600, 112, "4", "CRUISE  (otherwise)", [
-        "frame Raider (locked target)   speed 41 m/s",
+        "frame Raider 'Vex' (locked target)   speed 41 m/s",
         "dv left 7,007 m/s  |------^---|  home 410 m/s",
         "[main] [RCS]  lit while firing",
         "rotation assist OFF   (shown only when off)",
@@ -274,10 +297,11 @@ def flt_modes(out):
         "A key on screen in a mode is never repeated on the hint line.",
         "Who flies: HLM's line when a helmsman does; BURN names only you or the computer.",
         "Closing speed is the target card's; apsides are the map's."])
-    s.text(16, 450, "Mode order is a priority list: docked beats everything; a dock approach beats a burn (a burn",
+    s.text(16, 450, "Mode order is a priority list: docked beats everything; a dock approach beats a burn's countdown, but a burn",
            size=11.5, fill="#444")
-    s.text(16, 466, "planned while docking waits); a burn beats cruise. Rails warp drops out for a burn, so BURN never meets it.",
+    s.text(16, 466, "being flown beats docking (the helm flies a planned burn ahead of any order); a burn beats cruise.",
            size=11.5, fill="#444")
+    s.text(16, 482, "Rails warp drops out for a burn, so BURN never meets it.", size=11.5, fill="#444")
     s.save(os.path.join(out, "flight-modes.svg"))
 
 
@@ -308,7 +332,7 @@ def deck(out):
     s.add('<circle cx="700" cy="430" r="6" fill="#555"/>')
     s.text(712, 434, "you", size=10, fill="#555")
     s.box(640, 446, 176, 26, "", "Weapons console   V sit", kind="world")
-    chr_(s, "WARP 1x (held: fire aboard)", "")
+    chr_(s, "WARP 1x", "held: fire aboard")
     alr(s, None, ("FIRE Hold  Cole", "VENTING Bridge  nobody", "POWER Bridge  Ada"))
     ann(s, [("FIRE", "caut"), ("POWER", "caut"), ("AIR", "caut"), ("CREW", "adv")], shields=False)
     s.box(16, 144, 240, 78, "PER", "You", [
@@ -317,7 +341,7 @@ def deck(out):
         "here    Bridge: thin"], kind="cond")
     obj(s, ["Delivery: ice to Freehold  1d 4h"])
     ntf(s, ["Payday: 2,000 cr"], y=66)
-    s.box(420, 734, 440, 26, "HLM", "Helm: Bea holds the heading", kind="cond")
+    s.box(420, 734, 440, 26, "HLM", "Helm: Bea   holding heading", kind="cond")
     hnt(s, "W/A/S/D walk   O lights   F1 controls", "note: E and V are not repeated, the prompt shows them")
     legend(s, 600)
     s.save(os.path.join(out, "deck.svg"))
@@ -333,7 +357,7 @@ def map_(out):
            anchor="middle", style="italic")
     s.add('<circle cx="476" cy="392" r="150" fill="none" stroke="#aaa" stroke-width="1"/>')
     s.text(28, 122, "EARTH SYSTEM   [M] or [Esc] close", size=12, weight="bold", fill="#444")
-    chr_(s, "WARP 1x", "next stop: burn 1 in 1:29:51")
+    chr_(s, "WARP 1x", "")  # over the map the plan's times are MAP.2's and MAP.5's, not the chronometer's
     s.box(320, 16, 640, 76, "ALR", "(alerts stay visible over the map, both rows)", kind="cond")
     s.box(944, 100, 320, 120, "MAP.1", "DESTINATION", [
         "Shackleton Ice  (Selene Combine)",
@@ -355,7 +379,7 @@ def map_(out):
         "[;] plan  [Enter] accept  [Bksp] discard"])
     s.box(944, 412, 320, 100, "MAP.3", "FLY IT", [
         "[/] warp to burn 1",
-        "[1] helm: fly burns     helmsman: Bea",
+        "burn 1 flown by  Bea (helmsman)",
         "[6] autopilot           ready",
         "",
         "greyed with the reason when not allowed"])
