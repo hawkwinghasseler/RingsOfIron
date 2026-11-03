@@ -67,7 +67,8 @@ s += du(12, ZC.lmid.y, 308, 12 + 2 * 24, {
     const R = gx + gw - 6, T = gx + 150, D = gx + 162;
     let yy = gy + 16.7;
     c += sym.chevron(gx + 11, yy - 5, 0, C.red, 1.5, 5.5) + text(gx + 24, yy, 'MSL', { size: B, bold: true, fill: C.red, track: 0.4 });
-    c += val(T, yy, 'T−0:03', null, { anchor: 'end' }) + lab(D, yy, 'BRG') + text(D + 30, yy, '050', { size: B, bold: true });
+    // version 8: each missile names the ship that fired it, not a bearing with no stated reference
+    c += val(T, yy, 'T−0:03', null, { anchor: 'end' }) + text(D, yy, 'RAIDER', { size: B, bold: true, fill: C.red, track: 0.4 });
     c += I.box(R - 56, yy - 14, 56, 18, 'PD ON', 'engaged', { size: LB });
     c += line(gx + 4, gy + 24, gx + gw - 4, gy + 24, C.graticule, 1);
     yy += 24;
@@ -123,7 +124,8 @@ s += du(12, 558, 308, 186, {
     c += I.box(X, gy + 86, R - X, 24, 'TRIM  BOW', 'selected', { size: B });
     c += line(X, gy + 122, R, gy + 122, C.graticule, 1);
     c += lab(X, gy + 140, 'EMITTER S') + text(R, gy + 140, 'HOLDING', { size: B, bold: true, fill: C.white, anchor: 'end' });
-    c += lab(X, gy + 158, 'HEAT') + val(R, gy + 158, '40%', null, { anchor: 'end', size: B });
+    // the figure beside a bar is a value, at 15 (version 8, 12.4)
+    c += lab(X, gy + 158, 'HEAT') + val(R, gy + 158, '40%', null, { anchor: 'end' });
     c += I.hbar(X + 44, gy + 158, R - X - 84, 0.4, { notch: 1, notchColor: C.red });
     return c;
   },

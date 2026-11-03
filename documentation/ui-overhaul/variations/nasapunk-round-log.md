@@ -8,11 +8,11 @@ meaningful left in it: no claim the game's code contradicts, every spec rule met
 argued, the style's own rules kept (type sizes, separators, colour semantics), and no collisions
 at 1280 x 800.
 
-| Variation | Folder | Spec version drawn |
-|---|---|---|
-| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 13 |
-| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 7 |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 7 |
+| Variation | Folder | Spec version drawn | State |
+|---|---|---|---|
+| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14 | Converged in round 5 |
+| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 9 | Converged in round 5 |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 8 | Converged in round 5 (one sample-text note open) |
 
 ## Round 1 (3 November 2026)
 
@@ -191,7 +191,7 @@ since the band is a message list and the ten-lens panel is the fixed hardware.
 
 | Spec | Notes |
 |---|---|
-| Ship Stations (round 13) | 4: F's NEXT line repeats its row's 37 s; a shorted gun is "shorted" on its chip and "no power" on POWER; A's closest approach (140 m from 1.2 km at 3.9 m/s is 5:03 away, not 2:10); F's ticker order, if the short's sparks lit the fire |
+| Ship Stations (round 13) | 4: F's NEXT line repeats its row's 37 s; a shorted gun is "shorted" on its chip and "no power" on POWER; C's closest approach (140 m from 1.2 km at 3.9 m/s is 5:03 away, not 2:10); F's ticker order, if the short's sparks lit the fire |
 | Context-driven (version 7) | 2: F1's sample can't be a kiter (120 m/s relative at 85 closing is 85 m/s across, and a kiter doesn't circle); "fights sit inside 4 km" (the coilgun reaches 5, a kiter holds out to 4.5) |
 | Task-driven (round 7) | 3: round 7 dropped the scope's − and +; "the corvette's 4 km reach", from my own wrong round 3 note; two lead reticles (one per muzzle speed) would sit on top of each other and the target |
 
@@ -208,7 +208,50 @@ designers' answers to the notes above. Two notes stay open in the context variat
 fault in what is drawn: the trim selector is never live on the corvette, and C3's floor path is
 world art.
 
-## Round 5 (next)
+## Round 5 (3 November 2026)
 
-- Apply each designer's answers to round 4's notes, then critique all ten screens again.
-- A variation is done when a round finds nothing meaningful left in it.
+**The designers' answers.** Every round 4 note was taken: all 4 by the stations spec (its round
+14), both by the context spec (version 8, which also took the cassette artist's notes; version 9
+then changed only H6's sample and wireframe 04, neither drawn here), and all 3 by the task spec
+(round 8, which also checked my 1:15 and gave T2's helm an approach to 2,000 m).
+
+**Drawn:**
+
+- Stations, to round 14: S3's POWER page lists what is not working in the order it comes back.
+  The shorted gun is on top (SHORTED, back in 0:37, its breaker's 45 s wait as a bar 8 s along),
+  then the nose gun (DISABLED, health 24%, repair). The NEXT line has gone.
+- Context, to version 8: F4 names each missile's shooter; H2's numbers take their lines' 13, while
+  F3's heat and H4's figures read at 15 as values; H4's power row gives the store and the output,
+  with the rating beside it while damage holds the output under it. The master cue already sat
+  over the rack at fire control, and F1 already had the kiter's numbers.
+- Task, to round 8: T2's helm flies an approach to 2,000 m off Raider 'Vex', boxed green as an
+  order in flight. The strip spans the gap between SHIP and WEAPONS so the whole name fits.
+
+**Found in my own screens and fixed**, on a fresh pass over all ten:
+
+- S3's MASTER WARN lens vanished when only cautions were live, leaving a gap where S2 has it lit.
+  The master lenses are the row's fixed hardware, so it now sits unlit in its place.
+- S1's camera inset carried a TV tag, a short form the word list lacks for a mode the game
+  doesn't have; it is gone, as on S2's inset. A pass over every string on all ten screens against
+  the word list's "never" forms found nothing else.
+- C3's H4 named the life support reserve EMERGENCY, the spec's word, beside P2's EMERG O2 for the
+  same datum; the word list gives an instrument EMERG, so the row reads EMERG O2.
+- My round 4 notes, README and S1's source called the Highport walkthrough A; it is C.
+
+**Findings sent to the designers:**
+
+| Spec | Notes |
+|---|---|
+| Ship Stations (round 14) | None: round 14 draws as written |
+| Context-driven (versions 8 and 9) | None: both draw as written |
+| Task-driven (round 8) | 1, sample text only: the gunnery wireframe names the target Raider 'Vex' on the card, its label and the contract, but "Raider" on the helm line and in the frame tag |
+
+**State of the variations.** All three have converged: the fresh pass found nothing meaningful left
+in any of them that the spec or the style can answer. The task note changes nothing drawn. The two
+open context notes (the trim selector is never live on the corvette, and C3's floor path is world
+art) are coverage and world art, not faults in what is drawn.
+
+## Next
+
+Nothing is left to iterate on these three. If a spec changes again (the other artists' rounds can
+still move them), the new version is drawn and checked the same way.

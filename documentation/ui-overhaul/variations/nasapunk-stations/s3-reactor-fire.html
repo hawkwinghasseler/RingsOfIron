@@ -8,7 +8,7 @@
 <script src="../../nasapunk/mockups/kit.js"></script>
 <script src="stations.js"></script>
 <script>
-// Walkthrough F (round 7): on deck at the reactor console, the Engineering panel open on its Power
+// Walkthrough F (rounds 7 and 14): on deck at the reactor console, the Engineering panel open on its Power
 // tab. Eight seconds ago a hit shorted the AFT STBD gun (the laser); its sparks lit the carpet
 // beside it, and Ada is on the fire. The hit also left the reactor at 2.6 of 3.0 MW and the NOSE
 // gun disabled. The raider has broken off but is still inside 50 km: condition YELLOW. Ada called
@@ -70,7 +70,7 @@ function powerSynoptic(x0, y0, k, sel) {
   c += ring(X(8.5), Y(5.5), 4.5, C.white) + `<circle cx="${X(8.5)}" cy="${Y(5.5)}" r="1.6" fill="${C.white}"/>`;
   [[1.4, 1.5], [1.4, 4.5]].forEach(([tx, ty]) => c += path(`M${X(tx) + 5} ${Y(ty) - 4} L${X(tx) - 4} ${Y(ty) - 7} L${X(tx) - 4} ${Y(ty) + 7} L${X(tx) + 5} ${Y(ty) + 4} Z`, C.white, 1.5, { fill: C.glass }));
   [[11.5, 4.5], [14.5, 4.5], [14.5, 1.5]].forEach(([tx, ty]) => c += ring(X(tx), Y(ty), 5, C.white));
-  // the faults: the AFT STBD gun shorted (no power: amber, dashed), the NOSE gun disabled (amber, crossed)
+  // the faults: the AFT STBD gun shorted (amber, dashed: no current through it), the NOSE gun disabled (amber, crossed)
   const [ax, ay] = [X(11.5), Y(1.5)], [nx, ny] = [X(16.5), Y(2.5)];
   c += ring(ax, ay, 5.5, C.amber, { dash: '2.5 2' });
   c += ring(nx, ny, 5.5, C.amber) + line(nx - 3.2, ny - 3.2, nx + 3.2, ny + 3.2, C.amber, 1.5) + line(nx - 3.2, ny + 3.2, nx + 3.2, ny - 3.2, C.amber, 1.5);
@@ -114,13 +114,17 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     c += powerSynoptic(gx + gw / 2 - 10.5 * 22, 210, 22, true);
     c += rule(384);
 
-    // Not working: only the exceptions, each with its cause and what clears it
+    // Not working (spec round 14): only the exceptions, in the order each comes back. The timed come
+    // first, soonest at the top, then those that need work, so the top row is the next and the page
+    // needs no NEXT line. Each row gives the system, its state in the words the gun chips use (8.3),
+    // and what clears it. A row that comes back by itself runs its wait as a bar (the breaker's 45 s,
+    // 8 of them gone); a row that needs work says what the work is against.
     c += head(408, 'NOT WORKING');
     const rows = [
-      { sys: 'AFT STBD GUN', st: 'NO POWER', cause: 'SHORT', clear: 'RECLOSES IN', n: '0:37', sel: true },
-      { sys: 'NOSE GUN', st: 'DISABLED', cause: 'HEALTH 24%', clear: 'REPAIR' },
+      { sys: 'AFT STBD GUN', st: 'SHORTED', clear: 'BACK IN', n: '0:37', wait: 8 / 45, sel: true },
+      { sys: 'NOSE GUN', st: 'DISABLED', clear: 'REPAIR', note: 'HEALTH 24%' },
     ];
-    const bX = L + 136, bW = tw('NO POWER', 12, true, 0.5) + 16;
+    const bX = L + 136, bW = Math.max(...rows.map(r => tw(r.st, 12, true, 0.5))) + 16;
     rows.forEach((r, i) => {
       const y = 442 + i * 54;
       if (r.sel) c += rect(L - 7, y - 21, R - L + 14, 48, { stroke: C.cyan, sw: 1.5, r: 1.5 });
@@ -128,17 +132,9 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
       c += I.box(bX, y - 14, bW, 19, r.st, 'caution', { size: 12 });
       if (r.n) c += text(R, y, r.n, { size: 15, bold: true, fill: C.white, anchor: 'end' }) + text(R - tw(r.n, 15, true) - 7, y, r.clear, { size: 12, bold: true, fill: C.white, anchor: 'end', track: 0.3 });
       else c += text(R, y, r.clear, { size: 12, bold: true, fill: C.white, anchor: 'end', track: 0.3 });
-      c += text(L, y + 19, r.cause, { size: 12, bold: true, fill: C.dim, track: 0.4 });
+      if (r.wait != null) c += text(L, y + 19, 'BREAKER', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + rect(bX, y + 13, R - bX, 3, { fill: '#26303A' }) + rect(bX, y + 13, (R - bX) * r.wait, 3, { fill: C.white });
+      else c += text(L, y + 19, r.note, { size: 12, bold: true, fill: C.dim, track: 0.4 });
     });
-    c += rule(536);
-
-    // NEXT: the soonest that comes back by itself, with the breaker's wait as a bar (45 s in all)
-    c += head(562, 'NEXT');
-    const nX = L + 56;
-    c += text(nX, 562, 'AFT STBD GUN', { size: 13, bold: true, fill: C.white, track: 0.3 });
-    const bx = nX + tw('AFT STBD GUN', 13, true, 0.3) + 8;
-    c += text(bx, 562, 'BACK IN', { size: 12, bold: true, fill: C.dim, track: 0.3 }) + text(bx + tw('BACK IN', 12, true, 0.3) + 6, 562, '0:37', { size: 15, bold: true, fill: C.white });
-    c += rect(nX, 574, R - nX, 3, { fill: '#26303A' }) + rect(nX, 574, (R - nX) * 8 / 45, 3, { fill: C.white });
     return c;
   },
 }).svg;

@@ -80,9 +80,13 @@ s += du(12, 558, 308, 134, {
       c += text(BX, top + 16, l1, { size: B, bold: true, fill: o.l1c || C.white, track: 0.4 }) + r1(top + 16);
       c += I.hbar(BX, top + 30, R - BX, frac, { color: col || C.white, bands: o.bands });
     };
-    row(0, 'HULL', null, 'INTEGRITY', yy => val(R, yy, '88%', null, { anchor: 'end', size: B }), 0.88, { l1c: C.dim, bands: [[0, 0.25, C.red], [0.25, 0.5, C.amber]] });
-    row(1, 'POWER', 'warning', 'OUTPUT', yy => val(R, yy, '0 OF 3.0', 'MW', { anchor: 'end', size: B, fill: C.red }), 0, { l1c: C.dim });
-    row(2, 'LIFE SUP', 'warning', 'EMERG O2', yy => val(R, yy, '52', 'KG', { anchor: 'end', size: B }), 52 / 60, { l1c: C.red });
+    // Version 8: the figures beside the bars are values, at 15 (12.4). Power's bar is the store, with
+    // its share; then the reactor's output, with the rating beside it while damage holds the output
+    // under it. Life support on its reserve gives the reserve's kilograms (of 60), named EMERG O2 as
+    // P2's code and the master cue name it: the spec's EMERGENCY, in the word list's instrument form.
+    row(0, 'HULL', null, 'INTEGRITY', yy => val(R, yy, '81%', null, { anchor: 'end' }), 0.81, { l1c: C.dim, bands: [[0, 0.25, C.red], [0.25, 0.5, C.amber]] });
+    row(1, 'POWER', 'warning', 'STORE', yy => val(BX + tw('STORE', B, true, 0.4) + 8, yy, '0%') + val(R - tw('OF 3.0 MW', LB, true, 0.3) - 4, yy, '0', null, { anchor: 'end', fill: C.red }) + text(R, yy, 'OF 3.0 MW', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.3 }), 0, { l1c: C.dim });
+    row(2, 'LIFE SUP', 'warning', 'EMERG O2', yy => val(R, yy, '42', 'KG', { anchor: 'end' }), 42 / 60, { l1c: C.red });
     return c;
   },
 }).svg;

@@ -30,9 +30,12 @@ function annunciator(cx, y, tiles, lamps = {}) {
     s += text(x + tw0 / 2, y + 30, val, { size: 12, bold: true, fill: ink, anchor: 'middle', track: 0.5 });
     x += tw0 + gap;
   });
+  // The master lenses are the row's fixed hardware: both come up with it, at its ends, and each is
+  // lit only while an alert of its kind is live. An unlit lens is a lamp waiting, so S3's cautions
+  // leave MASTER WARN dark in its place rather than gone (style 6).
   const half = 720 / 2;
-  if (lamps.warning) s += lens(cx - half, y, 56, 36, 'MASTER\nWARN', C.red);
-  if (lamps.caution) s += lens(cx + half - 56, y, 56, 36, 'MASTER\nCAUT', C.amber);
+  s += lens(cx - half, y, 56, 36, 'MASTER\nWARN', lamps.warning ? C.red : null);
+  s += lens(cx + half - 56, y, 56, 36, 'MASTER\nCAUT', lamps.caution ? C.amber : null);
   return s;
 }
 

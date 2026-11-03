@@ -34,10 +34,12 @@ s += text(...at(HDG + 34, 56), '1', { size: 12, bold: true, fill: C.magenta });
 const HX = 930, HY = 250;
 s += stationHull(HX, HY, 0.28);
 s += W.contact('station', HX, HY, { nav: true, label: ['HIGHPORT'], lx: 26, ly: 4 });
-// Long-range optics on the nav target: a CCTV feed (11.3), clear of the top column
+// Long-range optics on the nav target: a CCTV feed (11.3), clear of the top column. Its corners
+// carry what the word list has for a camera (OPT n, what it shows) and the zoom; no mode tag, since
+// the game's cameras have one mode
 s += haloed((c, w) => line(HX + 12, HY - 14, 1040, 206, c, w), 'rgba(238,241,243,0.5)', 1);
 s += W.cctv(1040, 112, 176, 110, {
-  id: 1, tl: 'OPT 2  NAV', br: 'HIGHPORT  ×24', tr: 'TV',
+  id: 1, tl: 'OPT 2  NAV', br: 'HIGHPORT  ×24',
   picture: (cx, cy) => `<g opacity="0.85" filter="url(#mono)">${stationHull(cx, cy, 0.74)}</g>`,
 });
 
@@ -65,9 +67,9 @@ const cl = du(Z.cluster.x, Z.cluster.y, 480, 160, {
     // which thrusters fire: MAIN and RCS, the task variation's names for them (both dark: coasting)
     c += lens(R - 36, row(0) + 6, 36, 16, 'RCS', null) + lens(R - 78, row(0) + 6, 40, 16, 'MAIN', null);
     c += I.box(R - 86 - bw('ASSIST'), row(0) + 5, bw('ASSIST'), 18, 'ASSIST', 'engaged', { size: 12 }) + I.box(R - 92 - bw('ASSIST') - bw('MANUAL'), row(0) + 5, bw('MANUAL'), 18, 'MANUAL', 'normal', { size: 12 });
-    // 2 Reference: the nav target; name, range, closing, CPA (it truncates from the right). The
-    // spec's A has the closest approach in 2:10; at 1.2 km closing 3.9 m/s, 140 m at closest is
-    // 5:03 away at constant velocity (t = closing × range / speed², speed 3.93 m/s)
+    // 2 Reference: the nav target; name, range, closing, CPA (it truncates from the right). At
+    // 1.2 km closing 3.9 m/s, 140 m at closest is 5:03 away at constant velocity (t = closing ×
+    // range / speed², speed 3.93 m/s), as walkthrough C gives it since spec round 14
     let x = L;
     c += `<circle cx="${x + 6}" cy="${row(1) + 14}" r="5.5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/><circle cx="${x + 6}" cy="${row(1) + 14}" r="1.4" fill="${C.magenta}"/>`;
     x += 18; c += val(x, row(1) + 19, 'HIGHPORT', { fill: C.magenta, track: 0.4 }); x += tw('HIGHPORT', SB, true, 0.4) + 14;

@@ -141,11 +141,12 @@ s += du(ZT.sch.x, ZT.sch.y, ZT.sch.w, ZT.sch.h, {
   },
 }).svg;
 
-// HLM: at gunnery FLT is hidden; who flies and the order take its place. No order stands, so Bea
-// holds the heading, as on T3 (HelmOrderComponent.Mode.NONE). A held position off Vex
-// (HOLD_POSITION) would keep the range, which the target card shows closing at 41 m/s for a pass
-// at 0.6 km
-s += helmStatus(376, 736, 320, 'BEA', 'HOLDING HEADING', 'normal', 'NO ORDER');
+// HLM: at gunnery FLT is hidden; who flies and the order take its place. Bea flies the spec's
+// order (round 8): an approach to 2,000 m (HelmOrderComponent.Mode.APPROACH, one of
+// HelmOrders.APPROACH_DISTANCES), which the target card's closing 41 m/s fits. Boxed green, as an
+// order being flown. The target keeps its whole name, as on the card and its label (word list rule
+// 1), so the strip spans the gap between SHIP and WEAPONS, 12 clear of each.
+s += helmStatus(328, 736, 380, 'BEA', "APPROACHING RAIDER 'VEX' TO 2 000 M", 'engaged');
 
 // F is the warning's own action, so it doesn't repeat here (round 4)
 s += hintLine([['SPACE', 'FIRE'], ['R', 'MISSILE'], ['TAB', 'NEXT TARGET'], ['F1', 'CONTROLS']]);

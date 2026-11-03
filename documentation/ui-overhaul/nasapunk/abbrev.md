@@ -50,7 +50,7 @@ in step with the specs since.
 |---|---|---|
 | `DAY n · HH:MM:SS` | The game clock: days since the campaign began, then the time. It replaces the guide's first MET clock, which was the same datum in other dress | `DAY 0 · 01:12:40` |
 | `T−M:SS`, `T−H:MM:SS` | A countdown to an event, with a true minus (U+2212) | `T−12:04`, `T−1:10:00` |
-| `M:SS` | The same countdown where a label or column already says what it counts to | `IMPACT 0:03`, `RECLOSES IN 0:37`, P2's `3:40` |
+| `M:SS` | The same countdown where a label or column already says what it counts to | `IMPACT 0:03`, `BACK IN 0:37`, P2's `3:40` |
 | a bar | A window under 10 s that runs out (an armed guarded order) | X3's tow, armed |
 
 Every countdown is M:SS or H:MM:SS, so a column of them scans: never `21 S` beside `3:40`.

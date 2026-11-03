@@ -35,13 +35,15 @@ s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
     const L = gx + 8, M = L + 56, R = gx + gw - 8, P = 17.5;
     let yy = gy + 18;
     const rule = () => { c += line(gx + 4, yy - 13, gx + gw - 4, yy - 13, C.graticule, 1); yy += 4; };
-    const right = (v, unit) => val(R, yy, v, unit, { anchor: 'end' });
+    // Version 8 (12.4): a number inside a line of text takes the line's size, so H2's numbers are
+    // at the body's 13, not a value's 15; units stay dim at 12
+    const right = (v, unit) => val(R, yy, v, unit, { anchor: 'end', size: B });
     // ORBIT: the body and height, then each apsis with the time to it
-    c += lab(L, yy, 'ORBIT') + text(M, yy, 'EARTH', { size: B, bold: true }) + lab(R - valW('400', 'KM') - 6, yy, 'ALT', { anchor: 'end' }) + right('400', 'KM'); yy += P;
-    c += lab(M, yy, 'AP') + val(M + 26, yy, '403', 'KM') + right('T−24:10'); yy += P;
+    c += lab(L, yy, 'ORBIT') + text(M, yy, 'EARTH', { size: B, bold: true }) + lab(R - valW('400', 'KM', B) - 6, yy, 'ALT', { anchor: 'end' }) + right('400', 'KM'); yy += P;
+    c += lab(M, yy, 'AP') + val(M + 26, yy, '403', 'KM', { size: B }) + right('T−24:10'); yy += P;
     // half an orbit after the apoapsis: a 400 km orbit of Earth takes 92:24 (it flies at 7 672 m/s),
     // so the periapsis is 46:12 after the T−24:10 apoapsis (the spec rounds it to "1 h 10 m")
-    c += lab(M, yy, 'PE') + val(M + 26, yy, '397', 'KM') + right('T−1:10:22'); yy += P + 1;
+    c += lab(M, yy, 'PE') + val(M + 26, yy, '397', 'KM', { size: B }) + right('T−1:10:22'); yy += P + 1;
     rule();
     // NAV: the Nav's name in the nav colour, its range, rate and closest approach
     c += lab(L, yy, 'NAV') + `<circle cx="${M + 5}" cy="${yy - 4.5}" r="5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/>` + text(M + 16, yy, 'SHACKLETON ICE', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right(num(1240), 'KM'); yy += P;
@@ -53,7 +55,7 @@ s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
     c += val(M + 16, yy, '420', 'M/S', { size: B }) + text(R, yy, 'HELM FLIES IT', { size: B, fill: C.white, anchor: 'end', track: 0.3 }); yy += P + 1;
     rule();
     // PLAN: what the planned burns need and what they leave (delta-v left is H1's)
-    c += lab(L, yy, 'PLAN') + lab(M, yy, 'ΔV') + val(M + 22, yy, '860', 'M/S') + lab(R - valW('380', 'M/S') - 6, yy, 'LEAVES', { anchor: 'end' }) + right('380', 'M/S');
+    c += lab(L, yy, 'PLAN') + lab(M, yy, 'ΔV') + val(M + 22, yy, '860', 'M/S', { size: B }) + lab(R - valW('380', 'M/S', B) - 6, yy, 'LEAVES', { anchor: 'end' }) + right('380', 'M/S');
     return c;
   },
 }).svg;
