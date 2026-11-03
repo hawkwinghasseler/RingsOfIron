@@ -1170,7 +1170,7 @@ For whoever builds this; nothing here is binding on the art.
 | `ShipCondition` | Green, Yellow, Red from `ThreatProvider`, hostile contacts and `PirateBoarding`, plus battle stations; Docked and Emergency from docking and disablement |
 | `AlertBus` | Grows out of `NoticeLog`: alerts with kind, instance, severity (or an escalation rule), station, tag, value, active condition and re-arm (13.2). `NoticeLog.post(text)` stays and posts an advisory, so no system breaks; systems move over one at a time |
 | `StatusStrip`, `Annunciator`, `CalloutTicker`, `PromptLine` | Widgets on `ShipCondition` and `AlertBus` |
-| `RoomNames` | Names each room after its most important system, or its place in the hull (13.2) |
+| `RoomNames` | Names rooms by 13.2's rule (a name from the chassis data, BRIDGE, the system that fills the most tiles, or the place in the hull) and guns by where they sit, from the hardpoints |
 | `MfdPage`, `Mfd` | A page per row of 9.2; the two displays with soft keys, pin, fold and auto-paging. `RadarScope`, `WireframeMinimap` and a small `OrbitMap` become pages |
 | `HelmCluster`, `TacticalCluster`, `GunnerSight`, `StationBoard` | Sections 8.1 to 8.5, replacing `FlightReadoutSystem`'s panel and `ShipGauges` |
 | `Panel` | The shared panel grammar (10.1); today's windows become its tabs |
