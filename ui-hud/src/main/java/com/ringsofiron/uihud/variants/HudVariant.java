@@ -31,9 +31,8 @@ public interface HudVariant {
     }
 
     /**
-     * A key the HUD did not use: true when the variant used it (a soft key, the master caution's
-     * acknowledge). The game polls its own bindings, so true does not keep the key from them; give a
-     * variant's keys with Alt held, which the game's actions ignore.
+     * A key the HUD did not use, before the game's own bindings see it: true when the variant used
+     * it (a soft key, the master caution's acknowledge).
      */
     default boolean keyDown(int keycode) {
         return false;
