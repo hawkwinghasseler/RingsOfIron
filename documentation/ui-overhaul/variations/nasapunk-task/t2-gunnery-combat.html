@@ -9,7 +9,8 @@
 <script src="task.js"></script>
 <script>
 // Seated at the weapons console in a fight with the raider 'Vex'. Bea, the helmsman, holds the
-// ship 2 km off it. Two missiles inbound, the first in 14 s (the one warning). An earlier hit lit
+// ship 3.2 km off it. Two harpoons inbound, the first in 3 s (the one warning): about 3.5 km out
+// and still burning, which a harpoon (weapons.toml: 60 kN on 400 kg) covers in about 3 s. An earlier hit lit
 // the Hold, where Ada fights the fire, and wounded Cole, whom nobody is treating (two cautions).
 // FLT gives way to HLM; SCH shows because FIRE and CREW are lit (section 8). The crew are the
 // game's starting crew (GameScenario: Ada, engineer; Bea, crewman and helmsman; Cole, marine).
@@ -38,13 +39,13 @@ s += W.track(`M 1040 380 Q 860 410 ${SX + 18} ${SY + 14}`) + W.missile(900, 400,
 // the hit already taken: an impact mark on the port side aft
 s += W.impact(SX - 30, SY - 4);
 
-s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1X', note: 'HELD: HOSTILES NEAR' });
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×', note: 'HELD: HOSTILES NEAR' });
 s += annunciatorPanel({ FIRE: 'caution', CREW: 'caution' });
 
 // ALR: the warning row with its one number and its action; the caution row under it, each caution
 // naming who handles it. Point defence engaging is the warning's own second line.
 s += alertBand({
-  warning: { tag: 'MISSILE\n2 IN', big: 'IMPACT 14 S', big2: 'BEARING 080', line2: 'POINT DEFENSE ENGAGING', actions: [['F', 'DECOY']] },
+  warning: { tag: 'MISSILE\n2 IN', big: 'IMPACT 0:03', big2: 'BEARING 080', line2: 'POINT DEFENSE ENGAGING', actions: [['F', 'DECOY']] },
   cautions: [['FIRE', 'HOLD', 'ADA ON IT'], ['WOUNDED', 'COLE', 'NO MEDIC FREE']],
 });
 
@@ -69,7 +70,7 @@ s += du(1024, 328, 240, 200, {
     // range and closing side by side, labels over values, both at body size
     c += text(L, gy + 107, 'RNG', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(L + 112, gy + 107, 'CLOSING', { size: 12, bold: true, fill: C.dim, track: 0.4 });
     c += text(L, gy + 125, '3.2 KM', { size: TV, bold: true, fill: C.white }) + text(L + 112, gy + 125, '41 M/S', { size: TV, bold: true, fill: C.white });
-    c += text(L, gy + 147, 'CPA', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(L + 38, gy + 147, '0.6 KM  IN 1:12', { size: TB, bold: true, fill: C.white });
+    c += text(L, gy + 147, 'CPA', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(L + 38, gy + 147, '0.6 KM  T−1:12', { size: TB, bold: true, fill: C.white });
     c += line(gx + 4, gy + 156, gx + gw - 4, gy + 156, C.graticule, 1);
     c += text(L, gy + 174, 'BOUNTY CONTRACT', { size: 12, bold: true, fill: C.magenta, track: 0.4 });
     return c;

@@ -28,9 +28,9 @@ s += corvetteDeck(OX, OY, K, {
 s += hazardTag(X(6.6), Y(1.4), 296, 672, 'caution', 'FIRE  MEDIUM', { progress: 0.35 });
 s += hazardTag(X(10.5), Y(1.3), 552, 672, 'caution', 'SHORT', { progress: 0.6, w: 92 });
 s += hazardTag(X(13.5), Y(0) + 6, 796, 672, 'caution', 'BREACH  VENTING', { nobody: true });
-s += O.prompt(X(14.6), Y(3.6) - 13, 'WEAPONS CONSOLE', [['E', 'USE'], ['V', 'SIT']]);
+s += O.prompt(X(14.6), Y(3.6) - 13, 'WEAPONS CONSOLE', [['E', 'OPEN'], ['V', 'SIT']]);
 
-s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1X', note: 'HELD: FIRE ABOARD' });
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×', note: 'HELD: FIRE ABOARD' });
 // three cautions, and CREW advisory: morale is low after the hit, normal but worth knowing
 s += annunciatorPanel({ FIRE: 'caution', AIR: 'caution', POWER: 'caution', CREW: 'advisory' });
 // PER as the suit's chest display: condition, suit and its air, the air where you stand

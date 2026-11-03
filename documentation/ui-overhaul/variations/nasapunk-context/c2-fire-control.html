@@ -34,7 +34,7 @@ s += haloed((c, w) => `<circle cx="${LX}" cy="${LY}" r="8" fill="none" stroke="$
 s += W.contact('hostile', RX, RY, { locked: true, label: ['RAIDER'], lx: 26, ly: -10 });
 s += W.contact('hostile', 868, 520, { label: ['RAIDER 2'], lx: 18, ly: 4 });
 
-s += statusStrip({ seat: 'FIRE CONTROL', authority: 'HELM: BEA · HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:44', warp: '1X' });
+s += statusStrip({ seat: 'FIRE CONTROL', authority: 'HELM: BEA · HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:44', warp: '1×' });
 // P3: at fire control F4 has each missile's impact time, so P3 keeps the count and the decoy
 s += threatAlert('1 MISSILE INBOUND', ['DECOY READY', { key: 'F' }, '·  PD ENGAGING']);
 // P4: gunnery's events of the last 5 s merge into one line
@@ -49,7 +49,7 @@ s += du(12, ZC.lmid.y, 308, 12 + 2 * 24, {
     const R = gx + gw - 6, T = gx + 150, D = gx + 162;
     let yy = gy + 16.7;
     c += sym.chevron(gx + 11, yy - 5, 0, C.red, 1.5, 5.5) + text(gx + 24, yy, 'MSL', { size: B, bold: true, fill: C.red, track: 0.4 });
-    c += val(T, yy, 'T−21 S', null, { anchor: 'end' }) + lab(D, yy, 'BRG') + text(D + 30, yy, '040', { size: B, bold: true });
+    c += val(T, yy, 'T−0:02', null, { anchor: 'end' }) + lab(D, yy, 'BRG') + text(D + 30, yy, '040', { size: B, bold: true });
     c += I.box(R - 56, yy - 14, 56, 18, 'PD ON', 'engaged', { size: LB });
     c += line(gx + 4, gy + 24, gx + gw - 4, gy + 24, C.graticule, 1);
     yy += 24;

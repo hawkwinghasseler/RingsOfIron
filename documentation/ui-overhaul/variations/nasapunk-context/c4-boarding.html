@@ -30,26 +30,28 @@ s += `<g transform="translate(${SX} ${SY}) scale(${K}) translate(${-PCX} ${-PCY}
   s += text(x0, y0 - 9, 'RAIDER', { size: LB, bold: true, fill: C.white, track: 0.6, halo: true });
 }
 
-s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:30', warp: '1X' });
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:30', warp: '1×' });
 s += feed([['BRD', 'The Raider is taken']]);
 s += objective(['BOUNTY: RAIDER · TAKEN', '→ TURN IN AT HIGHPORT']).svg;
 
-// X2, the boarding panel, in R-MID where the station panel would be: how the boarding stands, and
-// the two ways on from it (K opens M4, where the orders are; U at the helm casts off)
-s += du(960, ZC.rmid.y, 308, 148, {
+// X2, the boarding panel, in R-MID where the station panel would be (v5: seven rows, 308 x up to
+// 150): the other ship and how it is held, its state on a row of its own, the party, salvage,
+// cargo, prisoners, and the two ways on (K opens M4, where the orders are; U at the helm casts off)
+s += du(960, ZC.rmid.y, 308, 150, {
   id: 'x2', b: 6,
   content: (gx, gy, gw) => {
     let c = '';
-    const L = gx + 8, M = L + 58, P = 19;
-    let yy = gy + 19;
+    const L = gx + 8, M = L + 58, P = 17;
+    let yy = gy + 16;
     const words = (x, y, parts) => { let px = x; parts.forEach(([t, col]) => { c += text(px, y, t, { size: B, bold: true, fill: col || C.white, track: 0.3 }); px += tw(t, B, true, 0.3) + 4; }); };
-    c += lab(L, yy, 'BOARD'); words(M, yy, [['RAIDER'], ['·', C.dim], ['LATCHED'], ['·', C.dim], ['TAKEN', C.green]]); yy += P;
+    c += lab(L, yy, 'BOARD'); words(M, yy, [['RAIDER'], ['·', C.dim], ['LATCHED']]); yy += P;
+    words(M, yy, [['TAKEN:', C.green], ['CREW SURRENDERED']]); yy += P;
     c += lab(L, yy, 'PARTY'); words(M, yy, [['2 ABOARD'], ['·', C.dim], ['HOLDING']]); yy += P;
     c += lab(L, yy, 'SALV'); words(M, yy, [['3 PARTS MARKED'], ['·', C.dim], ['1 OFF']]); yy += P;
     c += lab(L, yy, 'CARGO'); words(M, yy, [['2 LOTS COMING ACROSS']]); yy += P;
     words(M, yy, [['PRISONERS TO BRING ABOARD']]);
     // the two keys as buttons, 26 tall
-    const btn = (bx, bw, key, t) => { c += rect(bx, gy + 106, bw, 26, { fill: '#1F2226', stroke: '#3A434D', sw: 1, r: 1.5 }) + capKey(bx + 5, gy + 110, key, 18) + text(bx + 5 + capW(key) + 8, gy + 123.5, t, { size: B, bold: true, fill: C.white, track: 0.5 }); };
+    const btn = (bx, bw, key, t) => { c += rect(bx, gy + 108, bw, 26, { fill: '#1F2226', stroke: '#3A434D', sw: 1, r: 1.5 }) + capKey(bx + 5, gy + 112, key, 18) + text(bx + 5 + capW(key) + 8, gy + 125.5, t, { size: B, bold: true, fill: C.white, track: 0.5 }); };
     btn(L - 2, 136, 'K', 'BOARDING');
     btn(gx + gw - 6 - 136, 136, 'U', 'CAST OFF');
     return c;

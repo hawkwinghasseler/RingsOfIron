@@ -255,10 +255,28 @@ function korry(x, y, w, h, l1, l2, state = 'idle', o = {}) {
   return s;
 }
 // A guarded order: the button under a hinged clear cover, its rim striped. Lifting the guard is
-// the first press; open (o.open), the cover stands up above the button.
+// the first press; open (o.open), the cover stands on its hinge above the button, seen edge on.
 function guarded(x, y, w, h, l1, l2, state, o = {}) {
   let s = rect(x - 5, y - 5, w + 10, h + 10, { fill: 'url(#guardrim)', r: 3 });
   s += korry(x, y, w, h, l1, l2, state, o);
   if (!o.open) s += rect(x - 1, y - 1, w + 2, h + 2, { fill: 'rgba(200,220,235,0.08)', r: 2 });
+  else s += rect(x - 3, y - 11, w + 6, 5, { fill: 'rgba(200,220,235,0.22)', r: 1 }) + line(x - 3, y - 6, x + w + 3, y - 6, '#5A646E', 1);
+  return s;
+}
+
+// The shield trim as a five-way selector, one control 100 x 40: TRIM, and the hull in miniature with
+// a mark on each side it can lean to and a dot for even; the side chosen is lit (cyan, as commanded).
+// Key 8 steps it; a click on a side sets it. state 'na' dims it and strips its foot.
+function trimSelector(x, y, cur, state = 'idle') {
+  const w = 100, h = 40, na = state === 'na', ink = na ? C.dim : '#D2D5CF';
+  let s = rect(x - 1.5, y - 1.5, w + 3, h + 3, { fill: '#121416', r: 2.5 }) + rect(x, y, w, h, { fill: '#1F2226', r: 1.5 }) + rect(x, y, w, h * 0.45, { fill: 'rgba(255,255,255,0.04)', r: 1.5 });
+  s += text(x + 8, y + 24, 'TRIM', { size: LB, bold: true, fill: ink, track: 0.4 });
+  const cx = x + 70, cy = y + 19;
+  s += path(`M${cx - 20} ${cy - 5} H${cx + 10} L${cx + 19} ${cy} L${cx + 10} ${cy + 5} H${cx - 20} Z`, ink, 1.2);
+  const lit = k => !na && cur === k ? C.cyan : ink;
+  s += path(`M${cx - 12} ${cy - 9} H${cx + 6}`, lit('port'), cur === 'port' && !na ? 2.5 : 1.5) + path(`M${cx - 12} ${cy + 9} H${cx + 6}`, lit('stbd'), cur === 'stbd' && !na ? 2.5 : 1.5);
+  s += path(`M${cx + 24} ${cy - 5} L${cx + 26} ${cy} L${cx + 24} ${cy + 5}`, lit('bow'), cur === 'bow' && !na ? 2.5 : 1.5) + path(`M${cx - 25} ${cy - 5} V${cy + 5}`, lit('stern'), cur === 'stern' && !na ? 2.5 : 1.5);
+  s += `<circle cx="${cx - 4}" cy="${cy}" r="2.2" fill="${lit('even')}"/>`;
+  if (na) s += barber(x + 5, y + h - 6, w - 10);
   return s;
 }

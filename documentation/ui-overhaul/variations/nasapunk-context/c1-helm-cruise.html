@@ -23,10 +23,10 @@ s += text(SX + 44, SY + 35, 'BURN 1  T−12:05', { size: B, bold: true, fill: C.
 s += haloed((c, w) => path(`M1238 236 L1250 244 L1238 252`, c, w), C.magenta, 2.5);
 s += text(1230, 249, 'SHACKLETON ICE', { size: LB, bold: true, fill: C.magenta, anchor: 'end', track: 0.6, halo: true });
 
-s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:33', warp: '1X' });
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:33', warp: '1×' });
 
 // L-MID: P5 objective (compact), then H2 navigation
-const p5 = objective(['DELIVER 120 WATER', '→ SHACKLETON ICE · 1.4 D LEFT']);
+const p5 = objective(['DELIVER 40 FOOD', '→ SHACKLETON ICE · 1.4 D LEFT']);
 s += p5.svg;
 s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
   id: 'h2', b: 6,
@@ -39,12 +39,12 @@ s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
     // ORBIT: the body and height, then each apsis with the time to it
     c += lab(L, yy, 'ORBIT') + text(M, yy, 'EARTH', { size: B, bold: true }) + lab(R - valW('400', 'KM') - 6, yy, 'ALT', { anchor: 'end' }) + right('400', 'KM'); yy += P;
     c += lab(M, yy, 'AP') + val(M + 26, yy, '403', 'KM') + right('T−24:10'); yy += P;
-    c += lab(M, yy, 'PE') + val(M + 26, yy, '397', 'KM') + right('T−1 H 10 M'); yy += P + 1;
+    c += lab(M, yy, 'PE') + val(M + 26, yy, '397', 'KM') + right('T−1:10:00'); yy += P + 1;
     rule();
     // NAV: the Nav's name in the nav colour, its range, rate and closest approach
     c += lab(L, yy, 'NAV') + `<circle cx="${M + 5}" cy="${yy - 4.5}" r="5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/>` + text(M + 16, yy, 'SHACKLETON ICE', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right(num(1240), 'KM'); yy += P;
     c += lab(M, yy, 'OPENING') + right('220', 'M/S'); yy += P;
-    c += lab(M, yy, 'CLOSEST') + val(M + 66, yy, '3.2', 'KM', { size: B }) + right('T−2 H 05 M'); yy += P + 1;
+    c += lab(M, yy, 'CLOSEST') + val(M + 66, yy, '3.2', 'KM', { size: B }) + right('T−2:05:00'); yy += P + 1;
     rule();
     // NEXT: the next event of any kind, and who flies it
     c += lab(L, yy, 'NEXT') + path(`M${M + 5} ${yy - 10} l5.5 5.5 l-5.5 5.5 l-5.5 -5.5 z`, C.magenta, 1.5) + text(M + 16, yy, 'BURN 1/2', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right('T−12:05'); yy += P;
@@ -72,18 +72,19 @@ s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
     s += capKey(bx + kw / 2 - capW(k) / 2, y + 11, k, 16) + korry(bx, y + 31, kw, 40, a, b, st || 'idle', { name: true });
   });
   s += legend(y + 56, 'HELM');
-  // AUTOPILOT (off, on, or held) and the SHIP's guarded orders, with the tow's fee
+  // The groups in the spec's order, read across then down: AUTOPILOT and CREW (a switch and two
+  // toggles), then SHIELDS and the SHIP's guarded orders, which sit last, at the far corner from
+  // the helm keys the hand uses most
   let yy = y + 84;
   s += legend(yy + 24, 'AUTOPILOT') + capped(C0, yy, '6') + korry(C0 + 22, yy, 76, 40, 'TO NAV', 'OFF');
-  s += legend(yy + 24, 'SHIP', C0 + 120);
-  s += capped(C0 + 160, yy, 'P') + guarded(C0 + 187, yy, 76, 40, 'ABANDON', 'SHIP', 'idle', { name: true });
-  s += capped(C0 + 280, yy, 'B') + guarded(C0 + 307, yy, 84, 40, 'CALL TOW', '3 400 CR', 'na');
-  // CREW: two toggles; SHIELDS: raise or lower, and the trim (8 steps through its five)
+  s += legend(yy + 24, 'CREW', C0 + 116) + korry(C0 + 168, yy, 118, 40, 'SUITS AT BATTLE', 'ON', 'on') + korry(C0 + 292, yy, 126, 40, 'HOLD IN FROM EVA', 'OFF');
+  // SHIELDS: raise or lower, and the trim as a five-way selector (8 steps it)
   yy = y + 136;
-  s += legend(yy + 24, 'CREW') + korry(C0, yy, 118, 40, 'SUITS AT BATTLE', 'ON', 'on') + korry(C0 + 124, yy, 126, 40, 'HOLD IN FROM EVA', 'OFF');
-  s += legend(yy + 24, 'SHIELDS', C0 + 268);
-  s += capped(C0 + 330, yy, '9') + korry(C0 + 352, yy, 56, 40, 'RAISE', '--', 'na');
-  s += capped(C0 + 414, yy, '8') + korry(C0 + 436, yy, 56, 40, 'TRIM', '--', 'na');
+  s += legend(yy + 24, 'SHIELDS') + capped(C0, yy, '9') + korry(C0 + 22, yy, 56, 40, 'RAISE', '--', 'na');
+  s += capped(C0 + 86, yy, '8') + trimSelector(C0 + 108, yy, 'even', 'na');
+  s += legend(yy + 24, 'SHIP', C0 + 222);
+  s += capped(C0 + 262, yy, 'P') + guarded(C0 + 289, yy, 76, 40, 'ABANDON', 'SHIP', 'idle', { name: true });
+  s += capped(C0 + 378, yy, 'B') + guarded(C0 + 405, yy, 84, 40, 'CALL TOW', '3 400 CR', 'na');
   // the foot: a glass strip with each reason once, and the keys it blocks
   const fy = y + 186;
   s += rect(x + 12, fy, w - 24, 54, { fill: C.glass });

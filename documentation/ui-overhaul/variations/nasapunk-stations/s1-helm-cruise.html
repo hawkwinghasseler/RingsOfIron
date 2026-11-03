@@ -28,7 +28,7 @@ s += W.pro(px, py) + W.retro(rx, ry);
 const [bax, bay] = at(HDG, 16);
 s += haloed((c, w) => line(bax, bay, ...at(HDG, 50), c, w), C.magenta, 2.5);
 { const [ex, ey] = at(HDG, 52), r = HDG * Math.PI / 180, ax = ex - 10 * Math.sin(r + 0.45), ay = ey + 10 * Math.cos(r + 0.45), cx2 = ex - 10 * Math.sin(r - 0.45), cy2 = ey + 10 * Math.cos(r - 0.45); s += haloed((c, w) => path(`M${ax} ${ay} L${ex} ${ey} L${cx2} ${cy2}`, c, w), C.magenta, 2.5); }
-s += text(...at(HDG + 34, 56), '1  12:04', { size: 12, bold: true, fill: C.magenta });
+s += text(...at(HDG + 34, 56), '1  T−12:04', { size: 12, bold: true, fill: C.magenta });
 
 // Highport: the nav target, labelled with its name only (its numbers are in the Reference slot)
 const HX = 930, HY = 250;
@@ -69,11 +69,11 @@ const cl = du(Z.cluster.x, Z.cluster.y, 480, 160, {
     let x = L;
     c += `<circle cx="${x + 6}" cy="${row(1) + 14}" r="5.5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/><circle cx="${x + 6}" cy="${row(1) + 14}" r="1.4" fill="${C.magenta}"/>`;
     x += 18; c += val(x, row(1) + 19, 'HIGHPORT', { fill: C.magenta, track: 0.4 }); x += tw('HIGHPORT', SB, true, 0.4) + 14;
-    [['RNG', '1.2 KM'], ['CLOSING', '3.9 M/S'], ['CPA', '140 M  2:10']].forEach(([l, v]) => { c += lab(x, row(1) + 19, l); x += tw(l, 12, true, 0.4) + 5; c += val(x, row(1) + 19, v); x += tw(v, SB, true) + 14; });
+    [['RNG', '1.2 KM'], ['CLOSING', '3.9 M/S'], ['CPA', '140 M  T−2:10']].forEach(([l, v]) => { c += lab(x, row(1) + 19, l); x += tw(l, 12, true, 0.4) + 5; c += val(x, row(1) + 19, v); x += tw(v, SB, true) + 14; });
     // 3 Next event: what, when, how much
     c += lab(L, row(2) + 19, 'NEXT');
     c += path(`M${L + 50} ${row(2) + 8} l6 6 l-6 6 l-6 -6 z`, C.magenta, 1.5, { fill: C.glass });
-    c += val(L + 64, row(2) + 19, 'BURN 1', { fill: C.magenta, track: 0.4 }) + val(L + 64 + tw('BURN 1', SB, true, 0.4) + 10, row(2) + 19, 'IN 12:04');
+    c += val(L + 64, row(2) + 19, 'BURN 1', { fill: C.magenta, track: 0.4 }) + val(L + 64 + tw('BURN 1', SB, true, 0.4) + 10, row(2) + 19, 'T−12:04');
     c += val(R, row(2) + 19, '210 M/S  PROGRADE', { anchor: 'end', fill: C.white });
     // 4 Trigger: dark in Green with no target locked (the slot holds its place)
     // 5 Delta-v: pointer, the plan's bracket (magenta, like the burn), the notch at what home takes

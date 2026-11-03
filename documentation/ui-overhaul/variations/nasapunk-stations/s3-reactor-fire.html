@@ -40,11 +40,11 @@ s += statusStrip({ condition: 'YELLOW', cx: CX });
 s += annunciator(CX, 44, [['FIRE', 'BRIDGE', 'caution'], ['POWER', '1 SYS', 'caution']], { caution: true });
 s += ticker(CX - 360, 108, [
   ['ENG', 'Ada:', "fire in the bridge, I'm on it.", 'caution'],
-  ['ENG', 'SHIP:', 'short at the AFT STBD gun; its breaker recloses in 37 s.', 'caution'],
+  ['ENG', 'SHIP:', 'aft starboard gun shorted, back in 37 s.', 'caution'],
 ]);
 
 // Suit readout (Z6, deck only): the room is on fire and its oxygen is falling (7.4)
-s += O.dcm(16, 704, [['ROOM', 'FIRE', 'caution'], ['AIR', '102 KPA  O2 19 %', 'caution']], { w: 200 });
+s += O.dcm(16, 704, [['ROOM', 'FIRE', 'caution'], ['AIR', '102 KPA  O2 19%', 'caution']], { w: 200 });
 
 // The power synoptic: the corvette's real network (chassis.toml conduits), every conduit powered
 // (solid green), the reactor degraded (amber), the loads white. Only the two faults carry labels,
@@ -103,7 +103,7 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     c += I.box(R - dw, 90, dw, 20, 'DAMAGED', 'caution', { size: 12 });
     c += head(142, 'STORE');
     c += I.hbar(gX, 138, gW, 1, {});
-    c += text(vX, 143, '100 %', { size: 15, bold: true, fill: C.white }) + text(vX + tw('100 %', 15, true) + 6, 143, 'FULL', { size: 12, bold: true, fill: C.dim, track: 0.3 });
+    c += text(vX, 143, '100%', { size: 15, bold: true, fill: C.white }) + text(vX + tw('100%', 15, true) + 6, 143, 'FULL', { size: 12, bold: true, fill: C.dim, track: 0.3 });
     c += rule(166);
 
     // The synoptic, centred: the hull spans chassis x 0.8 to 20.2
@@ -113,8 +113,8 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     // Not working: only the exceptions, each with its cause and what clears it
     c += head(408, 'NOT WORKING');
     const rows = [
-      { sys: 'AFT STBD GUN', st: 'NO POWER', cause: 'SHORT', clear: 'RECLOSES IN', n: '37 S', sel: true },
-      { sys: 'NOSE GUN', st: 'DISABLED', cause: 'HEALTH 24 %', clear: 'REPAIR' },
+      { sys: 'AFT STBD GUN', st: 'NO POWER', cause: 'SHORT', clear: 'RECLOSES IN', n: '0:37', sel: true },
+      { sys: 'NOSE GUN', st: 'DISABLED', cause: 'HEALTH 24%', clear: 'REPAIR' },
     ];
     const bX = L + 136, bW = tw('NO POWER', 12, true, 0.5) + 16;
     rows.forEach((r, i) => {
@@ -133,7 +133,7 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     const nX = L + 56;
     c += text(nX, 562, 'AFT STBD GUN', { size: 13, bold: true, fill: C.white, track: 0.3 });
     const bx = nX + tw('AFT STBD GUN', 13, true, 0.3) + 8;
-    c += text(bx, 562, 'BACK IN', { size: 12, bold: true, fill: C.dim, track: 0.3 }) + text(bx + tw('BACK IN', 12, true, 0.3) + 6, 562, '37 S', { size: 15, bold: true, fill: C.white });
+    c += text(bx, 562, 'BACK IN', { size: 12, bold: true, fill: C.dim, track: 0.3 }) + text(bx + tw('BACK IN', 12, true, 0.3) + 6, 562, '0:37', { size: 15, bold: true, fill: C.white });
     c += rect(nX, 574, R - nX, 3, { fill: '#26303A' }) + rect(nX, 574, (R - nX) * 8 / 45, 3, { fill: C.white });
     return c;
   },

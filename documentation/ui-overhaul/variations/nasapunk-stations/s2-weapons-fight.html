@@ -16,7 +16,7 @@
 // The corvette as ships.toml fits it: the coilgun in the nose and the laser aft to starboard, in
 // hand at this seat; an autocannon on each beam forward, point defence, automatic
 // (PlayerGunnery.inHand); the harpoon launcher aft to port, magazine 4. No shield emitter: the
-// Shields slot is dark and the right MFD starts on DAMAGE (9.1).
+// Shields slot is blank and the right MFD starts on DAMAGE (9.1).
 let s = space({ px: -200, py: 1300, pr: 900, seed: 11 });
 const SX = 640, SY = 308, HDG = 157;
 
@@ -55,7 +55,7 @@ s += W.cctv(1060, 70, 176, 110, {
 // Overlay: the status strip, the annunciator with both master lamps lit, the ticker
 s += statusStrip({ condition: 'RED' });
 s += annunciator(640, Z.annunciator.y, [['MISSILE', '2  0:03', 'warning'], ['HOSTILE', 'FIRING', 'caution']], { warning: true, caution: true });
-s += ticker(280, Z.ticker.y, [['TAC', 'Cole:', 'harpoons off the Raider, port side. PD has them.', 'warning'], ['HELM', 'Bea:', 'holding position.']]);
+s += ticker(280, Z.ticker.y, [['TAC', 'Cole:', 'harpoons from port. PD has them.', 'warning'], ['HELM', 'Bea:', 'holding position.']]);
 
 // Prompt line, 8 above the band: learning hints
 s += promptHints(640, Z.prompt.y, [['SPACE', 'FIRE'], ['R', 'MISSILES'], ['F', 'DECOY']]);
@@ -103,8 +103,8 @@ s += du(Z.cluster.x, Z.cluster.y, 480, 160, {
     // The launcher: rounds left of its magazine, ready, and how many one press throws (all four)
     c += lab(4, 'YOURS', C.cyan) + v(C0, 4, 'AFT PORT') + text(C0 + 130, row(4) + 16.5, 'MSL', { size: 12, bold: true, fill: C.dim, track: 0.3 }) + text(C0 + 160, row(4) + 17, '4/4', { size: 15, bold: true, fill: C.white }) + v(C0 + 196, 4, 'READY');
     c += bx(R - tw('SALVO 4', 12, true, 0.5) - 12, 4, 'SALVO 4', 'caution');
-    // Shields: the corvette has no emitter, so the slot stays dark in its place
-    c += lab(5, 'SHIELDS', '#3A3F45');
+    // Shields: the corvette has no emitter, so the slot keeps its place and stays blank, with no
+    // legend (round 9: a dark legend could read as switched off)
     return c;
   }
 }).svg;

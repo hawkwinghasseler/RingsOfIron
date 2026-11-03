@@ -1,12 +1,12 @@
 // Nasa-punk x Task-driven: the pieces this combination adds to the kit.
-// Zones from functional-task.md (round 3), section 5 and its wireframes. Z9 is a full-width key
+// Zones from functional-task.md (round 5), section 5 and its wireframes. Z9 is a full-width key
 // strip along the bottom edge, 24 tall, and every other zone ends above it, at y 760.
 //
-// Two zones are widened inside the spec's allowance of a quarter: the left column to 272 (the
-// spec's 240 plus 13%), so the lamps' 12-unit legends fit lenses 49 wide; and Z2 to 700 (560 plus
-// a quarter), so three cautions with their names fit on the caution row at 12 units.
+// The left column is widened inside the spec's allowance of a quarter, to 272 (the spec's 240 plus
+// 13%), so the lamps' 12-unit legends fit lenses 49 wide. Z2 is the spec's 640 (320 to 960): three
+// cautions sized to their text, then the reserved +n slot, 44 wide, at the row's end.
 const ZT = {
-  chr: { x: 16, y: 16, w: 272, h: 48 }, alr: { x: 300, y: 16, w: 700 }, inc: { x: 1024, y: 16, w: 240 },
+  chr: { x: 16, y: 16, w: 272, h: 48 }, alr: { x: 320, y: 16, w: 640 }, inc: { x: 1024, y: 16, w: 240 },
   self: { x: 16, y: 72, w: 272 }, sch: { x: 16, y: 610, w: 300, h: 150 }, oth: { x: 1024, y: 214, w: 240 },
   arms: { x: 720, y: 594, w: 360, h: 166 }, sns: { x: 1088, y: 584, s: 176 }, flt: { x: 420, y: 644, w: 440, h: 116 },
   hnt: { x: 0, y: 776, w: 1280, h: 24 },
@@ -22,7 +22,7 @@ function chronometer(o) {
   let s = bezelBody(x, y, w, h, 3) + fastener(x + 6, y + 6) + fastener(x + w - 6, y + h - 6);
   s += rect(x + 10, y + 6, w - 20, h - 12, { fill: C.glass });
   s += text(x + 18, y + 22, o.day, { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(x + 72, y + 23, o.time, { size: 16, bold: true, fill: C.white });
-  s += text(x + 18, y + 38.5, 'TW', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(x + 44, y + 38.5, o.warp, { size: 12, bold: true, fill: C.white });
+  s += text(x + 18, y + 38.5, 'WARP', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(x + 64, y + 38.5, o.warp, { size: 12, bold: true, fill: C.white });
   if (o.note) s += text(x + w - 16, y + 38.5, o.note, { size: 12, bold: true, fill: o.noteColor || C.white, anchor: 'end', track: 0.2 });
   return s;
 }
@@ -72,7 +72,10 @@ function alertBand(o) {
       kx -= kw + 18;
     });
   }
+  // Cautions are sized to their text (the spec leaves it to the style) and fill from the left; the
+  // last 44 units are the +n slot, reserved so that no caution moves or shrinks when it lights.
   let cx = x;
+  const nx = x + w - 44;
   (o.cautions || []).slice(0, 3).forEach(([code, where, who]) => {
     const cw0 = tw(code, 12, true, 0.6), ww = tw(where, 12), hw = tw(who, 12, true, 0.2);
     const cw = 14 + cw0 + 10 + ww + 14 + hw + 10;
@@ -83,7 +86,7 @@ function alertBand(o) {
     s += text(cx + cw - 10, cy + 19.5, who, { size: 12, bold: true, fill: who === 'NOBODY' ? C.amber : C.white, anchor: 'end', track: 0.2 });
     cx += cw + 8;
   });
-  if (o.more) s += text(x + w, cy + 19.5, o.more, { size: 12, bold: true, fill: C.amber, anchor: 'end', track: 0.4 });
+  if (o.more) s += rect(nx - 1, cy - 1, 46, ch + 2, { fill: '#151719', r: 2 }) + rect(nx, cy, 44, ch, { fill: C.glass, stroke: C.amber, sw: 1.4, r: 1.5 }) + text(nx + 22, cy + 19.5, o.more, { size: 12, bold: true, fill: C.amber, anchor: 'middle', track: 0.2 });
   return s;
 }
 
