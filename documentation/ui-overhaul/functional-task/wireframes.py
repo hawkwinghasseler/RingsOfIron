@@ -83,7 +83,9 @@ def chr_(s, warp="WARP 1x", nxt="next stop: burn 1 in 1:29:51"):
 def alr(s, warn=None, cautions=()):
     if warn:
         s.box(360, 16, 560, 44, "ALR", "WARNING  " + warn[0], [warn[1]], kind="alert")
-    y = 66 if warn else 16
+    y = 66  # the caution row keeps its place whether or not a warning stands
+    if cautions and not warn:
+        s.text(640, 42, "(warning row empty: the cautions keep their row)", size=10, fill="#aaa", anchor="middle", style="italic")
     if cautions:
         x = 360
         cw = (560 - 8 * (len(cautions) - 1)) / len(cautions)
@@ -146,7 +148,7 @@ def zones(out):
     s.clear_zone()
     s.ship(640, 390)
     s.box(16, 16, 240, 48, "Z1", "TIME", ["clock, warp, next stop"])
-    s.box(360, 16, 560, 70, "Z2", "ATTENTION", ["one warning, up to three cautions", "every one names its action"], kind="alert")
+    s.box(360, 16, 560, 76, "Z2", "ATTENTION", ["row 1: one warning   row 2: up to three cautions", "each row keeps its place; every alert names its action"], kind="alert")
     s.box(1024, 16, 240, 190, "Z3", "INCOMING", ["objectives (contracts, guides)", "news (notices)", "", "slow loop: hours and days"])
     s.box(16, 72, 240, 530, "Z4", "SELF", ["annunciator: what is wrong aboard", "personal: the captain's body", "", "medium loop: minutes", "", "", "", "", "", "", "",
                                           "nothing about other ships", "goes on this side"])
@@ -322,21 +324,21 @@ def deck(out):
 def map_(out):
     s = Svg("The map: plan a trip")
     s.screen_bg("MAP (full screen, any post; game keeps running)")
-    s.rect(16, 72, 920, 620, fill="#f3f3f0", stroke="#999", sw=1)
-    s.text(476, 380, "orbit canvas: paths, burns and handles, traffic, encounters", size=12, fill="#888",
+    s.rect(16, 100, 920, 584, fill="#f3f3f0", stroke="#999", sw=1)
+    s.text(476, 382, "orbit canvas: paths, burns and handles, traffic, encounters", size=12, fill="#888",
            anchor="middle", style="italic")
-    s.add('<circle cx="476" cy="390" r="150" fill="none" stroke="#aaa" stroke-width="1"/>')
-    s.text(28, 94, "EARTH SYSTEM   [M] or [Esc] close", size=12, weight="bold", fill="#444")
+    s.add('<circle cx="476" cy="392" r="150" fill="none" stroke="#aaa" stroke-width="1"/>')
+    s.text(28, 122, "EARTH SYSTEM   [M] or [Esc] close", size=12, weight="bold", fill="#444")
     chr_(s, "WARP 1x", "next stop: burn 1 in 1:29:51")
-    s.box(360, 16, 560, 44, "ALR", "(alerts stay visible over the map)", kind="cond")
-    s.box(944, 72, 320, 150, "MAP.1", "DESTINATION", [
+    s.box(360, 16, 560, 76, "ALR", "(alerts stay visible over the map, both rows)", kind="cond")
+    s.box(944, 100, 320, 120, "MAP.1", "DESTINATION", [
         "Shackleton Ice  (Selene Combine)",
         "relation: neutral  standing 12",
         "services: market, yard, contracts",
         "serves: Delivery contract",
         "distance 385,479 km",
         "[Q] next   [Shift+Q] back   list >"])
-    s.box(944, 230, 320, 236, "MAP.2", "PLAN", [
+    s.box(944, 228, 320, 176, "MAP.2", "PLAN", [
         "proposal: transfer, 2 burns",
         "dv needs 3,912   left 7,007",
         "after plan 3,095  home from there 520",
@@ -347,19 +349,19 @@ def map_(out):
         "burn 2  T-3d 17h      828 m/s  retro",
         "",
         "[;] plan  [Enter] accept  [Bksp] discard"])
-    s.box(944, 474, 320, 120, "MAP.3", "FLY IT", [
+    s.box(944, 412, 320, 100, "MAP.3", "FLY IT", [
         "[/] warp to burn 1",
         "[1] helm: fly burns     helmsman: Ada",
         "[6] autopilot           ready",
         "",
         "greyed with the reason when not allowed"])
-    s.box(944, 602, 320, 90, "MAP.4", "SELECTED BURN", [
+    s.box(944, 520, 320, 60, "MAP.4", "SELECTED BURN", [
         "burn 1   prograde +3,083.6   radial +0.0",
         "drag a handle; Shift finer; Del delete"], kind="cond")
-    s.box(16, 700, 920, 84, "MAP.5", "PLAN TIMELINE  (now to arrival, log scale)", [
+    s.box(16, 692, 1248, 92, "MAP.5", "PLAN TIMELINE  (now to arrival, log scale)", [
         "now --|burn 1 1.5h ----!deadline 2.9d --|SOI Moon 3.3d --|burn 2 3.7d -|arrive 3.8d",
         "click an event: centre the map on it      double-click: warp to it"])
-    s.box(24, 600, 220, 84, "MAP.6", "Layers", [
+    s.box(24, 592, 220, 84, "MAP.6", "Layers", [
         "[x] stations  [x] traffic",
         "[x] pirates   [ ] derelicts",
         "[ ] faction tension"], kind="cond")
@@ -372,16 +374,16 @@ def terminal(out):
     s = Svg("Station terminal: one screen for every service a station sells")
     s.screen_bg("TERMINAL (docked; T / J / Y open it on their tab)")
     chr_(s, "WARP 1x", "")
-    s.box(360, 16, 560, 44, "ALR", "(alerts stay visible over every screen)", kind="cond")
-    s.box(16, 72, 1248, 52, "TRM.H", "HIGHPORT   Terran Patrol Authority (your sponsor)   standing 22", [
+    s.box(360, 16, 560, 76, "ALR", "(alerts stay visible over every screen, both rows)", kind="cond")
+    s.box(16, 100, 1248, 52, "TRM.H", "HIGHPORT   Terran Patrol Authority (your sponsor)   standing 22", [
         "credits 18,450 cr     hold 6 / 40 m3     contracts held 1 / 3                         [Esc] back to the deck"])
     tabs = ["CONTRACTS", "MARKET", "YARD", "SHIPYARD", "CREW"]
     x = 16
     for i, t in enumerate(tabs):
-        s.rect(x, 132, 150, 28, fill="#ffffff" if i == 0 else "#f0f0ec", stroke="#3a3a3a", sw=2 if i == 0 else 1)
-        s.text(x + 75, 151, t, size=12, weight="bold" if i == 0 else "normal", anchor="middle")
+        s.rect(x, 160, 150, 28, fill="#ffffff" if i == 0 else "#f0f0ec", stroke="#3a3a3a", sw=2 if i == 0 else 1)
+        s.text(x + 75, 179, t, size=12, weight="bold" if i == 0 else "normal", anchor="middle")
         x += 158
-    s.box(16, 168, 760, 616, "TRM.1", "Offers (5 today, 1 operation)", [
+    s.box(16, 196, 760, 588, "TRM.1", "Offers (5 today, 1 operation)", [
         "type      job                       pay      stdg  time   reach",
         "OPER.  Clear the Lanes (1/3)        8,000    +6    --     LOCKED: Lieutenant",
         "BOUNTY Raider 'Vex', near Highport  5,000    +6    3d     here    ok",
@@ -392,7 +394,7 @@ def terminal(out):
         "'reach' = travel time and dv from here, checked against dv left",
         "",
         "sorted by: pay / time / distance (player's choice)"])
-    s.box(784, 168, 480, 616, "TRM.2", "Delivery: Ice to Freehold", [
+    s.box(784, 196, 480, 588, "TRM.2", "Delivery: Ice to Freehold", [
         "giver   Highport (sponsor)",
         "cargo   18 m3 water ice, loaded here",
         "pay     1,240 cr on delivery + sale",
@@ -414,28 +416,29 @@ def book(out):
     s = Svg("Ship's book: the ship, crew, contracts, career and log, anywhere")
     s.screen_bg("BOOK (anywhere; I / J / L open it on their tab)")
     chr_(s, "WARP 1x", "")
-    s.box(360, 16, 560, 44, "ALR", "(alerts stay visible over every screen)", kind="cond")
+    s.box(360, 16, 560, 76, "ALR", "(alerts stay visible over every screen, both rows)", kind="cond")
     tabs = ["SHIP", "CREW", "CONTRACTS", "CAREER", "LOG"]
     x = 16
     for i, t in enumerate(tabs):
-        s.rect(x, 72, 150, 28, fill="#ffffff" if i == 0 else "#f0f0ec", stroke="#3a3a3a", sw=2 if i == 0 else 1)
-        s.text(x + 75, 91, t, size=12, weight="bold" if i == 0 else "normal", anchor="middle")
+        s.rect(x, 100, 150, 28, fill="#ffffff" if i == 0 else "#f0f0ec", stroke="#3a3a3a", sw=2 if i == 0 else 1)
+        s.text(x + 75, 119, t, size=12, weight="bold" if i == 0 else "normal", anchor="middle")
         x += 158
-    s.box(16, 108, 760, 420, "BOOK.1", "Deck plan  (layer: damage | power | air | crew)", [
+    s.text(1264, 119, "SHIP'S BOOK   [Esc] close", size=12, weight="bold", fill="#444", anchor="end")
+    s.box(16, 136, 760, 392, "BOOK.1", "Deck plan  (layer: damage | power | air | crew)", [
         "the schematic at full size, one layer at a time",
         "click a room: what is in it, who is there, what is wrong",
         "layers reuse the deck overlays' symbols"])
     # the starter corvette, nose to the right: Hold aft, Bridge forward
-    s.rect(100, 220, 560, 210, fill="#e4e4e0", stroke="#555", sw=1.4)
-    s.add('<line x1="380" y1="220" x2="380" y2="308" stroke="#555" stroke-width="2"/>')
-    s.add('<line x1="380" y1="342" x2="380" y2="430" stroke="#555" stroke-width="2"/>')
-    s.text(240, 244, "Hold", size=11, fill="#666", anchor="middle")
-    s.text(520, 244, "Bridge", size=11, fill="#666", anchor="middle")
-    s.text(240, 330, "fire", size=10, fill="#444", anchor="middle", weight="bold")
-    s.text(470, 330, "short", size=10, fill="#444", anchor="middle", weight="bold")
-    s.text(600, 410, "breach", size=10, fill="#444", anchor="middle", weight="bold")
+    s.rect(100, 226, 560, 210, fill="#e4e4e0", stroke="#555", sw=1.4)
+    s.add('<line x1="380" y1="226" x2="380" y2="314" stroke="#555" stroke-width="2"/>')
+    s.add('<line x1="380" y1="348" x2="380" y2="436" stroke="#555" stroke-width="2"/>')
+    s.text(240, 250, "Hold", size=11, fill="#666", anchor="middle")
+    s.text(520, 250, "Bridge", size=11, fill="#666", anchor="middle")
+    s.text(240, 336, "fire", size=10, fill="#444", anchor="middle", weight="bold")
+    s.text(470, 336, "short", size=10, fill="#444", anchor="middle", weight="bold")
+    s.text(600, 416, "breach", size=10, fill="#444", anchor="middle", weight="bold")
     s.text(380, 470, "starter corvette: two rooms by the naming rule", size=10, fill="#888", anchor="middle", style="italic")
-    s.box(784, 108, 480, 420, "BOOK.2", "Systems", [
+    s.box(784, 136, 480, 392, "BOOK.2", "Systems", [
         "REACTOR (M)    3.0 MW   on    ok",
         "draw now 2.4 MW    store 2 s  ok",
         "LIFE SUPPORT   on    serving 2 of 2 rooms",

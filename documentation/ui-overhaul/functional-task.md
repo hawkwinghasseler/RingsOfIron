@@ -1,6 +1,6 @@
 # UI Overhaul: Task-Driven Functional Spec
 
-Functional designer 2 of 3. Round 2.
+Functional designer 2 of 3. Round 3.
 
 This spec rebuilds the game's interface from the decisions a player makes, not from the panels the game has today. It says what each widget and screen contains, where it sits, and when it is visible. It says nothing about how anything looks: three artist threads (Nasa-punk, 90s VFD, Cassette-futurism) skin it, and section 12 lists what they are free to change and what they must keep.
 
@@ -81,7 +81,7 @@ Every row is a decision the game asks of the player. "Minimum information" is wh
 
 | ID | Decision | The question | Minimum information | Acted with | Tempo |
 |---|---|---|---|---|---|
-| F1 | Point and thrust | Which way am I moving relative to what matters, and how fast? | Velocity in the frame that matters (the target, a station within 5 km, else the orbit): direction on screen, speed as a number | W/S/A/D, Z/C, X | s |
+| F1 | Point and thrust | Which way am I moving relative to what matters, and how fast? | Velocity in the frame that matters (the locked target, the navigation target or a station within 5 km, else the orbit; FLT gives the order): direction on screen, speed as a number | W/S/A/D, Z/C, X | s |
 | F2 | Avoid a collision | Will I hit something, and when? | The object and the time to contact, only when it is close | Steer, brake | s |
 | F3 | Dock | Which port, am I cleared, am I lined up and slow enough? | My port and its state, the port I'm given, clearance, range, sideways offset, angle off, closing speed against the safe speed | G, H, steering, or helm order 5 | s |
 | F4 | Leave a station | Is the ship ready to go? | Delta-v left, repairs needed, crew aboard, missiles, the contracts held and how far their destinations are | U | min |
@@ -189,7 +189,7 @@ Reading section 3 across its rows gives ten rules. Every later section applies t
 | Zone | Holds | Why there |
 |---|---|---|
 | Z1 Time (top left) | Chronometer | Time is the slowest-changing, always-needed number; top left is where the eye starts |
-| Z2 Attention (top centre) | Alert band | The one place urgency appears, above the ship, never covering it |
+| Z2 Attention (top centre, 560 x 76) | Alert band: a warning row over a caution row | The one place urgency appears, above the ship, never covering it |
 | Z3 Incoming (top right) | Objectives, news | Hours-and-days information and messages from outside |
 | Z4 Self (left column) | Annunciator, personal status | Your own ship and body, at a glance |
 | Z5 Self, spatial (bottom left, 300 x 150) | Ship schematic, outside view only | The interior when you can't see it; empty on deck, where the deck itself shows it |
@@ -204,7 +204,7 @@ Rules for zones:
 - A widget lives in one zone and never moves between posts. Zones may be empty; nothing slides in to fill them.
 - Changing post swaps the post's widgets at once. Widgets common to both posts (CHR, ALR, OBJ, NTF, ANN, HNT) stay exactly where they were, so the eye has fixed points through the change.
 - When two widgets in a zone are both visible, the higher one in the zone's list keeps its size and the other collapses to its compact form.
-- Screens (Map, terminal, book) cover zones 3 to 9 but leave Z1 and Z2 visible: time and danger never go away.
+- Screens (Map, terminal, book) cover zones 3 to 9 but leave Z1 and Z2 visible: time and danger never go away. A screen starts below the band's second row (100 units down), so an alert arriving never covers a screen's header.
 - Zones anchor to their screen edges and corners. On a wider or taller window the extra space goes to the clear zone; widgets are never stretched.
 - Z9 runs the full width of the bottom edge and every other zone ends above it (at 760 units), so the key line never runs under a widget.
 - The crisis panel is the only widget that may enter the clear zone (section 6, CRS).
@@ -232,7 +232,7 @@ Serves F6, N4, E1.
 Serves F2, F8, F9, C5, S1, S6, S9. Full rules in section 9.
 
 - **Shows:** at most one **warning** (large: title, the one number that matters, the action) and up to three **cautions** (one line each), plus `+n more` when there are more.
-- **States:** empty (invisible); warning new (pulsing for 3 s); warning held; caution; acknowledged (cautions leave the band and live on as lamps).
+- **States:** empty (invisible); warning new (pulsing for 3 s); warning held; caution; acknowledged (cautions leave the band and live on as lamps). Each row keeps its place (section 9.1).
 - **Visible:** whenever an alert stands, in every context, over every screen.
 - **Acts:** the alert's own key does its action; clicking the band acknowledges it (section 9.3); clicking one alert opens the book on its system. No key is needed: cautions collapse by themselves.
 - **Replaces:** the missile warning banner, the deck's large missile line, the red disabled and abandon lines, the EVA status line, the low-propellant warning notice, the dropped helm order notice.
@@ -262,7 +262,7 @@ Serves G5.
 
 Serves S1, S2, C7.
 
-A row of ten lamps, one per thing that can go wrong aboard. A lamp has four states: dark when its system is well; **advisory**, lit softly, for something normal but worth knowing (crew outside, morale low), which never enters the alert band; lit for a caution; lit harder for a warning. It blinks only while its alert is new. A ship without shields shows no SHLD lamp. The lamps are the ship's standing state; the alert band is what calls for attention. An acknowledged caution leaves the band but keeps its lamp lit.
+Ten lamps in two rows of five, one per thing that can go wrong aboard; a ship without shields has no SHLD lamp, so the starter corvette shows nine. A lamp has four states: dark when its system is well; **advisory**, lit softly, for something normal but worth knowing (crew outside, morale low), which never enters the alert band; lit for a caution; lit harder for a warning. It blinks only while its alert is new. The lamps are the ship's standing state; the alert band is what calls for attention. An acknowledged caution leaves the band but keeps its lamp lit.
 
 | Lamp | Advisory when | Caution when | Warning when |
 |---|---|---|---|
@@ -376,7 +376,7 @@ Every weapon mount gets one row, launchers and point defence included: point def
 Serves G4.
 
 - **Shows:** at most four keys for what can be done here and now, from `HintRegistry` contexts, then `F1 controls`: five items in all. A key the player has used three times in that context drops off; setting `Hints: full / learning / off` (default learning). A mode's own keys live in that mode (FLT, CRS, BRD) and never repeat here.
-- **Visible:** every post; fades to a dim state after 10 s without a change of context.
+- **Visible:** every post; fades to a dim state after 10 s without a change of context. Not over screens: a screen's parts show their own keys and its header names the close key.
 - **Replaces:** the hint line and every key named outside it: `[V]` and `[Tab]` in the FLIGHT panel, `N plans a burn / Q picks a navigation target` in the orbit panel, the station banner's keys.
 
 ### INT: Interaction prompt (in the world)
@@ -405,12 +405,12 @@ Serve F1, F3, F5, C1 to C5, S2, B2. These already exist; the spec sets rules for
 
 Alerts, the personal status, the schematic and the book all name rooms, and the game's compartments have no names. Every widget uses one rule, in this order:
 
-1. A name given in the chassis data (an optional `name` per room: new).
+1. A name given in the chassis data: new, an optional list of names each pinned to a tile, naming whichever room holds that tile.
 2. The room holding the helm is the **Bridge**; a small room holding nothing but a docking port or an airlock is the **Airlock** (with the port's number when there are two or more). A port that opens straight into a bigger room doesn't rename it.
 3. Otherwise the system that fills the most tiles in it: Reactor room, Life support, Weapons room, Engine room, Shield room, Tank room, Pod bay, Hold (cargo bays), or a gun's position for a turret mount alone (`Fwd port gun`).
 4. Otherwise its place in the hull from the ship's middle: Fore, Mid or Aft, with port or starboard when the hull splits there.
 
-Two rooms with one name are numbered fore to aft (`Hold 1`, `Hold 2`). On the starter corvette the rule gives two rooms: the **Bridge** forward (helm, weapons console, life support, reactor, the guns' mounts) and the **Hold** aft of the wall (cargo bays, tanks, engines). The samples and wireframes in this spec use that ship.
+Two rooms with one name are numbered fore to aft (`Hold 1`, `Hold 2`). When damage joins two rooms (a wall blown out), the joined room keeps the larger one's name; when a wall splits one, each part is named afresh. On the starter corvette the rule gives two rooms: the **Bridge** forward (helm, weapons console, life support, reactor, the guns' mounts) and the **Hold** aft of the wall (cargo bays, tanks, engines). The samples and wireframes in this spec use that ship.
 
 ### CRS: Crisis panel (centre top, below the band)
 
@@ -456,7 +456,7 @@ Serves N1 to N5, F6, F8. Opened with M from any post.
 | MAP.5 Plan timeline | A strip from now to arrival on a log scale, with every event the plan meets: burns, sphere changes, closest approach, arrival, contract deadlines, payday | Click centres the map on the event; double-click warps to it |
 | MAP.6 Layers | Stations, traffic, pirates, derelicts and pods, faction tension, each on or off | Toggle |
 
-The map is the only place for the orbit's numbers (altitude, apoapsis, periapsis, period) and for faction tension. The instruction line along its top today becomes hint-line keys.
+The map is the only place for the orbit's numbers (altitude, apoapsis, periapsis, period) and for faction tension. The instruction line along its top today becomes the keys each part shows (MAP.1 to MAP.4), with the close key in the header.
 
 ### TRM: Station terminal
 
@@ -545,7 +545,7 @@ What each post shows. `on` always; `when` while its trigger (section 6) holds; `
 | SNS scope | - | when | when | - | - | - |
 | TGT target card | - | when | when | (MAP.1) | - | - |
 | WPN weapons | - | small, when | on | - | - | - |
-| HNT hint line | on | on | on | on | on | on |
+| HNT hint line | on | on | on | - | - | - |
 | INT prompt | when | - | - | - | - | - |
 | OVL overlays | deck set | outside set | outside set | - | - | - |
 | CRS crisis | when | when | when | when | when | when |
@@ -560,7 +560,7 @@ How the conditions change it:
 | Warping (rails) | FLT in WARP. SNS, WPN and the overlays other than markers hidden. TGT shows only range and closest approach. |
 | Crisis | CRS shown everywhere. The hint line carries only the crisis keys. |
 
-The at-rest test: flying near Highport with nothing targeted, nothing planned and nothing wrong, the screen shows CHR (two lines), ten dark lamps, FLT in CRUISE (three lines), the scope, and up to four keys that fade. That is about ten lines of text, against about thirty in six panels today (section 11).
+The at-rest test: flying near Highport with nothing targeted, nothing planned and nothing wrong, the screen shows CHR (two lines), nine dark lamps, FLT in CRUISE (three lines), the scope, and up to four keys that fade. That is about ten lines of text, against about thirty in six panels today (section 11).
 
 ---
 
@@ -576,6 +576,8 @@ The at-rest test: flying near Highport with nothing targeted, nothing planned an
 | News | Something happened | NTF and the log | `UI_NOTICE` for important | 5 or 8 s, then the log |
 
 Warnings are ordered by time to harm (a missile in 6 s beats air in 50 s); cautions by severity, then age. A new warning pushes the shown one into the caution row if it is more urgent. Every alert has an id; the same condition never shows twice.
+
+**The rows keep their places.** The warning row is always the top row and the caution row always the second, whether or not a warning stands: with no warning the top row is simply empty, so a warning arriving never shoves the cautions down, and a style may give each row a window of its own.
 
 Two rules keep the band from repeating the rest of the HUD:
 
@@ -699,7 +701,7 @@ Done last, against the design above. The current HUD in flight near Highport wit
 | Status column: bridge line | Move | HLM |
 | Status column: EVA line | Move | ANN EVA lamp, ALR EVA BURN |
 | Missile banner (top centre) | Merge | ALR |
-| Station banner `Docked at Highport [T] Trade [Y] Yard [J] Missions` (the market's dock hint) | Remove | FLT DEPARTURE names the berth; the hint line offers T when it works |
+| Station banner `Docked at Highport [T] Trade [Y] Yard [J] Missions` (the market's dock hint) | Remove | FLT DEPARTURE names the berth and offers U and T (a mode's keys are not repeated on the hint line) |
 | Hint line | Keep, rework | HNT, four keys, learning |
 | `Press [E] for the ... panel` at the bottom | Move | INT beside the object |
 | Contact markers, edge arrows | Keep, rework | Label and arrow rules (OVL) |
@@ -813,3 +815,4 @@ Each has the default this spec assumes until he answers.
 |---|---|
 | 1 | First version |
 | 2 | From the Nasa-punk thread's round 1 notes, checked against the code: WPN has one row per mount, point defence included (it is the mounts with `point_defense`, automatic at the weapons console), with `CHARGING` and `OUT OF RANGE` states, launcher magazines and the decoy as a countdown (decoys are unlimited); the lead reticle is only for guns that need lead. The power store no longer lights POWER (it empties on every laser pulse); POWER's warning is "no reactor feeds anything", which covers a one-reactor ship with its reactor shorted. A rule for naming rooms, which the game doesn't. The flight frame is defined ("near" is 5 km) and the markers follow it. Stations always get labels. Hazard tags show progress, not seconds. Z9 is a full-width strip and every zone ends above it; Z5 is 300 x 150. Colour words left the spec. From this designer's own review: lamps gain an advisory state, so normal things (crew outside) stop looking like trouble; the map hides OBJ and owns the deadline comparison; comparisons may quote what they compare against; the crisis panel doesn't repeat the band; IMPACT and COLLAR light no lamp; the pad reaches the HUD through L3. Every sample now follows the starter corvette as the game builds it: two rooms (Bridge and Hold), a 40 m3 hold, no shield emitter, a launcher magazine of 4, eight RCS blocks. Wireframes redrawn to match. |
+| 3 | From the VFD thread's round 1 notes: SCH at gunnery, WPN running under the key strip, the speed at rest in the orbit frame, decoy counts and the corvette's rooms were already answered by round 2. New: the caution row keeps its place when no warning stands (Z2 is 76 units tall), and screens start below both rows (100 units down), so an arriving alert never covers a screen's header. From this designer's own review: the hint line is hidden over screens, whose parts show their own keys; the corvette shows nine lamps, not ten; chassis room names are pinned to tiles and survive damage; F1's frame matches FLT's order; the departure readout folds the contract check into its delta-v line; the station banner's T moves to the DEPARTURE mode; the book's header names its close key. |
