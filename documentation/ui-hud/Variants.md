@@ -48,8 +48,9 @@ Life cycle, all on the render thread:
    before the stage acts and draws.
 3. `resize(width, height, uiScale)` when the window or the UI scale changes. The stage's units are
    already resized; this is where a variant that generates its own fonts rebuilds them.
-4. `keyDown` for keys the classic HUD did not use, before the game's own bindings see them. Not
-   called while a window or the map has the keys.
+4. `keyDown` for keys the classic HUD did not use. Not called while a window or the map has the
+   keys. The game reads its own bindings by polling, so returning true does not keep a key from
+   them: give a variant's keys with Alt held, which the game's actions ignore (`GameInput.just`).
 5. `detach` to let go of fonts and textures.
 
 A variant that throws from `attach` leaves the classic HUD up rather than none, and says so in the log.
@@ -94,6 +95,7 @@ their contents.
 | `key("FIRE")` | the key bound to an action, for a prompt |
 | `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
 | `dockHint` | the docked banner's text, or "" when not docked |
+| `guideTitle`, `guideText`, `guideDone` | the tutorial running now, for a guide card of a variant's own: its heading ("FIRST PLAY · 2 OF 9", "GETTING STARTED") and the objective with the player's keys, both "" with none; and whether that is a finished guide's last word. Set by the game screen (`GameSession`) |
 
 `targeting`, `orbitInfo`, `interactor` and `physics` are the classic providers, set on `UiHud` as
 before and mirrored here.

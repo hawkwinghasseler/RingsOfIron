@@ -86,9 +86,16 @@ public final class GameInput {
         this.exteriorViewMeters = startView;
     }
 
-    /** The action's key went down this frame. */
+    /**
+     * The action's key went down this frame, and not with Alt held: Alt and a key belong to the HUD (a
+     * variant's display keys, such as Alt+1 for a station's page), so Alt+1 must not also order the helm.
+     */
     private static boolean just(Action action) {
-        return Gdx.input.isKeyJustPressed(action.defaultKey);
+        return Gdx.input.isKeyJustPressed(action.defaultKey) && !altHeld();
+    }
+
+    private static boolean altHeld() {
+        return Gdx.input.isKeyPressed(Input.Keys.ALT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.ALT_RIGHT);
     }
 
     private static boolean held(Action action) {
