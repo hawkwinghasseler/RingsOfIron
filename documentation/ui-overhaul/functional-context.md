@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 7.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 8.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -578,7 +578,8 @@ by highlighting its D3 markers.
 
 **Master alert cue.** P2 sits at the edge of the screen, away from where the player looks. So a new
 warning also lights a cue on the seat's primary instrument (H1, H3 or F2), the way an airliner's master
-warning sits in the pilot's eyeline. On deck, which has no primary instrument, the cue stands alone at
+warning sits in the pilot's eyeline. F2's rows fill its width, so at fire control the cue sits in the
+40 units of the bottom-centre zone above the rack. On deck, which has no primary instrument, the cue stands alone at
 the centre of the bottom-centre zone, which is otherwise empty there; docked or latched, likewise. In
 a full-screen mode the cue is P1's caution and warning chip. The cue has two states, master
 warning (with the newest warning's short code) and master caution. It stays lit until the player
@@ -645,7 +646,7 @@ every mode.
 
 Each missile intercepted shows a brief "1 down" before the count drops. P3 is the decoy's only home: a
 decoy matters only while missiles are inbound, which is exactly when P3 shows. At fire control and
-gun seats, F4 lists every missile with its impact time, bearing and point defense, so there P3 keeps
+gun seats, F4 lists every missile with its impact time, its shooter and point defense, so there P3 keeps
 only the count and the decoy.
 
 **When.** From the first inbound missile until none is inbound. On deck it is the same widget (no
@@ -670,7 +671,7 @@ Boarding, Station, Sponsor, Comms, Log.
 within the hold counts ("×3") instead of stacking (as `NoticeLog` already does). Every message goes to
 the Log (M5). A message that only restates a condition in P2 is not posted to the feed.
 
-**Examples.** "Station: clearance granted, port 6"; "Sponsor: payday, 2,000 cr"; "Crew: Ada back
+**Examples.** "Station: clearance granted, port 2"; "Sponsor: payday, 2,000 cr"; "Crew: Ada back
 inside"; "Gunnery: Raider disabled"; "Log: autosaved".
 
 **In combat** the feed would flood with hits and kills, so it summarises: gunnery events from the last
@@ -872,7 +873,7 @@ that speed is the closing speed, and the closing gauge shows it.
 | Port line | "Port 1 of 2 (M) → Highport #6 · armed": our port n of m and its size, their port, armed; clearance: not asked, asked, granted, refused (the reason in the hover) | Neutral; caution on refused |
 | Alignment picture | Lateral offset (m) and angle error (deg) as one two-axis picture; centre is aligned | Within tolerance, off, far off |
 | Closing gauge | Distance to the port, closing speed against the safe speed for that distance (`PlayerDocking.safeSpeed`), the safe band marked. This is the approach's only distance and closing speed on screen | Safe, fast, danger (the same three as the corridor W4). Fast and danger are the FAST APPR condition: while H3 is on screen P2 leaves it out, and the gauge lights the master alert cue instead |
-| Time to contact | "contact T-48 s" | – |
+| Time to contact | "contact T-19 s" | – |
 | Capture state | Collar has hold, drawing in; docked | Advisory |
 | Helm order | "Helm is docking: aligning" when a dock order flies it | – |
 
@@ -902,8 +903,9 @@ bounce:
 - The ship's plan (today's `WireframeMinimap`), with fire, breach, vacuum, smoke, hit flashes,
   disabled and stunned systems, crew positions as dots, and where crew are working.
 - Four bars: Hull (integrity); Shields (the cloud as a share of its capacity, "77%", empty while
-  stowed; F3 gives it in kilograms); Power (store share and refill; reactor output against its
-  rating, which falls with damage; systems cut off from power, if any); Life support (oxygen tanks,
+  stowed; F3 gives it in kilograms); Power (the store as the bar, with its share; the reactors'
+  output, "3.0 MW", with the rating beside it only while damage holds the output under it, "1.8 of
+  3.0 MW", the rating otherwise in the hover; systems cut off from power, if any); Life support (oxygen tanks,
   or EMERGENCY and the reserve's kilograms; the rooms' pressure is the plan's and P2's). Raised or
   lowered and the trim are settings, not health: they are H7's at the helm and F3's at fire
   control, where F3 also takes the shields bar's place. A ship with no shield emitter has no
@@ -931,8 +933,8 @@ range rings and the range setting. North up, like the view.
 **Range.** Automatic by situation (approach 2 km; combat: the smallest step that holds the lock and
 every inbound missile; cruise: 50 km), with − and + (each at least 24 units) to set it by hand until
 the situation changes. The steps are `RadarScope.RANGES` with a 5 km step added (0.5, 2, 5, 10, 50,
-250, 1,000 km): fights sit inside 4 km (lasers 3, the heavy cannon 3.5, point defense 4), which on the
-10 km step fill only the inner third.
+250, 1,000 km): fights reach 5 km (the corvette's coilgun 5, a kiter holding at 4.5, point defense
+4), which on the 10 km step fills only the inner half.
 
 **When.** Approach and combat always. In cruise, only while a contact is inside 50 km; otherwise it
 collapses to a 48 x 48 button showing the count of contacts beyond.
@@ -998,9 +1000,9 @@ gun's arc and hit chance are F2's, one row per mount, so F1 doesn't repeat them.
 ```
 LOCK  Raider
       HOSTILE   ◆ FIRING ON YOU
-      3.4 km · closing 85 m/s
-      120 m/s rel · course 040°
-      shot 2.1 s
+      3.4 km · closing 12 m/s
+      12 m/s rel · course 235°
+      shot 2.2 s
       kiting at gun range
       engine damaged
 ```
@@ -1068,13 +1070,13 @@ and coverage overlay as not built.
 
 **Zone.** Left middle, 308 x up to 160.
 
-**Content.** Inbound missiles sorted by impact time: time to impact, bearing, point defense engaging
+**Content.** Inbound missiles sorted by impact time: time to impact, the ship that fired it, point defense engaging
 or not, decoy advised. Then the hostile ships in the fight other than the Lock (F1 is the Lock's):
 name, range, state. A click on one locks it.
 
 ```
-MSL   T-3 s    brg 040   PD on
-MSL   T-9 s    brg 055   decoy
+MSL   T-3 s    Raider     PD on
+MSL   T-9 s    Cutter     decoy
 SHIP  Cutter    9.8 km   closing
 SHIP  Raider 2   14 km   firing
 ```
@@ -1158,21 +1160,22 @@ become pointers. Hovering a P2 row highlights its markers.
 **Content.**
 
 ```
-HIGHPORT · port 6
+HIGHPORT · port 2
 Terran Patrol Authority
 standing: Trusted (+42)
 [T] Market
 [Y] Yard · 2 repairs · tanks 86%
 [J] Missions · 4 offers
-Shipyard 3 ships · 3 to hire
+Hire: 3 looking for a berth
 Infirmary: 1 treated · 150 cr
 Credits 5,000 cr · hold 12/40 m³
 [U] Undock
 ```
 
 Each line fits the column's 34 characters. Services the station doesn't offer are left out, and the
-counts tell the player whether a service is worth opening. Shipyard and Hire have no keys of their own:
-they are tabs in the terminal. The autosave on docking is a feed message, not a line here.
+counts tell the player whether a service is worth opening: Highport has no shipyard, so there is no
+Shipyard line, while a station that sells ships adds "Shipyard: 3 ships". Shipyard and Hire have no
+keys of their own: they are tabs in the terminal. The autosave on docking is a feed message, not a line here.
 
 **Replaces.** The dock banner, "Docked at Highport strain 0%", the docked key hints, "You are docked at
 your home station. J opens its mission board".
@@ -1288,7 +1291,9 @@ Kept: from the port, coloured safe, fast or danger like H3's closing gauge. Appr
 ### W5 Fire arcs, hit lanes, lead reticle
 
 Kept as `FireArcOverlay` and `LeadReticle` draw them, at fire control and gun seats, and at the helm in
-combat with a lock. Outside combat at the helm they are hidden.
+combat with a lock. Outside combat at the helm they are hidden. The lead is tens of metres at fight
+ranges (pilots close at 80 m/s at most), so at fight zooms the reticle sits on the target, inside its
+lock mark: the two must read apart there.
 
 ### W6 Missile tracks
 
@@ -1339,7 +1344,9 @@ time).
 
 ### 10.3 M3 Station
 
-Docked only. Tabs: **Market** (T), **Yard** (Y), **Shipyard**, **Missions** (J), **Hire**. A right rail
+Docked only. Tabs: **Market** (T), **Yard** (Y), **Shipyard**, **Missions** (J), **Hire**, each only
+where the station offers it: Shipyard where a faction sells ships (Anvil Yards, Shackleton Ice; not
+Highport), Hire at any station that isn't hostile. A right rail
 on every tab: credits, standing with the station's faction, hold used of capacity, tanks.
 
 | Tab | Content |
@@ -1552,6 +1559,11 @@ designs from the other two threads may differ; this section applies to skinning 
 
 - Labels (legends, units, key names on caps) at least 12 UI units; body text at least 13; values at
   least 15; P3's first line at least 22. (Today: body 15, banners 22.)
+- A **value** here is a reading a widget exists to show, drawn on its own: H1's speed and delta-v,
+  H3's distance, closing speed and time to contact, the figures beside H4's and F3's bars. A number
+  inside a line of text (H2's lines, P2's rows, P3's second line, a price in X1 or X3) takes the
+  line's size. The 34-character budget counts lines at 13; a widget that draws values at 15 gives
+  them the room.
 - Anything that can be clicked is at least 24 units in its smaller dimension.
 - Widget sizes in this document are targets at 1280 x 800 units; `UiScale` scales them.
 
@@ -1679,3 +1691,4 @@ largest scale, and the centre stays clear.
 | 5 | 2 (VFD critique) | X2 gives the state a row of its own (seven rows, 308 x up to 150), so its worst case fits 34 characters. X3 doesn't offer abandoning or a tow while power is due back by itself; P2's NO POWER row counts it down, and walkthrough 11.7 now has a damaged reactor, which is a real emergency. The master alert cue stays lit under X3. Sample data made true to the game: a delivery to the ice mine is 40 Food (it buys food, and the corvette's hold takes 40), and missile times fit what a harpoon or dart can fly (T-4 s at 7.7 km, not T-37 s) |
 | 6 | 2 (NASA-punk critique) | P2 codes use whole words where they fit (HULL DAMAGE, SHIELD DOWN, SHIELD WEAK, SYSTEM DOWN, DOCK STRAIN) and put the noun first (O2 LOW, PRESS LOW): the code field grows to 11 characters and handling shrinks to 3, which still holds YOU, three dots or ●4. The missile impact time must include the missile's closing burn (section 14). Version 5 was wrong to call T-37 s at 7.7 km impossible: it is today's estimate early in a flight that lands in about 22 s; the examples stay, now read by the new estimate. F2 names mounts by the game's facing rule, with FWD and AFT to tell two apart, shows point defense as PD and never in hand, and shows launchers as ready with missiles left (they fire a second apart and only a station restocks them). H5 gains a 5 km step. W3's burn arrow drops its countdown, which is H2's. P4 gains the Shields and Boarding sources. Sample data: the corvette carries three crew, so 11.7's fire has one on it and X2's party is two; the lock sits at 3.4 km, inside the heavy cannon's reach, for its 62%; the latched raider lies over the port side, nose aft |
 | 7 | 3 (VFD critique) | "Point defense" spelled as the game spells it (`point_defense`), so the three designs share one string. H7's missile row is the total across launchers, ready while any can fire; F2 splits it by launcher |
+| 8 | 2 and 4 (cassette and NASA-punk critiques) | Sample data true to the game: the corvette's S port is cleared to Highport's port 2, coming in at 120 m too fast for the 4.9 m/s safe speed there; Highport sells no ships, so X1 lists hiring on its own line, and M3 shows Shipyard and Hire only where they are offered; F1's kiter moves along the line of sight. F4 names each missile's shooter instead of a bearing with no reference. Section 12.4 says which numbers are values drawn at 15. H4's power line shows the output and adds the rating only when damage holds the output under it. At fire control the master alert cue sits above the rack. H5's 5 km step is justified by fights that reach 5 km. W5 notes that the lead reticle sits inside the lock mark at fight zooms |

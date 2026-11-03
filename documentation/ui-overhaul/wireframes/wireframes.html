@@ -271,10 +271,10 @@ const layouts = {
   '03': ['Helm, docking approach', () => {
     strip('HELM', 'Day 0 · 00:41     1x');
     emptySlots(true, false);
-    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Station: clearance granted, port 6']);
-    const h3 = box('H3', 'Docking display', 440, 598, 400, 190, 'full', ['Port (M) → Highport #6 · armed'],
-      { h: 92, text: 'alignment picture (2.2 m left, 4° off)   |   closing gauge: 820 m, 6.2 m/s against a safe 4.8, in the FAST band' });
-    addLines(h3, ['clearance granted · contact T-48 s', '▣main ▢turn ▢strafe · assist ON · Δv 1,180']);
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Station: clearance granted, port 2']);
+    const h3 = box('H3', 'Docking display', 440, 598, 400, 190, 'full', ['Port (S) → Highport #2 · armed'],
+      { h: 92, text: 'alignment picture (0.4 m left, 2° off)   |   closing gauge: 120 m, 6.2 m/s against a safe 4.9, in the FAST band' });
+    addLines(h3, ['clearance granted · contact T-19 s', '▣main ▢turn ▢strafe · assist ON · Δv 1,180']);
     chip(704, 601, 132, 'MASTER CAUTION');
     shipLights();
     box('H5', 'Contact scope · 2 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope (auto range 2 km)' });
@@ -291,12 +291,12 @@ const layouts = {
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Gunnery: 3 hits on Raider']);
     box('H2', 'Navigation (compact)', 12, 194, 308, 0, 'compact', ['NAV    Shackleton Ice · 1,240 km']);
     stack(960, 194, [
-      ['H6', 'Lock card', 'full', ['LOCK  Raider', '      HOSTILE   ◆ FIRING ON YOU', '      3.4 km · closing 12 m/s', '      shot 2.3 s · hit 62% fair'], 110],
+      ['H6', 'Lock card', 'full', ['LOCK  Raider', '      HOSTILE   ◆ FIRING ON YOU', '      3.4 km · closing 12 m/s', '      shot 2.2 s · hit 62% fair'], 110],
       ['H7', 'Armament', 'full', ['GUNS   ready · you fire', 'MSL    7 left · ready', 'SHLD   raised · trim bow'], 70],
     ]);
     const h4 = box('H4', 'Ship condition (expanded: the hull light is lit)', 12, 558, 308, 230, 'full', [],
       { h: 118, text: 'ship plan: the breach in ENGINES, the crew sealing it, hit flashes' });
-    addLines(h4, ['◆ HULL     ▮▮▮▮▮▮▮▮▯▯ 81%', '○ SHIELDS  ▮▮▮▮▮▮▮▮▯▯ 77%', '○ POWER    store 92% · 3.0 of 3.0 MW', '○ LIFE SUP tanks 100%']);
+    addLines(h4, ['◆ HULL     ▮▮▮▮▮▮▮▮▯▯ 81%', '○ SHIELDS  ▮▮▮▮▮▮▮▮▯▯ 77%', '○ POWER    store 92% · 3.0 MW', '○ LIFE SUP tanks 100%']);
     box('H1', 'Flight display', 440, 688, 400, 100, 'full', [
       'LOCK · Raider · auto            38 m/s',
       '▣main ▢turn ▣strafe          assist ON',
@@ -313,13 +313,13 @@ const layouts = {
     box('P3', 'Threat alert (fire control: count and decoy only)', 390, 38, 500, 60, 'interrupt', ['#1 MISSILE INBOUND', 'decoy ready (F)']);
     box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Gunnery: 2 hits on Raider']);
-    box('F4', 'Threat list', 12, 194, 308, 0, 'cond', ['MSL   T-9 s    brg 040   PD on', 'SHIP  Raider 2   14 km   closing']);
+    box('F4', 'Threat list', 12, 194, 308, 0, 'cond', ['MSL   T-9 s    Raider     PD on', 'SHIP  Raider 2   14 km   closing']);
     box('F1', 'Lock card, full', 960, 194, 308, 140, 'full', [
       'LOCK  Raider',
       '      HOSTILE   ◆ FIRING ON YOU',
       '      3.4 km · closing 12 m/s',
-      '      38 m/s rel · course 220°',
-      '      shot 2.3 s',
+      '      12 m/s rel · course 235°',
+      '      shot 2.2 s',
       '      kiting at gun range',
       '      engine damaged']);
     const f3 = box('F3', 'Shield control', 12, 558, 308, 186, 'full', ['230 of 300 kg · raised · trim bow'],
@@ -376,7 +376,7 @@ const layouts = {
     chip(560, 681, 160, 'MASTER WARN VACUUM');
     box('H4', 'Ship condition (deck: no plan)', 12, 648, 308, 67, 'full', [
       '○ HULL     ▮▮▮▮▮▮▮▮▯▯ 81%',
-      '◆ POWER    0 of 3.0 MW · store 0%',
+      '◆ POWER    store 0% · 0 of 3.0 MW',
       '◆ LIFE SUP EMERGENCY 42 kg']);
     box('D1', 'Captain vitals', 12, 721, 308, 67, 'full', ['YOU    light wound', 'SUIT   on · air 9:40', 'HERE   thin air']);
   }],
@@ -386,13 +386,13 @@ const layouts = {
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Log: autosaved', 'Station: welcome to Highport']);
     box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 1.4 d left']);
     box('X1', 'Station panel', 960, 194, 308, 260, 'full', [
-      'HIGHPORT · port 6',
+      'HIGHPORT · port 2',
       'Terran Patrol Authority',
       'standing: Trusted (+42)',
       '^[T] Market',
       '^[Y] Yard · 2 repairs · tanks 86%',
       '^[J] Missions · 4 offers',
-      'Shipyard 3 ships · 3 to hire',
+      'Hire: 3 looking for a berth',
       'Infirmary: 1 treated · 150 cr',
       'Credits 5,000 cr · hold 12/40 m³',
       '^[U] Undock']);
@@ -467,7 +467,7 @@ const layouts = {
   }],
   '10': ['Station terminal (full-screen mode)', () => {
     strip('HELM', 'Day 0 · 00:15     1x');
-    box('M3', 'Station', 0, 26, W, 34, 'mode', ['HIGHPORT    [Market]  Yard  Shipyard  Missions  Hire        [1-5] tabs · [T] close · [Esc]']);
+    box('M3', 'Station', 0, 26, W, 34, 'mode', ['HIGHPORT    [Market]  Yard  Missions  Hire        [1-4] tabs · [T] close · [Esc]']);
     box('', 'Market', 0, 60, 960, 714, 'mode', [
       'COMMODITY        STOCK     BUY      SELL     HELD   ON ORDER',
       '^Water            1,200     12 cr    10 cr    0      –        [Buy 1] [Buy 10] [Sell 1] [Sell all]',
