@@ -28,7 +28,6 @@ import com.ringsofiron.uihud.providers.ShieldStatusProvider.ShieldStatus;
 import com.ringsofiron.uihud.providers.ShipStatusProvider.ShipStatus;
 import com.ringsofiron.uihud.providers.StationBoardProvider;
 import com.ringsofiron.uihud.providers.TargetStatusProvider.Relation;
-import com.ringsofiron.uihud.providers.TargetStatusProvider.TargetStatus;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider.MissileTrack;
 import com.ringsofiron.uihud.providers.UiContextProvider.UiContext;
@@ -421,7 +420,6 @@ final class Pages {
             cv.text(kmX, y, km, StDraw.B, true, NpColors.WHITE, 0f, NpCanvas.END);
             cv.text(tR, y, Float.isNaN(mt.timeToImpact) ? "--" : NpFormat.clock(mt.timeToImpact), StDraw.B, true, NpColors.RED, 0f, NpCanvas.END);
         }
-        TargetStatus lock = d.targetStatus;
         for (int i = 0; i < listed.size() && n < 4; i++, n++) {
             Contact c = listed.get(i);
             float y = gy + 52f + n * 18f;
@@ -432,18 +430,11 @@ final class Pages {
             Color col = out ? NpColors.DIM : NpSymbols.colorOf(k);
             NpSymbols.shape(cv, k, tx + 4f, y - 4.5f, 3.5f, col, 1.2f, c.locked, 0f);
             if (c.locked) cv.stroke(tx - 3f, y - 12f, tR - tx + 6f, 16f, 1.2f, NpColors.CYAN);
-            // the lock reads its sensor track's figures, as the helm and the tactical cluster do, so the
-            // three never disagree (the other rows read the contacts, which can differ from a track)
-            float rng = c.range, closing = c.closing;
-            if (c.locked && lock.present) {
-                if (!Float.isNaN(lock.range)) rng = lock.range;
-                if (!Float.isNaN(lock.closing)) closing = lock.closing;
-            }
-            String km = NpFormat.tenths(rng / 1000f);
+            String km = NpFormat.tenths(c.range / 1000f);
             float room = kmX - cv.width(km, StDraw.B, true, 0f) - 4f - (tx + 12f);
             cv.text(tx + 12f, y, StDraw.fitName(cv, up(StDraw.bare(c.label)), room, StDraw.LB, true, 0.3f), StDraw.LB, true, col, 0.3f, NpCanvas.START);
             cv.text(kmX, y, km, StDraw.B, true, NpColors.WHITE, 0f, NpCanvas.END);
-            String cl = Float.isNaN(closing) ? "" : (closing >= 0 ? "+" : NpFormat.MINUS) + NpFormat.tenths(Math.abs(closing));
+            String cl = Float.isNaN(c.closing) ? "" : (c.closing >= 0 ? "+" : NpFormat.MINUS) + NpFormat.tenths(Math.abs(c.closing));
             cv.text(tR, y, cl, StDraw.B, true, NpColors.WHITE, 0f, NpCanvas.END);
         }
         if (n == 0) StDraw.lab(cv, tx, gy + 52f, "NO CONTACTS");
