@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 9.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 10.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -104,7 +104,7 @@ Whether the player must act depends on whether someone aboard already is. An ale
 Each fact has one home widget. Other widgets may summarise it or link to it (an annunciator tile summarises a fire; the damage page is its home), but the same full readout never appears twice on one screen. Callouts follow the same rule (13.5).
 
 Two consequences that apply everywhere:
-- **The world identifies; the instruments measure.** While seated, the object whose numbers are in the cluster (the Reference or Target row) is labelled in the world with its name only. Its range, closing speed and the rest live in the cluster, where they hold still and can be read.
+- **The world identifies; the instruments measure.** While seated, the object whose numbers are in the cluster (the Reference or Target row) is labelled in the world with its name only. Its range, closing speed and the rest live in the cluster, where they hold still and can be read. Burn arrows work the same way: an arrow carries its burn's number, and its time is in the Next event slot (the next burn) or on the PLAN page (the rest).
 - **One countdown per missile salvo on screen.** The annunciator tile owns the count and the soonest impact. A missile track on screen carries no countdown of its own (its impact cross shows where); an edge marker keeps its seconds, because the track is off screen; the SENSORS list keeps each missile's time, because it is the table of every contact.
 
 ### 3.9 Decision-ready numbers
@@ -182,7 +182,7 @@ Fallback rules, so no hull loses a function:
 | Item | Content |
 |---|---|
 | Cluster | Velocity, reference, Δv, next event, chronometer (8.1); docking approach mode (8.2) |
-| Symbology | Prograde and retrograde markers in the active frame; burn arrows with countdown; nav target bracket; docking corridor; collision cue (new); with a target locked, the lead reticle and intercept lines for the pilot's trigger; threat tracks always |
+| Symbology | Prograde and retrograde markers in the active frame; burn arrows, numbered; nav target bracket; docking corridor; collision cue (new); with a target locked, the lead reticle and intercept lines for the pilot's trigger; threat tracks always |
 | MFD pages | HELM (who has the helm, the order in force and how it is going), DOCK (ports, clearance, strain) |
 | Console panel tab | Helm: the HELM and DOCK pages side by side |
 | Manned by crew | The helmsman holds the heading or flies an order (`HelmOrders`). Callouts: order taken, finished, dropped under fire; burn started and done; "nobody at the helm, the ship drifts" |
@@ -357,11 +357,11 @@ A condition that clears removes its tile with a short fade and leaves a line in 
 
 | Element | Content |
 |---|---|
-| Line | Station tag, speaker, text: "ENG  Ada: fire in the bridge, I'm on it." / "HELM  Bea: holding your heading, Captain." / "COMMS  SHIP: clearance granted, Highport port 2." |
+| Line | Station tag, speaker, text: "ENG  Ada: fire in the bridge, I'm on it." / "HELM  Bea: holding your heading, Captain." / "COMMS  SHIP: clearance granted, Highport port 2." (heard on deck; at the helm the Ports field already shows it, so it is only logged, 13.5) |
 | Speaker | The crew member at the owning station, or the one dealing with it; "SHIP" when nobody is. A SHIP line says only what the tile cannot (13.5) |
 | Length | At most 50 characters after the station tag, the speaker's name included, so a line reads at a glance and fits every style's ticker. Lines are written to fit; one that runs over (a long station or contact name) is the style's to wrap or scroll, never to cut, since the end of a line often carries its point ("nobody on it") |
 | Stack | 3 lines, newest at the bottom. Each holds 6 s (advisory) or 10 s (caution, warning), scaled by a reading-speed setting, then fades. A repeat within its hold counts ("x3") instead of stacking, as `NoticeLog` does now |
-| Placement | Z2, under the annunciator. On deck, a line spoken by a crew member in view also shows as a short bubble over them for its first 3 s (new) |
+| Placement | Z2, under the annunciator. On deck, a crew member in view who says a line shows a speaking mark over them for its first 3 s (new): the words are in the ticker, and the mark shows who said them |
 | Interaction | Clicking a line shows its home page. The full history is the slate's Log |
 
 ### 7.3 Prompts and the prompt line
@@ -403,7 +403,7 @@ The tutorial layer (First Play objectives and the opening walkthrough) is **out 
 |---|---|---|
 | Condition | YELLOW or RED (12); RED with "BATTLE STATIONS" when the player called it | In Yellow and Red; dark in Green |
 | State | DOCKED or LATCHED | While it holds |
-| Emergency text | The cause and the player's options: "SHIP DISABLED: no power.  [P] twice abandons ship.  [B] twice calls a tow" | In Emergency |
+| Emergency text | The cause and the player's options in a short form of at most 44 characters, keys first: "DISABLED: NO POWER [P][P] ABANDON [B][B] TOW". The full sentence ("Ship disabled: no power. Press P twice to abandon ship, B twice to call a tow") is the alert's log line and its SHIP callout | In Emergency |
 
 In Green, undocked and with no emergency, the whole strip is dark (3.4).
 
@@ -455,6 +455,8 @@ At this seat the player has every gun and launcher in hand except point defence,
 | **Countermeasures** | Decoy: ready, or seconds to ready (decoys are unlimited; `DECOY_COOLDOWN` 3 s) |
 | **Shields** | On a hull with a shield emitter (the starting corvette has none: the slot is blank, with no legend, so it can't read as shields lowered): mode (RAISED, LOWERED, STOWING); cloud mass as a share of capacity; trim (EVEN, BOW, PORT, STERN, STBD) on a small rose |
 
+**The cluster never grows with the hull.** Gun chips take a full row each for up to two guns in hand, and half a row each (two to a row, the gunner's name cut to initials) for three to six; launcher chips likewise, two to a row; point defence and the decoy share a row. That is at most seven rows in the 160 units, and it holds every ship in the game: the most guns in hand is the Reaver's five, the most launchers two (`ships.toml`). A hull with more than six guns in hand (none today) lists the rest on the WEAPONS page, the last chip reading "+n on WEAPONS".
+
 ### 8.4 Gunner sight
 
 Seated at a gun. No MFDs and no station board beyond the gun's own tile: a deliberately narrow view.
@@ -480,6 +482,7 @@ Z3d, a strip under the band at a command seat; a row at the top of the slate's S
 | empty | Nobody; automated only (unlit) |
 | caution, warning | The station has an active alert; the tile lights in that role |
 | struck through | Its console is destroyed or unpowered |
+| (CMD) | Command has no occupancy part: it is the captain's slate, always with the player, so its tile carries only alerts and the LATCHED badge (14.2) |
 
 Occupancy (you, a name, empty) and alert (caution, warning) are separate parts of a tile and both show: the weapons tile in a fight is the player's and carries the MISSILE warning at once.
 
@@ -523,7 +526,7 @@ Budget: six tiles of 150 (900), the chronometer 188.
 | NAV | Navigation | Body, altitude, Ap, Pe, period; next SOI change or impact; small orbit drawing | Open plot | None |
 | PLAN | Navigation | Burns (number, time to, Δv), total against Δv left; transfer proposal; autopilot | Accept, discard, warp to burn | Helm: fly burns (1) |
 | HELM | Helm | Who has the helm, the order in force, how it is going | Orders 1 to 6, 0 | Orders 1 to 6, 0 |
-| DOCK | Helm | Ports with size and state; clearance; latched or docked; strain | Next port, arm and ask clearance, undock | None |
+| DOCK | Helm | Own ports with size and state; the target station's ports of that size, which one is assigned and how many others are free (it refuses when none is); clearance; latched or docked; the collar's strain while latched. During an approach the cluster's Ports field already has the selected port and clearance, so this page is for what it can't hold | Next port [H], arm and ask clearance or disarm [G], undock [U] | None |
 | SENSORS | Tactical | Radar scope (`RadarScope`, ranges 0.5 to 1,000 km) and contact list: class, name, range, closing, CPA, hostile or not, sorted by threat | Lock target, set nav target, range | Lock target, set nav target |
 | WEAPONS | Tactical | Mounts by position (13.2): weapon, ammunition where limited, state, who works it and so how it fires (AT WILL, YOURS, TRIGGER, HOLD, PD AUTO); with a target locked, each gun's time of flight and hit chance on it | Hold fire: no gun but point defence fires at will (new as a control: the game has the switch, `GunCrews.holdFire`, but only its tests set it, and a captain wanting a prize undamaged needs it) | Hold fire (new) |
 | DEFENSE | Tactical | On a hull with a shield emitter: shield ring (96 segments), mass, trim, emitters. Decoy readiness; point defence | Raise, lower, trim | None |
@@ -566,7 +569,7 @@ One panel for everything a station offers, with the berth on its title bar: "HIG
 
 | Tab | Content (from today's windows, reorganised) |
 |---|---|
-| Market | Commodities: stock, buy, sell, carried; one quantity control (1, 10, all) instead of four buttons a row; the trade's total before confirming |
+| Market | Commodities in catalog order (`StationMarket.quotes`): stock, buy, sell, carried; one quantity control (1, 10, all) instead of four buttons a row; the trade's total before confirming. Under them, "Not traded here": cargo in the hold this station neither makes nor uses, so the hold adds up and the player sees what to take elsewhere |
 | Yard | Repairs (priced by the damage, Repair all), tanks (oxygen, nitrogen, propellant, shield media when built), refits per hardpoint (fitted, choice, new, used, salvaged), furnishings; "Rebuild decks" opens the editor |
 | Shipyard | Ships for sale with the price after trade-in and why one is locked; a prize in tow with its terms |
 | Contract board | Offers: pay, standing, time, where; take, or why not yet. A line at the foot: "Holding 2 of 3 contracts", linking to the slate |
@@ -600,7 +603,7 @@ The captain's own panel, anywhere aboard. Its title bar carries the captain's ra
 | Symbology | Helm | Weapons | Gun |
 |---|---|---|---|
 | Prograde / retrograde markers | Shown | Hidden | Hidden |
-| Burn arrows with countdown | Shown | Hidden | Hidden |
+| Burn arrows, numbered | Shown | Hidden | Hidden |
 | Nav target bracket | Shown | Shown | Hidden |
 | Docking corridor | When approaching | Hidden | Hidden |
 | Collision cue (new) | When a contact's closest approach is under 200 m within 60 s | Same | Hidden |
@@ -647,7 +650,7 @@ On deck the world is the ship's interior, and almost everything shows itself: fi
 | Console and door prompts | Within reach (7.3) |
 | Crew member who needs help: critically wounded, unconscious, out of air | Always, with their timer when they have one |
 | The nearest free suit | While the avatar is unsuited in air that is not breathable (7.4) |
-| Crew speech bubbles | For their callouts, 3 s |
+| Crew speaking marks | For their callouts, 3 s, no words (the ticker has them) |
 | The room an alert names | While the alert holds, when the player clicks its tile or callout: a brief outline of the room |
 
 ### 11.6 In-world cues on deck (art and lighting)
@@ -658,7 +661,7 @@ T0 cues that need art or lighting work, listed so the artists can plan for them:
 - Door indicator lights: vacuum, fire or smoke on the far side.
 - Alarm beacons in rooms with a fire or a breach.
 - Interior lighting follows the condition: battle lighting in Red, so a player on deck knows the ship's state at a glance (the lighting thread's call how; the strip, 7.7, says it in words).
-- Crew speech bubbles (11.5).
+- Crew speaking marks (11.5).
 
 ---
 
@@ -678,7 +681,7 @@ Two states layer over the condition:
 |---|---|---|
 | **Docked** | Latched to a station | Combat symbology off (guns hold when docked, as now); MFDs DOCK and CARGO; berth card; Station link. A Red condition while docked restores the threat symbology over this |
 | **Latched** | Latched to another ship | The slate's Boarding tab; CARGO shows the other ship's hold |
-| **Emergency** | Ship disabled or abandon ship ordered | The status strip's emergency text with the cause and the player's options: "SHIP DISABLED: no power.  [P] twice abandons ship.  [B] twice calls a tow". The condition carries on beside it |
+| **Emergency** | Ship disabled or abandon ship ordered | The status strip's emergency text with the cause and the player's options: "DISABLED: NO POWER [P][P] ABANDON [B][B] TOW" (7.7). The condition carries on beside it |
 
 **Battle stations** (new action, 16.2) sets Red until the player stands down or the ship docks. Whether it should also send the crew to their stations is an open question (20.5).
 
@@ -905,7 +908,7 @@ The status strip says RED, because missiles are inbound. FIRE is a caution (Ada 
 |                              o                                                           |
 |                                [ship]                      [ Highport ]                  |
 |                                     x                                                    |
-|                         -> 1  12:04                                                      |
+|                         -> 1                                                             |
 |                                                                                          |
 |          +---------------------------------------------+                                 |
 |          | Highport 1.2 km  closing 3.9  CPA 140 m 2:10|                                 |
@@ -931,17 +934,17 @@ Both MFDs are folded to their rails: in Green there is nothing on them the playe
 |                                                                                          |
 +---------------------+---------------------------------------------+----------------------+
 | DOCK                | Port 1/1 S armed > Highport 2 (S)  GRANTED  | (folded)             |
-| Port 1/1  S  armed  | 312 m  closing [===      |   ]  safe 7.9    |                      |
-| Highport 2 (S)      | offset +0.8 m   angle -1.5 deg              |                      |
-| Clearance granted   | PORT 2.4 m/s closing     MANUAL  ASSIST     |                      |
-|                     |                (Trigger: dark)              |                      |
+| Port 1  S  armed [G]| 312 m  closing [===      |   ]  safe 7.9    |                      |
+| Highport, size S:   | offset +0.8 m   angle -1.5 deg              |                      |
+|  port 2 assigned    | PORT 2.4 m/s closing     MANUAL  ASSIST     |                      |
+|  1 more free        |                (Trigger: dark)              |                      |
 | [DOCK] [HELM] [pin] | DELTA-V 1,780 |=====|==   home 1,210        | [SNS][WPN][DEF][pin] |
 +---------------------+---------------------------------------------+----------------------+
 | 1 HELM you  2 NAV you  3 TAC Cole  4 ENG --  5 COMMS you  6 CMD           Day 3 14:41:10 |
 +------------------------------------------------------------------------------------------+
 ```
 
-The approach has taken over the Reference and Next event slots (8.2). The bar shows the closing speed against the safe closing speed for 312 m (7.9 m/s, `PlayerDocking.safeSpeed`); the number itself is in the Velocity slot, in the port's frame.
+The approach has taken over the Reference and Next event slots (8.2). The player has opened DOCK on the left MFD (in Green both start folded): it shows what the Ports field can't, the station's ports of the ship's size and which is assigned, with the key that acts on the port. The bar shows the closing speed against the safe closing speed for 312 m (7.9 m/s, `PlayerDocking.safeSpeed`); the number itself is in the Velocity slot, in the port's frame.
 
 ### E. Seated at the weapons console, in a fight (Red)
 
@@ -1000,16 +1003,19 @@ Both alerts are cautions: the crew are on the fire, and the short's breaker recl
 +------------------------------------------------------------------------------------------+
 |                                               |  HIGHPORT  Terran Patrol Authority       |
 |                                               |  Credits 5,000    Hold 12 / 40 m3        |
-|      (world: the ship at its berth)           |  [Market] [Yard] [Shipyard] [Board] ...  |
+|      (world: the ship at its berth)           |  [Market] [Yard] [Board] [Hiring] ...    |
 |                                               |                                          |
 |                                               |  Commodity  Stock  Buy  Sell  Held       |
-|                                               |  Food         420   38    36     0       |
-|                                               |  Water         80   15    14     4       |
-|                                               |  ...                                     |
+|                                               |  Water         80   15    13     4       |
+|                                               |> Food         420   38    34     0       |
+|                                               |  Machinery     12  672   608     0       |
+|                                               |  Not traded here: Iron Ore 8             |
 |                                               |  Qty [1] [10] [All]  Buy 38 cr [Enter]   |
 |                                               |                             [Esc] Close  |
 +------------------------------------------------------------------------------------------+
 ```
+
+Highport is an agricultural dome: it makes food and uses water and machinery, so those are its rows, in catalog order, with buy and sell 5% either side of its price (`StationMarket.SPREAD`). The 8 m3 of iron ore it doesn't trade are listed so the hold's 12 m3 add up. Its tabs are Market, Yard (repairs and refits only), Board, Hiring and, at a friendly station, Infirmary; there is no Shipyard tab, because the Patrol's shipyard is Anvil Yards.
 
 ### H. Time warp, seated at the helm
 
@@ -1097,7 +1103,7 @@ The artists change how this looks, not what it says or where it is. A style may 
    - Station board tile in five states; the whole board dim (Green) and lit; its right end, the chronometer. (The condition and the ship's state are in the status strip.)
    - Panels: side and full frames with title bar, tabs and footer; table rows; quantity control.
    - World: markers, brackets, lead reticle, intercept lines, fire arcs, threat track, impact cross, PD kill, corridor, nameplate, cluster label, edge marker, PiP ring, collision cue; deck marks for crew who need help, room outline.
-   - In-world cues: console glow, door lights, alarm beacons, speech bubble.
+   - In-world cues: console glow, door lights, alarm beacons, speaking mark.
 
 ---
 
@@ -1209,6 +1215,20 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 10 (Cassette artist's round 2 notes, checked against the data)
+
+| Problem found | Change |
+|---|---|
+| A burn arrow carried "1 12:04" while the Next event slot carried the same burn and time | Arrows carry the burn's number only; times are in the Next event slot and on PLAN (3.8, 5.2, 11.1, C) |
+| The emergency text ran to 74 characters; beside the strip's flags there is room for about 44 | A short form of at most 44, keys first: "DISABLED: NO POWER [P][P] ABANDON [B][B] TOW"; the full sentence goes to the log and the callout (7.7, 12) |
+| During an approach the DOCK page repeated the Ports field | DOCK holds what the field can't: the station's ports of the ship's size, the one assigned, the keys (9.2, D) |
+| The clearance callout in 7.2 never plays at the helm, where 13.5 only logs it | Marked as the deck's case (7.2) |
+| The CMD tile's occupancy was undefined | It has none: Command is the captain's slate (8.5) |
+| The market hid cargo the station doesn't trade, so the hold didn't add up | A "Not traded here" line under the rows (10.3, G) |
+| G showed a Shipyard tab at Highport, which has none (the Patrol's is Anvil Yards, `shipyard.toml`), left out the Infirmary every friendly station runs, listed food before water against the catalog's order, and missed machinery, which the dome uses | G's tabs and rows corrected, with sell prices 5% under the price as `StationMarket.SPREAD` has it (G) |
+| The cluster's size held the corvette's weapons and no more; the destroyer has three guns in hand and two launchers, the Reaver five guns | Chips go two to a row past two guns; at most seven rows hold every ship in the game; past six guns the rest go to the WEAPONS page (8.3) |
+| On deck a crew line appeared twice, in a bubble and in the ticker | The crew member shows a speaking mark; the words are in the ticker (7.2, 11.5, 17) |
 
 ### Round 9 (VFD artist's second notes)
 
