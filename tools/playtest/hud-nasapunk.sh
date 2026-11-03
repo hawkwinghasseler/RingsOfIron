@@ -46,6 +46,8 @@ key Up; key Return; key Down Down; key Return
 until_docked 180; pause 3; shot n-01-docked
 key u; pause 8; shot n-02-undocked
 cmd away 3000; await 30 "PLAYTEST away"; pause 5; shot n-03-cruise
+# The context HUD's orders menu (C1) opens on 7 over the helm's instrument, and 7 closes it
+[ "$SPEC" = context ] && { key 7; pause 1; shot n-03-orders; key 7; pause 0.5; }
 # A raider with dart racks 2 km out, hunting us; locked
 cmd raider 2 raider_darts; await 30 "PLAYTEST raider"; pause 3; key Tab; pause 2; shot n-04-raider
 pause 30; shot n-05-missiles
