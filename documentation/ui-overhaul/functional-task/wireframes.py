@@ -80,18 +80,21 @@ def chr_(s, warp="WARP 1x", nxt="next stop: burn 1 in 1:29:51"):
     s.box(16, 16, 240, 48, "CHR", "Day 3  14:22:05", [warp + "   " + nxt[:18], nxt[18:]] if len(nxt) > 18 and False else [warp, nxt])
 
 
-def alr(s, warn=None, cautions=()):
+BAND_X, BAND_W = 320, 640
+PLUS_W = 44  # the "+n more" slot at the end of the caution row, reserved so no cell moves when it shows
+
+
+def alr(s, warn=None, cautions=(), more=0):
     if warn:
-        s.box(360, 16, 560, 44, "ALR", "WARNING  " + warn[0], [warn[1]], kind="alert")
+        s.box(BAND_X, 16, BAND_W, 44, "ALR", "WARNING  " + warn[0], [warn[1]], kind="alert")
     y = 66  # the caution row keeps its place whether or not a warning stands
     if cautions and not warn:
-        s.text(640, 42, "(warning row empty: the cautions keep their row)", size=10, fill="#aaa", anchor="middle", style="italic")
-    if cautions:
-        x = 360
-        cw = (560 - 8 * (len(cautions) - 1)) / len(cautions)
-        for c in cautions:
-            s.box(x, y, cw, 26, "", c, kind="cond")
-            x += cw + 8
+        s.text(BAND_X + BAND_W / 2, 42, "(warning row empty: the cautions keep their row)", size=10, fill="#aaa", anchor="middle", style="italic")
+    cw = (BAND_W - PLUS_W - 8 * 3) / 3  # three fixed slots
+    for i, c in enumerate(cautions[:3]):
+        s.box(BAND_X + i * (cw + 8), y, cw, 26, "", c, kind="cond")
+    if more:
+        s.box(BAND_X + BAND_W - PLUS_W, y, PLUS_W, 26, "", f"+{more}", kind="cond")
 
 
 def obj(s, rows):
@@ -150,14 +153,14 @@ def zones(out):
     s.clear_zone()
     s.ship(640, 390)
     s.box(16, 16, 240, 48, "Z1", "TIME", ["clock, warp, next stop"])
-    s.box(360, 16, 560, 76, "Z2", "ATTENTION", ["row 1: one warning   row 2: up to three cautions", "each row keeps its place; every alert names its action"], kind="alert")
+    s.box(320, 16, 640, 76, "Z2", "ATTENTION", ["row 1: one warning   row 2: up to three cautions, then +n", "each row and each slot keeps its place; every alert names its action"], kind="alert")
     s.box(1024, 16, 240, 190, "Z3", "INCOMING", ["objectives (contracts, guides)", "news (notices)", "", "slow loop: hours and days"])
     s.box(16, 72, 240, 530, "Z4", "SELF", ["annunciator: what is wrong aboard", "personal: the captain's body", "", "medium loop: minutes", "", "", "", "", "", "", "",
                                           "nothing about other ships", "goes on this side"])
     s.box(16, 610, 300, 150, "Z5", "SELF, SPATIAL", ["ship schematic (outside view,", "only when something is wrong)", "", "on deck the deck itself is", "the schematic: this zone", "stays empty"])
     s.box(1024, 214, 240, 362, "Z6", "OTHERS", ["target card", "(combat target, else nav target)", "", "contacts are drawn in the world;", "this side holds what the world", "can't show: state, hull, intent"])
     s.box(800, 584, 464, 176, "Z7", "OTHERS, SPATIAL + ARMS", ["weapons cluster (left)", "sensor scope (corner)", "", "fast loop: seconds"])
-    s.box(400, 632, 392, 128, "Z8", "MOTION AND HANDS", ["flight instrument: one mode at a time", "cruise / burn / dock / departure / warp", "", "fast loop: seconds", "closest to the eye line"])
+    s.box(400, 632, 392, 128, "Z8", "MOTION AND HANDS", ["flight instrument: one mode at a time", "departure / dock / burn / cruise; hidden in rails warp", "", "fast loop: seconds", "closest to the eye line"])
     s.box(16, 768, 1248, 24, "Z9", "keys for what you can do here (fades as you learn): a full-width strip; every zone ends above it", kind="cond")
     s.text(640, 310, "world overlays live here:", size=11, fill="#888", anchor="middle", style="italic")
     s.text(640, 326, "markers, velocity, burn arrows, reticle, missile paths,", size=11, fill="#888", anchor="middle", style="italic")
@@ -198,7 +201,7 @@ def gunnery_combat(out):
     s.ship(640, 390)
     chr_(s, "WARP 1x (held: hostiles)", "battle stations")
     alr(s, ("MISSILE  2 inbound  impact 14 s", "bearing 080   F decoy   point defence engaging"),
-        ("FIRE  Hold   Ada on it", "WOUNDED  Cole, no medic free"))
+        ("FIRE Hold  Ada", "WOUNDED Cole  no medic"))
     ann(s, [("FIRE", "caut"), ("CREW", "caut")], shields=False)
     s.box(16, 610, 300, 150, "SCH", "Ship (shown: FIRE, CREW lit)", ["", "  [deck plan: fire in the Hold,", "   crew as dots, you at", "   the weapons console]"], kind="cond")
     obj(s, ["Bounty: Raider 'Vex'   2d 21h"])
@@ -304,7 +307,7 @@ def deck(out):
     s.text(870, 324, "Bea (helm)", size=10, fill="#777", anchor="end")
     s.add('<circle cx="700" cy="430" r="6" fill="#555"/>')
     s.text(712, 434, "you", size=10, fill="#555")
-    s.box(640, 446, 200, 26, "", "V  sit at the weapons console", kind="world")
+    s.box(640, 446, 176, 26, "", "Weapons console   V sit", kind="world")
     chr_(s, "WARP 1x (held: fire aboard)", "")
     alr(s, None, ("FIRE Hold  Cole", "VENTING Bridge  nobody", "POWER Bridge  Ada"))
     ann(s, [("FIRE", "caut"), ("POWER", "caut"), ("AIR", "caut"), ("CREW", "adv")], shields=False)
@@ -331,7 +334,7 @@ def map_(out):
     s.add('<circle cx="476" cy="392" r="150" fill="none" stroke="#aaa" stroke-width="1"/>')
     s.text(28, 122, "EARTH SYSTEM   [M] or [Esc] close", size=12, weight="bold", fill="#444")
     chr_(s, "WARP 1x", "next stop: burn 1 in 1:29:51")
-    s.box(360, 16, 560, 76, "ALR", "(alerts stay visible over the map, both rows)", kind="cond")
+    s.box(320, 16, 640, 76, "ALR", "(alerts stay visible over the map, both rows)", kind="cond")
     s.box(944, 100, 320, 120, "MAP.1", "DESTINATION", [
         "Shackleton Ice  (Selene Combine)",
         "relation: neutral  standing 12",
@@ -375,7 +378,7 @@ def terminal(out):
     s = Svg("Station terminal: one screen for every service a station sells")
     s.screen_bg("TERMINAL (docked; T / J / Y open it on their tab)")
     chr_(s, "WARP 1x", "")
-    s.box(360, 16, 560, 76, "ALR", "(alerts stay visible over every screen, both rows)", kind="cond")
+    s.box(320, 16, 640, 76, "ALR", "(alerts stay visible over every screen, both rows)", kind="cond")
     s.box(16, 100, 1248, 52, "TRM.H", "HIGHPORT   Terran Patrol Authority (your sponsor)   standing 22", [
         "credits 18,450 cr     hold 6 / 40 m3     contracts held 1 / 3                         [Esc] back to the deck"])
     tabs = ["CONTRACTS", "MARKET", "YARD", "SHIPYARD", "CREW"]
@@ -417,7 +420,7 @@ def book(out):
     s = Svg("Ship's book: the ship, crew, contracts, career and log, anywhere")
     s.screen_bg("BOOK (anywhere; I / J / L open it on their tab)")
     chr_(s, "WARP 1x", "")
-    s.box(360, 16, 560, 76, "ALR", "(alerts stay visible over every screen, both rows)", kind="cond")
+    s.box(320, 16, 640, 76, "ALR", "(alerts stay visible over every screen, both rows)", kind="cond")
     tabs = ["SHIP", "CREW", "CONTRACTS", "CAREER", "LOG"]
     x = 16
     for i, t in enumerate(tabs):

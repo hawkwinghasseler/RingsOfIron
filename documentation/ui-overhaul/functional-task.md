@@ -1,6 +1,6 @@
 # UI Overhaul: Task-Driven Functional Spec
 
-Functional designer 2 of 3. Round 4.
+Functional designer 2 of 3. Round 5.
 
 This spec rebuilds the game's interface from the decisions a player makes, not from the panels the game has today. It says what each widget and screen contains, where it sits, and when it is visible. It says nothing about how anything looks: three artist threads (Nasa-punk, 90s VFD, Cassette-futurism) skin it, and section 12 lists what they are free to change and what they must keep.
 
@@ -189,7 +189,7 @@ Reading section 3 across its rows gives ten rules. Every later section applies t
 | Zone | Holds | Why there |
 |---|---|---|
 | Z1 Time (top left) | Chronometer | Time is the slowest-changing, always-needed number; top left is where the eye starts |
-| Z2 Attention (top centre, 560 x 76) | Alert band: a warning row over a caution row | The one place urgency appears, above the ship, never covering it |
+| Z2 Attention (top centre, 640 x 76) | Alert band: a warning row over a caution row | The one place urgency appears, above the ship, never covering it |
 | Z3 Incoming (top right) | Objectives, news | Hours-and-days information and messages from outside |
 | Z4 Self (left column) | Annunciator, personal status | Your own ship and body, at a glance |
 | Z5 Self, spatial (bottom left, 300 x 150) | Ship schematic, outside view only | The interior when you can't see it; empty on deck, where the deck itself shows it |
@@ -204,7 +204,7 @@ Rules for zones:
 - A widget lives in one zone and never moves between posts. Zones may be empty; nothing slides in to fill them.
 - Changing post swaps the post's widgets at once. Widgets common to both posts (CHR, ALR, OBJ, NTF, ANN, HNT) stay exactly where they were, so the eye has fixed points through the change.
 - When two widgets in a zone are both visible, the higher one in the zone's list keeps its size and the other collapses to its compact form.
-- Screens (Map, terminal, book) cover zones 3 to 9 but leave Z1 and Z2 visible: time and danger never go away. A screen starts below the band's second row (100 units down), so an alert arriving never covers a screen's header.
+- Screens (Map, terminal, book) cover zones 3 to 9 but leave Z1 and Z2 visible: time and danger never go away. A screen starts below the band's second row (100 units down in the wireframes, lower when a style's band is taller), so an alert arriving never covers a screen's header.
 - Zones anchor to their screen edges and corners. On a wider or taller window the extra space goes to the clear zone; widgets are never stretched.
 - Z9 runs the full width of the bottom edge and every other zone ends above it (at 760 units), so the key line never runs under a widget.
 - The crisis panel is the only widget that may enter the clear zone (section 6, CRS).
@@ -231,7 +231,7 @@ Serves F6, N4, E1.
 
 Serves F2, F8, F9, C5, S1, S6, S9. Full rules in section 9.
 
-- **Shows:** at most one **warning** (large: title, the one number that matters, the action) and up to three **cautions** (one line each), plus `+n more` when there are more.
+- **Shows:** at most one **warning** (large: title, the one number that matters, the action) and up to three **cautions** in three slots, then `+n` in a narrow fourth slot at the row's end when there are more. The `+n` slot is reserved, so no caution moves or shrinks when it appears.
 - **States:** empty (invisible); warning new (pulsing for 3 s); warning held; caution; acknowledged (cautions leave the band and live on as lamps). Each row keeps its place (section 9.1).
 - **Visible:** whenever an alert stands, in every context, over every screen.
 - **Acts:** the alert's own key does its action; clicking the band acknowledges it (section 9.3); clicking one alert opens the book on its system. No key is needed: cautions collapse by themselves.
@@ -383,7 +383,7 @@ Serves G4.
 
 Serves S3, S6, E8.
 
-- **Shows:** beside the object the captain stands at, at most two actions: `E  Reactor console`, `V  sit at the helm`, `E  put on a pressure suit`, `F  force the door (hostile act)`.
+- **Shows:** beside the object the captain stands at, its name once and then at most two keys, each with a verb: `Reactor console   E open`, `Helm   V sit`, `Suit locker   E put on a pressure suit`, `Door   F force (a hostile act)`.
 - **Visible:** on deck within `INTERACT_RADIUS` of something usable.
 - **Replaces:** the `Press [E] for the Helm panel  [V] sit and fly` line at the bottom centre.
 
@@ -586,28 +586,28 @@ Two rules keep the band from repeating the rest of the HUD:
 
 ### 9.2 The alert list
 
-Every alert has a full text, which names its action, and a short form of about 22 characters: what, where or the one number, and who is on it or the key. The warning row always shows the full text. A caution cell shows the full text when it fits (one or two cautions, or short ones; cells size to their text when all three fit) and the short form when it doesn't. The full text is always on hover or focus, in the book and in the log, so nothing is lost by the short form. A warning pushed down into the caution row takes its short form there.
+Every alert has a full text, which names its action, and a short form of about 22 characters in two parts joined by a double space: first what, and where or the one number; then who is on it, the key, or the time. A style may break the line at the double space, so each part stays within 19 characters. The warning row always shows the full text. Whether the caution slots are fixed or sized to their text is the style's choice; a caution shows its full text when it fits its slot and the short form when it doesn't. The full text is always on hover or focus, in the book and in the log, so nothing is lost by the short form. A warning pushed down into the caution row takes its short form there.
 
 | Id | Level | When | Full text, with the action | Short form | Lamp |
 |---|---|---|---|---|---|
 | MISSILE | Warning under 20 s to impact, else caution | Missiles inbound (`FlightWarnings.inbound`) | `MISSILE  2 inbound  impact 14 s  bearing 080   F decoy` | `MISSILE 2  38 s` | - |
-| COLLISION | Warning | Time to contact under 10 s at more than the safe speed | `COLLISION  Highport in 6 s   brake` | `COLLISION 6 s` | - |
+| COLLISION | Warning | Time to contact under 10 s at more than the safe speed | `COLLISION  Highport in 6 s   brake` | `COLLISION  6 s` | - |
 | IMPACT | Warning under 10 min, else caution | Periapsis below the surface | `SURFACE IMPACT in 8:20   raise periapsis (M)` | `IMPACT 1:20:00  M` | - |
-| DISABLED | Warning | The ship is disabled | `SHIP DISABLED  no reactor running   options below` (opens CRS) | `DISABLED` | as the cause |
+| DISABLED | Warning | The ship is disabled | `SHIP DISABLED  no reactor running   options below` (opens CRS) | `DISABLED  no reactor` | as the cause |
 | ABANDON | Warning | Abandon ship ordered | `ABANDON SHIP  pods launch in 22 s   P now` | `ABANDON 22 s  P` | CREW |
-| CAPTAIN AIR | Warning | Captain's suit air under 60 s, or their room unbreathable without a suit | `YOUR AIR  48 s   E at a locker, or leave the room` | `YOUR AIR 48 s` | - |
-| CAPTAIN HURT | Warning | Captain critical or bleeding | `YOU ARE BLEEDING   find a medic` | `YOU ARE BLEEDING` | CREW |
+| CAPTAIN AIR | Warning | Captain's suit air under 60 s, or their room unbreathable without a suit | `YOUR AIR  48 s   E at a locker, or leave the room` | `YOUR AIR  48 s` | - |
+| CAPTAIN HURT | Warning | Captain critical or bleeding | `YOU ARE BLEEDING   find a medic` | `BLEEDING  find a medic` | CREW |
 | EVA BURN | Warning | Crew outside and a burn under way or due in 30 s | `CREW OUTSIDE  Ada on the hull   hold the burn; I: call them in` | `CREW OUTSIDE  Ada` | EVA |
 | FIRE | Caution; warning when large or in the captain's room | Any fire | `FIRE  Hold   Cole on it` (or `nobody on it`) | `FIRE Hold  Cole` | FIRE |
 | VENTING | Caution | Air venting to space | `VENTING  Bridge   nobody: no patches left (Y at a yard)` | `VENTING Bridge  nobody` | AIR |
 | POWER | Caution; warning when no reactor feeds anything | As the POWER lamp (never the store's level) | `POWER  Bridge conduit short   Ada resetting`; `NO POWER  reactor shorted   Ada resetting; breaker recloses in 41 s` | `POWER Bridge  Ada` | POWER |
-| PROPELLANT | Caution | Below 1.25 times home, or short of the plan | `PROPELLANT  500 m/s left, home takes 410` | `PROP 500 / home 410` | PROP |
+| PROPELLANT | Caution | Below 1.25 times home, or short of the plan | `PROPELLANT  500 m/s left, home takes 410` | `PROP 500 m/s  home 410` | PROP |
 | BURN MISSED | Caution | A planned burn missed or cut short | `BURN 1 MISSED   replan (M)` | `BURN 1 MISSED  M` | - |
 | HELM | Caution | An order waits with no helmsman, or was dropped by a threat | `HELM ORDER DROPPED  shot at   1 to re-give` | `HELM DROPPED  1` | - |
 | CONTRACT | Caution | A contract's arrival is after its deadline, or under 6 h left with no plan | `LATE  Delivery to Freehold by 22 h   M` | `LATE Freehold  M` | - |
-| SHIELD | Caution | Shields down in combat, tripped, or under a quarter | `SHIELD TRIPPED  back in 8 s` | `SHIELD TRIPPED 8 s` | SHLD |
+| SHIELD | Caution | Shields down in combat, tripped, or under a quarter | `SHIELD TRIPPED  back in 8 s` | `SHIELD TRIPPED  8 s` | SHLD |
 | COLLAR | Caution | The selected port's collar jammed | `PORT 1 JAMMED   H next port` | `PORT 1 JAMMED  H` | - |
-| WOUNDED | Caution | Crew wounded with nobody treating them | `WOUNDED  Cole, no medic free` | `WOUNDED Cole` | CREW |
+| WOUNDED | Caution | Crew wounded with nobody treating them | `WOUNDED  Cole, no medic free` | `WOUNDED Cole  no medic` | CREW |
 
 The game's WARNING-kind notices that are not on this list (for example `PIRATES intercept you`) become cautions with a sensible action, or news if they need no action; implementation decides case by case and records it here.
 
@@ -819,3 +819,4 @@ Each has the default this spec assumes until he answers.
 | 2 | From the Nasa-punk thread's round 1 notes, checked against the code: WPN has one row per mount, point defence included (it is the mounts with `point_defense`, automatic at the weapons console), with `CHARGING` and `OUT OF RANGE` states, launcher magazines and the decoy as a countdown (decoys are unlimited); the lead reticle is only for guns that need lead. The power store no longer lights POWER (it empties on every laser pulse); POWER's warning is "no reactor feeds anything", which covers a one-reactor ship with its reactor shorted. A rule for naming rooms, which the game doesn't. The flight frame is defined ("near" is 5 km) and the markers follow it. Stations always get labels. Hazard tags show progress, not seconds. Z9 is a full-width strip and every zone ends above it; Z5 is 300 x 150. Colour words left the spec. From this designer's own review: lamps gain an advisory state, so normal things (crew outside) stop looking like trouble; the map hides OBJ and owns the deadline comparison; comparisons may quote what they compare against; the crisis panel doesn't repeat the band; IMPACT and COLLAR light no lamp; the pad reaches the HUD through L3. Every sample now follows the starter corvette as the game builds it: two rooms (Bridge and Hold), a 40 m3 hold, no shield emitter, a launcher magazine of 4, eight RCS blocks. Wireframes redrawn to match. |
 | 3 | From the VFD thread's round 1 notes: SCH at gunnery, WPN running under the key strip, the speed at rest in the orbit frame, decoy counts and the corvette's rooms were already answered by round 2. New: the caution row keeps its place when no warning stands (Z2 is 76 units tall), and screens start below both rows (100 units down), so an arriving alert never covers a screen's header. From this designer's own review: the hint line is hidden over screens, whose parts show their own keys; the corvette shows nine lamps, not ten; chassis room names are pinned to tiles and survive damage; F1's frame matches FLT's order; the departure readout folds the contract check into its delta-v line; the station banner's T moves to the DEPARTURE mode; the book's header names its close key. |
 | 4 | From the Cassette thread's round 1 notes, checked against the code: FLT has four modes and hides in rails warp, since the chronometer already carries the rate, the next stop and what holds warp. HLM never shows a countdown, and BURN names who flies only when it is you or the flight computer. The BURN and CRUISE samples lost their apoapsis and closing speed (the map's and the target card's). The crisis hint line is F1 alone. No key repeats on the hint line when a mode, an alert or the interaction prompt already shows it. Every alert has a short form of about 22 characters for the caution row, with the full text on hover, in the book and in the log. The departure check is the whole roster aboard, not berths (the corvette berths 8). Samples use the game's starter crew: Ada the engineer, Bea the helmsman, Cole the marine. Markers carry names, never numbers, so a missile's time to impact is the band's alone. From this designer's own review: the chronometer at rest no longer says `nothing planned`, and rotation assist shows only when it is off (principle 3). |
+| 5 | From the VFD thread's round 2 notes: every short form is two parts joined by a double space, which a style may break into two lines of up to 19 characters; `+n` gets a reserved narrow slot at the end of the caution row, so no caution moves when it appears; the band is 640 wide to make room for it; a screen starts below the band wherever a style puts it, not at a fixed 100 units; the interaction prompt names its object once, then each key with a verb (`Helm   V sit`). Whether caution slots are fixed or sized to their text is now the style's choice, so the VFD's fixed windows and the Cassette's sized cells both hold. |
