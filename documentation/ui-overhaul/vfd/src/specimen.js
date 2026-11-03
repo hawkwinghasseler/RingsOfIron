@@ -105,7 +105,7 @@ SCREENS.specimen = async (canvas) => {
 
   // ---------------------------------------------------------------- annunciator and keys
   KIT.titled(S, 28, 656, 600, 168, 'Annunciator tiles, master lamps and soft keys');
-  KIT.tile(S, 42, 672, 104, 24, 'MSL 2', '0:37', 'warning', { tagSize: 13 });
+  KIT.tile(S, 42, 672, 104, 24, 'MSL 2', '0:09', 'warning', { tagSize: 13 });
   KIT.tile(S, 150, 672, 104, 24, 'FIRE', 'HOLD', 'warning', { tagSize: 13 });
   KIT.tile(S, 258, 672, 104, 24, 'PROP', 'LOW', 'caution', { tagSize: 13 });
   KIT.tile(S, 366, 672, 104, 24, 'STRAIN', '', 'off', { tagSize: 13 });
@@ -114,7 +114,7 @@ SCREENS.specimen = async (canvas) => {
   S.lampKey(554, 668, 68, 30, 'MASTER', 'CAUT', 'amber', false);
   S.module(42, 718, 572, 46, { filaments: 1 });
   S.dm(54, 726, 'SOFT KEYS NAME THE PAGES', { pitch: 1.5, level: 'dim' });
-  KIT.softKeys(S, 42, 718, 572, 46, [{ t: 'NAV', k: '1', active: true }, { t: 'PLAN', k: '2' }, { t: 'SENS', k: '3' }, { t: 'DMG', k: '4' }, { t: 'PIN', k: '0', led: 'green', ledOn: true }, { t: 'ACK', k: 'O' }]);
+  KIT.softKeys(S, 42, 718, 572, 46, [{ t: 'NAV', k: '1', active: true }, { t: 'PLAN', k: '2' }, { t: 'SENSORS', k: '3' }, { t: 'DAMAGE', k: '4' }, { t: 'PIN', k: '0', led: 'green', ledOn: true }, { t: 'ACK', k: 'O' }]);
   S.silk(42, 818, 'active page inverse · toggles carry an LED · keys print their keyboard shortcut', { size: 6.5, upper: false, small: true });
 
   // ---------------------------------------------------------------- LCD and card

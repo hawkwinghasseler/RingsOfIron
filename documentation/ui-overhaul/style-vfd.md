@@ -95,7 +95,7 @@ Every widget in a functional spec is built from these parts and nothing else. If
 | **Rings** | Annular sectors | 16, 32 or 96 sectors | Bearings, coverage, rotation |
 | **LEDs** | Round 3-unit lamps in the bezel: red, amber, green | | The state of a key: on, armed, pending |
 | **Lamp keys** | Translucent key caps lit from behind | | The master warning and master caution lamps, which are also the acknowledge buttons |
-| **LCD** | Reflective liquid crystal, dark on grey-green, with an electroluminescent backlight | | The captain's personal kit and the ship's backup strip (7.11) |
+| **LCD** | Reflective liquid crystal, dark on grey-green, with an electroluminescent backlight | | The captain's personal kit and the instruments' NO POWER face (7.11) |
 
 ### 3.3 Grid
 
@@ -158,7 +158,7 @@ The brightness the player sees is `setting x bus x module`:
 | `silk` | `#8D949A`, dim `#5B6167` | Printed legends on the bezel |
 | `key` | `#26282C` | Rubber keys |
 | `led` | red `#FF3C32`, amber `#FFAA28`, green `#5AFF78` | LEDs |
-| `lcd` | `#97A386` to `#7F8A70`, ink `#1A2016`, backlight `#68B3A4` to `#4F978A` | Personal devices, backup strip |
+| `lcd` | `#97A386` to `#7F8A70`, ink `#1A2016`, backlight `#68B3A4` to `#4F978A` | Personal devices, NO POWER face |
 | `card` | `#E9E6DC`, ink `#1C1C1C` | Out-of-fiction help (7.12) |
 
 ---
@@ -202,7 +202,7 @@ Four lettering systems, each with one job.
 
 - **Segmented.** Each icon is built from separate strokes and fills with visible breaks where the glass separates them, on a 16-unit grid, strokes 1.5 units, no detail under 2 units.
 - Every icon has its ghost (always visible on its home module) and its lit state, in one colour. An icon never changes shape.
-- The first set, drawn in the specimen sheet: missile, lock, dock, propellant, power, oxygen, fire, breach, crew, cargo, warp, autopilot, save (a floppy disk), comms, caution, shield, heat, ship, station, orbit, clock, tow, message, point defence, target, drive, EVA, cassette.
+- The first set, drawn in the specimen sheet: missile, lock, dock, propellant, power, oxygen, fire, breach, crew, cargo, warp, autopilot, save (a floppy disk), comms, caution, shield, heat, ship, station, orbit, clock, tow, message, point defense, target, drive, EVA, cassette.
 - Icons stand beside a word, not instead of one, wherever space allows. On the projected HUD they are dot sprites instead (section 8).
 
 ---
@@ -245,10 +245,11 @@ A label (phosphor legend at L1, or silk), a seven-segment value (L2) and a unit 
 
 ### 7.7 Soft keys
 
-- A module may have a row of up to six rubber keys under it. The module's bottom row of cells draws each key's label (up to 6 cells) above it, and each key cap prints its keyboard shortcut in silk.
+- A module may have a row of up to six rubber keys under it. The module's bottom row of cells draws each key's label above it, and each key cap prints its keyboard shortcut in silk.
+- **An MFD's rail** has three page keys and one split key. A page key carries its page's full name, never a short form (`SENSORS`, not `SNS`), so each is wide enough for nine cells, the longest name (`CONTRACTS`). The split key's halves pin and fold the display, each half a 24-unit target with its glyph in the glass over it (a pin, a chevron down to a bar); the pin glyph lights while the display is pinned. A station with two pages leaves its third key unlabelled.
 - The active page or mode's label is inverse. A key that toggles something has an LED above it: green when on. A key waiting for a second press (abandon ship, call a tow) has its LED blinking amber.
 - Keys are at least 24 units square, the smallest thing a pointer is asked to hit. A folded module's rail idles at L1; only the active page's label is L2, so a quiet console's brightest words are never its menu.
-- **Keys are keys.** Wherever the UI names a key, it draws a small key cap with the key's legend, never `[E]` in brackets. Inside a dot-matrix field the cap is one inverse cell, the display's own key cap, so the line stays on its cell grid and a key costs one cell: the stations status strip's 44-character emergency text (`DISABLED: NO POWER`, P twice, `ABANDON`, B twice, `TOW`) fills 38 of its 39 cells.
+- **Keys are keys.** Wherever the UI names a key, it draws a small key cap with the key's legend, never `[E]` in brackets. Inside a dot-matrix field the cap is one inverse cell, the display's own key cap, so the line stays on its cell grid and a key costs one cell: the stations status strip's longest emergency text (`DISABLED`, P twice, `ABANDON`, B twice, `TOW`, 34 characters as the spec writes it) takes 28 of its 39 cells.
 
 ### 7.8 Annunciator cells
 
@@ -271,12 +272,13 @@ Two lamp keys, `MASTER WARN` (red) and `MASTER CAUT` (amber). Lit and flashing w
 
 A prompt is a small slab over its console: the console's name in legend type, then each verb with its key cap. A response (the answer to a key pressed where it can't work) replaces the prompt's text for 4 s, with the refused-input buzz.
 
-### 7.11 LCD: the captain's kit and the backup
+### 7.11 LCD: the captain's kit and the NO POWER face
 
 The ship glows; the captain's own kit reflects.
 
 - **Personal devices** (the slate, the suit readout) are reflective LCD: dark segments and dots on grey-green, each with a faint shadow cast on the reflector behind, no glow. The electroluminescent backlight (blue-green) comes on for 3 s on an alert or a key press.
-- **The backup strip**: every rack has a narrow LCD strip that shows nothing while the ship has power. When power is lost the tubes go dark and the strip shows what keeps the crew alive: hull, air, time, and the master alarm.
+- **The NO POWER face.** Behind each instrument's smoked glass sits a small LCD that can't be seen while the ship has power. When the instrument loses power its tubes go dark, every ghost still showing what it would hold, and the LCD's backlight comes on from the emergency bus: `NO POWER`, dark on dim teal, in the middle of the glass. A dead page reads the same wherever it is viewed.
+- **The emergency bus.** In a blackout, with no reactor running, the seats' instruments (clusters, MFDs, the station board, the projected HUD) go dark on their NO POWER face, so the player sees at once that the ship can neither fly nor fight. What the crew need to get out stays lit on the emergency bus: the overlay (status strip, annunciator, ticker, prompt line), Engineering's consoles with their switches, and the slate, which is LCD anyway.
 - The backlight is a dim teal, not white: in a dark cockpit a bright backlit panel outshines every alarm.
 
 ### 7.12 Out-of-fiction help
@@ -309,9 +311,9 @@ The symbology over the outside view is written by a dot-matrix projector, the de
 | Locked target | Full corner brackets at L3 with four ticks; blinks three times on lock |
 | Navigation target | Diamond brackets (corners turned 45 degrees) |
 | Contract waypoint | A hollow diamond with a dotted tail |
-| Burn arrow | A dot chain with an arrowhead sprite and a 5x7 label: the burn's number, and its countdown only where the spec puts the time on the arrow |
+| Burn arrow | A dot chain with an arrowhead sprite and the 5x7 label the spec gives it, if any: the burn's number, its countdown only where the spec puts the time on the arrow |
 | Threat track | A red dot chain, dots every 6 units, ending in an impact cross |
-| Point-defence kill | A ring of eight dots that steps out three times (16 ms each) and fades |
+| Point-defense kill | A ring of eight dots that steps out three times (16 ms each) and fades |
 | Lead reticle | Four dots in a diamond with a centre dot |
 | Fire arc | Dot chains along the arc's edges, sparse dots along its rim |
 | Docking corridor | Two dotted rails: zinc while safe, amber when closing too fast |
@@ -354,7 +356,7 @@ The symbology over the outside view is written by a dot-matrix projector, the de
 ### 9.5 Power and damage
 
 - **Brownout**: every tube dims with the bus, with a slight jitter.
-- **Power lost**: tubes go dark over 300 ms; the LCD backup strip takes over.
+- **Power lost**: tubes go dark over 300 ms and the NO POWER face comes up behind the glass; in a blackout, what is on the emergency bus stays lit (7.11).
 - **Damaged console**: its modules flicker (a 1 to 3% drop at 10 to 30 Hz) and lose a fixed scatter of segments, the same ones every time for that module, so the player can learn to read around them.
 - **Destroyed console**: its modules are dark, the glass cracked (a non-emissive overlay).
 
@@ -407,7 +409,7 @@ These are the ways FILAMENT changes more than the look. They are what the functi
 7. **Paging instead of scrolling.**
 8. **Colour by place.** Amber and red exist only where the glass was filtered, so every alerting element has a reserved home in its module.
 9. **Personal kit is LCD.** The slate and the suit readout reflect light instead of emitting it, which tells the player at a glance whether they are looking at the ship or at their own kit.
-10. **The UI runs on the ship's power.** A brownout dims it, a dead console is dark, and the backup strip keeps the essentials when everything else is gone.
+10. **The UI runs on the ship's power.** A brownout dims it, a dead instrument is dark behind its NO POWER face, and in a blackout the emergency bus keeps lit what the crew need to get out.
 
 ---
 
@@ -428,7 +430,7 @@ How the semantic roles the functional specs name are told apart. Each is distinc
 | Navigation | zinc | L2 | diamond brackets, dotted lines | none |
 | Locked target | zinc | L3 | full brackets with ticks | three blinks on lock |
 | Selected or focused | as its element | inverse | inverse cells and `▶` | text cursor at 1 Hz |
-| Unavailable | none | ghost only | `----`, `NO PWR` on the backup strip | none |
+| Unavailable | none | ghost only | `----`; a dead instrument's `NO POWER` face | none |
 | Player / crewed / automated | zinc | L3 / L2 / L1 | `YOU` inverse / initials / `AUTO` legend | none |
 | Out of fiction | printed card | n/a | off-white card, black ink | none |
 
@@ -451,7 +453,7 @@ The legend vocabulary and the abbreviations dot-matrix fields use when a word do
 | `PWR` | power | `GEN`, `DMD` | generation, demand |
 | `STOR` | power store | `O2` | oxygen |
 | `PRES` | pressure | `ATMOS` | atmosphere |
-| `SHLD` | shields | `PD` | point defence |
+| `SHLD` | shields | `PD` | point defense |
 | `MSL` | missile | `DCY` | decoy |
 | `TGT` | target | `NAV` | navigation |
 | `ORB` | orbit frame | `PORT` | docking port frame |
@@ -466,7 +468,7 @@ The legend vocabulary and the abbreviations dot-matrix fields use when a word do
 | `CMD` | command | `MED` | medical |
 | `ACK` | acknowledge | `PIN` | pinned |
 | `PG` | page | `EST` | estimated |
-| `NO PWR` | no power | `OL` | over range |
+| `OL` | over range | | |
 
 ---
 

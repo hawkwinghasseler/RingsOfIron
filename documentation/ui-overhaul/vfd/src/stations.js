@@ -1,4 +1,4 @@
-// FILAMENT x Ship Stations (functional-stations.md, round 5): the seated band as one console rack,
+// FILAMENT x Ship Stations (functional-stations.md, round 12): the seated band as one console rack,
 // the top column as plates that power up in fixed slots, the deck left to the deck.
 // Round 2: every size at or above the guide's minimums (legends 13, segments 12, dots 1.5, the ticker
 // at body pitch 2, keys 24 tall); what no longer fits was cut by priority, not shrunk.
@@ -30,21 +30,40 @@
     S.silkRule(BAND.x - 4, BAND.boardY - 2.3, BAND.x + BAND.w + 4, { color: '#26282b', width: 0.6 });
   }
 
-  // The soft-key row: labels in the glass's bottom row, rubber keys under it. A folded MFD shows only
-  // this row, every label at L1; an open one lights its page's label inverse.
-  function keyRow(S, x, items, folded) {
-    const n = items.length, slot = BAND.mfdW / n;
+  // The soft-key row (9.1): three page keys, each carrying its page's full name in the glass's bottom row
+  // over a blank rubber key (SENSORS, never SNS; the longest, CONTRACTS, takes nine cells), then one split
+  // key whose halves are pin and fold, each half's glyph in the glass over it. A folded MFD shows only this
+  // row, every label at L1; an open one lights its page inverse, and the pin glyph lights while pinned.
+  const SLOT = 80;
+  const PIN = ['.###.', '.###.', '.###.', '#####', '..#..', '..#..', '..#..'];
+  const FOLD = ['.....', '#...#', '.#.#.', '..#..', '.....', '#####', '.....'];
+  function keyRow(S, x, items, folded, o = {}) {
     items.forEach((it, i) => {
-      const cx = x + slot * (i + 0.5), cells = it.t.length, w = cells * 9 - 1.5;
+      const cx = x + SLOT * (i + 0.5), cells = it.t.length, w = cells * 9 - 1.5;
       const active = it.active && !folded;
+      K.fits(cells, 9, 'soft-key label cells');
       S.dm(cx - w / 2, RAIL_Y + 3.75, it.t, { pitch: 1.5, level: active ? 'norm' : 'dim', inverse: active ? [0, cells] : null, ghost: false });
-      S.key(cx - 22, KEY_Y, 44, KEY_H, '', {});
-      if (i) S.rectLit(x + slot * i - 0.4, RAIL_Y + 3, 0.8, 12, { ghostOnly: true, k: 1.6 });
     });
+    for (let i = 0; i < 3; i++) S.key(x + SLOT * i + 3, KEY_Y, SLOT - 6, KEY_H, '', {});
+    // pin | fold: one 48-unit cap with a groove down the middle, each half a 24-unit target
+    const sx = x + 3 * SLOT, sw = BAND.mfdW - 3 * SLOT;
+    S.rectLit(sx - 0.4, RAIL_Y + 3, 0.8, 12, { ghostOnly: true, k: 1.6 });
+    S.sprite(sx + sw / 4, RAIL_Y + 9, PIN, { center: true, pitch: 1.5, level: o.pinned ? 'norm' : 'dim' });
+    S.sprite(sx + sw * 3 / 4, RAIL_Y + 9, FOLD, { center: true, pitch: 1.5, level: 'dim' });
+    S.key(sx, KEY_Y, sw, KEY_H, '', {});
+    const b = S.base; b.save(); b.fillStyle = '#050506'; b.fillRect(sx + sw / 2 - 0.7, KEY_Y + 1.5, 1.4, KEY_H - 3); b.restore();
   }
   function rail(S, x, items) {
     S.module(x, RAIL_Y, BAND.mfdW, GLASS_B - RAIL_Y, { filaments: 0, glare: false, radius: 2 });
     keyRow(S, x, items, true);
+  }
+  // A blacked-out instrument (5.1, guide 7.11): drawn unpowered, so no tube lights and every ghost shows, and
+  // behind the smoked glass the backup LCD, its backlight on from the emergency bus, reading NO POWER.
+  function noPower(S, draw, x, y, w, h, fy = y + h / 2) {
+    S.dark = true; draw(); S.dark = false;
+    const lw = 86, lh = 17;
+    S.lcdPanel(x + w / 2 - lw / 2, fy - lh / 2, lw, lh, { backlight: true });
+    S.lcdText(x + w / 2, fy + 4.5, 'NO POWER', { size: 12, align: 'center' });
   }
 
   // An open MFD: glass with a title row (page, its setting, the owning station), the page, and the rail.
@@ -157,8 +176,9 @@
     cx += sw + 4;
     const ew = x + TOP.w - cx, cells = Math.floor((ew - 10) / 9);
     S.module(cx, y, ew, h, { filaments: 1, glare: false, radius: 2 });
-    // The emergency text's short form (at most 44 characters, keys first). A key it names is one inverse
-    // cell, the display's own key cap, so the field stays on its cell grid: 'DISABLED: NO POWER {P} {P} ...'.
+    // The emergency text: the state and the options, keys first, at most 44 characters as the spec counts
+    // them. A key it names is one inverse cell, the display's own key cap, so the field stays on its cell
+    // grid: 'DISABLED {P} {P} ABANDON {B} {B} TOW' takes 28 of the 39 cells.
     const em = [];
     for (const m of String(o.emerg || '').matchAll(/\{(.)\}|([^{]+)/g)) {
       if (m[1]) em.push([m[1], true]); else for (const ch of m[2]) em.push([ch, false]);
@@ -277,9 +297,9 @@
   }
 
   // ------------------------------------------------------------------ tactical cluster (8.3)
-  // At the weapons console every gun but point defence is in hand, so the seat is the mode and it is said
+  // At the weapons console every gun but point defense is in hand, so the seat is the mode and it is said
   // once. Rows: the target; a chip per gun in hand (state, its own hit chance, the crew member seated at
-  // it) and one for point defence; the launcher, the decoy and the shields (blank glass on a hull with no emitter).
+  // it) and one for point defense; the launcher, the decoy and the shields (blank glass on a hull with no emitter).
   function chip(S, x, y, w, h, o = {}) {
     S.frameLit(x, y, w, h, 0.7, { ghostOnly: true, k: 2 });
     if (o.lit) S.frameLit(x, y, w, h, 0.8, { level: 'dim' });
@@ -302,7 +322,7 @@
     x += S.seg7(x, gy + 8, 12, t.closing, { cells: 3, level: 'norm' }) + 6;
     K.fits(x + S.legend(x, gy + 20, 'M/S', dim), lim, 'tac target 1');
     K.fits(K.states(S, gx + 286, gy + 41, [['STRUCK', t.state === 'STRUCK'], ['DISABLED', t.state === 'DISABLED'], ['VENTING', t.state === 'VENTING']], { size: 13, gap: 8 }) - 8, lim, 'tac target 2');
-    // Guns in hand and point defence: three chips
+    // Guns in hand and point defense: three chips
     const cw = 150, ch = 40, cy = gy + 54;
     d.guns.forEach((g, i) => {
       const cx = gx + 8 + i * (cw + 7);
@@ -374,7 +394,7 @@
     };
   }
   // DEFENSE: the shield ring around the hull, 96 segments by cloud thickness; mode, mass, trim, emitters.
-  // Decoy and point defence are the tactical cluster's, beside it, so the page leaves them out.
+  // Decoy and point defense are the tactical cluster's, beside it, so the page leaves them out.
   function defensePage(d) {
     return (S, x, y, w, h) => {
       const cx = x + 42, cy = y + h / 2;
@@ -459,8 +479,8 @@
 
     // the band: both MFDs folded (Green), the cluster, the board
     bandRack(S, false, false);
-    rail(S, LMFD, [{ t: 'NAV' }, { t: 'PLAN' }, { t: 'PIN' }, { t: 'FOLD' }]);
-    rail(S, RMFD, [{ t: 'SNS' }, { t: 'WPN' }, { t: 'DEF' }, { t: 'PIN' }, { t: 'FOLD' }]);
+    rail(S, LMFD, [{ t: 'NAV' }, { t: 'PLAN' }]);
+    rail(S, RMFD, [{ t: 'SENSORS' }, { t: 'WEAPONS' }, { t: 'DEFENSE' }]);
     helmCluster(S, {
       frames: [['ORBIT', 'norm'], ['TARGET', false], ['PORT', false], ['DOCKED', false]],
       speed: '7.67', unit: 'KM/S', rot: '', control: 'MANUAL', assist: 'norm', thr: false, rcs: false,
@@ -496,34 +516,35 @@
     // the lock: the Raider by name only (its numbers are in the Target slot)
     hostile(S, 1060, 214, 34, { lock: true });
     nameplate(S, 1060, 278, 'RAIDER', { level: 'norm' });
-    // two harpoons inbound, 3 and 4 s out: red glyphs and tracks to one impact mark on the port side, with
-    // its count; point defence's tracer to the nearer one, and a kill burst where a third one died
-    K.missile(S, 748, 236); K.missile(S, 790, 220);
-    K.track(S, [[748, 236], [690, 262], [626, 290]], { step: 7 });
-    K.track(S, [[790, 220], [700, 252], [630, 288]], { step: 7 });
+    // two harpoons thrown 5 s and 4 s ago, 2.4 and 2.5 km out and swinging wide to port, 8 and 9 s from impact
+    // under their 30 m/s² burn: red glyphs and predicted tracks to one impact mark on the port side, with its
+    // count; point defense's tracer reaching for the nearer one
+    K.missile(S, 984, 195); K.missile(S, 1004, 204);
+    K.track(S, [[984, 195], [880, 178], [770, 196], [680, 238], [626, 282]], { step: 7 });
+    K.track(S, [[1004, 204], [896, 188], [782, 206], [688, 246], [630, 288]], { step: 7 });
     K.cross(S, 618, 280);
     S.dm(632, 254, '2', { pitch: 2, layer: 'proj', color: 'red', level: 'full', ghost: false });
-    S.dotLine(sx + 20, sy - 16, 742, 238, { layer: 'proj', step: 5, size: 1.2, level: 'norm' });
-    K.ringDots(S, 870, 236, 9, { color: 'red', level: 'dim', step: 4.5 }); K.ringDots(S, 870, 236, 3.5, { color: 'red', level: 'norm', step: 3.5 });
+    S.dotLine(sx + 20, sy - 16, 984, 195, { layer: 'proj', step: 5, size: 1.2, level: 'norm' });
 
     S.projectNow();
 
     // the top column: status strip, tiles in their zones, the ticker (warp strip dark)
     statusStrip(S, { condition: 'RED' });
-    annRow(S, TOP.row1, [['MISSILE', '2  0:03']], [['HOSTILE', 'FIRING']], { warnOn: true, cautOn: true });
+    annRow(S, TOP.row1, [['MISSILE', '2  0:08']], [['HOSTILE', 'FIRING']], { warnOn: true, cautOn: true });
     ticker(S, [null, { tag: 'TAC', text: 'COLE: HARPOONS FROM PORT. PD HAS THEM.' }, { tag: 'HELM', text: 'BEA: HOLDING POSITION.' }]);
 
     // the band: SENSORS and DAMAGE open (no shield emitter, so the right MFD starts on DAMAGE), the cluster
     bandRack(S, true, true);
-    mfd(S, LMFD, 'SENSORS', [{ t: 'SNS', active: true }, { t: 'WPN' }, { t: 'DEF' }, { t: 'PIN' }, { t: 'FOLD' }], sensorsPage({
-      contacts: [{ brg: 62, ring: 2, missile: true }, { brg: 70, ring: 2, missile: true }, { brg: 80, ring: 2, hostile: true, lock: true }],
+    mfd(S, LMFD, 'SENSORS', [{ t: 'SENSORS', active: true }, { t: 'WEAPONS' }, { t: 'DEFENSE' }], sensorsPage({
+      // the 5 km step (rings of 1.25 km) holds the Raider and both harpoons
+      contacts: [{ brg: 66, ring: 1, missile: true }, { brg: 70, ring: 2, missile: true }, { brg: 78, ring: 2, hostile: true, lock: true }],
       rows: [
-        { name: 'HARPOON', range: '2.2 KM', time: '0:03', hostile: true, missile: true },
-        { name: 'HARPOON', range: '2.6 KM', time: '0:04', hostile: true, missile: true },
+        { name: 'HARPOON', range: '2.4 KM', time: '0:08', hostile: true, missile: true },
+        { name: 'HARPOON', range: '2.5 KM', time: '0:09', hostile: true, missile: true },
         { name: 'RAIDER', range: '2.8 KM', hostile: true, lock: true },
       ],
     }), { owner: 'TAC', setting: '5 KM' });
-    mfd(S, RMFD, 'DAMAGE', [{ t: 'DMG', active: true }, { t: 'PWR' }, { t: 'ATM' }, { t: 'PIN' }, { t: 'FOLD' }], damagePage({ states: {}, crew: [] }), { owner: 'ENG' });
+    mfd(S, RMFD, 'DAMAGE', [{ t: 'DAMAGE', active: true }, { t: 'POWER' }, { t: 'ATMOS' }], damagePage({ states: {}, crew: [] }), { owner: 'ENG' });
     tacCluster(S, {
       target: { name: 'RAIDER', cls: 'PIRATE CORVETTE', range: '2.8', closing: '40', state: '' },
       guns: [
@@ -539,6 +560,45 @@
       { n: 3, t: 'TAC', who: 'YOU', you: true, alert: 'warning' }, { n: 4, t: 'ENG', who: '' },
       { n: 5, t: 'COMMS', who: '' }, { n: 6, t: 'CMD' },
     ], ['3', '15:02:44']);
+    S.finish();
+  };
+
+  // ================================================================== Blackout at the helm (5.1 rule 4; the kit's
+  // blacked-out seat, 17). After the First Play fight: a harpoon got through, the reactor is damaged and no
+  // reactor runs, so the ship is disabled. The Raider broke off and is still inside 50 km (Yellow); nothing is
+  // inbound, so the beacon would answer and the strip offers the tow. The seat's instruments are dark on their
+  // NO POWER face; the overlay runs on the emergency bus. The projector is the seat's, so the world is bare.
+  SCREENS['st-blackout'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 17 });
+    await K.hull(S, 'corvette', 640, 308, 0.115, -34);
+
+    // the top column: the emergency text with its keys, the cause on its own tiles, the callouts
+    statusStrip(S, { condition: 'YELLOW', emerg: 'DISABLED {P} {P} ABANDON {B} {B} TOW' });
+    annRow(S, TOP.row1, [['POWER', 'NONE'], ['HULL', '52%']], [['WOUNDED', '1']], { warnOn: true, cautOn: true });
+    ticker(S, [
+      { sev: 'warning', tag: 'CMD', text: 'SHIP: DISABLED, REACTOR DOWN.' },
+      { sev: 'warning', tag: 'ENG', text: 'ADA: REPAIRING THE REACTOR.' },
+      { sev: 'caution', tag: 'CMD', text: 'SHIP: COLE IS WOUNDED, NOBODY ON HIM.' },
+    ]);
+
+    // the band as the seat stood in Yellow (SENSORS open, NAV folded), every tube dark, each instrument on
+    // its NO POWER face; the board is the seat's too, so it goes dark with it
+    bandRack(S, true, false);
+    noPower(S, () => mfd(S, LMFD, 'SENSORS', [{ t: 'SENSORS', active: true }, { t: 'WEAPONS' }, { t: 'DEFENSE' }], sensorsPage({ contacts: [], rows: [] }), { owner: 'TAC' }),
+      LMFD, BAND.y, BAND.mfdW, GLASS_B - BAND.y, BAND.y + 63);
+    noPower(S, () => rail(S, RMFD, [{ t: 'NAV' }, { t: 'PLAN' }]), RMFD, RAIL_Y, BAND.mfdW, GLASS_B - RAIL_Y);
+    noPower(S, () => helmCluster(S, {
+      frames: [['ORBIT', 'norm'], ['TARGET', false], ['PORT', false], ['DOCKED', false]],
+      speed: '', unit: '', rot: '', control: '', assist: false, thr: false, rcs: false,
+      ref: null, next: null, trig: null,
+      dv: { left: 0, full: 2600, home: 1210, plan: 0 },
+    }), CL, BAND.y, BAND.clW, 160);
+    S.dark = true;
+    board(S, [
+      { n: 1, t: 'HELM' }, { n: 2, t: 'NAV' }, { n: 3, t: 'TAC' }, { n: 4, t: 'ENG' }, { n: 5, t: 'COMMS' }, { n: 6, t: 'CMD' },
+    ], ['', '']);
+    S.dark = false;
     S.finish();
   };
 

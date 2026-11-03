@@ -1,6 +1,6 @@
 # FILAMENT × Context-driven
 
-The context-driven functional design (`functional-context.md`, version 5) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The context-driven functional design (`functional-context.md`, version 6) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -10,15 +10,15 @@ Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game
 
 ![Helm, cruise](vfd/context-helm-cruise.jpg)
 
-**11.4 Helm, combat.** A gunship (it has a shield emitter, which the starter corvette lacks) under fire: a raider has fired two missiles and holed the ENGINES room. P3 powers up behind red glass with the decoy and point defence; the lock card and armament fill the right; the ship-condition face has risen over its lights because the hull light is lit, the plan showing the breach; `MASTER WARN` on the tower's shelf carries the breach.
+**11.4 Helm, combat.** A gunship (it has a shield emitter, which the starter corvette lacks) under fire: a raider 3.4 km off has fired two missiles, now about halfway and 4 s out under a harpoon's burn, and holed the ENGINES room. P3 powers up behind red glass with the decoy and point defense; the lock card and armament fill the right, and the scope opens at its 5 km step; the ship-condition face has risen over its lights because the hull light is lit, the plan showing the breach; `MASTER WARN` on the tower's shelf carries the breach.
 
 ![Helm, combat](vfd/context-helm-combat.jpg)
 
-**11.7 Deck, emergency.** The corvette disabled, its reactor damaged and its hold airless. The emergency card offers the two ways out with their presses and costs; P2 lists, in order, what nobody is free to handle (emergency oxygen, the vacuum, the power), what the crew are on and `+1 MORE: SMOKE`; each hazard in view carries a tag; the captain's own kit is LCD; the master lamps stand alone at the bottom centre. The strip is on the dimmer bus.
+**11.7 Deck, emergency.** The corvette disabled, its reactor damaged and its hold airless. The emergency card offers the two ways out with their presses and costs; P2 lists, in order, what nobody is free to handle (emergency oxygen, the vacuum, the power), what the crew are on (of the three crew, Cole tends Ada and Bea fights the fire alone, a dot each) and `+1 MORE: SMOKE`; each hazard in view carries a tag; the captain's own kit is LCD; the master lamps stand alone at the bottom centre. The strip is on the dimmer bus.
 
 ![Deck, emergency](vfd/context-deck-emergency.jpg)
 
-**11.13 Boarding, latched.** The fight is over and the ship is latched to the beaten raider. The flight instruments have sunk into the rack and only the shelf with the master lamps stands proud; X2 names the raider, its state and the party's work, with its two keys under the glass; the objective has the bounty's next step.
+**11.13 Boarding, latched.** The fight is over and the ship is latched to the beaten raider. The flight instruments have sunk into the rack and only the shelf with the master lamps stands proud; X2 names the raider, its state and the party's work (two aboard), with its two keys under the glass; the objective has the bounty's next step.
 
 ![Boarding, latched](vfd/context-boarding.jpg)
 
@@ -27,8 +27,8 @@ Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game
 | Spec widget | FILAMENT part |
 |---|---|
 | P1 status strip | A thin rack across the top: the seat as fixed legends with the one in use lit; helm authority in dot matrix; `BATTLE STATIONS` behind amber; the full-screen chip, which is the master alert cue while a full-screen mode is open; clock and warp in seven segments; `PAUSED` |
-| P2 caution and warning | A slab in L-TOP, six rows of fixed fields: severity in two filtered pip columns, the code (10 cells), the detail at L1 (10), handling (`YOU` inverse, a dot per crew member on it, or `BACK` and the recovery time), and the timer in seven segments. The sixth row is `+n MORE:` with the codes that fit |
-| P3 threat | A slab: the count, `MISSILES INBOUND` and the soonest impact on one line behind red glass; the decoy behind its key cap and point defence's state below |
+| P2 caution and warning | A slab in L-TOP, six rows of fixed fields: severity in two filtered pip columns, the code (11 cells), a cell's space, the detail at L1 (10), handling in 3 cells (`YOU` inverse; a dot per crew member up to three, from four a dot and the count; or `BACK` and the recovery time across handling and timer), and the timer in seven segments. The sixth row is `+n MORE:` with the codes that fit |
+| P3 threat | A slab: the count, `MISSILES INBOUND` and the soonest impact on one line behind red glass; the decoy behind its key cap and point defense's state below |
 | P4 message feed | A slab of dot-matrix lines, speaker at L1 |
 | P5 objective | A slab of two lines: the job, then where and the time left in seven segments with an inline unit |
 | H1 flight display | The tower of the bottom rack: frame legends with `AUTO` and the frame's name, speed in large seven segments, six thrust lamps around a hull glyph, `ASSIST`, Δv with the propellant bar. The prograde and retrograde markers carry the frame's tag in the world, on the side away from the ship |
@@ -36,7 +36,7 @@ Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game
 | H2 navigation | A slab of labelled rows: labels legends at L1, words dot matrix, numbers seven segments with legend units; `SHORT` behind amber |
 | H4 ship condition | Compact face: a lamp cell per light on the rack's left wing (hardware, always there; three on a hull with no shield emitter). Expanded face: a slab above them with the ship's own plan on a graphic dot panel and a row per light, pips leading |
 | H5 contact scope | Collapsed: a key on the right wing with the count beyond 50 km. Open: a round pod with a plotting scope and its zoom keys |
-| H6, H7 lock and armament | Slabs in R-MID. H6: the state in one word (`HOSTILE` behind red), `FIRING ON YOU` as its own red flag, range with closing or opening, time of flight and hit chance with its word. H7: guns, missiles and shields as rows of fixed state words |
+| H6, H7 lock and armament | Slabs in R-MID. H6: the state in one word (`HOSTILE` behind red), `FIRING ON YOU` as its own red flag, range with closing or opening, time of flight and hit chance with its word. H7: guns, missiles (left, and ready or the second until the next) and shields as rows of fixed state words |
 | X2 boarding | A slab where the station panel would be: six rows of glass (the target with `LATCHED` or `EVA`, its state, the party, salvage, cargo, prisoners), then two keys under the glass printed with their key and action, `K  BOARDING` and `U  CAST OFF`, as the station board's keys are |
 | X3 emergency | A slab under P3 headed by a red bar with the state cut out of it; each way out on its own row with its cost, its key on the bezel beside it with an LED that blinks while the first press holds |
 | D1 captain vitals | Reflective LCD, backlit while it warns |
@@ -74,6 +74,18 @@ One fix from this round's check of version 5: X2 with its soft-key row was 182 u
 
 Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
 
+## Round 4
+
+Version 6 (the NASA-punk direction's round-2 notes) changes five things on FILAMENT's screens:
+
+1. **P2's code field is 11 cells and handling 3**, so codes read as whole words (`SHIELD WEAK`, `O2 LOW`). The row keeps its width; the detail moves right so a full code still has a cell of space after it, and `BACK 0:12` still spans handling and timer. A test row (`SHIELD WEAK  STERN  ●5`) checked the widest case.
+2. **11.4's numbers.** The lock is at 3.4 km, closing 85 m/s, a 2.1 s shot at 62%; H7 shows 4 missiles left and ready (a launcher throws one a second). The example `T-4 S` stays, so the missiles are drawn where a harpoon under its 30 m/s² burn is 4 s from impact: 1.6 km out, about halfway from the raider. H5 opens at the new 5 km step.
+3. **The corvette's three crew.** 11.7's fire has one dot (Bea alone); X2's party is two.
+4. **Point defense** is printed the game's way: `POINT DEFENSE ENGAGING`.
+5. Already as drawn: the latched raider over the port side, nose aft; no context screen draws a burn arrow, so W3's dropped countdown changes nothing.
+
+No meaningful criticism of the visual build remains; the notes below are functional.
+
 ## Functional notes sent to the context designer
 
 Round 1 (all answered by version 3): keep P2 lit under X3, decoys have no stock, shields as a share, on-screen hazard tags for D3, states as one word.
@@ -84,3 +96,8 @@ Round 2 (all taken in version 5):
 2. **X3 offers costly exits while power is coming back.** In 11.7 P2 says power is back in 12 s while X3 offers abandon ship and a 3,400 cr tow. Suggest X3 wait while a recovery timer runs, or show the time beside the choices.
 3. **Keep the master cue lit under X3.** The dim list doesn't name it, and on deck it stands alone and is the acknowledge control.
 4. **Sample data.** "Deliver 120 Water → Shackleton Ice": an ice mine sells water and buys food and machinery, and a delivery posted to the corvette is at most 40 units (`ContractPostings` caps it by the hold). P3's "T-37 s" at 7.7 km: harpoons and darts arrive in under 10 s (`weapons.toml`); the stations design corrected the same number in its round 6.
+
+Round 3 (after version 6):
+
+1. **Point defense, as the game spells it.** The game writes `point_defense`, and the stations and task specs now spell it that way; version 6 still has "point defence" (P3's line, F2, H7). FILAMENT prints `POINT DEFENSE ENGAGING`. Suggest the spec follow the game, so the three designs share one string.
+2. **H7's missile row on a hull with two launchers.** The gunship has two (AFT PORT and AFT STBD), and F2's sample has them at 3 and 4 left, while 11.4's H7 reads "4 left · ready". Suggest H7 say whether its row is the total across launchers (7) and ready when any launcher is, or one row per launcher.

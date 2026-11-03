@@ -233,6 +233,9 @@
       this.cuts = 0;
       this.modules = [];
       this.font = 'Inter';
+      // While dark is set, everything drawn is unpowered (9.5): no tube lights, every ghost shows, so a dead
+      // module still shows what it would hold.
+      this.dark = false;
     }
     ctxFor(o) { return o && o.layer === 'proj' ? this.proj : this.glass; }
     // The guide's minimum sizes (section 15). A call below them is reported once, unless it says it is
@@ -328,7 +331,7 @@
     legend(x, y, str, o = {}) {
       const size = o.size ?? 13, sx = o.condense ?? 0.8;
       this.tooSmall('legend', size, 12, str, o);
-      const lit = o.lit !== false;
+      const lit = o.lit !== false && !this.dark;
       const draw = (ctx, style) => {
         ctx.save();
         ctx.font = `${o.weight ?? 700} ${size}px ${this.font}`;
@@ -372,7 +375,7 @@
       const at = cells.map(c => { const v = cx0; cx0 += adv + (c.colon ? colonW : 0); return v; });
       cells.forEach((cell, i) => {
         const ox = at[i];
-        const on = SEG7[cell.ch] ?? '';
+        const on = this.dark ? '' : SEG7[cell.ch] ?? '';
         for (const k of 'abcdefg') {
           const sg = segs[k];
           const pts = segPoly(sg[0], sg[1], sg[2], sg[3], t, gap).map(p => shear(p[0], p[1], ox));
@@ -381,13 +384,13 @@
         }
         if (o.dp !== false) {
           const dp = [[w + h * 0.06, h - t], [w + h * 0.06 + t, h - t], [w + h * 0.06 + t, h], [w + h * 0.06, h]].map(p => shear(p[0], p[1], ox));
-          if (cell.dp) { litCtx.fillStyle = lit; poly(litCtx, dp); } else if (ghost && o.dpGhost) { this.base.fillStyle = ghostStyle(o.color); poly(this.base, dp); }
+          if (cell.dp && !this.dark) { litCtx.fillStyle = lit; poly(litCtx, dp); } else if (ghost && o.dpGhost) { this.base.fillStyle = ghostStyle(o.color); poly(this.base, dp); }
         }
         if (cell.colon) {
           for (const cy of [h * 0.3, h * 0.7]) {
             const cx = w + (adv - w + colonW) / 2 - t / 2;
             const pts = [[cx, cy - t / 2], [cx + t, cy - t / 2], [cx + t, cy + t / 2], [cx, cy + t / 2]].map(p => shear(p[0], p[1], ox));
-            litCtx.fillStyle = lit; poly(litCtx, pts);
+            if (this.dark) { this.base.fillStyle = ghostStyle(o.color); poly(this.base, pts); } else { litCtx.fillStyle = lit; poly(litCtx, pts); }
           }
         }
       });
@@ -415,7 +418,7 @@
       };
       const litCtx = this.ctxFor(o), lit = litStyle(o.color, o.level), ghost = o.ghost !== false;
       chars.forEach((ch, i) => {
-        const ox = x + i * adv, on = SEG14[ch] ?? [];
+        const ox = x + i * adv, on = this.dark ? [] : SEG14[ch] ?? [];
         for (const k in S) {
           const sg = S[k];
           const diag = 'hjkm'.includes(k);
@@ -442,7 +445,7 @@
       const ghost = o.ghost !== false && o.layer !== 'proj';
       const gst = ghostStyle(o.color, 0.8);
       const adv = p * (o.cellW ?? 6);
-      const inv = o.inverse;
+      const inv = this.dark ? null : o.inverse;
       // inverse cells: one lit block over the run (gaps and leading included), the glyphs' dots cut out of it
       if (inv && inv[1] > inv[0]) {
         const bx = x + inv[0] * adv - p * 0.5, bw = (inv[1] - inv[0]) * adv - p * 0.5 + p * 0.5;
@@ -453,7 +456,7 @@
         const g = ROM[ch] ?? ROM['?'];
         const flip = inv && i >= inv[0] && i < inv[1];
         for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
-          const on = g[r][c] === '#';
+          const on = !this.dark && g[r][c] === '#';
           const dx = x + i * adv + c * p + (p - d) / 2, dy = y + r * p + (p - d) / 2;
           if (flip) { if (on) holes.push([x + i * adv + c * p + p * 0.04, y + r * p + p * 0.04, p * 0.92, p * 0.92]); }
           else if (on) { litCtx.fillStyle = lit; rrect(litCtx, dx, dy, d, d, rr); litCtx.fill(); }
@@ -467,6 +470,7 @@
 
     // A free bitmap on the dot grid: rows of '#'/'.' strings. For the projected HUD's sprites.
     sprite(x, y, rows, o = {}) {
+      if (this.dark) return;
       const p = o.pitch ?? 2, d = p * (o.dot ?? 0.8), rr = d * 0.3;
       const ctx = this.ctxFor(o); ctx.fillStyle = litStyle(o.color, o.level);
       const cx = o.center ? x - (rows[0].length * p) / 2 : x, cy = o.center ? y - (rows.length * p) / 2 : y;
@@ -476,6 +480,7 @@
     }
     // A chain of dots from one point to another, every `step` units.
     dotLine(x0, y0, x1, y1, o = {}) {
+      if (this.dark) return;
       const step = o.step ?? 4, d = o.size ?? 1.6, L = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.floor(L / step));
       const ctx = this.ctxFor(o); ctx.fillStyle = litStyle(o.color, o.level);
       for (let i = o.skipFirst ? 1 : 0; i <= n; i++) {
@@ -485,6 +490,7 @@
     }
     // A plain dot (for panel plots and markers).
     dot(x, y, o = {}) {
+      if (this.dark && !o.ghostOnly) return;
       const d = o.size ?? 1.6, ctx = o.ghostOnly ? this.base : this.ctxFor(o);
       ctx.fillStyle = o.ghostOnly ? ghostStyle(o.color, o.k ?? 1) : litStyle(o.color, o.level);
       rrect(ctx, x - d / 2, y - d / 2, d, d, d * 0.3); ctx.fill();
@@ -494,8 +500,8 @@
     bar(x, y, w, h, n, frac, o = {}) {
       const vertical = o.vertical, gap = o.gap ?? 1.2;
       const len = vertical ? h : w, segL = (len - gap * (n - 1)) / n;
-      const litN = Math.round(frac * n);
-      const peak = o.peak != null ? Math.min(n - 1, Math.round(o.peak * n) - 1) : -1;
+      const litN = this.dark ? 0 : Math.round(frac * n);
+      const peak = o.peak != null && !this.dark ? Math.min(n - 1, Math.round(o.peak * n) - 1) : -1;
       const litCtx = this.ctxFor(o);
       for (let i = 0; i < n; i++) {
         const color = o.zone ? o.zone(i, n) : (o.color ?? 'zinc');
@@ -518,7 +524,7 @@
       const a0 = (o.start ?? 0), span = o.span ?? 360, gapDeg = o.gapDeg ?? 1.8;
       const step = span / n;
       for (let i = 0; i < n; i++) {
-        const st = litFn(i, n) || null; // null, or {color, level}
+        const st = this.dark ? null : litFn(i, n) || null; // null, or {color, level}
         const color = (st && st.color) || (o.zone ? o.zone(i, n) : o.color) || 'zinc';
         const s0 = (a0 + i * step + gapDeg / 2 - 90) * D, s1 = (a0 + (i + 1) * step - gapDeg / 2 - 90) * D;
         const ctx = st ? this.ctxFor(o) : this.base;
@@ -530,8 +536,8 @@
 
     // -------- plain lit shapes (tile frames, inverse blocks)
     rectLit(x, y, w, h, o = {}) {
-      const ctx = o.ghostOnly ? this.base : this.ctxFor(o);
-      ctx.fillStyle = o.ghostOnly ? ghostStyle(o.color, o.k ?? 1.2) : litStyle(o.color, o.level);
+      const gh = o.ghostOnly || this.dark, ctx = gh ? this.base : this.ctxFor(o);
+      ctx.fillStyle = gh ? ghostStyle(o.color, o.k ?? 1.2) : litStyle(o.color, o.level);
       if (o.r) { rrect(ctx, x, y, w, h, o.r); ctx.fill(); } else ctx.fillRect(x, y, w, h);
     }
     frameLit(x, y, w, h, t, o = {}) {
@@ -543,6 +549,7 @@
     // Cuts a shape out of the lit glass: fn draws it in black. The shape is also kept on the cut mask, so
     // finish() can darken it again after the bloom; otherwise the glow around it fills the letters in.
     cut(fn, o = {}) {
+      if (this.dark) return;
       const g = this.ctxFor(o); g.save(); g.globalCompositeOperation = 'destination-out'; fn(g); g.restore();
       if (o.layer === 'proj') return;
       const c = this.cutX; c.save(); fn(c); c.restore(); this.cuts++;
@@ -582,7 +589,7 @@
         ctx.restore();
       };
       if (o.ghost !== false && o.layer !== 'proj') draw(this.base, ghostStyle(o.color, 1.3));
-      if (o.lit !== false) draw(this.ctxFor(o), litStyle(o.color, o.level));
+      if (o.lit !== false && !this.dark) draw(this.ctxFor(o), litStyle(o.color, o.level));
     }
 
     // -------- keys
@@ -600,6 +607,7 @@
       if (o.led) this.led(x + w / 2, y - 4.5, o.led, o.ledOn);
     }
     led(x, y, color, on, r = 1.5) {
+      on = on && !this.dark;
       const b = this.base;
       b.save(); b.fillStyle = '#050505'; b.beginPath(); b.arc(x, y, r + 0.7, 0, Math.PI * 2); b.fill();
       const rgb = color === 'green' ? [90, 255, 120] : color === 'red' ? [255, 60, 50] : [255, 170, 40];
@@ -609,6 +617,7 @@
     }
     // A lamp key: a translucent cap lit from behind (master WARN / CAUT).
     lampKey(x, y, w, h, l1, l2, color, on) {
+      on = on && !this.dark;
       const b = this.base;
       b.save(); b.fillStyle = '#050506'; rrect(b, x - 1.2, y - 1.2, w + 2.4, h + 3, 3); b.fill();
       const rgb = color === 'red' ? [255, 52, 36] : color === 'zinc' ? [70, 246, 204] : [255, 138, 18];

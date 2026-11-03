@@ -4,11 +4,27 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
-| Ship stations | `functional-stations.md` round 10 | Converged again in round 4, after the spec's round 10 changed four things on screen |
-| Context-driven | `functional-context.md` version 5 | Converged in round 3: the spec took all four notes, nothing left to criticise |
-| Task-driven | `functional-task.md` round 5 | Converged in round 3: the spec took all four notes, nothing left to criticise |
+| Ship stations | `functional-stations.md` round 12 | Rebuilt in round 5, with a fourth screen for the blacked-out seat; no visual criticism open, two functional notes with the designer |
+| Context-driven | `functional-context.md` version 6 | Rebuilt in round 5; no visual criticism open, two functional notes with the designer |
+| Task-driven | `functional-task.md` round 6 | Rebuilt in round 5; no visual criticism open, two functional notes with the designer |
 
 A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 5
+
+All three specs moved, so all three variations were rebuilt.
+
+**Stations** (spec rounds 11 and 12). The emergency text names the state and the ways out (`DISABLED`, P twice, `ABANDON`, B twice, `TOW`: 28 of the strip's 39 cells) while the cause has its own tile, including the new HULL tile. The kit's blacked-out seat is a fourth screen, the first in an emergency: the seat's instruments unpowered with their NO POWER face, the overlay on the emergency bus. Every MFD soft key carries its page's full name, on three page keys and a split pin/fold key. E's harpoons count their burn (2.4 and 2.5 km, 8 and 9 s) and SENSORS opens at the new 5 km step.
+
+**Context** (version 6). P2's code field is 11 cells and handling 3, with a cell's space kept after a full code; 11.4's lock at 3.4 km, missiles 4 left and ready, the missiles drawn where `T-4 S` puts them under a harpoon's burn, the scope at 5 km; the corvette's three crew in 11.7 and X2.
+
+**Task** (round 6). The SHIELD lamp; the scope at its new 5 km step; `IMPACT 4 S`, since 9.2's formula puts a harpoon 1.4 km out about 4 s from impact, not 14.
+
+**Everywhere.** Point defense is spelled the game's way, on screen and in the guide.
+
+**Renderer and guide.** A scene can draw unpowered: nothing lit and every ghost showing. Drawing the blackout found that cutting a module's power after drawing it left its lit segments blank (a lit segment has no ghost under it), so a dead module is now drawn from scratch. The guide defines the NO POWER face and the emergency bus (7.11, 9.5, principle 10) and the MFD rail (7.7), counts the emergency text's cells again, and leaves the burn arrow's label to the spec. The specimen's soft keys carry full page names.
+
+**Sent to the designers.** Stations: what else goes dark in a blackout (the board, the projected HUD); the tow's hint while disabled. Context: point defense as the game spells it; H7's missile row on a hull with two launchers. Task: the gunnery sample's 14 s against harpoons 1.4 km out; what a bearing is measured from.
 
 ## Round 4
 

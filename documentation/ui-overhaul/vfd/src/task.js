@@ -1,4 +1,4 @@
-// FILAMENT x Task-driven design (functional-task.md, round 4): the HUD as a late-90s digital dash. No racks
+// FILAMENT x Task-driven design (functional-task.md, round 6): the HUD as a late-90s digital dash. No racks
 // span the view; each corner carries its own moulded pod, like a car's instrument cluster, trip computer and
 // message centre. The annunciator is a cluster of tell-tales; the alert band is a message centre, a red
 // window for the one warning with an amber row hung under it for the cautions; the hint line is a strip of
@@ -74,16 +74,16 @@
   }
   // ANN: ten tell-tales in two rows. Each cell is printed in register: its frame behind amber, its block behind
   // red, its icon and word clear. Advisory lights the icon and word softly; a caution adds the amber frame; a
-  // warning lights the red block with the icon and word cut out of it. No SHLD on a ship without an emitter:
+  // warning lights the red block with the icon and word cut out of it. No SHIELD on a ship without an emitter:
   // that place is blank glass.
   const LAMPS = [['HULL', 'breach'], ['FIRE', 'fire'], ['AIR', 'o2'], ['POWER', 'power'], ['PROP', 'prop'],
-    ['DRIVE', 'drive'], ['ARMS', 'missile'], ['CREW', 'crew'], ['EVA', 'eva'], ['SHLD', 'shield']];
+    ['DRIVE', 'drive'], ['ARMS', 'missile'], ['CREW', 'crew'], ['EVA', 'eva'], ['SHIELD', 'shield']];
   function ann(S, st, o = {}) {
     const x = LX, y = 74, w = CW, h = 80, gap = 4;
     S.module(x, y, w, h, { filaments: 0 });
     const cw = (w - 8 - gap * 4) / 5, ch = (h - 8 - gap) / 2;
     LAMPS.forEach(([tag, icon], i) => {
-      if (tag === 'SHLD' && !o.shields) return;
+      if (tag === 'SHIELD' && !o.shields) return;
       lamp(S, x + 4 + (i % 5) * (cw + gap), y + 4 + Math.floor(i / 5) * (ch + gap), cw, ch, tag, icon, st[tag]);
     });
   }
@@ -424,16 +424,18 @@
     K.brackets(S, 842, 268, 40, 'square', { pitch: 2, len: 6, level: 'full', ticks: true });
     K.label(S, 892, 214, ["RAIDER 'VEX'"], { pitch: 2, level: 'norm' });
     K.reticle(S, 862, 300, { r: 8, level: 'norm' });
-    // two missiles from the port bow, their tracks and the impact mark; the seconds are the band's alone
-    K.missile(S, 452, 236); K.missile(S, 470, 222);
-    K.track(S, [[452, 236], [604, 380]], { step: 7 }); K.track(S, [[470, 222], [612, 372]], { step: 7 });
-    K.cross(S, 612, 382);
+    // two harpoons 1.4 km out on bearing 080, nearly dead ahead (the corvette heads 078), their tracks and the
+    // impact mark; the seconds are the band's alone. Thrown from the raider 3.2 km off, under a harpoon's 30 m/s²
+    // closing burn they are about 4 s from impact
+    K.missile(S, 742, 375); K.missile(S, 752, 396);
+    K.track(S, [[742, 375], [681, 386]], { step: 7 }); K.track(S, [[752, 396], [682, 391]], { step: 7 });
+    K.cross(S, 678, 388);
     S.projectNow();
 
     cluster(S, { chr: { day: '3', time: '14:22:05', warp: '1', held: 'HOSTILES NEAR' }, ann: { FIRE: 'caution', CREW: 'caution' } });
     sch(S, { states: { HOLD: 'fire' }, crew: [[9, 2, false, true], [9, 1], [6, 2, true], [13, 3]] });
     band(S, {
-      warning: { title: 'MISSILE', detail: '2 INBOUND  BRG 080', label: 'IMPACT', number: '14', unit: 'S', key: 'F', action: 'DECOY', note: 'POINT DEFENCE ENGAGING' },
+      warning: { title: 'MISSILE', detail: '2 INBOUND  BRG 080', label: 'IMPACT', number: '4', unit: 'S', key: 'F', action: 'DECOY', note: 'POINT DEFENSE ENGAGING' },
       cautions: [
         { full: ['FIRE  HOLD', 'ADA ON IT'], short: ['FIRE HOLD', 'ADA'] },
         { full: ['WOUNDED', 'COLE, NO MEDIC FREE'], short: ['WOUNDED COLE', 'NO MEDIC'] },
@@ -454,7 +456,9 @@
       ],
       decoy: 'READY',
     });
-    sns(S, { heading: -12, range: '10 KM', auto: true, hostiles: 1, contacts: [{ x: 0.3, y: -0.2, kind: 'hostile', lock: true }, { x: -0.27, y: -0.22, kind: 'missile' }, { x: -0.23, y: -0.27, kind: 'missile' }, { x: -0.72, y: 0.48, kind: 'station' }] });
+    // the 5 km step holds the raider (3.2 km) and both harpoons (1.4 km) with room to spare; the station is past
+    // the rim, so it sits on it
+    sns(S, { heading: -12, range: '5 KM', auto: true, hostiles: 1, contacts: [{ x: 0.537, y: -0.349, kind: 'hostile', lock: true }, { x: 0.27, y: -0.07, kind: 'missile' }, { x: 0.3, y: -0.01, kind: 'missile' }, { x: -0.83, y: 0.55, kind: 'station' }] });
     hlm(S, 340, 734, 340, { who: 'BEA', order: 'HOLDING 2,000 M OFF RAIDER' });
     hnt(S, [['SPACE', 'FIRE'], ['R', 'MISSILE'], ['TAB', 'NEXT TARGET'], ['V', 'STAND UP'], ['F1', 'CONTROLS']]);
     S.finish();

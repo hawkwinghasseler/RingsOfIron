@@ -1,4 +1,4 @@
-// FILAMENT x Context-driven design (functional-context.md, version 4): two racks frame the view (the
+// FILAMENT x Context-driven design (functional-context.md, version 6): two racks frame the view (the
 // status strip on top, the seat's instruments along the bottom) and everything that comes and goes is a
 // slab that powers up in a fixed slot of its zone. Laid at the minimum sizes (guide section 15, spec 12.4):
 // column text is 5x7 at pitch 1.5, so a column's 34 characters are 34 cells of 9 units.
@@ -178,21 +178,23 @@
   }
 
   // ------------------------------------------------------------------ P2 caution and warning
-  // Six rows of 24 in fixed fields: severity (two filtered columns), code 10 cells, detail 10, handling 4,
-  // timer 5. Handling: YOU inverse; a dot per crew member on it; BACK and the recovery time.
+  // Six rows of 24 in fixed fields, a cell apart where a full code meets its detail: severity (two filtered
+  // columns), code 11 cells, detail 10, handling 3, timer 5. Handling: YOU inverse; a dot per crew member on it, from four a dot and the count; BACK and the
+  // recovery time across handling and timer.
   function p2(S, rows, more) {
     const n = rows.length + (more ? 1 : 0), x = LX, y = 38, rh = 24;
     K.slab(S, x, y, CW, n * rh + 4, { pad: 5 });
     rows.forEach((r, i) => {
       const ry = y + 2 + i * rh, ty = ry + (rh - 7 * P) / 2, sy = ry + (rh - 12) / 2;
       glyph(S, x + 5, ry + (rh - ROW) / 2, r.sev);
-      S.dm(x + 27, ty, r.code, { pitch: P, cells: 10, level: 'norm' });
-      S.dm(x + 120, ty, r.detail || '', { pitch: P, cells: 10, level: 'dim' });
-      const hx = x + 213, tx = x + 252;
-      if (r.you) S.dm(hx, ty, 'YOU ', { pitch: P, cells: 4, inverse: [0, 3], level: 'norm' });
-      else if (r.crew) S.dm(hx, ty, r.crew > 3 ? '●' + r.crew : '●'.repeat(r.crew), { pitch: P, cells: 4, level: 'norm' });
-      else if (r.back) S.legend(hx, sy + 12, 'BACK', { level: 'dim' });
-      else S.dm(hx, ty, '', { pitch: P, cells: 4 });
+      K.fits(r.code.length, 11, 'P2 code');
+      S.dm(x + 27, ty, r.code, { pitch: P, cells: 11, level: 'norm' });
+      S.dm(x + 133.5, ty, r.detail || '', { pitch: P, cells: 10, level: 'dim' });
+      const hx = x + 226.5, tx = x + 256;
+      if (r.you) S.dm(hx, ty, 'YOU', { pitch: P, cells: 3, inverse: [0, 3], level: 'norm' });
+      else if (r.crew) S.dm(hx, ty, r.crew > 3 ? '●' + r.crew : '●'.repeat(r.crew), { pitch: P, cells: 3, level: 'norm' });
+      else if (r.back) S.legend(hx, sy + 12, 'BACK', { size: 12, level: 'dim' });
+      else S.dm(hx, ty, '', { pitch: P, cells: 3 });
       const tw = S.seg7(tx, sy, 12, r.timer || r.back || '', { cells: 4, level: r.back ? 'dim' : 'norm' });
       K.fits(tx + tw, x + CW - 4, 'P2 timer');
     });
@@ -213,7 +215,7 @@
     const dx = x + w - 10 - S.dmWidth(6, { pitch: 2 });
     K.fits(cx + 8, dx, 'P3 line 1');
     S.dm(dx, y + 10, d.down ? '1 DOWN' : '', { pitch: 2, cells: 6, color: 'red', level: 'norm' });
-    // line 2: the decoy (not on deck), then point defence
+    // line 2: the decoy (not on deck), then point defense
     const b = y + 52;
     let lx = x + 10;
     if (d.decoy) {
@@ -223,7 +225,7 @@
       if (d.decoy !== 'READY') { lx += S.seg7(lx, b - 12, 12, d.decoy, { cells: 1, level: 'norm' }) + 3; lx += S.legend(lx, b, 'S', { level: 'dim' }); }
       lx += 20;
     }
-    S.legend(lx, b, 'POINT DEFENCE ENGAGING', { lit: !!d.pd, level: 'norm' });
+    S.legend(lx, b, 'POINT DEFENSE ENGAGING', { lit: !!d.pd, level: 'norm' });
   }
   function p4(S, lines) {
     const x = RX, y = 38, rh = 24;
@@ -445,11 +447,12 @@
     K.brackets(S, 880, 290, 40, 'square', { pitch: 2, len: 6, level: 'full', ticks: true });
     K.label(S, 846, 236, ['RAIDER'], { pitch: 2, level: 'norm' });
     K.reticle(S, 858, 306, { level: 'norm' });
-    // the nose gun's arc, and the missiles with their predicted tracks to the hull
+    // the nose gun's arc, and the missiles with their predicted tracks to the hull. The raider is 3.4 km off and
+    // threw them 11 s ago: under a harpoon's 30 m/s² closing burn they are 1.6 km out, about halfway, 4 s from impact
     const n = -14 * R, nx = 640 + Math.cos(n) * 90, ny = 404 + Math.sin(n) * 90;
     K.arc(S, nx, ny, 20, 150, -14 - 22, -14 + 22, { level: 'dim' });
-    K.missile(S, 790, 344); K.missile(S, 812, 360);
-    K.track(S, [[790, 344], [728, 372]], { step: 6 }); K.track(S, [[812, 360], [734, 384]], { step: 6 });
+    K.missile(S, 753, 350); K.missile(S, 765, 357);
+    K.track(S, [[753, 350], [726, 375]], { step: 6 }); K.track(S, [[765, 357], [731, 384]], { step: 6 });
     K.cross(S, 722, 380);
     const a = -20 * R;
     K.velMark(S, 'pro', 640 + Math.cos(a) * 112, 404 + Math.sin(a) * 112 + 34, { level: 'norm', tag: 'LOCK' });
@@ -462,8 +465,8 @@
     p3(S, { count: '2', t: '4', decoy: 'READY', pd: true });
     p4(S, [['GUNNERY', '3 HITS ON RAIDER']]);
     h2(S, 194, 'compact', { nav: 'SHACKLETON ICE', navRange: '1240' });
-    const h7y = h6(S, 194, { name: 'RAIDER', state: 'HOSTILE', firing: true, range: '7.7', unit: 'KM', closing: 'closing', rate: '12', shot: '1.3', hit: '62', word: 'FAIR' });
-    h7(S, h7y + 12, { guns: 'READY', who: 'YOU', msl: '3', reload: '4', shields: 'RAISED', trim: 'BOW' });
+    const h7y = h6(S, 194, { name: 'RAIDER', state: 'HOSTILE', firing: true, range: '3.4', unit: 'KM', closing: 'closing', rate: '85', shot: '2.1', hit: '62', word: 'FAIR' });
+    h7(S, h7y + 12, { guns: 'READY', who: 'YOU', msl: '4', reload: null, shields: 'RAISED', trim: 'BOW' });
     // H4 rose by itself: the breach lit the hull light. The plan is the gunship's own deck.
     h4Face(S, LX, 556, { plan: { plan: K.GUNSHIP, states: { ENGINES: 'breach' }, crew: [[6, 4, true], [19, 3, false, true], [18, 5, true], [13, 4]], marks: [[8, 5, 'x']] }, planH: 88,
       rows: [
@@ -475,7 +478,8 @@
     h4Lights(S, 16, 744, [['HULL', 'warning'], ['SHIELDS'], ['POWER'], ['LIFE SUP']]);
     cue(S, 640, 648, { warn: 'BREACH' });
     h1(S, { frames: [['ORBIT', false], ['NAV', false], ['LOCK', 'norm'], ['PORT', false]], auto: true, name: 'RAIDER', speed: '38', assist: true, dv: '1240', prop: 0.72, thrust: { main: true } });
-    h5Scope(S, { heading: -14, range: '10 KM', contacts: [{ x: 0.62, y: -0.3, kind: 'hostile', lock: true }, { x: 0.36, y: -0.12, kind: 'missile' }, { x: 0.42, y: -0.04, kind: 'missile' }, { x: -0.5, y: 0.45, kind: 'neutral' }] });
+    // the 5 km step holds the raider (3.4 km) and the missiles (1.6 km) with room to spare
+    h5Scope(S, { heading: -14, range: '5 KM', contacts: [{ x: 0.613, y: -0.292, kind: 'hostile', lock: true }, { x: 0.289, y: -0.137, kind: 'missile' }, { x: 0.31, y: -0.12, kind: 'missile' }, { x: -0.5, y: 0.45, kind: 'neutral' }] });
     S.finish();
   };
 
@@ -505,7 +509,7 @@
       { sev: 'warning', code: 'VACUUM', detail: 'HOLD', you: true },
       { sev: 'warning', code: 'NO POWER', detail: 'DAMAGED', you: true },
       { sev: 'warning', code: 'CREW CRIT', detail: 'ADA', crew: 1, timer: '3:40' },
-      { sev: 'warning', code: 'FIRE', detail: 'BRIDGE', crew: 2 },
+      { sev: 'warning', code: 'FIRE', detail: 'BRIDGE', crew: 1 },
     ], '+1 MORE: SMOKE');
     x3(S, { title: 'SHIP DISABLED: NO POWER', rows: [
       { what: 'ABANDON SHIP', key: 'P' },
@@ -540,7 +544,7 @@
     bottomRack(S, { tower: false });
     p4(S, [['BOARDING', 'THE RAIDER IS TAKEN']]);
     p5(S, { l1: 'BOUNTY: RAIDER · TAKEN', l2: '→ TURN IN AT HIGHPORT' });
-    x2(S, 194, { name: 'RAIDER', latched: true, state: 'TAKEN: CREW SURRENDERED', party: '4', partyState: 'HOLDING', marked: '3', off: '1', lots: '2', prisoners: true });
+    x2(S, 194, { name: 'RAIDER', latched: true, state: 'TAKEN: CREW SURRENDERED', party: '2', partyState: 'HOLDING', marked: '3', off: '1', lots: '2', prisoners: true });
     h4Lights(S, 16, 744, [['HULL'], ['POWER'], ['LIFE SUP']]);
     cue(S, 640, 705, {});
     S.finish();

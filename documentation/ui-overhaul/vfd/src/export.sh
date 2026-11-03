@@ -11,6 +11,7 @@ mkdir -p $V
 shot st-helm $V/stations-helm.jpg
 shot st-weapons $V/stations-weapons.jpg
 shot st-deck $V/stations-deck.jpg
+shot st-blackout $V/stations-blackout.jpg
 shot cx-helm-cruise $V/context-helm-cruise.jpg
 shot cx-helm-combat $V/context-helm-combat.jpg
 shot cx-deck-emergency $V/context-deck-emergency.jpg
