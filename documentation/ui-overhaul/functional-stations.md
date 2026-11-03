@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 3.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 4.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -92,7 +92,7 @@ Information moves up the disclosure tiers when its state becomes abnormal and ba
 | Tier | Where | Example |
 |---|---|---|
 | T0 Ambient | In the world and in sound only | A console's screen glows amber on deck; a door's light shows vacuum beyond; the alarm sounds |
-| T1 Notice | Annunciator tile, callout line | FIRE / GALLEY tile; "ENG  Okafor: fire in the galley, I'm on it" |
+| T1 Notice | Annunciator tile, callout line | FIRE / CARGO 1 tile; "ENG  Okafor: fire in cargo 1, I'm on it" |
 | T2 Instrument | Seated cluster, MFD page | The damage page on the right display |
 | T3 Panel | A console panel or the slate | The Engineering tab at the reactor console |
 | T4 Record | The ship's log | The log line, kept after it ends |
@@ -117,7 +117,7 @@ Show the number the player decides with, not the one the simulation stores:
 | Heading 0.0 deg | Nothing, normally. Before a burn: the alignment error to the burn |
 | Distance to a contact | Range, closing speed, and closest approach (how near, how soon) |
 | Missile reload 3 s | Ready, or seconds to ready, on the launcher's own chip |
-| Power 100% 3.0 MW | Generation against demand; only shown when demand is near or over |
+| Power 100% 3.0 MW | Which systems are without power, why, and when they come back; the reactor's output only when damage has cut it below its rating |
 | Oxygen 100% | Hours of air at the current crew; only shown when it falls under a day |
 
 Precision fits the decision: one decimal below 100, whole numbers below 10,000, then km or km/s with two significant decimals.
@@ -212,7 +212,7 @@ Fallback rules, so no hull loses a function:
 |---|---|
 | Cluster (weapons seat) | Fire-control strip: a chip per mount, launchers, decoys, point defence, shields, target with hit chance (8.3) |
 | Cluster (gun seat) | Gunner sight (8.4) |
-| Symbology | Hostile brackets with class; lead reticle and intercept lines in the hit-chance colour (`FireArcOverlay`); fire arcs of guns in hand; threat tracks with impact cross (`ThreatOverlay`); point-defence kill marks; picture-in-picture optics on the target |
+| Symbology | Hostile brackets with class; lead reticle and intercept lines showing the hit chance (`FireArcOverlay`); fire arcs of guns in hand; threat tracks with impact cross (`ThreatOverlay`); point-defence kill marks; picture-in-picture optics on the target |
 | MFD pages | SENSORS (radar scope and contact list), WEAPONS (mounts: weapon, ammunition, state, who works it, at will or held), DEFENSE (shield coverage around the hull, mass, trim, emitters; decoys; point defence) |
 | Console panel tab | **Tactical board**: SENSORS' contact table at full size, WEAPONS with hold and free per gun, DEFENSE |
 | Manned by crew | Gunners fire at will on hostiles in range (`GunCrews`). Callouts: hostile in range, launching, dart down, target struck, gun out of action |
@@ -228,10 +228,10 @@ The DEFENSE page is the "HUD gauge and coverage overlay" that the combat design 
 | Item | Content |
 |---|---|
 | Cluster | None: engineering consoles have no seat |
-| MFD pages | DAMAGE (the ship plan: hull integrity, breaches, fires, smoke, venting, patches left, repairs under way and by whom; today's `WireframeMinimap`), POWER (generation against demand, store charge, systems off, stunned with countdown, browned out), ATMOS (rooms by pressure, oxygen and smoke; tank levels; hours of air) |
+| MFD pages | DAMAGE (the ship plan: hull integrity, breaches, fires, smoke, venting, patches left, repairs under way and by whom; today's `WireframeMinimap`), POWER (reactor output against its rating; each circuit's store and its refill; then only the systems that are not working, each with its cause and what clears it; 9.2), ATMOS (rooms by pressure, oxygen and smoke; tank levels; hours of air) |
 | Console panel tab | **Engineering**, with sub-tabs Power, Atmosphere, Damage, Systems (every subsystem: health, state, on/off; replacing today's console window), Tanks & propulsion, Shields (emitter heat and trip state) |
 | Manned by crew | Engineers patch leaks, fight fires and repair (`LeakPatches`, the crew task queue). Callouts: fire, breach, patched, out of patches, short circuit, tank burst, system back |
-| Alerts owned | Fire; breach venting; out of patches; oxygen tanks dry; no power or brownout; reactor or another system stunned; short circuit; tank burst; hull integrity thresholds |
+| Alerts owned | Fire; breach venting; out of patches; oxygen tanks dry; systems without power, and no working reactor at all; a system stunned; short circuit; tank burst; hull integrity thresholds |
 | Data | `ShipStatusProvider` (`PlayerShipStatus`), `WireframeSyncSystem`, `DamageControl`, `AirWatch`, `PowerRoutingSystem`, `GridHazardSystem`, `IonStun` |
 
 ### 5.6 Comms & Cargo
@@ -274,7 +274,7 @@ From the bottom up. Nothing above layer 5 covers the annunciator except the out-
 | 2 | World symbology | Markers, brackets, tracks, corridors, nameplates, PiP optics (section 11) |
 | 3 | Seated band | When seated: cluster, MFDs, station board (section 8, 9) |
 | 4 | Panel | One at a time: a console panel, the slate, the Station link, or the full-screen plot (section 10) |
-| 5 | Overlay | Annunciator, warp strip, callout ticker, prompt line, suit readout, guide card (section 7) |
+| 5 | Overlay | Status strip, annunciator, warp strip, callout ticker, prompt line, suit readout, guide card (section 7) |
 | 6 | Out of fiction | Pause menu, settings, controls (F1), crash and career-over screens, mod trust dialog, developer console |
 
 ### 6.2 Zones
@@ -284,7 +284,7 @@ In UI units on the 1280 x 800 layout grid that `UiScale` already scales. Margins
 ```
 x: 0    16            280                                   1000          1264 1280
    +---------------------------------------------------------------------------+  y 0
-   |  Z5 guide    |  Z1e emergency banner   720 x 24        |                   |  16
+   |  Z5 guide    |  Z1s status strip       720 x 24        |                   |  16
    |  card        |  Z1  annunciator row 1  720 x 36        |                   |  44
    |  248 wide    |  Z1  annunciator row 2  720 x 36        |                   |  84
    |  (out of     |  Z1w warp strip         720 x 20        |                   |  124
@@ -304,7 +304,7 @@ x: 0    16            280                                   1000          1264 1
 
 | Zone | Size (units) | Anchor | Notes |
 |---|---|---|---|
-| Z1e emergency banner | 720 x 24 | Top centre, y 16 | Only in Emergency |
+| Z1s status strip | 720 x 24 | Top centre, y 16 | Condition, state and emergency text (7.7); dark in Green with no state |
 | Z1 annunciator | 720 x 36, a second row of 36 at y 84 | Top centre, y 44 | Master lamps 56 x 36 at each end; 6 tiles of 94 x 36 per row with 6 gaps |
 | Z1w warp strip | 720 x 20 | Top centre, y 124 | Only in warp |
 | Z2 callout ticker | 720 x 60 | Top centre, y 148 | Three lines, left-aligned within the column |
@@ -318,9 +318,11 @@ x: 0    16            280                                   1000          1264 1
 
 While seated, the camera's centre moves up by half the band's height (92 units), so the ship stays in the middle of the visible world (new, `CameraFollowSystem`). The band's height does not change while seated (folding the MFDs leaves the cluster's 160 standing), so neither does the shift.
 
+While a side panel is open, on deck or seated, the camera's centre also moves left by half the panel's width (240 units), eased as the zoom is (`ZoomEase`, 0.3 s), so the avatar or the ship stays in the middle of the world that is still visible and rule 4 of 6.3 seldom has to move a label.
+
 ### 6.3 Collision rules
 
-1. The annunciator is never covered by anything but the out-of-fiction layer.
+1. The status strip and the annunciator are never covered by anything but the out-of-fiction layer.
 2. With a panel open on the right, the top-centre column (Z1, Z1w, Z2) recentres in the space left of the panel; the guide card drops under the ticker.
 3. A full-screen panel (Plot, Yard, Shipyard) hides the band and draws its own annunciator and ticker in Z1 and Z2.
 4. World labels never sit under a panel, the band or the top-centre column: a label that would is moved to its contact's edge marker.
@@ -339,8 +341,8 @@ What can be on screen in every context, including on deck. When nothing is wrong
 
 | Element | Content | Visible |
 |---|---|---|
-| Tile | Two lines of upper-case ASCII, 8 characters each at most: a tag ("FIRE") and a value ("GALLEY", "0:37", "x2"). ASCII keeps tags renderable in any style, including segment displays: Δv is written "DELTA-V" | While its condition holds |
-| One tile per kind | Several instances of one kind share a tile: the tag, the worst instance and a count ("FIRE" / "GALLEY+1") | |
+| Tile | Two lines of upper-case ASCII, 8 characters each at most: a tag ("FIRE") and a value ("CARGO 1", "0:37", "x2"). ASCII keeps tags renderable in any style, including segment displays: Δv is written "DELTA-V" | While its condition holds |
+| One tile per kind | Several instances of one kind share a tile: the tag, the worst instance and a count ("FIRE" / "CARGO 1+1") | |
 | Rows | 6 tiles a row, 2 rows at most; past 12, the last tile reads "+n MORE" and opens the list | |
 | Order | Warnings first, then cautions; within each, newest first. Advisories never take a tile | |
 | Master WARNING lamp | Left end. Lit and flashing (2 Hz or slower) while any warning is unacknowledged | Only when lit (a style may show both lamps unlit whenever any tile is up) |
@@ -355,7 +357,7 @@ A condition that clears removes its tile with a short fade and leaves a line in 
 
 | Element | Content |
 |---|---|
-| Line | Station tag, speaker, text: "ENG  Okafor: fire in the galley, I'm on it." / "HELM  Ruiz: holding your heading, Captain." / "COMMS  SHIP: clearance granted, Highport port 2." |
+| Line | Station tag, speaker, text: "ENG  Okafor: fire in cargo 1, I'm on it." / "HELM  Ruiz: holding your heading, Captain." / "COMMS  SHIP: clearance granted, Highport port 2." |
 | Speaker | The crew member at the owning station, or the one dealing with it; "SHIP" when nobody is (13.5) |
 | Stack | 3 lines, newest at the bottom. Each holds 6 s (advisory) or 10 s (caution, warning), scaled by a reading-speed setting, then fades. A repeat within its hold counts ("x3") instead of stacking, as `NoticeLog` does now |
 | Placement | Z2, under the annunciator. On deck, a line spoken by a crew member in view also shows as a short bubble over them for its first 3 s (new) |
@@ -377,6 +379,7 @@ A condition that clears removes its tile with a short fade and leaves a line in 
 | Field | Shown when |
 |---|---|
 | Air in the suit (m:ss) | The avatar is suited and their room's air is not breathable |
+| NO SUIT, in the warning role | The avatar is not suited and their room's air is not breathable. The deck then marks the nearest free suit (11.5) |
 | Room pressure (kPa) and oxygen | The room's air is not breathable or is falling |
 | Temperature, or FIRE | The room is on fire or heating |
 | The captain's condition ("Light wound", "Critical, 4:10") | The avatar is wounded |
@@ -390,6 +393,18 @@ Only while time warp is above 1x: "WARP 100x  rails   drops out in 4:12 for burn
 ### 7.6 Guide card
 
 The tutorial layer (First Play objectives and the opening walkthrough) is **out of fiction** and looks it: one card, Z5, with the current objective and its keys. It never shares the callout ticker, as it shares the status column today. Hidden when no guide is running.
+
+### 7.7 Status strip
+
+**Purpose:** the ship's state, in one place that every presence can see. Z1s, the top slot of the top column (y 16, 720 x 24).
+
+| Part | Content | Lit |
+|---|---|---|
+| Condition | YELLOW or RED (12); RED with "BATTLE STATIONS" when the player called it | In Yellow and Red; dark in Green |
+| State | DOCKED or LATCHED | While it holds |
+| Emergency text | The cause and the player's options: "SHIP DISABLED: no power.  [P] twice abandons ship.  [B] twice calls a tow" | In Emergency |
+
+In Green, undocked and with no emergency, the whole strip is dark (3.4).
 
 ---
 
@@ -422,7 +437,7 @@ Takes over the Reference and Next event slots when the selected port is armed, o
 
 Once latched, the Velocity slot's frame reads DOCKED and both slots go dark. Where the ship is berthed, its port and the collar's strain live on the DOCK page (its home, and the left MFD's default while docked); strain over 60% is a caution tile.
 
-World symbology: the approach corridor (`NavOverlay`), coloured by safety as now.
+World symbology: the approach corridor (`NavOverlay`), marked by safety as now: safe, over the limit, well over.
 
 ### 8.3 Tactical cluster
 
@@ -430,7 +445,7 @@ Z3b while seated at the weapons console. Fixed slots, as at the helm.
 
 | Slot | Content |
 |---|---|
-| **Mount chips** | One chip per gun: position (Nose, Port...), state (ready, reloading, no power, stunned, destroyed), who works it (you, a gunner's initials, the console), mode (AT WILL or HELD). Point-defence mounts marked PD, with AUTO or YOURS |
+| **Mount chips** | One chip per gun: position (Nose, Port...), state (ready, reloading, charging: waiting on the circuit's store, no power, stunned, destroyed), who works it (you, a gunner's initials, the console), mode (AT WILL or HELD). Point-defence mounts marked PD, with AUTO or YOURS |
 | **Launchers** | Each launcher: missiles left, ready or seconds to ready |
 | **Countermeasures** | Decoys left |
 | **Shields** | Mode (RAISED, LOWERED, STOWING); cloud mass as a share of capacity; trim (EVEN, BOW, PORT, STERN, STBD) on a small rose |
@@ -451,7 +466,7 @@ Seated at a gun. No MFDs and no station board beyond the gun's own tile: a delib
 Z3d, a strip under the band at a command seat; a row at the top of the slate's Ship tab everywhere else.
 
 ```
- 1 HELM you   2 NAV you   3 TAC Chen 3/4   4 ENG Okafor (!)   5 COMMS you   6 CMD    Day 3 14:22:05   [DOCKED]  RED
+ 1 HELM you    2 NAV you    3 TAC Chen 3/4    4 ENG Okafor (!)    5 COMMS you    6 CMD          Day 3 14:22:05
 ```
 
 | Tile state | Meaning |
@@ -462,17 +477,13 @@ Z3d, a strip under the band at a command seat; a row at the top of the slate's S
 | caution, warning | The station has an active alert; the tile lights in that role |
 | struck through | Its console is destroyed or unpowered |
 
+Occupancy (you, a name, empty) and alert (caution, warning) are separate parts of a tile and both show: the weapons tile in a fight is the player's and carries the MISSILE warning at once.
+
 Each tile is a soft key: clicking it (or Alt with its number, 16.2) puts that station's first page on the right MFD; again cycles its pages.
 
-The right end of the board, from left to right:
+The board's right end is the chronometer: day and time (the warp level is in the warp strip). The condition and the ship's state are not on the board: they are in the status strip (7.7), which every presence can see.
 
-| Element | Content |
-|---|---|
-| Chronometer | Day and time (the warp level is in the warp strip) |
-| State lamp | The layered state (12), one lamp showing the most pressing: EMERG, else LATCHED, else DOCKED. Unlit when none holds |
-| Condition | GREEN, YELLOW or RED |
-
-Budget: six tiles of 136 (816), the right end 272.
+Budget: six tiles of 150 (900), the chronometer 188.
 
 ---
 
@@ -510,7 +521,7 @@ Budget: six tiles of 136 (816), the right end 272.
 | WEAPONS | Tactical | Mounts: weapon, ammunition, state, who works it, at will or held | Hold or free each gun | Hold all, free all |
 | DEFENSE | Tactical | Shield ring (96 segments), mass, trim, emitters; decoys; point defence | Raise, lower, trim | None |
 | DAMAGE | Engineering | Ship plan: integrity, breaches, fires, smoke, venting, patches, repairs and who | Damage-control priority (new) | Damage-control priority |
-| POWER | Engineering | Generation, demand, store; systems off, stunned (countdown), browned out | Switches | None |
+| POWER | Engineering | Each reactor's output against its rating (it falls with damage); each circuit's store, its charge and time to full. Then only the systems that are not working, each with its cause and what clears it: switched off; no power (conduit cut, or shorted, with the breaker's reclose countdown, `DamageStates.AUTO_RESET`); stunned (countdown); disabled (under 30% health); destroyed. A NEXT line names the soonest that comes back by itself | Switches | None |
 | ATMOS | Engineering | Rooms: pressure, oxygen, smoke; tanks; hours of air | None | None |
 | COMMS | Comms & Cargo | Clearance, ports, beacon, standing with the local faction | Ask clearance, beacon | None |
 | CARGO | Comms & Cargo | Hold: volume, each cargo, value | None | None |
@@ -528,7 +539,7 @@ Locking a target and setting the nav target count as orders to the ship's sensor
 - **Side panel**: 480 wide on the right (Z4). On deck it runs the full height; seated, it stops above the band so the instruments stay visible. The world keeps running and stays visible, so a player at the reactor console can watch their crew fight the fire they are routing power around.
 - **Full screen**: the Plot, the Yard, the Shipyard and the ship editor. They hide the band and bring their own annunciator and ticker.
 - Every panel has the same parts: a **title bar** (station and console, or the slate's owner, or the station berthed at), **tabs**, a **body** of tables and controls, and a **footer** of soft keys with their key caps, with responses shown in it. The footer replaces the per-window "Close [Y]" buttons: Esc always closes.
-- Panels open on the tab that matters: an alert's link opens its tab; a console opens its focus tab; a shortcut key opens its tab.
+- Panels open on the tab that matters: an alert's link opens its tab; a shortcut key opens its tab; a console opens on the action tab of the most severe, then newest, live alert owned by a station it hosts, and with none, on its focus tab (Power at the reactor, Atmosphere at life support).
 
 ### 10.2 The panels
 
@@ -594,6 +605,8 @@ The captain's own panel, anywhere aboard. Its title bar carries the captain's ra
 | Picture-in-picture optics | Target and nav target | Target | Target |
 | Edge markers | Nav target, target, hostiles, waypoint, missiles | Target, hostiles, missiles | Target, missiles |
 
+**Impact marks** are one per side of the hull that missiles are due to strike (bow, port, stern, starboard), drawn just outside the hull's outline with a count when more than one is due on that side, so the own-ship symbol is never covered.
+
 ### 11.2 Contact labels
 
 Today every marked contact carries a name and a range. New rules:
@@ -626,6 +639,7 @@ On deck the world is the ship's interior, and almost everything shows itself: fi
 |---|---|
 | Console and door prompts | Within reach (7.3) |
 | Crew member who needs help: critically wounded, unconscious, out of air | Always, with their timer when they have one |
+| The nearest free suit | While the avatar is unsuited in air that is not breathable (7.4) |
 | Crew speech bubbles | For their callouts, 3 s |
 | The room an alert names | While the alert holds, when the player clicks its tile or callout: a brief outline of the room |
 
@@ -636,6 +650,7 @@ T0 cues that need art or lighting work, listed so the artists can plan for them:
 - A console's screen glows in the alert role while its station has an active caution or warning, so the player can see which console to walk to.
 - Door indicator lights: vacuum, fire or smoke on the far side.
 - Alarm beacons in rooms with a fire or a breach.
+- Interior lighting follows the condition: battle lighting in Red, so a player on deck knows the ship's state at a glance (the lighting thread's call how; the strip, 7.7, says it in words).
 - Crew speech bubbles (11.5).
 
 ---
@@ -655,11 +670,12 @@ Two states layer over the condition:
 | State | When | Effect |
 |---|---|---|
 | **Docked** | Latched to a station | Combat symbology off (guns hold when docked, as now); MFDs DOCK and CARGO; berth card; Station link. A Red condition while docked restores the threat symbology over this |
-| **Emergency** | Ship disabled or abandon ship ordered | A banner row above the annunciator with the cause and the player's options: "SHIP DISABLED: no power.  [P] twice abandons ship.  [B] twice calls a tow". The condition carries on underneath |
+| **Latched** | Latched to another ship | The slate's Boarding tab; CARGO shows the other ship's hold |
+| **Emergency** | Ship disabled or abandon ship ordered | The status strip's emergency text with the cause and the player's options: "SHIP DISABLED: no power.  [P] twice abandons ship.  [B] twice calls a tow". The condition carries on beside it |
 
 **Battle stations** (new action, 16.2) sets Red until the player stands down or the ship docks. Whether it should also send the crew to their stations is an open question (20.5).
 
-The condition shows as a word at the right end of the station board, with the layered state on a lamp beside it (8.5), and may also colour the band's frame (the style's choice). Its thresholds (50 km, weapons range) are tunables.
+**Where it shows.** The condition and the state are in the status strip (7.7) at the top of the screen, at every presence: on deck, at a console, seated and in the Plot. In Green with no state, the strip is dark. On deck the ship's own lighting echoes the condition (11.6), and a style may also echo it on the band's frame. Its thresholds (50 km, weapons range) are tunables.
 
 ---
 
@@ -697,9 +713,9 @@ About half of today's notices are **responses** ("Lighting on", "Navigation targ
 | `instance` | The room, for one alert per room under the kind's tile |
 | `severity` | Caution, or the escalation rule that sets it |
 | `station` | Engineering |
-| `tag`, `value` | "FIRE", "GALLEY" (ASCII, 8 characters each) |
-| `text` | "Fire in the galley" |
-| `crewText` | "{name}: fire in the galley, I'm on it." |
+| `tag`, `value` | "FIRE", "CARGO 1" (ASCII, 8 characters each) |
+| `text` | "Fire in cargo 1" |
+| `crewText` | "{name}: fire in cargo 1, I'm on it." |
 | `homePage` | DAMAGE, focused on the room: what the MFD auto-pages to and what the slate's page viewer shows |
 | `actionTab` | Engineering: Damage, the panel tab where it is acted on (for the tile's link when the player is at that console) |
 | `active` | A condition: the alert clears itself when it goes false |
@@ -707,12 +723,14 @@ About half of today's notices are **responses** ("Lighting on", "Navigation targ
 
 Clicking a tile or a callout shows `homePage`: on the MFD when seated, in the slate's page viewer on deck, or the `actionTab` when the player is already at its console.
 
+**Places need names (new).** Rooms have no names in the game today, and an alert that cannot say where is half an alert. A room is named after the most important system in it, in this order: reactor, helm, weapons, life support, engine, shield emitter, turret, airlock, docking port, escape pod, tank, cargo; numbered when a ship has more than one ("CARGO 2"). A room with none of these is named by where it lies in the hull: FWD, MID or AFT, with PORT or STBD ("AFT STBD"). Names fit the tile's 8 characters ("LIFE SUP"). A hull designer or a mod may name rooms itself later. The same name is used on the tile, in the callout, in the log and on the DAMAGE page.
+
 ### 13.3 Lifecycle
 
 1. **Raised** when its condition turns true (or posted, for events). Warning and caution: tile, lamp, callout, auto-page, sound.
 2. **Acknowledged** by the player: the lamp stops flashing and the alarm stops. The tile stays.
 3. **Updated** in place: countdowns tick in the tile; revisions (as `AirWatch` revises its warning) replace the callout instead of adding one; escalation changes its severity and raises the lamp again if it rises.
-4. **Cleared** when the condition goes false: the tile fades, the MFD reverts after 10 s, and a record goes to the log ("Fire in the galley out after 1:42").
+4. **Cleared** when the condition goes false: the tile fades, the MFD reverts after 10 s, and a record goes to the log ("Fire in cargo 1 out after 1:42").
 5. **Re-armed** only past its hysteresis.
 
 Events with no lasting condition (a contract done, a payday, a door forced) are advisories or responses and take no tile.
@@ -727,18 +745,18 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 | `PirateBoarding` latched on | None | Warning | BOARDERS / 1:20 | Tactical | SENSORS |
 | Impact trajectory (`OrbitInfoProvider`) | Orbit panel text | Warning | IMPACT / 12:40 | Navigation | NAV |
 | Collision risk (new) | None | Caution, Warning under 20 s | COLLIDE / 0:42 | Helm | SENSORS |
-| Ship disabled (`ShipDisablement`) | Red status line | Emergency banner | | Command | Slate Ship |
-| Abandon ship (`AbandonShip`) | Red status line | Emergency banner | | Command | CREW |
-| Fire (`GridHazardSystem`) | Minimap alert list | Escalating | FIRE / GALLEY | Engineering | DAMAGE |
+| Ship disabled (`ShipDisablement`) | Red status line | Emergency (status strip) | | Command | Slate Ship |
+| Abandon ship (`AbandonShip`) | Red status line | Emergency (status strip) | | Command | CREW |
+| Fire (`GridHazardSystem`) | Minimap alert list | Escalating | FIRE / CARGO 1 | Engineering | DAMAGE |
 | Breach venting (`DamageControl`) | Notice, minimap | Escalating | BREACH / CARGO 2 | Engineering | DAMAGE |
 | Out of patches (`DamageControl`) | Notice | Caution | PATCHES / NONE | Engineering | DAMAGE |
-| Short circuit, tank burst | Notice | Caution | SHORT / room, TANK / BURST | Engineering | DAMAGE |
+| Short circuit, tank burst (`DamageStates`) | Notice | Caution | SHORT / room, TANK / BURST | Engineering | DAMAGE. The callout names what the short cut off: "Short in cargo 1: the starboard turret has no power" |
 | Oxygen tanks dry (`AirWatch`) | Warning notice | Warning | O2 TANKS / DRY | Engineering | ATMOS |
 | Crew air running out (`AirWatch`) | Revised warning | Escalating | SUIT AIR / 3:50 | Command | CREW |
 | Crew critically wounded (`CrewMedical`) | Notice | Escalating | CASUALTY / 1 4:10 | Command | CREW |
 | Crew wounded or unconscious | Notice | Caution | WOUNDED / 2 | Command | CREW |
 | Low propellant, Δv margin (`FlightWarnings`) | Warning notice | Caution | DELTA-V / LOW | Navigation | PLAN |
-| No power, brownout (`PowerRoutingSystem`) | Power gauge | Warning, Caution | POWER / NONE, POWER / LOW | Engineering | POWER |
+| Systems without power: conduit cut, or shorted (`PowerRoutingSystem`) | Power gauge | Caution; Warning when no reactor works at all | POWER / 2 SYS, POWER / NONE | Engineering | POWER |
 | System stunned (`IonStun`) | None | Caution | STUN / RCTR 22 | Engineering | POWER |
 | Shield emitter tripped (`ShieldModel`) | None | Caution | SHIELD / TRIP | Tactical | DEFENSE |
 | Shield cloud under 25% | None | Caution | SHIELD / LOW | Tactical | DEFENSE |
@@ -781,6 +799,7 @@ A response shows where the player is looking: on the prompt line (Z7), or in the
 
 | Widget | Deck | At a console (panel open) | Helm seat | Weapons seat | Gun seat | Plot |
 |---|---|---|---|---|---|---|
+| Status strip | A | A | A | A | A | A |
 | Annunciator, master lamps | A | A | A | A | A | A |
 | Callout ticker | A | A | A | A | A | A |
 | Prompt line (responses, hints) | A | Footer | A | A | A | Footer |
@@ -801,11 +820,11 @@ A response shows where the player is looking: on the prompt line (Z7), or in the
 
 | State | Changes |
 |---|---|
-| Docked | Berth card for 8 s; Station link available anywhere aboard; the board's state lamp reads DOCKED; the helm's frame reads DOCKED; MFD defaults DOCK and CARGO; combat symbology off unless Red |
-| Latched to a ship | Slate's Boarding tab appears; the CMD tile shows a badge; the state lamp reads LATCHED; CARGO shows the other ship's hold |
+| Docked | Berth card for 8 s; Station link available anywhere aboard; the status strip reads DOCKED; the helm's frame reads DOCKED; MFD defaults DOCK and CARGO; combat symbology off unless Red |
+| Latched to a ship | Slate's Boarding tab appears; the CMD tile shows a badge; the status strip reads LATCHED; CARGO shows the other ship's hold |
 | Warp above 1x | Warp strip. The cluster's slots go dark except Next event, and the MFDs fold (nothing on them changes fast enough to read); any caution or warning restores them |
 | Yellow, Red | Symbology and MFD defaults as in 11.1 and 9.1 |
-| Emergency | Banner row above the annunciator |
+| Emergency | The status strip's emergency text |
 | A side panel open while seated | The band stays; the panel stops above it; the top-centre column recentres left of it |
 
 ---
@@ -838,14 +857,15 @@ Nothing else is on screen. Today the same moment has the flight panel, the orbit
 
 ```
 +------------------------------------------------------------------------------------------+
-|          (W) [MISSILE ] [ FIRE   ] [ BREACH ]                              (C)            |
-|              [2  0:37 ] [ GALLEY ] [CARGO 2 ]                                            |
-|          ENG    Okafor: fire in the galley, I'm on it.                                   |
+|          RED                                                                             |
+|          (W) [MISSILE ] [ BREACH ] [  FIRE  ]                              (C)           |
+|              [2  0:37 ] [AFT STBD] [CARGO 1 ]                                            |
+|          ENG    Okafor: fire in cargo 1, I'm on it.                                      |
 |          TAC    SHIP: two missiles inbound, port side, 37 seconds.                       |
-|          ENG    SHIP: cargo 2 venting, nobody on it.                                     |
+|          ENG    SHIP: aft starboard venting, nobody on it.                               |
 |                                                                                          |
-|                    (deck view: the galley console glows red, door lights,                |
-|                     alarm beacons in the galley and cargo 2)                             |
+|                    (deck view in battle lighting: the reactor console glows red,         |
+|                     door lights, alarm beacons in cargo 1 and aft starboard)             |
 |                                       [avatar]                                           |
 |  SUIT                                                                                    |
 |  Air 4:10                                                                                |
@@ -853,7 +873,7 @@ Nothing else is on screen. Today the same moment has the flight panel, the orbit
 +------------------------------------------------------------------------------------------+
 ```
 
-FIRE is a caution (Okafor is on it); BREACH is a warning (nobody is). Clicking BREACH opens the slate on its Ship tab with the DAMAGE page, cargo 2 outlined on deck. Walking to the reactor console and pressing [E] opens Engineering on Damage, beside the live deck.
+The status strip says RED, because missiles are inbound. FIRE is a caution (Okafor is on it); BREACH is a warning (nobody is), so it sorts ahead of FIRE. Clicking BREACH opens the slate on its Ship tab with the DAMAGE page, aft starboard outlined on deck. Walking to the reactor console and pressing [E] opens Engineering on Damage (the most severe live alert it owns), beside the live deck.
 
 ### C. Seated at the helm, cruising (Green)
 
@@ -872,7 +892,7 @@ FIRE is a caution (Okafor is on it); BREACH is a warning (nobody is). Clicking B
 |           | ORBIT 7.67 km/s      MANUAL  ASSIST          |                                |
 |           |                 (Trigger: dark)              |                                |
 |  [NAV][PLAN][pin][-]  DELTA-V 1,840 |======|=== home 1,210   [SNS][WPN][DEF][pin][-]    |
-| 1 HELM you  2 NAV you  3 TAC --  4 ENG Okafor  5 COMMS you  6 CMD   Day 3 14:22:05  GREEN |
+| 1 HELM you  2 NAV you  3 TAC --  4 ENG Okafor  5 COMMS you  6 CMD          Day 3 14:22:05 |
 +------------------------------------------------------------------------------------------+
 ```
 
@@ -895,7 +915,7 @@ Both MFDs are folded to their rails: in Green there is nothing on them the playe
 | Clearance granted   |                 (Trigger: dark)             |                      |
 | [DOCK] [HELM] [pin] | DELTA-V 1,780 |=====|==   home 1,210        | [SNS][WPN][DEF][pin] |
 +---------------------+---------------------------------------------+----------------------+
-| 1 HELM you  2 NAV you  3 TAC --  4 ENG Okafor  5 COMMS you  6 CMD   Day 3 14:41:10  GREEN |
+| 1 HELM you  2 NAV you  3 TAC --  4 ENG Okafor  5 COMMS you  6 CMD          Day 3 14:41:10 |
 +------------------------------------------------------------------------------------------+
 ```
 
@@ -903,11 +923,12 @@ Both MFDs are folded to their rails: in Green there is nothing on them the playe
 
 ```
 +------------------------------------------------------------------------------------------+
+|          RED                                                                             |
 |          (W) [MISSILE ] [HOSTILE ]                                         (C)            |
 |              [2  0:37 ] [ FIRING ]                                                       |
 |          TAC    Chen: dart down.                                                         |
 |          HELM   Ruiz: holding position under fire.                                       |
-|                           .  .  .  .  . (threat track, impact cross, no countdown)       |
+|                           .  .  .  .  . (threat tracks; one impact mark, "2", port side) |
 |                [ship]  ----- lead ---->  <Raider>                                        |
 +---------------------+---------------------------------------------+----------------------+
 | SENSORS             | NOSE you ready   PORT you 1.2   STBD Chen   | DEFENSE              |
@@ -916,30 +937,32 @@ Both MFDs are folded to their rails: in Green there is nothing on them the playe
 | Dart     2.1 km   H | Raider  7.7 km  closing 2  ToF 1.3 s  64%   |  port)               |
 | [SNS] [WPN] [DEF]   |                                             | [SNS] [WPN] [DEF]    |
 +---------------------+---------------------------------------------+----------------------+
-| 1 HELM Ruiz  2 NAV --  3 TAC you  4 ENG Okafor (!)  5 COMMS --  6 CMD  Day 3 15:02:44  RED |
+| 1 HELM Ruiz  2 NAV --  3 TAC you (W)  4 ENG Okafor  5 COMMS --  6 CMD       Day 3 15:02:44 |
 +------------------------------------------------------------------------------------------+
 ```
 
-The Raider is labelled with its name only; its range, closing, time of flight and hit chance are in the Target slot. The missiles' countdown is on the tile and, per missile, in the SENSORS list. A hull hit would turn the right MFD to DAMAGE unless the player pinned DEFENSE; the left would then take it if unpinned.
+The TAC tile is both the player's and carrying the MISSILE warning. The Raider is labelled with its name only; its range, closing, time of flight and hit chance are in the Target slot. The missiles' countdown is on the tile and, per missile, in the SENSORS list. A hull hit would turn the right MFD to DAMAGE unless the player pinned DEFENSE; the left would then take it if unpinned.
 
 ### F. At the reactor console
 
 ```
 +------------------------------------------------------------------------------------------+
-|  (W) [ FIRE   ] [ POWER  ]  (C)                |  ENGINEERING   Reactor                   |
-|      [ GALLEY ] [  LOW   ]                     |  [Power] [Atmos] [Damage] [Systems] [...] |
-|  ENG   Okafor: fire in the galley, I'm on it.  |                                          |
-|                                                |  Reactor 3.0 MW  Demand 3.4 MW  Store 62%|
-|      (deck view stays live:                    |  ----------------------------------------|
-|       crew fighting the fire)                  |  Helm            0.2 MW  ON   100%       |
-|                                                |  Shield emitter  1.1 MW  ON    80%  hot  |
-|              [avatar]                          |  Life support    0.4 MW  ON   100%       |
-|                                                |  Turret nose     0.6 MW  STUN 14 s       |
-|                                                |  Galley          0.1 MW  OFF             |
-|                                                |                                          |
+|  (C) [  FIRE  ] [ POWER  ]                     |  ENGINEERING   Reactor                   |
+|      [CARGO 1 ] [ 2 SYS  ]                     |  [Power] [Atmos] [Damage] [Systems] [...] |
+|  ENG   Okafor: fire in cargo 1, I'm on it.     |                                          |
+|  ENG   SHIP: short in cargo 1: the shield      |  Reactor   2.6 of 3.0 MW (damaged)       |
+|        emitter has no power.                   |  Store     62%   full in 0.8 s           |
+|                                                |  -----------------------------------------|
+|      (deck view stays live:                    |  Not working                             |
+|       crew fighting the fire)                  |  Turret, nose    STUNNED         14 s    |
+|                                                |  Shield emitter  NO POWER  short, 31 s   |
+|              [avatar]                          |  Airlock 2       SWITCHED OFF            |
+|                                                |  NEXT  Turret, nose back in 14 s         |
 |                                                |  [Enter] Switch   [Esc] Close            |
 +------------------------------------------------------------------------------------------+
 ```
+
+Both alerts are cautions: the crew are on the fire, and the shield emitter's breaker recloses by itself in 31 s. The power page lists only what is not working, with the cause and what clears it; working systems are not listed. The world shifts 240 left so the deck stays centred in what the panel leaves (6.2).
 
 ### G. Docked: Station link
 
@@ -971,7 +994,7 @@ The Raider is labelled with its name only; its range, closing, time of flight an
 |           | Burn 2 in 4:12   410 m/s retrograde          |                                |
 |           |                (dark)                       |                                |
 |  [NAV][PLAN][pin][-]             (dark)                 [SNS][WPN][DEF][pin][-]          |
-| 1 HELM you  2 NAV you  3 TAC --  4 ENG Okafor  5 COMMS you  6 CMD   Day 5 02:10:44  GREEN |
+| 1 HELM you  2 NAV you  3 TAC --  4 ENG Okafor  5 COMMS you  6 CMD          Day 5 02:10:44 |
 +------------------------------------------------------------------------------------------+
 ```
 
@@ -1038,7 +1061,7 @@ The artists change how this looks, not what it says or where it is. A style may 
 3. **Text stays legible at 1x**: body at least 13 units, annunciator text at least 12, numbers in tabular figures so they don't jitter. Annunciator tags and values are upper-case ASCII, 8 characters at most each, so segment and dot-matrix styles can render them.
 4. **Motion is limited**: flashing at 2 Hz or slower, only the master lamps and newly raised tiles; a "reduce motion" setting turns flashing into a steady lit state.
 5. **Elements to design**, the full kit:
-   - Overlay: annunciator tile (raised, acknowledged, clearing, "+n MORE"); master lamps; emergency banner; warp strip; ticker line with station tag and speaker; prompt line; response; suit readout; guide card; berth card.
+   - Overlay: annunciator tile (raised, acknowledged, clearing, "+n MORE"); master lamps; status strip (condition, state, emergency text); warp strip; ticker line with station tag and speaker; prompt line; response; suit readout; guide card; berth card.
    - Seats: cluster slots, lit and dark (reference, next event, velocity with mode chips, trigger, Δv bar with home notch and plan bracket); docking approach (closing-speed bar with its limit, alignment); mount chip; launcher chip; shield rose; gunner sight readout.
    - MFDs: frame with title and soft keys; folded rail; pin; dead screen; radar scope; contact list; ship plan; shield ring; small orbit drawing.
    - Station board tile in five states; the board's right end: chronometer, state lamp (DOCKED, LATCHED, EMERG), condition word.
@@ -1076,7 +1099,7 @@ The artists change how this looks, not what it says or where it is. A style may 
 | Status column: First Play objective, opening guide | Moved | Guide card |
 | Status column: helm line | Moved | Station board HELM tile; HELM tiles |
 | Status column: EVA line | Changed | EXHAUST caution; slate: EVA |
-| Status column: SHIP DISABLED, ABANDON SHIP | Changed | Emergency banner |
+| Status column: SHIP DISABLED, ABANDON SHIP | Changed | The status strip's emergency text |
 | MISSILE WARNING banner (outside and on deck) | Changed | MISSILE warning tile with count and countdown, master warning, alarm, threat tracks |
 | Bottom key hint line | Changed | Up to 3 learning hints that retire; key caps on soft keys; F1 panel kept |
 | "Press [E] for the Helm panel [V] sit and fly" | Changed | Console prompt "HELM [E] Use [V] Sit", in the world |
@@ -1119,14 +1142,15 @@ For whoever builds this; nothing here is binding on the art.
 | `Presence` | Where the avatar is: seated (console), at a console (panel open), deck, away; from `Bridge` and `InteractPromptSystem` |
 | `ShipCondition` | Green, Yellow, Red from `ThreatProvider`, hostile contacts and `PirateBoarding`, plus battle stations; Docked and Emergency from docking and disablement |
 | `AlertBus` | Grows out of `NoticeLog`: alerts with kind, instance, severity (or an escalation rule), station, tag, value, active condition and re-arm (13.2). `NoticeLog.post(text)` stays and posts an advisory, so no system breaks; systems move over one at a time |
-| `Annunciator`, `CalloutTicker`, `PromptLine` | Widgets on `AlertBus` |
+| `StatusStrip`, `Annunciator`, `CalloutTicker`, `PromptLine` | Widgets on `ShipCondition` and `AlertBus` |
+| `RoomNames` | Names each room after its most important system, or its place in the hull (13.2) |
 | `MfdPage`, `Mfd` | A page per row of 9.2; the two displays with soft keys, pin, fold and auto-paging. `RadarScope`, `WireframeMinimap` and a small `OrbitMap` become pages |
 | `HelmCluster`, `TacticalCluster`, `GunnerSight`, `StationBoard` | Sections 8.1 to 8.5, replacing `FlightReadoutSystem`'s panel and `ShipGauges` |
 | `Panel` | The shared panel grammar (10.1); today's windows become its tabs |
 | `Visibility` | A pure function from (presence, condition, states, open panel) to the visible widgets: section 14 as code, unit-tested row by row |
 | `ShieldStatusProvider` | Shield mass, segments, trim and emitters for DEFENSE (the model has the data; the provider is new) |
 
-**New data needed.** Collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); crew assignment per station (ai-crew's `ManConsoleTask`); hours of air at the current crew.
+**New data needed.** The POWER page needs nothing new: reactor rating and output, each circuit's store, and each system's switch, circuit, short with its reclose timer, stun, health and destruction are all in interior-grid today. What is new: collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); crew assignment per station (ai-crew's `ManConsoleTask`); hours of air at the current crew.
 
 **Order of work.** Each step leaves a playable game:
 
@@ -1154,6 +1178,21 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 4 (Nasa-punk artist's notes on Ship Stations x Nasa-punk)
+
+| Problem found | Change |
+|---|---|
+| The power data was invented: the game has no per-system demand and nothing browns out; a system is powered or not, the store holds 2 s of output for burst loads, and there is no galley | The POWER page shows each reactor's output against its rating, each store and its refill, then only the systems not working with cause and what clears it (switched off, no power from a cut conduit or a short with its breaker countdown, stunned, disabled, destroyed) and a NEXT line. POWER / LOW dropped; one POWER kind that is a caution with "n SYS" and a warning at NONE; mount chips gain "charging" (3.9, 5.5, 9.2, 13.4, walkthrough F) |
+| Rooms have no names in the game, so FIRE / GALLEY could not be built | Places are named after a room's most important system, or its place in the hull (13.2); examples now use CARGO 1 and AFT STBD |
+| The condition was only on the station board, which is hidden on deck and at a console, so a player at the reactor with missiles inbound saw nothing that said RED | A status strip at the top of the screen, at every presence, holds the condition, the docked or latched state and the emergency text; the board keeps the chronometer; battle lighting on deck in Red (7.7, 8.5, 11.6, 12) |
+| Board tile states read as exclusive, but a tile can be the player's and alerting at once | Occupancy and alert are separate parts of a tile and both show (8.5) |
+| A side panel on deck hid the right third of the world, avatar included | The camera moves 240 left while a side panel is open (6.2) |
+| The suit readout assumed a suit | NO SUIT in the warning role, and the deck marks the nearest free suit (7.4, 11.5) |
+| Which tab a console opens with several live alerts was ambiguous | The action tab of the most severe, then newest, live alert owned by a station it hosts (10.1) |
+| A short's callout didn't say what it cut off | It names the systems left without power (13.4) |
+| "Hit-chance colour" and "coloured by safety" fixed colours that every style spends on severity | Reworded as "showing the hit chance" and "marked by safety" (5.4, 8.2) |
+| Two missiles put two impact crosses over the own-ship symbol | One impact mark per side of the hull, with a count, outside the outline (11.1) |
 
 ### Round 3 (Cassette artist's notes on Ship Stations x Cassette)
 
