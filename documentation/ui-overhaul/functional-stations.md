@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 8.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 9.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -314,7 +314,7 @@ x: 0    16            280                                   1000          1264 1
 | Z6 suit readout | 200 x 80 | Bottom left | Deck only |
 | Z3 seated band | 1088 x 184 | Bottom centre, 16 above the edge or flush with it (y 616 to 800): the style's choice | MFDs 288 x 160, cluster 480 x 160, 16 apart; station board 1088 x 20 under them, 4 below |
 
-**Slots hold still.** Every slot in the top column has a fixed place. When something is absent its slot is dark (or, if the style prefers, retracts), but nothing below it moves up to fill the gap and nothing moves down when it appears: the ticker is always at y 108 whether or not a tile is lit. That is also why the annunciator keeps to one row (7.1): a second row reserved for the rare seventh condition would hold the ticker 40 units lower in every fight, and one that appeared on demand would push the ticker down at the worst moment. The same holds for the rows of the clusters (8.1). Stable positions are worth more to a player's eye than the space saved by closing gaps, and a dark slot still meets 3.4.
+**Slots hold still.** Every slot in the top column has a fixed place. When something is absent its slot is dark (or, if the style prefers, retracts); a slot for a system the hull doesn't have at all is blank, with no legend, so it can't read as switched off. Either way, but nothing below it moves up to fill the gap and nothing moves down when it appears: the ticker is always at y 108 whether or not a tile is lit. That is also why the annunciator keeps to one row (7.1): a second row reserved for the rare seventh condition would hold the ticker 40 units lower in every fight, and one that appeared on demand would push the ticker down at the worst moment. The same holds for the rows of the clusters (8.1). Stable positions are worth more to a player's eye than the space saved by closing gaps, and a dark slot still meets 3.4.
 
 While seated, the camera's centre moves up by half the band's height (92 units), so the ship stays in the middle of the visible world (new, `CameraFollowSystem`). The band's height does not change while seated (folding the MFDs leaves the cluster's 160 standing), so neither does the shift.
 
@@ -343,7 +343,7 @@ What can be on screen in every context, including on deck. When nothing is wrong
 |---|---|---|
 | Tile | Two lines of upper-case ASCII, 8 characters each at most: a tag ("FIRE") and a value ("BRIDGE", "0:09", "x2"). ASCII keeps tags renderable in any style, including segment displays: Δv is written "DELTA-V" | While its condition holds |
 | One tile per kind | Several instances of one kind share a tile: the tag, the worst instance and a count ("FIRE" / "BRIDGE+1") | |
-| Row | One row of 6 tiles. Past six conditions, the sixth tile reads "+n MORE", lit in the role of the worst condition it stands for; clicking it opens the slate's Log on the alerts standing now. Since warnings sort first, what it hides is the oldest cautions | |
+| Row | One row of 6 tiles. Past six conditions, the last tile to fill reads "+n MORE", lit in the role of the worst condition it stands for; clicking it opens the slate's Log on the alerts standing now. Since warnings sort first, what it hides is the oldest cautions. A style may fill warnings from the warning lamp's end and cautions from the caution lamp's end; the tile where they meet is then the last to fill | |
 | Order | Warnings first, then cautions; within each, newest first. Advisories never take a tile | |
 | Master WARNING lamp | Left end. Lit and flashing (2 Hz or slower) while any warning is unacknowledged | Only when lit (a style may show both lamps unlit whenever any tile is up) |
 | Master CAUTION lamp | Right end, the same for cautions | As above |
@@ -359,6 +359,7 @@ A condition that clears removes its tile with a short fade and leaves a line in 
 |---|---|
 | Line | Station tag, speaker, text: "ENG  Ada: fire in the bridge, I'm on it." / "HELM  Bea: holding your heading, Captain." / "COMMS  SHIP: clearance granted, Highport port 2." |
 | Speaker | The crew member at the owning station, or the one dealing with it; "SHIP" when nobody is. A SHIP line says only what the tile cannot (13.5) |
+| Length | At most 50 characters after the station tag, the speaker's name included, so a line reads at a glance and fits every style's ticker. Lines are written to fit; one that runs over (a long station or contact name) is the style's to wrap or scroll, never to cut, since the end of a line often carries its point ("nobody on it") |
 | Stack | 3 lines, newest at the bottom. Each holds 6 s (advisory) or 10 s (caution, warning), scaled by a reading-speed setting, then fades. A repeat within its hold counts ("x3") instead of stacking, as `NoticeLog` does now |
 | Placement | Z2, under the annunciator. On deck, a line spoken by a crew member in view also shows as a short bubble over them for its first 3 s (new) |
 | Interaction | Clicking a line shows its home page. The full history is the slate's Log |
@@ -452,7 +453,7 @@ At this seat the player has every gun and launcher in hand except point defence,
 | **Point defence** | One chip for every point-defence mount: PD AUTO, and "engaging" while they fire on missiles. While a mount is not working, how many are ("PD AUTO 1 of 2") and the mount's name and state |
 | **Launchers** | A chip per launcher, by position: missiles left of its magazine ("MSL 4 of 4"), ready or seconds, and how many one press throws ("salvo 4": up to four, `PlayerGunnery.SALVO`, which on the corvette is the whole magazine) |
 | **Countermeasures** | Decoy: ready, or seconds to ready (decoys are unlimited; `DECOY_COOLDOWN` 3 s) |
-| **Shields** | On a hull with a shield emitter (the starting corvette has none: the slot stays dark): mode (RAISED, LOWERED, STOWING); cloud mass as a share of capacity; trim (EVEN, BOW, PORT, STERN, STBD) on a small rose |
+| **Shields** | On a hull with a shield emitter (the starting corvette has none: the slot is blank, with no legend, so it can't read as shields lowered): mode (RAISED, LOWERED, STOWING); cloud mass as a share of capacity; trim (EVEN, BOW, PORT, STERN, STBD) on a small rose |
 
 ### 8.4 Gunner sight
 
@@ -767,7 +768,7 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 | Fire (`GridHazardSystem`) | Minimap alert list | Escalating | FIRE / BRIDGE | Engineering | DAMAGE |
 | Breach venting (`DamageControl`) | Notice, minimap | Escalating | BREACH / HOLD | Engineering | DAMAGE |
 | Out of patches (`DamageControl`) | Notice | Caution | PATCHES / NONE | Engineering | DAMAGE |
-| Short circuit (`DamageStates`) | Notice | Caution, as POWER: a short that cuts a system off is counted in the POWER tile, not given a tile of its own; one that cuts nothing off is an advisory. The callout says where and what it cut off: "Short at the aft starboard gun; its breaker recloses in 31 s" | POWER / n SYS | Engineering | POWER |
+| Short circuit (`DamageStates`) | Notice | Caution, as POWER: a short that cuts a system off is counted in the POWER tile, not given a tile of its own; one that cuts nothing off is an advisory. The callout says where and what it cut off: "SHIP: aft starboard gun shorted, back in 31 s" | POWER / n SYS | Engineering | POWER |
 | Tank burst (`DamageStates`) | Notice | Caution | TANK / BURST | Engineering | DAMAGE |
 | Oxygen tanks dry (`AirWatch`) | Warning notice | Warning | O2 TANKS / DRY | Engineering | ATMOS |
 | Crew air running out (`AirWatch`) | Revised warning | Escalating | SUIT AIR / 3:50 | Command | CREW |
@@ -802,6 +803,7 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 - Without one it is a SHIP line, and it says only what the tile cannot: where (side, bearing, source) and who is or is not on it ("SHIP: the hold is venting, nobody on it"; "SHIP: missiles inbound from port"). It never repeats the tile's count or countdown, and with nothing to add it is not spoken: the tile and the alarm are enough.
 - **Safety never depends on manning.** Every warning and caution is raised whether anyone is at the station or not: the ship's own sensors raise them. Manning changes the words and, through 13.1's escalation, says whether the player must act; it never hides a problem.
 - An advisory whose home is already on screen is logged but not called out (the helm cluster already shows "Burn 1 in 0:58" to a player at the helm).
+- Every callout fits 50 characters after the station tag, the speaker's name included (7.2).
 - Callouts are limited to one per station every 3 s; the rest go to the log only.
 
 ### 13.6 Responses
@@ -948,7 +950,7 @@ The approach has taken over the Reference and Next event slots (8.2). The bar sh
 |          RED                                                                             |
 |          (W) [MISSILE ] [HOSTILE ]                                         (C)           |
 |              [2  0:03 ] [ FIRING ]                                                       |
-|          TAC    Cole: harpoons off the Raider, port side. PD has them.                   |
+|          TAC    Cole: harpoons from port. PD has them.                                   |
 |          HELM   Bea: holding position.                                                   |
 |                           .  .  .  .  . (threat tracks; one impact mark, "2", port side) |
 |                [ship]  ----- lead ---->  <Raider>                                        |
@@ -958,7 +960,7 @@ The approach has taken over the Reference and Next event slots (8.2). The bar sh
 | Harpoon 2.6 km 0:04 | AFT STBD         burning 60%     hit 58%    |  and hold, no hits)  |
 | Raider  2.8 km    H | PD AUTO  engaging           DECOY ready     |                      |
 |                     | AFT PORT   MSL 4 of 4  ready  salvo 4       |                      |
-|                     |            (Shields: dark, no emitter)      |                      |
+|                     |            (Shields slot blank: no emitter) |                      |
 | [SNS] [WPN] [DEF]   |                                             | [DMG] [PWR] [ATM]    |
 +---------------------+---------------------------------------------+----------------------+
 | 1 HELM Bea  2 NAV Bea  3 TAC you (W)  4 ENG --  5 COMMS --  6 CMD         Day 3 15:02:44 |
@@ -967,7 +969,7 @@ The approach has taken over the Reference and Next event slots (8.2). The bar sh
 
 This is the First Play fight: the starting corvette against the pirates' corvette, labelled Raider, which fires harpoons. At the weapons console every gun but point defence is the player's (`PlayerGunnery.inHand`), so the cluster lists the two guns in hand, NOSE (the coilgun) and AFT STBD (the laser), each with its own chance to hit the Raider. The autocannons forward on either side are point defence; they share one PD AUTO chip and are engaging the harpoons. Cole has taken the nose gun's seat, so it shoots with Cole's skill rather than half the player's, and its chance is the better of the two.
 
-The laser's pulse has drawn the circuit's store dry: it burns at 60%, which is what the 3 MW reactor gives a 5 MW beam, and the coilgun is charging until the store holds a shot. Both clear when the pulse ends. The launcher's chip warns that one press throws all four harpoons. The corvette has no shield emitter, so the Shields slot is dark and the right MFD starts on DAMAGE rather than DEFENSE (9.1); a hull hit focuses it on the room struck.
+The laser's pulse has drawn the circuit's store dry: it burns at 60%, which is what the 3 MW reactor gives a 5 MW beam, and the coilgun is charging until the store holds a shot. Both clear when the pulse ends. The launcher's chip warns that one press throws all four harpoons. The corvette has no shield emitter, so the Shields slot is blank and the right MFD starts on DAMAGE rather than DEFENSE (9.1); a hull hit focuses it on the room struck.
 
 The Raider is labelled with its name only; its range and closing are in the Target slot, and each gun's time of flight is on the WEAPONS page. The missiles' countdown is on the tile and, per missile, in the SENSORS list. The board names Bea at NAV as well as HELM, since the helmsman flies the plan; nobody works Comms, and nobody is needed at Engineering.
 
@@ -978,8 +980,8 @@ The Raider is labelled with its name only; its range and closing are in the Targ
 |  (C) [  FIRE  ] [ POWER  ]                    |  ENGINEERING   Reactor                   |
 |      [ BRIDGE ] [ 1 SYS  ]                    |  [Power] [Atmos] [Damage] [Systems] ...  |
 |  ENG   Ada: fire in the bridge, I'm on it.    |                                          |
-|  ENG   SHIP: short at the AFT STBD gun; its   |  Reactor   2.6 of 3.0 MW (damaged)       |
-|        breaker recloses in 31 s.              |  Store     62%   full in 0.8 s           |
+|  ENG   SHIP: aft starboard gun shorted,       |  Reactor   2.6 of 3.0 MW (damaged)       |
+|        back in 31 s.                          |  Store     62%   full in 0.8 s           |
 |                                               |  --------------------------------------- |
 |      (deck view stays live:                   |  Not working                             |
 |       crew fighting the fire)                 |  AFT STBD gun  NO POWER  short, 31 s     |
@@ -1207,6 +1209,14 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 9 (VFD artist's second notes)
+
+| Problem found | Change |
+|---|---|
+| Callouts had no length limit, and E's Cole line ran to 54 characters, all that FILAMENT's ticker holds | A callout is at most 50 characters after the station tag, the speaker's name included; a longer one is the style's to wrap or scroll, never to cut. E's and F's lines shortened (7.2, 13.5; VFD) |
+| A slot for a system the hull lacks was "dark", which can read as switched off | It is blank, with no legend (6.2, 8.3, E; VFD) |
+| "+n MORE" was tied to the sixth tile, which a style filling warnings and cautions from opposite lamps can't follow | The last tile to fill reads +n MORE (7.1; VFD) |
 
 ### Round 8 (self-critique while the artists redraw)
 
