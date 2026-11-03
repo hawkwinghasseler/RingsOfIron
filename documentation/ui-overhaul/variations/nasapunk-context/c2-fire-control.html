@@ -1,0 +1,167 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: fire control, combat</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="context.js"></script>
+<script>
+// Walkthrough 11.5: at the weapons console in a fight. Bea holds the helm. One missile inbound with
+// point defence on it; nothing is wrong with the ship, so P2 draws nothing and H4's lenses stay dark.
+let s = space({ px: 1500, py: 1500, pr: 1100, seed: 9 });
+const SX = 640, SY = 405, HDG = 90;
+
+// W5: fire arcs of the guns in hand, hit lanes to the lock, lead reticle with the hit chance
+s += W.fireArc(SX, SY, HDG - 30, HDG + 30, 150);
+s += W.fireArc(SX, SY, HDG - 150, HDG - 30, 96);
+s += W.fireArc(SX, SY, HDG + 30, HDG + 150, 96);
+s += hull(SX, SY, HDG, 0.9);
+const TX = 868, TY = 292;
+s += raiderHull(TX, TY, 250, 0.42);
+// W1: the lock, labelled with name and range (range shows only for lock, nav and hostiles)
+s += W.contact('hostile', TX, TY, { locked: true, label: ['RAIDER', '7.7 KM'], lx: 26, ly: -4 });
+s += W.hitLane(SX + 30, SY - 6, 846, 262) + W.hitLane(SX + 18, SY - 14, 846, 262);
+s += W.lead(846, 262, 64);
+// A second raider, further out: class and range
+s += W.contact('hostile', 1180, 470, { label: ['RAIDER 2', '14 KM'], lx: -14, ly: -16, anchor: 'end' });
+// W6: the inbound missile on its predicted track, ending in the intercept cross on the hull; the
+// first one's point-defence kill mark fading behind it
+s += W.track(`M 900 210 Q 760 270 ${SX + 22} ${SY - 12}`);
+s += W.missile(756, 280, 236, C.red);
+s += W.impact(SX + 22, SY - 12);
+s += W.pdKill(560, 300);
+
+// P1 glareshield: seat, who has the helm, battle stations
+s += glareStrip({ seat: 'FIRE CONTROL', authority: 'BEA, HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:44', warp: '1X' });
+
+// P3 threat alert, top centre: the one interrupt
+s += threatAlert({ count: 1, tti: '21 S', ttiS: 21, lines: ['PD ENGAGING', 'DECOY READY  [F]'] });
+// P4 message feed: gunnery events merged in combat
+s += feed([['GUNNERY', '1 down']]);
+
+// F4 threat list, left middle
+s += du(12, 176, 308, 132, {
+  id: 'f4', b: 8, title: 'THREATS',
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 8, R = gx + gw - 8;
+    c += sym.chevron(L + 6, gy + 15, 236, C.red, 1.6, 5) + text(L + 18, gy + 20, 'MISSILE', { size: B, bold: true, fill: C.red, track: 0.4 });
+    c += text(L + 96, gy + 20, 'T−21 S', { size: V, bold: true, fill: C.white }) + text(L + 160, gy + 20, '040°', { size: B, fill: C.white });
+    c += I.box(R - 64, gy + 7, 64, 17, 'PD ON IT', 'engaged', { size: 10 });
+    c += line(gx + 4, gy + 30, gx + gw - 4, gy + 30, C.graticule, 1);
+    const ships = [['RAIDER', '7.7 KM', 'KITING', true], ['RAIDER 2', '14 KM', 'CLOSING']];
+    ships.forEach(([n, r, st, lock], i) => {
+      const yy = gy + 52 + i * 22;
+      c += sym.diamond(L + 6, yy - 4.5, 5, C.red, 1.4, lock ? C.red : null);
+      if (lock) c += path(`M${L - 2} ${yy - 9} V${yy - 13} H${L + 2} M${L + 10} ${yy - 13} H${L + 14} V${yy - 9} M${L + 14} ${yy} V${yy + 4} H${L + 10} M${L + 2} ${yy + 4} H${L - 2} V${yy}`, C.red, 1);
+      c += text(L + 20, yy, n, { size: B, bold: true, fill: C.red, track: 0.4 }) + text(L + 160, yy, r, { size: B, bold: true, fill: C.white, anchor: 'end' }) + text(R, yy, st, { size: 11.5, bold: true, fill: C.white, anchor: 'end', track: 0.5 });
+    });
+    return c;
+  },
+}).svg;
+
+// F3 shield control with H4's lenses, left bottom
+s += du(12, 558, 308, 230, {
+  id: 'f3', b: 8, title: 'SHIELDS  ·  SHIP',
+  content: (gx, gy, gw, gh) => {
+    let c = '';
+    const L = gx + 8, R = gx + gw - 8;
+    // eight sectors summed from the cloud; thinner aft-port where the cloud is still returning
+    c += I.shieldRing(L + 58, gy + 66, 44, [0.95, 0.85, 0.7, 0.55, 0.4, 0.3, 0.55, 0.85], { trim: 0 });
+    const X = L + 128;
+    c += text(X, gy + 20, 'CLOUD', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 20, '230/300 KG', { size: B, bold: true, fill: C.white, anchor: 'end' });
+    c += text(X, gy + 42, 'MODE', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + I.box(R - 64, gy + 29, 64, 18, 'RAISED', 'engaged', { size: 10.5 });
+    // trim: five positions, the current one engaged, each a click target
+    // trim is set on the ring itself: click a side to lean the cloud there, the centre for even (8 cycles)
+    c += text(X, gy + 66, 'TRIM', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + I.box(R - 64, gy + 53, 64, 18, 'BOW', 'engaged', { size: 10.5 });
+    c += text(X, gy + 90, 'EMIT 1', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(X + 58, gy + 90, '100%', { size: B, bold: true, fill: C.white });
+    c += text(X, gy + 108, 'HEAT', { size: 9.5, bold: true, fill: C.dim, track: 0.6 }) + I.hbar(X + 40, gy + 108, 92, 0.42, { notch: 0.85, notchColor: C.amber });
+    c += line(gx + 4, gy + 128, gx + gw - 4, gy + 128, C.graticule, 1);
+    // H4 merged: the four condition lenses, dark (nominal)
+    ['HULL\n81%', 'SHIELDS', 'POWER', 'LIFE SUP'].forEach((n, i) => c += lens(L + i * 72, gy + 146, 68, 30, n, null));
+    return c;
+  },
+}).svg;
+
+// F2 weapons rack, bottom centre: a row per mount, the mounts in hand marked
+s += du(330, 632, 620, 156, {
+  id: 'f2', b: 10, title: '',
+  content: (gx, gy, gw) => {
+    let c = '';
+    const cols = [{ t: '', w: 16 }, { t: 'MOUNT', w: 62 }, { t: 'WEAPON', w: 150 }, { t: 'STATE', w: 140 }, { t: 'HIT', w: 112 }, { t: 'BY', w: 70, align: 'right' }];
+    let hx = gx + 10;
+    cols.forEach(col => { c += text(col.align === 'right' ? hx + col.w : hx, gy + 14, col.t, { size: 10, bold: true, fill: C.dim, anchor: col.align === 'right' ? 'end' : 'start', track: 0.6 }); hx += col.w; });
+    c += line(gx + 4, gy + 19, gx + gw - 4, gy + 19, C.graticule, 1);
+    const pips = (n) => { let p = ''; for (let i = 0; i < 3; i++) p += `<circle cx="${i * 9}" cy="0" r="3" fill="${i < n ? C.cyan : 'none'}" stroke="${C.cyan}" stroke-width="1"/>`; return p; };
+    const rows = [
+      [true, 'NOSE', 'COILGUN MK1', ['READY', 'normal'], [3, 'GOOD'], 'YOU'],
+      [true, 'PORT', 'AUTOCANNON MK1', ['RELOAD 0.4 S', 'normal'], [2, 'FAIR'], 'YOU'],
+      [true, 'STBD', 'AUTOCANNON MK1', ['OUT OF ARC', 'off'], null, 'YOU'],
+      [false, 'PORT', 'HARPOON LAUNCHER', ['READY  3 LEFT', 'normal'], null, 'YOU'],
+      [false, 'STBD', 'LASER MK1', ['NO POWER', 'caution'], null, '—'],
+    ];
+    rows.forEach(([hand, m, wpn, [st, stS], hit, by], i) => {
+      const yy = gy + 35 + i * 18;
+      let x = gx + 10;
+      if (hand) c += path(`M${x} ${yy - 10} L${x + 7} ${yy - 5} L${x} ${yy}`, C.cyan, 1.5, { fill: C.cyan });
+      x += 16;
+      c += text(x, yy, m, { size: B, bold: true, fill: C.white, track: 0.4 }); x += 62;
+      c += text(x, yy, wpn, { size: B, fill: C.white }); x += 150;
+      if (stS === 'normal') c += text(x, yy, st, { size: B, bold: true, fill: C.white });
+      else c += I.box(x - 2, yy - 13, st.length * 8.2 + 10, 17, st, stS, { size: 11 });
+      x += 140;
+      if (hit) c += `<g transform="translate(${x + 3} ${yy - 4.5})">${pips(hit[0])}</g>` + text(x + 30, yy, hit[1], { size: B, bold: true, fill: C.cyan });
+      x += 112;
+      c += text(x + 70, yy, by, { size: B, bold: true, fill: by === 'YOU' ? C.cyan : C.dim, anchor: 'end' });
+    });
+    c += line(gx + 4, gy + 114, gx + gw - 4, gy + 114, C.graticule, 1);
+    // the rack's foot: decoys (unlimited in the game, on a 3 s cooldown: ready or seconds) and point defence
+    c += text(gx + 26, gy + 130, 'DECOY', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(gx + 76, gy + 130, 'READY', { size: B, bold: true, fill: C.white });
+    c += text(gx + 160, gy + 130, 'POINT DEFENCE', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + I.box(gx + 268, gy + 117, 52, 17, 'AUTO', 'engaged', { size: 10 });
+    return c;
+  },
+}).svg;
+// the master alert hood over the rack
+s += masterHood(330, 632, 620, null, 'WEAPONS');
+
+// F1 lock card, full, right middle
+s += du(960, 176, 308, 210, {
+  id: 'f1', b: 8, title: 'LOCK',
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 8, R = gx + gw - 8;
+    c += sym.diamond(L + 6, gy + 15, 6, C.red, 1.5, C.red) + text(L + 20, gy + 21, 'RAIDER', { size: V, bold: true, fill: C.red, track: 0.6 });
+    c += I.box(R - 70, gy + 8, 70, 18, 'HOSTILE', 'warning', { size: 10.5 });
+    c += text(L + 20, gy + 40, 'FIRING ON YOU  ·  KITING', { size: 11.5, bold: true, fill: C.white, track: 0.5 });
+    c += line(gx + 4, gy + 50, gx + gw - 4, gy + 50, C.graticule, 1);
+    c += text(L, gy + 70, 'RNG', { size: 11, bold: true, fill: C.dim }) + text(L + 34, gy + 70, '7.7 KM', { size: V, bold: true, fill: C.white });
+    c += text(L + 124, gy + 70, 'CLOSING', { size: 11, bold: true, fill: C.dim }) + text(R, gy + 70, '12 M/S', { size: V, bold: true, fill: C.white, anchor: 'end' });
+    c += text(L, gy + 90, 'REL', { size: 11, bold: true, fill: C.dim }) + text(L + 34, gy + 90, '38 M/S', { size: B, bold: true, fill: C.white }) + text(L + 124, gy + 90, 'TOWARD', { size: 11, bold: true, fill: C.dim }) + text(R, gy + 90, '220°', { size: B, bold: true, fill: C.white, anchor: 'end' });
+    c += line(gx + 4, gy + 100, gx + gw - 4, gy + 100, C.graticule, 1);
+    const guns = [['NOSE', 'COILGUN', 'IN ARC', 3, 'GOOD'], ['PORT', 'AUTOCAN', 'IN ARC', 2, 'FAIR'], ['STBD', 'AUTOCAN', 'OUT OF ARC', 0, '']];
+    guns.forEach(([m, w, arc, n, h], i) => {
+      const yy = gy + 120 + i * 20;
+      c += text(L, yy, m, { size: B, bold: true, fill: C.white }) + text(L + 50, yy, w, { size: B, fill: C.white });
+      c += text(L + 132, yy, arc, { size: 11.5, bold: true, fill: arc === 'IN ARC' ? C.white : C.dim, track: 0.4 });
+      if (n) { for (let k = 0; k < 3; k++) c += `<circle cx="${R - 64 + k * 9}" cy="${yy - 4.5}" r="3" fill="${k < n ? C.cyan : 'none'}" stroke="${C.cyan}" stroke-width="1"/>`; c += text(R, yy, h, { size: B, bold: true, fill: C.cyan, anchor: 'end' }); }
+    });
+    c += line(gx + 4, gy + 172, gx + gw - 4, gy + 172, C.graticule, 1);
+    c += text(L, gy + 190, 'KNOWN', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(L + 60, gy + 190, 'ENGINES DAMAGED', { size: B, bold: true, fill: C.white });
+    return c;
+  },
+}).svg;
+
+// H5 contact scope, right bottom: the range that holds the lock and the missile
+s += du(1068, 588, 200, 200, {
+  id: 'h5', b: 8, title: 'SCOPE',
+  content: (gx, gy, gw, gh) => I.scope(gx + gw / 2, gy + gh / 2, gw / 2 - 10, [
+    { kind: 'hostile', x: 0.42, y: -0.21, locked: true }, { kind: 'hostile', x: 0.86, y: 0.12 },
+    { kind: 'missile', x: 0.22, y: -0.09, a: 236 }, { kind: 'neutral', x: -0.5, y: 0.6 },
+  ], { heading: 90, range: '10 KM' }),
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: deck, emergency</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="context.js"></script>
+<script>
+// Walkthrough 11.7: on deck, the ship disabled (reactor stunned) and venting. The deck is zoomed in
+// on the captain, so the fire and the casualty are off screen and get pointers (D3).
+let s = rect(0, 0, 1280, 800, { fill: '#050607' });
+s += deckView(272, 46, 64, {
+  fire: true, breach: true, breachDoor: 'open', smoke: true, unpowered: true, dark: 0.45,
+  alarm: [[3.6, 0.6, 0.9]],
+  avatar: [4.6, 6.1],
+  crew: [[9.4, 5.8, 'Bea']],
+  labels: true,
+});
+
+// P1 glareshield: seat, nobody at the helm while the ship drifts (caution), battle stations
+s += glareStrip({ seat: 'DECK', authority: 'NOBODY, DRIFTING', authCaution: true, battle: true, clock: 'DAY 0 · 01:12', warp: '1X' });
+
+// P2: warnings first; within them, rows with a timer by time left, then by age; the sixth row is
+// "+n more". SUIT AIR is here because the captain's air is under 240 s (the wireframe leaves it out).
+s += eicas(12, 38, [
+  ['warning', 'NO POWER', 'RCTR STUN', 1, '0:12'],
+  ['warning', 'SUIT AIR', 'YOUR SUIT', -1, '3:20'],
+  ['warning', 'CREW CRIT', 'ADA', 1, '3:40'],
+  ['warning', 'FIRE', 'GALLEY', 2, ''],
+  ['warning', 'VACUUM', 'CARGO', 0, ''],
+], { more: 1 });
+
+// X3 emergency card, top centre: the ways out, their keys and costs
+s += emergencyCard(390, 38, 500, {
+  title: 'SHIP DISABLED: NO POWER',
+  rows: [['ABANDON SHIP', ['P']], ['CALL A TOW', ['B'], '3,400 CR  ·  −3 STANDING']],
+});
+
+// P4 message feed
+s += feed([['CREW', 'Bea to the reactor']]);
+
+// D3 off-screen pointers (context layer: dimmed while X3 shows, as 8.X3 asks)
+s += `<g opacity="0.55">` + offPointer(1262, 470, 90, 'FIRE  12 TILES', 'warning') + offPointer(1262, 560, 112, 'ADA DOWN  17 TILES', 'warning') + `</g>`;
+
+// L-BOTTOM: H4's deck face (no plan: the deck is the plan), then D1, the captain's suit display
+s += du(12, 558, 308, 132, {
+  id: 'h4', b: 8, title: 'SHIP',
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 8, R = gx + gw - 8;
+    [['HULL', 'warning'], ['SHIELDS', null], ['POWER', 'warning'], ['LIFE SUP', 'caution']].forEach(([n, st], i) => c += lens(L + i * 71, gy + 6, 67, 22, (st === 'warning' ? '◆ ' : st === 'caution' ? '▲ ' : '') + n, st === 'warning' ? C.red : st === 'caution' ? C.amber : null));
+    const bar = (y, label, frac, val, col) => text(L, y, label, { size: 11, bold: true, fill: C.dim, track: 0.6 }) + I.hbar(L + 74, y + 1, 120, frac, { color: col }) + text(R, y + 1, val, { size: B, bold: true, fill: col, anchor: 'end' });
+    c += bar(gy + 50, 'HULL', 0.54, '54%', C.red);
+    c += bar(gy + 70, 'POWER', 0.0, 'NONE', C.red);
+    c += text(L, gy + 90, 'LIFE SUP', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 91, 'RESERVE 42 KG', { size: B, bold: true, fill: C.amber, anchor: 'end' });
+    c += text(L, gy + 110, 'WORST ROOM', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 111, 'CARGO  VACUUM', { size: B, bold: true, fill: C.red, anchor: 'end' });
+    return c;
+  },
+}).svg;
+s += O.dcm(16, 698, [['CONDITION', 'LIGHT WOUND', 'caution'], ['SUIT AIR', '3:20', 'warning'], ['HERE', 'THIN AIR', 'caution']], { w: 300 });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

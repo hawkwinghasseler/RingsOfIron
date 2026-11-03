@@ -358,7 +358,7 @@ function deckView(x0, y0, k, o = {}) {
   consoles.forEach(([tx, ty, w, h, al0], i) => {
     const al = (o.alerts || {})[i] !== undefined ? o.alerts[i] : al0;
     s += rect(T(tx), U(ty), w * k, h * k, { fill: '#2C3238', stroke: '#15181B', sw: 1 });
-    const glow = al === 'warning' ? C.red : al === 'caution' ? C.amber : '#2B6F80';
+    const glow = al === 'warning' ? C.red : al === 'caution' ? C.amber : o.unpowered ? '#14181C' : '#2B6F80';
     s += rect(T(tx) + 2, U(ty) + 2, w * k - 4, h * k - 4, { fill: glow, r: 1 });
     if (al) s += `<circle cx="${T(tx + w / 2)}" cy="${U(ty + h / 2)}" r="${k * 1.1}" fill="${glow}" opacity="0.18"/>`;
   });
@@ -378,6 +378,8 @@ function deckView(x0, y0, k, o = {}) {
   });
   // hull outline over the floor
   s += `<path d="M${T(0)} ${U(0)} H${T(28)} L${T(31)} ${U(6)} L${T(28)} ${U(12)} H${T(0)} Z" fill="none" stroke="#6A727C" stroke-width="5"/>`;
+  // unpowered: the deck lights are out; only fire, beacons and the people's suit lamps read
+  if (o.dark) s += `<path d="M${T(-0.4)} ${U(-0.4)} H${T(28)} L${T(31.4)} ${U(6)} L${T(28)} ${U(12.4)} H${T(-0.4)} Z" fill="rgba(0,0,0,${o.dark})"/>`;
   // breach: a hole in the outer wall, venting streaks
   if (o.breach) {
     s += rect(T(5.6), U(-0.3), k * 0.9, 9, { fill: '#000' });
