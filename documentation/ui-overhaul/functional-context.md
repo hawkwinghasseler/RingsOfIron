@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 1.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 2.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -71,7 +71,7 @@ wounded on their own. So a fire is shown with whether crew are on it, not only w
 | Interrupt | Threat alert (missiles inbound), emergency card | The situation, always on top |
 | Persistent | Status strip, caution and warning panel, message feed, objective | Always present, sizes to content |
 | Context | Seat instruments and situation panels | Seat and situation, automatically |
-| On demand | Full-screen modes: map, ship, station, boarding, captain's record, controls | The player |
+| On demand | Full-screen modes (map, ship, station, boarding, captain's record, controls) and the orders menu | The player |
 
 **Progressive disclosure.** Every instrument has a compact face (the default) and an expanded face
 (hover, or hold the detail key) with the secondary numbers enthusiasts want: heading in degrees, the
@@ -215,6 +215,9 @@ The UI's state is three independent things: the **seat** (where the captain is),
 
 `-PviewAnywhere` (`GameSession.VIEW_ANYWHERE`) is treated as Helm when the view is exterior.
 
+Deck applies aboard any craft: the player's ship, a station across a docked walkway, or a ship being
+boarded. Aboard anything but the player's own ship, P1 names the craft ("DECK · Highport").
+
 The seat comes from the game's `Bridge` (`playerAtHelm`, `playerOnGuns`) and `ViewModeController`.
 The UI gets it as one value, not by inferring it from the view mode.
 
@@ -283,6 +286,10 @@ Speed, closing speed and the velocity markers share one reference frame, shown o
 The player can pin a frame (a key cycles Auto, Orbit, Nav, Lock). Today the markers follow the lock
 only; this widens it (see question 1).
 
+An automatic change of frame never happens while the player is thrusting or turning: it waits until
+the controls are released, so the number under the player's eye doesn't jump mid-manoeuvre. When the
+frame changes, the frame tag on H1 and on the velocity markers is highlighted for 2 s.
+
 ### 4.6 The visibility matrix
 
 ● shown in full · ◐ compact face · ! only while its own condition holds · – hidden.
@@ -294,12 +301,12 @@ only; this widens it (see question 1).
 | P2 Caution and warning | ! | ! | ! | ! | ! | ! | ! | ● | ! | chip in P1 |
 | P3 Threat alert | ! | ! | ! | ! | ! | ! | ! | ! | ! | ! |
 | P4 Message feed | ! | ! | ! | ! | ! | ! | ! | ! | ! | ! (1 line) |
-| P5 Objective | ◐ | ● | – | – | – | – | ◐ | – | ◐ | – |
+| P5 Objective | ◐ | ● | – | !¹ | !¹ | !¹ | ◐ | – | ◐ | – |
 | P6 Prompt and hints | ! | – | ! | – | – | – | ! | ! | ! | – |
 | H1 Flight display | ● | ◐ | merged into H3 | ● | – | – | – | – | – | – |
 | H2 Navigation | ● | ● | ◐ | ◐ | – | – | – | – | ! (planned departure) | – |
 | H3 Docking display | – | – | ● | ● | – | – | – | – | – | – |
-| H4 Ship condition | ◐ | ◐ | ◐ | ● | ● (with F3) | ◐ | ! | ● | ◐ | – |
+| H4 Ship condition | ◐² | ◐² | ◐² | ◐² | ● (with F3) | ◐² | ! | ● | ◐² | – |
 | H5 Contact scope | ! | – | ● | ● | ● | ● | – | – | – | – |
 | H6 Lock card | ! | – | ! | ● | F1 instead | F1 instead | – | – | – | – |
 | H7 Armament strip | – | – | – | ● | F2 instead | F2 (one gun) | – | – | – | – |
@@ -311,11 +318,18 @@ only; this widens it (see question 1).
 | D2 Inspect card | – | – | – | – | – | – | on hover | on hover | on hover (deck) | – |
 | D3 Off-screen pointers | – | – | – | – | – | – | ! | ● | – | – |
 | X1 Station panel | – | – | – | – | – | – | – | – | ● | – |
+| C1 Orders menu | on key | on key | on key | on key | on key | on key | on key | on key | on key | – |
 | X2 Boarding panel | ! | – | – | ! | ! | – | ! | ! | – | – |
 | X3 Emergency card | ! | ! | ! | ! | ! | ! | ! | ● | ! | ! |
 | W1 to W7 world overlays | ● | ◐ (W1 only) | ● | ● | ● | ● | – | – | ◐ | – |
 
 Rows marked "!" have their trigger in their own section.
+
+¹ In combat, P5 shows (compact) only when the tracked objective is itself a fight: a defence, a bounty
+or a convoy, with its progress ("2 of 3 beaten").
+
+² H4 shows its compact face while the ship is nominal, and expands by itself when any of its lights is
+not (section 7, H4). Combat alone does not expand it: a healthy ship in a fight stays dark.
 
 ---
 
@@ -323,39 +337,51 @@ Rows marked "!" have their trigger in their own section.
 
 ### 5.1 Zones
 
-The screen is divided into fixed zones so that a widget appearing never moves another. Each widget
-belongs to one zone and stacks inside it.
+The screen is divided into fixed zones, so that a widget appearing in one zone never moves a widget in
+another. Each widget belongs to one zone and stacks inside it.
 
 ```
  0                                                                          1280
  +--------------------------------------------------------------------------+ 0
  | P1 STATUS STRIP  seat | helm authority | battle stations ... clock | warp | 26
- +--------------------+----------------------------------+------------------+
- | ZONE L-TOP         |        ZONE TOP-CENTRE           | ZONE R-TOP       | 38
- | P2 caution/warning |        P3 threat alert           | P4 message feed  |
- |                    |        X3 emergency card         |                  |
- +--------------------+                                  +------------------+ ~170
- | ZONE L-MID         |                                  | ZONE R-MID       |
- | P5 objective       |                                  | H6/F1 lock card  |
- | H2 navigation      |            THE WORLD             | H7 armament      |
- | F4 threat list     |        (centre kept clear:       | X1 station panel |
- |                    |      no fixed widgets inside     | X2 boarding      |
- |                    |       the 560 x 400 middle)      |                  |
- +--------------------+                                  +------------------+ ~560
- | ZONE L-BOTTOM      |  P6 prompt (when not anchored)   | ZONE R-BOTTOM    |
+ +--------------------+----------------------------------+------------------+ 38
+ | L-TOP              |  TOP-CENTRE (interrupts)         | R-TOP            |
+ | P2 caution/warning |  P3 threat alert                 | P4 message feed  |
+ |                    |  X3 emergency card               |                  |
+ +--------------------+  ........................ 212    +------------------+ 170
+ | L-MID              |                                  | R-MID            | 176
+ | P5 objective       |  :  CENTRE, kept clear       :   | H6/F1 lock card  |
+ | H2 navigation      |  :  220 .. 590               :   | H7 armament      |
+ | F4 threat list     |  :  no fixed widget, ever    :   | X1 station panel |
+ |                    |  :                           :   | X2 boarding      |
+ +--------------------+  ................................+------------------+ 552
+ | L-BOTTOM           |  P6 prompt (when not anchored)   | R-BOTTOM         | 558
  | H4 ship condition  +----------------------------------+                  |
- | F3 shield control  | ZONE BOTTOM-CENTRE               | H5 contact scope |
+ | F3 shield control  | BOTTOM-CENTRE                    |  H5 contact scope|
  | D1 captain vitals  | H1 flight / H3 docking / F2 rack |                  |
- +--------------------+----------------------------------+------------------+ 800
+ +--------------------+----------------------------------+------------------+ 788
    12 .. 320                330 .. 950                       960 .. 1268
 ```
 
-- **Side columns** are 308 units wide (left 12 to 320, right 960 to 1268).
+| Zone | x | y | w | h | Holds, outer edge first |
+|---|---|---|---|---|---|
+| P1 strip | 0 | 0 | 1280 | 26 | P1 |
+| L-TOP | 12 | 38 | 308 | 132 | P2 |
+| L-MID | 12 | 176 | 308 | 376 | P5, H2, F4 |
+| L-BOTTOM | 12 | 558 | 308 | 230 | H4 or F3 with H4; on deck H4 then D1 |
+| TOP-CENTRE | 390 | 38 | 500 | 174 | P3, X3 |
+| CENTRE (clear) | 360 | 220 | 560 | 370 | nothing fixed |
+| BOTTOM-CENTRE | 330 | 598 | 620 | 190 | H1, H3 or F2; C1 opens above it |
+| R-TOP | 960 | 38 | 308 | 132 | P4 |
+| R-MID | 960 | 176 | 308 | 376 | H6 or F1, H7, X1, X2 |
+| R-BOTTOM | 960 | 558 | 308 | 230 | H5, right-aligned |
+
+- **Side columns** are 308 units wide.
 - **Bottom-centre** is the primary instrument for the seat: 400 units wide at the helm, up to 620 at
   fire control. It sits directly below the ship, which is drawn at the centre, so the eye travels
   down from the ship to its instrument and back.
-- **The centre** (560 x 400 around the ship) holds no fixed widget, ever. World overlays and anchored
-  prompts may enter it.
+- **The centre** holds no fixed widget, ever. World overlays, anchored prompts (P6), hover cards (D2,
+  W1) and the orders menu (C1) may enter it.
 - At wider aspect ratios the side columns stay at the edges and the centre grows. At UI scales that
   leave fewer than 1280 x 800 units, `UiScale` already holds the scale down.
 
@@ -441,6 +467,11 @@ age. Advisories never appear here (they go to the strip or the feed).
 sound plays with it (`NoticeAudio`). A row stays while its condition holds and leaves when it clears.
 Hovering a row (or focusing it with the pad) shows where on the ship it is, in H4's plan or the deck.
 
+**Master alert cue.** P2 sits at the edge of the screen, away from where the player looks. So a new
+warning also lights a small cue on the seat's primary instrument (H1, H3 or F2; on deck, beside D1's
+slot), the way an airliner's master warning sits in the pilot's eyeline. It shows the warning's code,
+and clears when the player hovers P2, or after 5 s. A new caution lights it without the code, for 2 s.
+
 **The condition catalogue.** This is the complete list; nothing else may add rows without being added
 here.
 
@@ -449,6 +480,7 @@ here.
 | SUIT AIR | Warning | Captain's suit air ≤ 240 s and not breathing ship air | "Your suit" | "refilling" while at a tank | Air left | `AirWatch`, `CaptainSafety` |
 | CAPTAIN WOUNDED | Warning | Captain bleeding or worse | Wound level | "medic on it" | Bleed-out | Crew health |
 | IMPACT | Warning | Orbit meets a surface (`OrbitInfo.impactWarning`) and no plan avoids it | Body | "plan avoids it" when the planned path clears it | Time to impact | Orbital |
+| COLLISION | Warning | A craft or rock in the bubble will pass within its radius plus ours in the next 60 s, closing faster than the safe docking speed | What, bearing | – | Time to contact | New: closest approach of bubble contacts |
 | FIRE | Warning | Burning tiles > 0 | Rooms | Crew assigned to extinguish | – | `ShipAlerts`, task board |
 | HULL BREACH | Warning | Breaches > 0 | Count, rooms | Crew sealing | – | `ShipAlerts`, task board |
 | VACUUM | Warning | A room at vacuum (not an airlock cycling) | Rooms | Crew sealing | – | `ShipAlerts` |
@@ -511,6 +543,11 @@ the Log (M5). A message that only restates a condition in P2 is not posted to th
 **Examples.** "Station: clearance granted, port 6"; "Sponsor: payday, 2,000 cr"; "Crew: Ada back
 inside"; "Gunnery: Raider disabled"; "Log: autosaved".
 
+**In combat** the feed would flood with hits and kills, so it summarises: gunnery and point-defence
+events from the last 5 s merge into one line ("Gunnery: 3 hits on Raider · PD: 2 down"), and routine
+messages from other sources wait in the Log until combat ends, then show as one line ("4 messages in
+the log"). Notable messages still show.
+
 **Replaces.** The notices in the status column.
 
 ### P5 Objective
@@ -529,6 +566,9 @@ inside"; "Gunnery: Raider disabled"; "Log: autosaved".
 
 "+2 more contracts" under it when more are held. Compact face: heading and time left only.
 
+In combat, P5 shows only when the tracked contract is a fight (a defence, a bounty, a convoy), compact,
+with its progress.
+
 **Data.** `ContractBoard.describe/progress`, `FirstPlay.objective`, `OpeningGuide.text`.
 
 **Replaces.** The gold contract lines, the First Play objective and the walkthrough text in the status
@@ -544,14 +584,40 @@ nothing on screen is the subject.
 
 **Content.**
 
-- **Prompts** (always on): the object's name and up to three verbs with keys: "Helm · [E] use ·
-  [V] sit and fly"; "Suit locker · [E] suit up"; "Door (jammed) · [F] force".
+- **Prompts** (always on): the object's name and up to three verbs with keys: "Helm · [E] sit and
+  fly"; "Suit locker · [E] suit up"; "Engineering console · [E] systems"; "Door (jammed) · [F] force".
+  E is always the object's main action: at a seat it sits (as V does), at a system's console it opens
+  Ship › Systems at that system (section 4.3), at a locker it suits up. Today E at the helm opens a
+  power panel, which D2 replaces.
 - **Learning hints** (by setting): for each action in the context's hint list, the hint shows until
   the player has used that action 3 times, then retires; F1 always lists all. Settings: Learning
   (default), Always, Off.
 
 **Replaces.** The fixed-position "Press [E] for the ... panel" prompt, the bottom key hint line and
 the orbit panel's caption hints.
+
+### C1 Orders menu
+
+**Purpose.** Every order the captain can give, in one place, with whether it can be given now. Today
+the orders are scattered over keys (1 to 6, 8, 9, P, B) and two windows, and the player has no way to
+see which are possible.
+
+**Zone.** Opens above the seat's primary instrument (bottom centre), over the world; closes on an order,
+the key again, or Esc. It doesn't pause.
+
+**Key.** O (freed by moving the lighting toggle to Settings). Gamepad: given a button when the pad's
+layout is next revised; until then the pad's existing order buttons stay as they are.
+
+**Content,** grouped, each order with its own key and, when it can't be given, why:
+
+| Group | Orders | Source |
+|---|---|---|
+| Helm | Fly the planned burns · Match velocity with Nav · Hold position on Nav · Approach Nav (distance) · Dock at Nav · Autopilot to Nav · Cancel | `HelmOrders`, `Autopilot` (keys 1 to 6, 0) |
+| Shields | Raise or lower · Trim even, bow, port, stern, starboard | `ShieldModel` (9, 8) |
+| Crew | Suits at battle stations on or off · EVA: hold everyone in, or let them out | `CrewProvider.toggleSuits/toggleEva` |
+| Ship | Abandon ship · Call a tow (with its fee) | `AbandonShip`, `DistressBeacon` (P, B; both still need a second press) |
+
+The direct keys keep working without the menu; the menu is how a player finds them.
 
 ---
 
@@ -592,7 +658,7 @@ assist; needs exposing), `Navigation.deltaVLeft` (delta-v), `ShipStatusProvider`
 **Face:**
 
 ```
- ORBIT   Earth  alt 400 km      Ap 403 km T-24:10   Pe 397 km T-70:40
+ ORBIT   Earth  alt 400 km      Ap 403 km T-24:10   Pe 397 km T-1 h 10 m
  NAV     Shackleton Ice  1,240 km  opening 220 m/s
          closest 3.2 km at T-2 h 05 m, 14 m/s
  NEXT    burn 1 of 2  T-12:05   420 m/s   flown by: helm
@@ -650,7 +716,9 @@ exposing), `HelmOrders`.
 **Compact face** (dark cockpit), 300 x 40: four status lights with labels, Hull · Shields · Power ·
 Life support. Each is nominal (unlit), caution or warning, by the same thresholds as P2.
 
-**Expanded face**, 308 x 230, when any light is not nominal, in combat, or on hover:
+**Expanded face**, 308 x 230, when any light is not nominal, or on hover (or the detail key). It
+stays expanded for 10 s after the last light goes dark, so a flickering condition doesn't make it
+bounce:
 
 - The ship's plan (today's `WireframeMinimap`), with fire, breach, vacuum, smoke, hit flashes,
   disabled and stunned systems, crew positions as dots, and where crew are working.
@@ -788,9 +856,14 @@ tile's atmosphere).
 
 **Zone.** Beside the cursor (or the focused object with the pad), kept out of the side columns.
 
+Hovering shows the card; a click pins it, and only a pinned card's buttons act, so a stray click on
+the deck never switches anything. Switching off a reactor or life support asks again. With a gamepad
+the subject is the object nearest the captain in the direction they face (as the interact prompt
+picks a console today), and a button cycles to the next.
+
 | Subject | Shows | Actions |
 |---|---|---|
-| Crew member | Name, role, condition, activity ("sealing a breach", "lounging on the couch"), suit, morale | Open in Ship › Crew |
+| Crew member | Name, role, condition, activity ("sealing a breach", "lounging on the couch"), suit, morale | Open in Ship › Crew; the EVA order that applies (send out, call in, let out) |
 | System | Type, health, powered, on or off, stunned (s), circuit | Switch on or off (today's console power switch) |
 | Tile or room | Pressure, temperature, fire, smoke | – |
 | Door | Open, shut, jammed, held | Force (F), cut (B) as today |
@@ -824,7 +897,7 @@ nearest first; warnings before cautions.
  HIGHPORT · Terran Patrol Authority          standing: Trusted (+42)
  Port 6 · docked
  [T] Market      [Y] Yard: 2 repairs, tanks 86%     [J] Missions: 4 offers
- [Y] Ships for sale      [I] Hire: 3 looking
+ Shipyard: 3 ships        Hire: 3 looking            (tabs in the terminal)
  Infirmary: treating 1 (bill 150 cr)
  Credits 5,000 cr     Hold 12 / 40 m³
  [U] Undock                          autosaved
@@ -878,6 +951,10 @@ below.
 - **Off screen.** One edge marker per contact that matters (Lock, Nav, objective, hostile, inbound
   missile), with range or time to impact. Others don't get edge markers.
 - **Under warp.** Only Nav and objective labels.
+- **Hover card.** Hovering a contact (or its scope glyph) shows a small card: name, kind, faction,
+  state (hostile, fleeing, disabled, surrendered, wreck, docked), range, and the one-line detail the
+  traffic map already has ("to Gateway, 2 h"). A click selects as today. This is how a player learns
+  about a contact without locking it.
 
 ### W2 Velocity markers
 
@@ -906,8 +983,10 @@ arrows join W1's edge markers.
 ### W7 Inset views
 
 The picture-in-picture bubbles for the own ship, Lock and Nav when the view is zoomed out too far to
-see them. Kept, with fixed preferred slots so they don't wander: own ship beside H1, Lock beside its
-card, Nav beside H2. Each inset carries its Lock or Nav mark.
+see them. Kept, anchored in the world as today (over the craft, beside it with a line to it, or at the
+edge toward it), but clamped to the world area: a bubble that would fall under a side column or the
+bottom-centre instrument slides along its edge marker's line until it is clear. Each inset carries its
+Lock or Nav mark. Its "[+] 3 others" list is W1's cluster label, so the two read alike.
 
 ---
 
@@ -951,7 +1030,7 @@ on every tab: credits, standing with the station's faction, hold used of capacit
 | Market | Today's `TradeWindow`: per commodity stock, buy, sell, held, on order, and the trade buttons |
 | Yard | Repairs (the damage list and Repair all), supplies (tanks and air, with their cost), refits (each hardpoint with new, used and salvaged options), furnishings (buy and arrange), Rebuild decks (opens the ship editor) |
 | Shipyard | Ships for sale (price, after trade-in, locked and why); your ship's trade-in; a prize in tow (sell or turn in, with terms) |
-| Missions | Offers (title, giver, terms, note, locked and why), each with Take; the faction tension line |
+| Missions | Offers (title, giver, terms, note, locked and why), each with Take; the faction tension line; the contracts already held, one line each with Give up, so the player can weigh a new job against them (their full detail is in M5) |
 | Hire | Who is looking for a berth (role, skills, terms), berths free and the week's wages |
 
 The station's infirmary is passive and shows in X1 and the rail.
@@ -1032,9 +1111,11 @@ the world. P2 shows APPROACH FAST only if the player is coming in too fast.
 
 ![Helm, combat](wireframes/04-helm-combat.png)
 
-A raider fires two missiles. P3 shows them. H6 lock card and H7 armament on the right; H5 scope
-expanded to the range that holds the raider and the missiles; H4 expanded with the plan; H1 stays; H2
-is down to one line. P1 shows BATTLE STATIONS.
+A raider fires two missiles and one hit has holed the cargo bay. P3 shows the missiles. H6 lock card
+and H7 armament on the right; H5 scope at the range that holds the raider and the missiles; H4 has
+expanded by itself because the breach lit its hull light, and P2 lists the breach with the crew sealing
+it; the master alert cue on H1 caught the eye when the breach came. H1 stays; H2 is down to one line.
+P1 shows BATTLE STATIONS. Had the ship been unhurt, H4 would still be four dark lights.
 
 ### 11.5 Fire control, combat
 
@@ -1076,6 +1157,13 @@ can fix); P1. The flight instruments retire.
 ### 11.11 Ship, systems
 
 ![Ship systems](wireframes/11-ship-systems.png)
+
+### 11.12 Orders menu
+
+![Orders menu](wireframes/12-orders-menu.png)
+
+O at the helm in cruise. The orders that need the Nav in the bubble say so, and the tow says why it is
+refused; nothing is hidden, so the player learns what exists.
 
 ---
 
@@ -1144,7 +1232,7 @@ designs from the other two threads may differ; this section applies to skinning 
 | "strain 0%" | Status column | Debug value | P2 DOCK STRAIN above 50% |
 | Raw approach numbers | Status column | Unflyable as text | H3 |
 | Fixed bottom key hint line | Bottom edge | Permanent teaching of known keys | P6 learning hints; M6 |
-| "Lighting on/off" (O) | Notices | Graphics option, not play | Settings › Graphics; developer layer |
+| "Lighting on/off" (O) | Notices | Graphics option, not play | Settings › Graphics; developer layer; O opens the orders menu |
 | Range under every nameplate | World | Clutter | Lock, Nav and hostiles only |
 | All later burns' arrows and numbers | World | Clutter | W3 next burn only; M1 |
 | "Scenario: ...", "Content loaded with errors" | Notices | Developer information | Developer layer |
@@ -1181,7 +1269,8 @@ The existing providers (`TradeProvider`, `YardProvider`, `MissionProvider`, `Boa
 ## 15. Input, focus and the Esc stack
 
 - **Keys keep their actions** (section 4.3 maps them to modes). New: a detail key (hold) to expand
-  every instrument, and a frame key to cycle the reference frame. Both rebindable.
+  every instrument, a frame key to cycle the reference frame, and O for the orders menu (C1), which
+  the lighting toggle gives up. All rebindable. E becomes each object's main action (P6).
 - **Esc closes the topmost thing**: the inspect card, then a mode, then (with nothing open) the pause
   menu, as `GameShell.hudWindowOpen` does today.
 - **The same key closes the mode it opened**; a mode's tab keys switch tabs inside it.
@@ -1197,7 +1286,8 @@ The existing providers (`TradeProvider`, `YardProvider`, `MissionProvider`, `Boa
 For whoever implements it. In order, each step shippable on its own:
 
 1. **Context and zones.** `UiContextProvider`; the zone layout in `UiHud`; P1 to P4 replacing the
-   status column; the cut list. The biggest visible change for the least work.
+   status column; the cut list; the orders menu (C1), which only gathers orders that already exist.
+   The biggest visible change for the least work.
 2. **Helm.** H1, H2, H3, H4, H5, H6, H7; the reference frame; W1 decluttering and W3.
 3. **Fire control.** F1 to F4 with `WeaponStatusProvider` and `ShieldStatusProvider`.
 4. **Deck.** D1 to D3; the inspect card replaces the console power panel.
@@ -1222,7 +1312,9 @@ largest scale, and the centre stays clear.
 5. **Lock and Nav.** Keep them as two selections with two names, or merge them into one "selected
    contact" with weapons and navigation both following it?
 6. **Acknowledging warnings.** Should warnings need an acknowledge press to stop pulsing and sounding,
-   as in aircraft, or is the 2 s pulse enough?
+   as in aircraft, or is the 2 s pulse and the master alert cue enough?
+7. **O for orders.** The orders menu takes O from the lighting toggle, which moves to Settings. Is a
+   different key better for you?
 
 ---
 
@@ -1231,3 +1323,4 @@ largest scale, and the centre stays clear.
 | Version | Round | Changes |
 |---|---|---|
 | 1 | 0 | First version: inventory, context model, widget catalogue, wireframes |
+| 2 | 1 (self-critique) | H4 no longer expands just for combat, only when a light is lit (dark cockpit held in fights). Master alert cue on the primary instrument for new warnings. Objective shows in combat for fight contracts. The reference frame never switches mid-manoeuvre. Message feed summarises during combat. New C1 orders menu on O, gathering every order with why it can't be given. E is each object's main action. Inspect card: pin before acting, confirm risky switches, gamepad subject rule, EVA orders. Hover card for exterior contacts. COLLISION condition. Inset views stay world-anchored, clamped clear of widgets. Station panel no longer misassigns I and Y. Missions tab shows held contracts. Zones given exact bounds; the centre clear area moved to 220..590 so interrupts fit above it. Deck applies aboard any craft. Time format examples fixed. Wireframe 12 added |

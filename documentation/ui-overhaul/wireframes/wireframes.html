@@ -98,9 +98,17 @@ function box(id, name, x, y, w, h, kind = 'full', lines = [], ph = null) {
   screen.appendChild(d);
   return d;
 }
+/** A small labelled chip with no title line: the master alert cue. */
+function chip(x, y, w, h, text) {
+  const d = document.createElement('div');
+  d.className = 'b interrupt';
+  Object.assign(d.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', padding: '1px 5px' });
+  d.innerHTML = `<span class="ln">${text}</span>`;
+  screen.appendChild(d);
+}
 function centreClear() {
-  rect(360, 200, 560, 400, { 'stroke-dasharray': '3 6', stroke: '#5b6066' });
-  wtext(366, 204, 'centre kept clear', '');
+  rect(360, 220, 560, 370, { 'stroke-dasharray': '3 6', stroke: '#5b6066' });
+  wtext(366, 224, 'centre kept clear', '');
 }
 function ship(cx, cy, label = '') {
   rect(cx - 42, cy - 13, 84, 26, { fill: '#4a4e54' });
@@ -155,7 +163,7 @@ const layouts = {
     box('P5', 'Objective', 12, 176, 308, 44, 'compact', ['Deliver 120 Water → Shackleton Ice   1.4 d']);
     box('H2', 'Navigation', 12, 228, 308, 128, 'full', [
       'ORBIT Earth  alt 400 km',
-      '~      Ap 403 km T-24:10  Pe 397 km T-70:40',
+      '~      Ap 403 km T-24:10  Pe 397 km T-1 h 10 m',
       'NAV   Shackleton Ice  1,240 km  opening',
       '~      closest 3.2 km at T-2 h 05 m',
       'NEXT  burn 1/2  T-12:05  420 m/s  helm',
@@ -227,6 +235,7 @@ const layouts = {
       'thrust  ▣main ▢turn ▣strafe     assist ON',
       'Δv 1,240 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
     box('H5', 'Contact scope · 10 km', 1068, 588, 200, 200, 'full', [], { h: 160, text: 'scope: raider, 2 missiles' });
+    chip(736, 692, 100, 22, '◆ BREACH (cue)');
     centreClear(); ship(640, 400); velocity(640, 400);
     contact(870, 300, 'diamond', 'Raider', '7.7 km'); lockMark(870, 300);
     line(860, 306, 690, 392, '5 5', 1.2, '#e0e3e6'); line(880, 320, 700, 405, '5 5', 1.2, '#e0e3e6');
@@ -277,8 +286,8 @@ const layouts = {
     rect(420, 300, 30, 20); wtext(414, 324, 'helm');
     circ(470, 340, 6, { fill: '#d8dbde' }); wtext(480, 336, 'captain');
     circ(800, 330, 5, { fill: '#9aa0a6' }); wtext(810, 326, 'Ada');
-    box('P6', 'Prompt (anchored)', 380, 214, 250, 30, 'cond', ['Helm · [E] use · [V] sit and fly']);
-    box('D2', 'Inspect card (hover)', 820, 280, 230, 74, 'cond', ['Ada · Engineer', '~OK · sealing a breach', '~suit on · morale 70%']);
+    box('P6', 'Prompt (anchored)', 380, 214, 250, 44, 'cond', ['Helm · [E] sit and fly']);
+    box('D2', 'Inspect card (pinned)', 820, 280, 230, 92, 'cond', ['Ada · Engineer', '~OK · sealing a breach', '~suit on · morale 70%', '[Ship › Crew]  [Call in]']);
     wtext(560, 600, 'The deck is the display: fire, smoke, crew and damage are drawn in the world.');
   }],
   '07': ['Deck, emergency', () => {
@@ -323,7 +332,7 @@ const layouts = {
       '[T] Market',
       '[Y] Yard: 2 repairs, tanks 86%',
       '[J] Missions: 4 offers',
-      '[Y] Ships for sale · [I] Hire: 3',
+      'Shipyard: 3 ships · Hire: 3 looking',
       '~Infirmary: treating 1 (150 cr)',
       'Credits 5,000 cr   Hold 12/40 m³',
       '[U] Undock               autosaved']);
@@ -337,7 +346,7 @@ const layouts = {
     box('Plan', '', 0, 56, 320, 718, 'mode', [
       'ORBIT NOW',
       '~Earth  Ap 403 km T-24:10',
-      '~       Pe 397 km T-70:40  T 1 h 32 m',
+      '~       Pe 397 km T-1 h 10 m  T 1 h 32 m',
       '',
       'BURNS',
       '▶ 1  T-12:05     420 m/s   pro 420',
@@ -422,6 +431,35 @@ const layouts = {
       '',
       'Cut conduit at Corridor (8,3) strands the laser']);
     box('', 'foot: Crew: Ada back inside        [1-4] tabs · [I] close · [Esc]', 0, 774, W, 26, 'mode', []);
+  }],
+  '12': ['Orders menu (helm, cruise)', () => {
+    strip('HELM      Helm order: none                                    Day 0 · 00:33    1x');
+    emptySlots();
+    box('P5', 'Objective', 12, 176, 308, 44, 'compact', ['Deliver 120 Water → Shackleton Ice   1.4 d']);
+    box('H2', 'Navigation', 12, 228, 308, 98, 'full', [
+      'ORBIT Earth  alt 400 km',
+      'NAV   Shackleton Ice  1,240 km  opening',
+      'NEXT  burn 1/2  T-12:05  420 m/s',
+      'PLAN  Δv need 860 / have 1,240 m/s']);
+    box('C1', 'Orders menu (O)', 440, 476, 400, 204, 'cond', [
+      'HELM',
+      '  [1] Fly the planned burns',
+      '  [2] Match velocity with Nav     ~ Nav not in the bubble',
+      '  [3] Hold position on Nav        ~ Nav not in the bubble',
+      '  [4] Approach Nav (500 m)        ~ Nav not in the bubble',
+      '  [5] Dock at Nav                 ~ Nav not in the bubble',
+      '  [6] Autopilot to Nav',
+      'SHIELDS   [9] lower    [8] trim: even',
+      'CREW      suits at battle stations: on',
+      '          EVA: crew go out for work',
+      'SHIP      [P×2] abandon    [B×2] tow ~ ship can fly home']);
+    box('H1', 'Flight display', 440, 688, 400, 100, 'full', [
+      'ORBIT (auto)          7,672 m/s',
+      'thrust  ▢main ▢turn ▢strafe     assist ON',
+      'Δv 1,240 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
+    shipLights();
+    box('H5', '', 1220, 740, 48, 48, 'compact', ['~ 3 >']);
+    ship(640, 250);
   }],
 };
 
