@@ -41,6 +41,8 @@ public interface BoardingProvider {
         public boolean marked;
         /** Whether it can be marked (or unmarked) now: false for a part already off, or one out of reach from here. */
         public boolean toggleable = true;
+        /** Already off its hull, on its way home or in the hold. */
+        public boolean off;
     }
 
     final class Cargo {
@@ -65,6 +67,10 @@ public interface BoardingProvider {
         public boolean boarding;
         /** Taken: its parts and cargo are the player's to strip. */
         public boolean salvage;
+        /** No one aboard fights for it any more: its crew are held. */
+        public boolean taken;
+        /** Our boarding party aboard it, its crew still standing, and the prisoners held once it is taken. */
+        public int aboard, defenders, prisoners;
         /** Why it can't be stripped yet, while it can't. */
         public String salvageRefusal = "";
         public final Array<Part> parts = new Array<>();
@@ -84,7 +90,8 @@ public interface BoardingProvider {
 
         public void clear() {
             craftName = state = boardRefusal = stormRefusal = salvageRefusal = "";
-            boarding = salvage = byEva = false;
+            boarding = salvage = byEva = taken = false;
+            aboard = defenders = prisoners = 0;
             parts.clear();
             cargo.clear();
         }

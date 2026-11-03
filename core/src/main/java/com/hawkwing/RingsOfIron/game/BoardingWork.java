@@ -45,6 +45,10 @@ public class BoardingWork implements BoardingProvider {
         BoardedComponent b = Boarding.of(craft);
         boolean ours = b != null && b.by != null && b.by.get(ctx.engine.getUuidRegistry()) == ship;
         out.boarding = ours && !b.taken;
+        out.taken = ours && b.taken;
+        out.prisoners = out.taken ? b.prisoners : 0;
+        out.aboard = ours ? boarding.boardersAboard(ship, craft) : 0;
+        out.defenders = out.taken ? 0 : boarding.defenders(craft);
         out.state = state(ship, craft, b, ours);
         String refused = boarding.refusal(ship, craft);
         out.boardRefusal = refused == null ? "" : refused;
@@ -92,6 +96,7 @@ public class BoardingWork implements BoardingProvider {
                 row.name = salvage.partName(s.part);
                 row.value = salvage.salePrice(s.part);
                 row.marked = true;
+                row.off = true;
                 row.status = salvage.status(ship, craft, s);
                 row.toggleable = false;
             }
