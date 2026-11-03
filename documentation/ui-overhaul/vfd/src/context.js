@@ -1,4 +1,4 @@
-// FILAMENT x Context-driven design (functional-context.md, version 8): two racks frame the view (the
+// FILAMENT x Context-driven design (functional-context.md, version 9): two racks frame the view (the
 // status strip on top, the seat's instruments along the bottom) and everything that comes and goes is a
 // slab that powers up in a fixed slot of its zone. Laid at the minimum sizes (guide section 15, spec 12.4):
 // column text is 5x7 at pitch 1.5, so a column's 34 characters are 34 cells of 9 units.

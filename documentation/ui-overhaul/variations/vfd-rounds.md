@@ -5,10 +5,16 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
 | Ship stations | `functional-stations.md` round 14 | Converged in round 7: C's closest approach, and the lead reticle on the target |
-| Context-driven | `functional-context.md` version 8 | Rebuilt in round 7 (the kiter's numbers, H4's power row, the reticle on the target); no visual criticism open, two functional notes with the designer |
+| Context-driven | `functional-context.md` version 9 | Converged in round 8: version 9 took both of round 7's notes, each as FILAMENT had drawn it |
 | Task-driven | `functional-task.md` round 8 | Converged in round 7: the helm's order on a two-row HLM, the closest approach, the reticle on the target |
 
 A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 8
+
+**Context** (version 9). The designer took both of round 7's notes: H6's example closes at 12 m/s with a 2.2 s shot, and wireframe 04's H1 reads the kiter's 12 m/s in the LOCK frame (11.4 and 11.5 are one fight, three seconds apart). Both are as FILAMENT drew them, so no screen changed.
+
+All three FILAMENT variations have converged: each spec has taken every note, and no meaningful criticism remains.
 
 ## Round 7
 

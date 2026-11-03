@@ -1,6 +1,6 @@
 # FILAMENT × Context-driven
 
-The context-driven functional design (`functional-context.md`, version 8) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The context-driven functional design (`functional-context.md`, version 9) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -105,6 +105,12 @@ The approach, docked, fire-control and station changes (port 2, `T-19 s`, the hi
 
 No meaningful criticism of the visual build remains; the notes below are functional.
 
+## Round 7
+
+Version 9 took both round-4 notes: H6's example closes at 12 m/s with a 2.2 s shot, and wireframe 04's H1 reads 12 m/s in the LOCK frame, since 11.4 and 11.5 are the same fight three seconds apart. Both are as FILAMENT drew them, so no screen changed.
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
 ## Functional notes sent to the context designer
 
 Round 1 (all answered by version 3): keep P2 lit under X3, decoys have no stock, shields as a share, on-screen hazard tags for D3, states as one word.
@@ -121,7 +127,7 @@ Round 3 (after version 6; both taken in version 7):
 1. **Point defense, as the game spells it.** The game writes `point_defense`, and the stations and task specs now spell it that way; version 6 still has "point defence" (P3's line, F2, H7). FILAMENT prints `POINT DEFENSE ENGAGING`. Suggest the spec follow the game, so the three designs share one string.
 2. **H7's missile row on a hull with two launchers.** The gunship has two (AFT PORT and AFT STBD), and F2's sample has them at 3 and 4 left, while 11.4's H7 reads "4 left · ready". Suggest H7 say whether its row is the total across launchers (7) and ready when any launcher is, or one row per launcher.
 
-Round 4 (after version 8):
+Round 4 (after version 8; both taken in version 9):
 
 1. **H6's sample block.** H6's example still reads "closing 85 m/s" and "shot 2.1 s", while 11.4's wireframe and F1 read 12 m/s and 2.2 s, and W5 says pilots close at 80 m/s at most. Suggest the block follow.
 2. **H1's speed in 11.4.** The wireframe's H1 reads 38 m/s in the LOCK frame, F1's relative speed before version 8. With the kiter moving along the line of sight at 12 m/s, H1 would read 12, as FILAMENT draws it. Suggest the wireframe follow, unless 11.4 is meant as a different moment from 11.5.
