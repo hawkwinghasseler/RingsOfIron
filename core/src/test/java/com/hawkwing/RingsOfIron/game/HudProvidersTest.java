@@ -20,7 +20,10 @@ import com.ringsofiron.uihud.providers.DockingApproachProvider;
 import com.ringsofiron.uihud.providers.FlightStatusProvider;
 import com.ringsofiron.uihud.providers.KeyHintProvider;
 import com.ringsofiron.uihud.providers.NavigationProvider;
+import com.ringsofiron.uihud.providers.OrdersProvider;
 import com.ringsofiron.uihud.providers.StationBoardProvider;
+import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.shipops.AbandonShip;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.EnumSet;
@@ -34,8 +37,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The shared providers every HUD variant reads for flight, navigation, docking, contacts,
- * objectives, the posts aboard and the key strip, on a real career world, headless: the career
- * starts docked at a station, which most of them have something to say about.
+ * objectives, the posts aboard, the key strip and the orders, on a real career world, headless: the
+ * career starts docked at a station, which most of them have something to say about.
  */
 class HudProvidersTest {
     static final float FRAME = 1f / 60f;
@@ -248,5 +251,137 @@ class HudProvidersTest {
         assertTrue(k.placing);
         assertEquals("Click to place", k.placingText);
         assertEquals(0, k.hints.size);
+    }
+
+    // --- Orders -------------------------------------------------------------------------
+
+    final boolean[] seated = {true}, paused = {false};
+
+    private OrdersProvider.Orders orders() {
+        if (!(data.orders instanceof PlayerOrders)) {
+            data.orders = new PlayerOrders(world.context, world.nav, world.abandon, world.beacon, () -> seated[0], () -> paused[0],
+                    () -> 2.5, () -> 0);
+        }
+        data.refresh();
+        return data.orderState;
+    }
+
+    /** Another station than the one docked at, as the nav target. */
+    private String targetAnotherStation() {
+        String home = world.universe.uuidOf(dock());
+        for (EconomyNode s : world.macroSim.stations()) {
+            if (!s.stationUuid.equals(home) && !world.pirateBase.hidden(s.stationUuid)) {
+                world.nav.target.select(s.stationUuid);
+                return s.stationUuid;
+            }
+        }
+        throw new AssertionError("a second station");
+    }
+
+    @Test
+    void eachHelmOrderIsRefusedExactlyWhenTheHelmWouldRefuseIt() {
+        // With no target, then with a far station targeted: the reasons the menu shows are the helm's own
+        for (int pass = 0; pass < 2; pass++) {
+            if (pass == 1) targetAnotherStation();
+            for (OrdersProvider.HelmOrder h : OrdersProvider.HelmOrder.values()) {
+                if (h == OrdersProvider.HelmOrder.NONE) continue;
+                String shown = orders().helmRefusal[h.ordinal()];
+                HelmOrderComponent.Mode mode = HelmOrderComponent.Mode.valueOf(h.name());
+                String said = world.nav.helm.give(mode);
+                boolean given = world.nav.helm.mode() == mode;
+                if (given) assertEquals("", shown, h + ": the helm took it (" + said + ")");
+                else assertEquals(said, shown, h + ", pass " + pass);
+                world.nav.helm.give(HelmOrderComponent.Mode.NONE);
+            }
+        }
+        assertEquals("", orders().helmRefusal[OrdersProvider.HelmOrder.NONE.ordinal()], "cancel always can");
+    }
+
+    @Test
+    void aHelmOrderGivenStandsWithItsTargetAndLine() {
+        targetAnotherStation();
+        world.nav.helm.give(HelmOrderComponent.Mode.MATCH_VELOCITY);
+        OrdersProvider.Orders o = orders();
+        assertEquals(OrdersProvider.HelmOrder.MATCH_VELOCITY, o.helm);
+        assertEquals(world.nav.target.name(), o.helmTarget);
+        assertFalse(o.helmLine.isEmpty());
+        assertTrue(Float.isNaN(o.approachDistance), "not an approach");
+    }
+
+    @Test
+    void onDeckTheSeatedOrdersSaySoAndTheRestStillRead() {
+        seated[0] = false;
+        paused[0] = true;
+        OrdersProvider.Orders o = orders();
+        assertFalse(o.seated);
+        for (String r : o.helmRefusal) assertTrue(r.startsWith("Take a seat"), r);
+        assertTrue(o.autopilotRefusal.startsWith("Take a seat"), o.autopilotRefusal);
+        assertTrue(o.paused);
+        assertEquals(2.5f, o.abandonArmed, 1e-6);
+        assertEquals(0f, o.towArmed);
+    }
+
+    @Test
+    void docked_theAutopilotTheTowAndThePodsSayWhyNot() {
+        targetAnotherStation();
+        OrdersProvider.Orders o = orders();
+        assertEquals(OrdersProvider.Autopilot.OFF, o.autopilot);
+        assertTrue(o.autopilotRefusal.startsWith("Undock first"), o.autopilotRefusal);
+        assertEquals(world.beacon.refusal(), o.towRefusal);
+        assertTrue(o.towFee > 0 && o.towStanding == DistressBeacon.STANDING_COST, o.towFee + " cr");
+        assertEquals(world.abandon.refusal(game.player), o.abandonRefusal);
+        assertFalse(o.abandoning);
+        assertTrue(Float.isNaN(o.podsLaunchIn));
+        assertTrue(o.crewAboard > 0 && o.inPods <= o.crewAboard, o.inPods + " of " + o.crewAboard);
+        assertTrue(o.pods > 0 && o.freeSeats > 0, o.pods + " pods, " + o.freeSeats + " seats");
+        assertTrue(o.podDistance >= 0f && o.podTileX >= 0 && o.podTileY >= 0, "the captain is aboard: " + o.podDistance);
+        assertFalse(o.captainInPod);
+    }
+
+    @Test
+    void underwayTheCrewToThePodsCountsDown() {
+        assertTrue(world.docking.undock(game.player));
+        for (int i = 0; i < 300 && world.docking.dockedTo(game.player) != null; i++) world.update(FRAME);
+        assertEquals(null, world.docking.dockedTo(game.player), "cast off");
+        assertEquals("", orders().abandonRefusal, "underway, with pods and crew");
+        assertEquals(null, world.abandon.order(game.player));
+        OrdersProvider.Orders o = orders();
+        assertTrue(o.abandoning);
+        assertEquals(AbandonShip.LAUNCH_AFTER, o.podsLaunchIn, 0.5);
+        assertEquals("", o.abandonRefusal, "the key now launches the pods");
+    }
+
+    @Test
+    void theCrewsStandingOrdersAndAHeldAutopilotRead() {
+        ShipTaskBoardComponent board = game.player.getComponent(ShipTaskBoardComponent.class);
+        board.evaHeld = true;
+        board.suitsAtBattleStations = false;
+        String to = targetAnotherStation();
+        AutopilotComponent a = new AutopilotComponent();
+        a.targetUuid = to;
+        a.held = true;
+        a.holdReason = "a raider closing";
+        game.player.add(a);
+        OrdersProvider.Orders o = orders();
+        assertTrue(o.evaHeld);
+        assertFalse(o.suitsAtBattleStations);
+        assertEquals(board.battleStations, o.battleStations);
+        assertEquals(OrdersProvider.Autopilot.HELD, o.autopilot);
+        assertEquals(world.nav.target.name(to), o.autopilotTo);
+        assertEquals("a raider closing", o.autopilotHeld);
+        assertEquals("", o.autopilotRefusal, "on: the key goes on or stops it");
+    }
+
+    @Test
+    void aHullHitAgesFromWhenItStruck() {
+        assertTrue(Float.isNaN(data.lastHullHit.age), "none yet");
+        data.age(1f);
+        assertTrue(Float.isNaN(data.lastHullHit.age));
+        data.hullHit(3, 4);
+        data.age(0.25f);
+        data.age(0.25f);
+        assertEquals(3, data.lastHullHit.tileX);
+        assertEquals(4, data.lastHullHit.tileY);
+        assertEquals(0.5f, data.lastHullHit.age, 1e-6);
     }
 }

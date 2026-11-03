@@ -20,6 +20,8 @@ import com.ringsofiron.uihud.providers.NavigationProvider.NavReadout;
 import com.ringsofiron.uihud.providers.ObjectiveProvider;
 import com.ringsofiron.uihud.providers.ObjectiveProvider.ObjectiveFrame;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
+import com.ringsofiron.uihud.providers.OrdersProvider;
+import com.ringsofiron.uihud.providers.OrdersProvider.Orders;
 import com.ringsofiron.uihud.providers.PowerStatusProvider;
 import com.ringsofiron.uihud.providers.PowerStatusProvider.PowerFrame;
 import com.ringsofiron.uihud.providers.ShieldStatusProvider;
@@ -67,6 +69,7 @@ public final class HudData {
     public ObjectiveProvider objectives;
     public StationBoardProvider stationBoard;
     public KeyHintProvider hints;
+    public OrdersProvider orders;
     /** Also set by {@code UiHud} when the game sets them there. */
     public TargetingProvider targeting;
     public OrbitInfoProvider orbitInfo;
@@ -85,6 +88,14 @@ public final class HudData {
     public final AlertRegistry alerts = new AlertRegistry();
     /** What the game has told the player lately. */
     public final MessageFeed messages = new MessageFeed();
+    /** The last hit on the player's hull, for a schematic to flash ({@link #hullHit(int, int)}). */
+    public final HullHit lastHullHit = new HullHit();
+
+    /** A hit on the player's hull: the deck tile it struck, and seconds since, NaN before any. */
+    public static final class HullHit {
+        public int tileX = -1, tileY = -1;
+        public float age = Float.NaN;
+    }
 
     // --- This frame's snapshots -----------------------------------------------------------
     public final UiContext ctx = new UiContext();
@@ -109,6 +120,8 @@ public final class HudData {
     public final StationBoard stations = new StationBoard();
     /** The keys worth knowing where the player is. */
     public final KeyHintFrame keyHints = new KeyHintFrame();
+    /** The orders that stand, and why any can't be given now. */
+    public final Orders orderState = new Orders();
     /** Whether {@link #shipStatus} holds a ship this frame. */
     public boolean hasShipStatus;
     /**
@@ -121,6 +134,18 @@ public final class HudData {
 
     private RoomNames roomNames = new RoomNames();
     private Entity roomShip;
+
+    /** The player's hull was hit at deck tile ({@code tileX}, {@code tileY}), as {@code UiHud#flashHullHit} hears it. */
+    public void hullHit(int tileX, int tileY) {
+        lastHullHit.tileX = tileX;
+        lastHullHit.tileY = tileY;
+        lastHullHit.age = 0f;
+    }
+
+    /** {@code delta} seconds pass for what the game keeps here. Called by {@code UiHud} once a frame, variant or none. */
+    public void age(float delta) {
+        if (!Float.isNaN(lastHullHit.age)) lastHullHit.age += delta;
+    }
 
     /** Reads every provider into its snapshot. Called by {@code UiHud} once a frame while a variant is up. */
     public void refresh() {
@@ -156,6 +181,8 @@ public final class HudData {
         if (stationBoard != null) stationBoard.collect(stations);
         keyHints.clear();
         if (hints != null) hints.collect(keyHints);
+        orderState.clear();
+        if (orders != null) orders.read(orderState);
         if (afterRefresh != null) afterRefresh.run();
     }
 

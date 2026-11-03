@@ -635,6 +635,7 @@ public class UiHud implements Disposable {
     /** Briefly highlights a tile on the minimap, e.g. from combat-sys's hull-hit event. */
     public void flashHullHit(int tileX, int tileY) {
         minimap.flashTile(tileX, tileY);
+        data.hullHit(tileX, tileY);
     }
 
     /**
@@ -663,6 +664,7 @@ public class UiHud implements Disposable {
         viewports.applyUi();
         placeBanner();
         syncVariant();
+        data.age(delta);
         if (variant != null) {
             data.promptAction = interactPromptSystem.getAction();
             data.dockHint = dockHintRef.isVisible() ? dockHintRef.getText().toString() : "";

@@ -18,6 +18,7 @@ import com.hawkwing.RingsOfIron.game.NoticeLog;
 import com.hawkwing.RingsOfIron.game.OpeningGuide;
 import com.hawkwing.RingsOfIron.game.PlayerDocking;
 import com.hawkwing.RingsOfIron.game.PlayerKeyHints;
+import com.hawkwing.RingsOfIron.game.PlayerOrders;
 import com.hawkwing.RingsOfIron.game.Rescue;
 import com.ringsofiron.shipops.ShipDisablement;
 import com.ringsofiron.shipops.DisabledComponent;
@@ -149,6 +150,9 @@ public final class GameBootstrap {
         GameHudText hudText = pipeline.text;
         hud.getData().hints = new PlayerKeyHints(world.hints, hudText::hintContexts, session::key,
                 () -> placing.isPlacing() ? placing.hint() : null);
+        // Their orders menus: what stands, why the rest can't be given, and the keys pressed once of the two asked twice
+        hud.getData().orders = new PlayerOrders(world.context, world.nav, world.abandon, world.beacon,
+                () -> !session.deckView(), () -> options.paused, input::abandonArmed, input::towArmed);
                 session.gameHud.yard.setLayoutEditor(refit::open);
         session.gameHud.yard.setFurnisher(placing::start);
         world.combatEvents.intercepts.add((signal, hit) -> {

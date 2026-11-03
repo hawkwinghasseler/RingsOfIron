@@ -398,6 +398,16 @@ public final class GameInput {
 
     // --- Press twice: the tow and abandoning ship ----------------------------------------
 
+    /** Seconds left to press abandon ship again and give the order; 0 when it isn't armed. */
+    float abandonArmed() {
+        return Math.max(0f, abandonAsked);
+    }
+
+    /** Seconds left to press the tow key again and call the tug; 0 when it isn't armed. */
+    float towArmed() {
+        return Math.max(0f, towAsked);
+    }
+
     /** B while stranded, or the pause menu: the first press asks and names the fee, a second calls the tug. */
     public void callTow() {
         String refused = world.beacon.refusal();

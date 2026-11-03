@@ -137,14 +137,27 @@ public class AbandonShip extends EntitySystem {
 
     /** Orders {@code ship}'s crew to the pods. Returns why not, or null once the order is given. */
     public String order(Entity ship) {
+        String refused = refusal(ship);
+        if (refused != null) return refused;
+        ship.add(new AbandonOrderComponent(simSeconds.getAsDouble()));
+        post(ship);
+        return null;
+    }
+
+    /** Why {@code ship}'s crew can't be ordered to the pods now, as {@link #order} answers it, or null when they can; gives nothing. */
+    public String refusal(Entity ship) {
         if (ship == null) return "no ship";
         if (ORDER.get(ship) != null) return "already abandoning ship";
         if (dockedTo.apply(ship) != null) return "docked: walk off instead";
         if (usablePods(ship).isEmpty()) return "no escape pod left";
         if (ownCrew(ship, null) == 0) return "nobody aboard to abandon ship";
-        ship.add(new AbandonOrderComponent(simSeconds.getAsDouble()));
-        post(ship);
         return null;
+    }
+
+    /** Seconds until the pods launch with whoever is aboard, without waiting for the rest; NaN when not abandoning. */
+    public double launchIn(Entity ship) {
+        AbandonOrderComponent order = ship == null ? null : ORDER.get(ship);
+        return order == null ? Double.NaN : Math.max(0, LAUNCH_AFTER - (simSeconds.getAsDouble() - order.orderedAt));
     }
 
     /** True while {@code ship}'s crew are under orders to abandon it. */
@@ -252,6 +265,69 @@ public class AbandonShip extends EntitySystem {
         List<EvacuateTask> tasks = posted.get(ship);
         if (tasks != null) for (EvacuateTask t : tasks) if (t.pod == pod) t.open = false;
         launches.dispatch(new Escape(ship, pod, away, player, now));
+    }
+
+    /** How the crew are getting to the pods, and where the player's nearest free seat is ({@link #boarding}). */
+    public static final class Boarding {
+        /** Conscious crew of the ship's own aboard, the player's avatar among them, and how many of them are in a pod now. */
+        public int aboard, inPods;
+        /** Pods that can still launch, and the seats in them nobody is in yet. */
+        public int pods, freeSeats;
+        /** The player's avatar's tile aboard, -1 when not aboard; and whether it is in a pod. */
+        public int playerX = -1, playerY = -1;
+        public boolean playerInPod;
+        /**
+         * The tile crew walk to in the pod with a seat free that is nearest the player in a straight
+         * line (the one they are in, once in), -1 with none or with the player not aboard.
+         */
+        public int podX = -1, podY = -1;
+
+        public void clear() {
+            aboard = inPods = pods = freeSeats = 0;
+            playerX = playerY = podX = podY = -1;
+            playerInPod = false;
+        }
+    }
+
+    /** How {@code ship}'s crew are getting to its pods, into {@code out}; gives nothing. */
+    public void boarding(Entity ship, Boarding out) {
+        out.clear();
+        if (ship == null) return;
+        List<Entity> people = new ArrayList<>();
+        ownCrew(ship, people);
+        List<Entity> pods = usablePods(ship);
+        out.aboard = people.size();
+        out.pods = pods.size();
+        int[] taken = new int[pods.size()];
+        Entity playersPod = null;
+        for (Entity e : people) {
+            Entity pod = podAt(pods, e);
+            if (pod != null) {
+                out.inPods++;
+                taken[pods.indexOf(pod)]++;
+            }
+            if (e.getComponent(PlayerAvatarComponent.class) != null) {
+                GridPositionComponent p = e.getComponent(GridPositionComponent.class);
+                out.playerX = p.tileX();
+                out.playerY = p.tileY();
+                out.playerInPod = pod != null;
+                playersPod = pod;
+            }
+        }
+        long best = Long.MAX_VALUE;
+        for (int i = 0; i < pods.size(); i++) {
+            MountFootprint f = pods.get(i).getComponent(SubsystemComponent.class).footprint;
+            int free = Math.max(0, seats(f.size) - taken[i]);
+            out.freeSeats += free;
+            if (out.playerX < 0 || (playersPod != null ? pods.get(i) != playersPod : free == 0)) continue;
+            int[] bay = EscapePodLayout.bayTile(f);
+            long dx = bay[0] - out.playerX, dy = bay[1] - out.playerY, d = dx * dx + dy * dy;
+            if (d < best) {
+                best = d;
+                out.podX = bay[0];
+                out.podY = bay[1];
+            }
+        }
     }
 
     /** The pod whose bay {@code crewEntity} stands in, out of {@code pods}, or null. */
