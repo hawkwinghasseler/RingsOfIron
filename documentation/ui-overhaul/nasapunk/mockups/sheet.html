@@ -1,0 +1,237 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Design sheet</title>
+<link rel="stylesheet" href="fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="lib.js"></script>
+<script>
+let s = '';
+s += bezelBody(0, 0, 1280, 800, 0);
+// Title band
+s += rect(0, 0, 1280, 40, { fill: '#25282C' }) + line(0, 40.5, 1280, 40.5, C.edgeLo, 1);
+s += rect(24, 12, 4, 16, { fill: C.kapton });
+s += text(36, 26, 'FLIGHT DECK  ·  NASA-PUNK DESIGN LANGUAGE', { size: 13, bold: true, fill: C.stencil, track: 2 });
+s += text(1256, 26, 'UI-OVH  SHEET 1/1  REV A', { size: 10, bold: true, fill: C.stencil, anchor: 'end', track: 1.5 });
+
+const panel = (x, y, w, h, title) => text(x, y - 8, title, { size: 10, bold: true, fill: C.stencil, track: 1.6 })
+  + rect(x - 1, y - 1, w + 2, h + 2, { fill: '#151719', r: 2 }) + rect(x, y, w, h, { fill: C.glass }) + rect(x + 0.5, y + 0.5, w - 1, h - 1, { stroke: '#0E141A', sw: 1 });
+const label = (x, y, t, fill = C.dim, size = 10) => text(x, y, t, { size, bold: true, fill, track: 0.6 });
+
+// 1. Glass palette
+{
+  const x = 24, y = 72, w = 400, h = 360;
+  s += panel(x, y, w, h, '1  GLASS PALETTE');
+  const rows = [
+    ['GLASS', '#05070A', 'Display background'], ['GRATICULE', '#16202A', 'Grids, rings, idle scales'],
+    ['DIM', '#7E8792', 'Scale labels, units, secondary'], ['WHITE', '#EEF1F3', 'Current state, measured values'],
+    ['CYAN', '#3CCBE6', 'Commanded, selected, own ship'], ['GREEN', '#3DDC7A', 'Engaged, active, nominal'],
+    ['MAGENTA', '#F052D2', 'Guidance: path, nav target, cues'], ['AMBER', '#FFAE1F', 'Caution: soon'],
+    ['RED', '#FF3B30', 'Warning: now. Hostile'], ['HALO', '#000000 70%', 'Outline under world symbology'],
+  ];
+  rows.forEach((r, i) => {
+    const yy = y + 18 + i * 33.5;
+    const fill = r[0] === 'HALO' ? 'rgba(0,0,0,0.7)' : r[1];
+    s += rect(x + 16, yy, 40, 22, { fill, stroke: r[0] === 'GLASS' || r[0] === 'HALO' ? '#2A3340' : 'none', sw: 1 });
+    if (r[0] === 'HALO') s += line(x + 20, yy + 11, x + 52, yy + 11, C.halo, 4) + line(x + 20, yy + 11, x + 52, yy + 11, C.green, 1.5);
+    s += text(x + 68, yy + 10, r[0], { size: 11, bold: true, fill: C.white, track: 0.8 });
+    s += text(x + 68, yy + 22, r[1], { size: 9.5, mono: true, fill: C.dim });
+    s += text(x + 178, yy + 16, r[2], { size: 11, fill: r[0] === 'DIM' || r[0] === 'GLASS' || r[0] === 'GRATICULE' || r[0] === 'HALO' ? C.dim : fill });
+  });
+}
+
+// 2. Typography
+{
+  const x = 440, y = 72, w = 400, h = 360;
+  s += panel(x, y, w, h, '2  TYPE');
+  let yy = y + 22;
+  const role = (t) => { s += label(x + 16, yy, t); yy += 20; };
+  role('B612 BOLD 12  ·  LABELS AND MODES, CAPS');
+  s += text(x + 16, yy, 'PROP   STRUC   PWR   O2   ATT HOLD', { size: 12, bold: true, fill: C.white, track: 0.7 }); yy += 26;
+  role('B612 15  ·  VALUES (TABULAR FIGURES), UNIT IN DIM');
+  s += value(x + 120, yy, '7 672.6', 'M/S') + value(x + 240, yy, '12 400', 'KM') + value(x + 340, yy, '41', 'S'); yy += 26;
+  role('B612 BOLD 20  ·  POINTER BOX');
+  s += rect(x + 16, yy - 18, 54, 26, { stroke: C.white, fill: C.glass }) + text(x + 43, yy + 1, '042', { size: 20, bold: true, fill: C.white, anchor: 'middle' });
+  s += text(x + 90, yy + 1, 'B612 BOLD 24  ·  CALLOUT', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+  s += rect(x + 260, yy - 19, 108, 28, { stroke: C.red, sw: 1.5 }) + text(x + 314, yy + 3, 'MISSILE', { size: 20, bold: true, fill: C.red, anchor: 'middle', track: 1 }); yy += 30;
+  role('B612 13  ·  TABLES: RIGHT-ALIGNED, FIGURES ARE TABULAR');
+  [['ICE', '1 240', '18.40', '17.95'], ['FUEL', '310', '42.10', '40.80']].forEach(r => {
+    s += text(x + 16, yy, r[0], { size: 12, bold: true, fill: C.white, track: 0.6 }) + value(x + 130, yy, r[1], '', { size: 13 }) + value(x + 200, yy, r[2], '', { size: 13 }) + value(x + 270, yy, r[3], '', { size: 13 });
+    yy += 16;
+  });
+  s += text(x + 290, yy - 24, 'B612 MONO', { size: 10, bold: true, fill: C.dim, track: 0.6 }) + text(x + 290, yy - 8, 'DV 42.0', { size: 13, mono: true, fill: C.cyan }) + rect(x + 350, yy - 19, 7, 13, { fill: C.cyan });
+  s += text(x + 290, yy + 4, 'SCRATCHPAD ONLY', { size: 8.5, bold: true, fill: C.dim, track: 0.4 });
+  yy += 10;
+  role('INTER 15  ·  PROSE ONLY');
+  s += text(x + 16, yy, 'Deliver 40 t of water ice to Highport by day 4.', { size: 14, fill: 'rgba(238,241,243,0.9)' }).replace('B612, sans-serif', 'Inter, sans-serif'); yy += 26;
+  role('LEGIBILITY: CONFUSABLE GLYPHS STAY DISTINCT');
+  s += text(x + 16, yy + 2, '0O  1lI  5S  8B  2Z  6G', { size: 18, fill: C.white, track: 1 });
+}
+
+// 3. Symbology
+{
+  const x = 856, y = 72, w = 400, h = 360;
+  s += panel(x, y, w, h, '3  SYMBOLOGY  (OUTLINE; FILL = LOCKED)');
+  const cell = (col, row, draw, t, fill = C.dim) => {
+    const cx = x + 50 + col * 100, cy = y + 40 + row * 82;
+    s += draw(cx, cy);
+    s += text(cx, cy + 32, t, { size: 9.5, bold: true, fill, anchor: 'middle', track: 0.5 });
+  };
+  cell(0, 0, (cx, cy) => sym.circle(cx, cy, 9, C.cyan, 1.5), 'FRIENDLY');
+  cell(1, 0, (cx, cy) => sym.square(cx, cy, 8, C.white, 1.5), 'NEUTRAL');
+  cell(2, 0, (cx, cy) => sym.diamond(cx, cy, 8, C.red, 1.5), 'HOSTILE');
+  cell(3, 0, (cx, cy) => sym.quatrefoil(cx, cy, 10, C.amber, 1.5), 'UNKNOWN');
+  cell(0, 1, (cx, cy) => sym.station(cx, cy, 8, C.white, 1.5), 'STATION');
+  cell(1, 1, (cx, cy) => rect(cx - 8, cy - 8, 16, 16, { stroke: C.dim, sw: 1.5, dash: '3 3' }), 'DERELICT');
+  cell(2, 1, (cx, cy) => { const r = 16, k = 5; return sym.diamond(cx, cy, 7, C.red, 1.5, C.red) + path(`M${cx - r} ${cy - r + k} V${cy - r} H${cx - r + k} M${cx + r - k} ${cy - r} H${cx + r} V${cy - r + k} M${cx + r} ${cy + r - k} V${cy + r} H${cx + r - k} M${cx - r + k} ${cy + r} H${cx - r} V${cy + r - k}`, C.red, 1.5); }, 'LOCKED');
+  cell(3, 1, (cx, cy) => path(`M${cx - 30} ${cy + 10} L${cx - 8} ${cy + 2}`, C.red, 1.5, { dash: '5 4' }) + sym.chevron(cx, cy, 70, C.red, 1.5, 6), 'MISSILE + TRACK');
+  cell(0, 2, (cx, cy) => sym.prograde(cx, cy, C.green, 1.5), 'PROGRADE');
+  cell(1, 2, (cx, cy) => sym.retrograde(cx, cy, C.green, 1.5), 'RETROGRADE');
+  cell(2, 2, (cx, cy) => path(`M${cx} ${cy - 8} l8 8 l-8 8 l-8 -8 z`, C.magenta, 1.5) + `<circle cx="${cx}" cy="${cy}" r="1.6" fill="${C.magenta}"/>`, 'BURN');
+  cell(3, 2, (cx, cy) => sym.station(cx, cy, 6, C.white, 1.5) + `<circle cx="${cx}" cy="${cy}" r="14" fill="none" stroke="${C.magenta}" stroke-width="1.5"/>`, 'NAV TARGET');
+  cell(0, 3, (cx, cy) => sym.chevron(cx, cy, 0, C.cyan, 1.5, 8), 'OWN SHIP');
+  cell(1, 3, (cx, cy) => path(`M${cx - 30} ${cy + 8} A60 60 0 0 1 ${cx + 30} ${cy + 8}`, C.white, 1.5) + path(`M${cx - 7} ${cy} v-7 h14 v7 h-4 l-3 -4 l-3 4 z`, C.cyan, 1.5, { fill: C.cyan }), 'HEADING BUG');
+  cell(2, 3, (cx, cy) => sym.diamond(cx - 10, cy + 6, 6, C.red, 1.5) + line(cx - 10, cy + 6, cx + 26, cy - 10, C.red, 1.5), 'LEADER  30 S');
+  cell(3, 3, (cx, cy) => text(cx - 26, cy - 6, 'RAIDER', { size: 10, bold: true, fill: C.red }) + text(cx - 26, cy + 6, 'RNG 7.7 KM', { size: 9.5, fill: C.white }) + text(cx - 26, cy + 18, 'RR −2 M/S', { size: 9.5, fill: C.white }), 'DATA BLOCK');
+}
+
+// 4. Hardware (on the bezel itself, no glass)
+{
+  const x = 24, y = 462;
+  s += text(x, y - 8, '4  HARDWARE', { size: 10, bold: true, fill: C.stencil, track: 1.6 });
+  const rows = [
+    ['BEZEL', '#2B2E33', 'Units, glareshield, consoles'], ['BEZEL EDGE', '#40444B / #1A1C1F', 'Highlight TL, shadow BR'],
+    ['STENCIL', '#D6D8D2', 'Engraved legends'], ['KEY', '#383C42', 'Soft key caps'],
+    ['LENS OFF', '#1C1E21', 'Unlit annunciator'], ['KAPTON', '#C8962E', 'Part-plate stripe only'],
+    ['SAFETY ORANGE', '#E5531A', 'Guards on irreversible controls'],
+  ];
+  rows.forEach((r, i) => {
+    const yy = y + 4 + i * 25;
+    const fill = r[1].split(' ')[0];
+    s += rect(x, yy, 30, 18, { fill, stroke: '#151719', sw: 1, r: 2 });
+    s += text(x + 40, yy + 13, r[0], { size: 10, bold: true, fill: C.stencil, track: 0.8 });
+    s += text(x + 150, yy + 13, r[1], { size: 9.5, mono: true, fill: '#9A9E98' });
+    s += text(x + 268, yy + 13, r[2], { size: 9.5, fill: '#9A9E98' });
+  });
+  const ay = y + 192;
+  s += text(x, ay + 6, 'ANNUNCIATORS', { size: 9, bold: true, fill: C.stencil, track: 1.2 });
+  s += lens(x, ay + 14, 64, 32, 'MASTER\nCAUTION', null);
+  s += lens(x + 74, ay + 14, 64, 32, 'MASTER\nCAUTION', C.amber);
+  s += lens(x + 148, ay + 14, 64, 32, 'MASTER\nWARNING', C.red);
+  s += lens(x + 222, ay + 14, 56, 32, 'DOCK\nCLR', C.green);
+  // guarded switch: safety-orange cover
+  s += rect(x + 292, ay + 10, 40, 40, { fill: '#1E2023', r: 3 }) + rect(x + 298, ay + 14, 28, 32, { fill: C.orange, r: 2 }) + rect(x + 302, ay + 18, 20, 3, { fill: 'rgba(255,255,255,0.25)' });
+  s += text(x + 340, ay + 26, 'SCUTTLE', { size: 9, bold: true, fill: C.stencil, track: 1 }) + text(x + 340, ay + 38, 'GUARDED', { size: 8, bold: true, fill: '#9A9E98', track: 1 });
+  s += text(x, ay + 64, 'UNLIT · CAUTION · WARNING (FLASHES UNTIL ACK) · STATUS', { size: 8.5, bold: true, fill: '#9A9E98', track: 0.8 });
+  const ky = ay + 80;
+  s += text(x, ky + 10, 'SOFT KEYS', { size: 9, bold: true, fill: C.stencil, track: 1.2 });
+  s += softKey(x + 80, ky, 30, 12, false) + text(x + 120, ky + 10, 'UP', { size: 8.5, bold: true, fill: '#9A9E98', track: 1 });
+  s += softKey(x + 160, ky, 30, 12, true) + text(x + 200, ky + 10, 'PRESSED (1 FRAME)', { size: 8.5, bold: true, fill: '#9A9E98', track: 1 });
+  s += fastener(x + 340, ky + 6) + text(x + 350, ky + 10, 'FASTENER', { size: 8.5, bold: true, fill: '#9A9E98', track: 1 });
+}
+
+// 5. DU anatomy
+{
+  const x = 440, y = 462, w = 400, h = 322;
+  s += text(x, y - 8, '5  DISPLAY UNIT ANATOMY', { size: 10, bold: true, fill: C.stencil, track: 1.6 });
+  const d = du(x, y, 236, 322, {
+    id: 5, plate: 'DU-2  MFD R',
+    keys: { bottom: [{ t: 'NAV' }, { t: 'SYS', state: 'cur' }, 'CREW', 'COMM'], left: [{ t: 'PWR', state: 'on' }, 'LIFE', 'PROP', 'RTN'], right: ['', 'XTIE', '', 'DCLTR'] },
+    content: (gx, gy, gw, gh) => {
+      let c = '';
+      const cx = gx + gw / 2;
+      c += text(cx, gy + 15, 'SYS  PWR', { size: 11, bold: true, fill: C.white, anchor: 'middle', track: 0.8 });
+      c += text(cx, gy + 29, 'RCTR 3.0 MW', { size: 9.5, bold: true, fill: C.dim, anchor: 'middle', track: 0.5 });
+      c += line(gx + 40, gy + 35, gx + gw - 40, gy + 35, C.graticule, 1);
+      // mini synoptic: reactor -> bus -> three loads
+      const ry = gy + 74;
+      c += rect(cx - 22, ry - 12, 44, 24, { stroke: C.white }) + text(cx, ry + 4, 'RCTR', { size: 9.5, bold: true, fill: C.white, anchor: 'middle' });
+      c += line(cx, ry + 12, cx, ry + 34, C.green, 2.5);
+      const l0 = gx + 52, l1 = gx + gw - 52;
+      c += line(l0, ry + 34, l1, ry + 34, C.green, 2.5);
+      [['ENG', C.green, ''], ['WPN', C.amber, ''], ['SENS', C.dim, '4 3']].forEach((L, i) => {
+        const lx = l0 + i * (l1 - l0) / 2;
+        c += line(lx, ry + 34, lx, ry + 62, L[1], L[1] === C.dim ? 1.5 : 2.5, { dash: L[2] });
+        c += rect(lx - 18, ry + 62, 36, 18, { stroke: L[1] === C.green ? C.white : L[1] }) + text(lx, ry + 75, L[0], { size: 8.5, bold: true, fill: L[1] === C.green ? C.white : L[1], anchor: 'middle' });
+      });
+      c += text(cx, ry + 112, 'WPN BUS DEGRADED', { size: 9.5, bold: true, fill: C.amber, anchor: 'middle', track: 0.4 });
+      c += text(cx, ry + 126, 'SENS OFF', { size: 9.5, bold: true, fill: C.dim, anchor: 'middle', track: 0.4 });
+      return c;
+    }
+  });
+  s += d.svg;
+  // markers placed beside, not on, the features they name
+  const midKeyY = (i) => d.gy + d.gh / 4 * (i + 0.5);
+  const marks = [
+    [x + 118, y + 6, 'BEZEL, 12 U, 4 U RADIUS'],
+    [x + 18, y + 6, 'FASTENER, 6 U IN'],
+    [x + 6, (midKeyY(1) + midKeyY(2)) / 2, 'SOFT KEY, NO TEXT ON CAP'],
+    [d.gx + 50, midKeyY(2) + 1, 'LEGEND ON GLASS'],
+    [d.gx + d.gw / 2 + 42, d.gy + 11, 'PAGE TITLE'],
+    [d.gx + d.gw / 2 + 48, d.gy + 25, 'STATUS STRIP'],
+    [d.gx + d.gw / 2 + 36, d.gy + 62, 'CONTENT ON THE 8 U GRID'],
+    [d.gx + d.gw / 2 + 2, d.gy + d.gh - 26, 'PAGE MENU (SIBLINGS)'],
+    [x + 96, y + h - 9, 'PART PLATE, KAPTON STRIPE'],
+  ];
+  marks.forEach((m, i) => {
+    const mk = (mx, my) => `<circle cx="${mx}" cy="${my}" r="6" fill="${C.kapton}"/>` + text(mx, my + 3.3, String(i + 1), { size: 8.5, bold: true, fill: '#111', anchor: 'middle' });
+    s += mk(m[0], m[1]) + mk(x + 254, y + 12 + i * 22);
+    s += text(x + 266, y + 15.5 + i * 22, m[2], { size: 8.5, bold: true, fill: C.stencil, track: 0.5 });
+  });
+  s += text(x + 248, y + 230, 'NO FLOATING WINDOWS.', { size: 8.5, bold: true, fill: '#9A9E98', track: 0.5 });
+  s += text(x + 248, y + 244, 'PAGES LIVE IN FIXED SLOTS,', { size: 8.5, bold: true, fill: '#9A9E98', track: 0.5 });
+  s += text(x + 248, y + 258, 'TWO LEVELS DEEP AT MOST.', { size: 8.5, bold: true, fill: '#9A9E98', track: 0.5 });
+}
+
+// 6. States, flags, strokes
+{
+  const x = 856, y = 462, w = 400, h = 322;
+  s += panel(x, y, w, h, '6  STATES, FLAGS AND STROKES');
+  // gauges in three states
+  const gauge = (gx0, val, col, t) => {
+    const gy0 = y + 22, gh0 = 56;
+    let c = rect(gx0 - 4, gy0 + gh0 * 0.75, 3, gh0 * 0.15, { fill: C.amber }) + rect(gx0 - 4, gy0 + gh0 * 0.9, 3, gh0 * 0.1, { fill: C.red });
+    c += line(gx0, gy0, gx0, gy0 + gh0, C.white, 1.5);
+    for (let k = 0; k <= 4; k++) c += line(gx0, gy0 + gh0 * k / 4, gx0 - 6, gy0 + gh0 * k / 4, C.white, 1);
+    const py = gy0 + gh0 * (1 - val / 100);
+    c += path(`M${gx0 + 2} ${py} l8 -5 v10 z`, col, 1, { fill: col }) + text(gx0 + 14, py + 5, String(val), { size: 13, bold: true, fill: col });
+    c += text(gx0 - 6, gy0 + gh0 + 16, t, { size: 9, bold: true, fill: col === C.white ? C.dim : col, track: 0.6 });
+    return c;
+  };
+  s += gauge(x + 30, 70, C.white, 'NORMAL') + gauge(x + 100, 22, C.amber, 'CAUTION') + gauge(x + 170, 8, C.red, 'WARNING');
+  s += text(x + 236, y + 34, 'NORMAL IS WHITE.', { size: 9.5, bold: true, fill: C.white, track: 0.5 });
+  s += text(x + 236, y + 50, 'COLOUR ONLY WHEN', { size: 9.5, bold: true, fill: C.dim, track: 0.5 });
+  s += text(x + 236, y + 64, 'THE VALUE ENTERS', { size: 9.5, bold: true, fill: C.dim, track: 0.5 });
+  s += text(x + 236, y + 78, 'A BAND.', { size: 9.5, bold: true, fill: C.dim, track: 0.5 });
+  // soft key legend states
+  let ly = y + 128;
+  s += line(x + 12, ly - 16, x + w - 12, ly - 16, C.graticule, 1);
+  s += text(x + 16, ly, 'TGT', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(x + 16, ly + 14, 'AVAILABLE', { size: 8.5, fill: C.dim });
+  s += text(x + 106, ly, 'NAV', { size: 11, bold: true, fill: C.white, track: 0.6 }) + text(x + 106, ly + 14, 'CURRENT', { size: 8.5, fill: C.dim });
+  s += text(x + 196, ly, 'ORB', { size: 11, bold: true, fill: C.green, track: 0.6 }) + rect(x + 192, ly - 11, 32, 15, { stroke: C.green, sw: 1 }) + text(x + 192, ly + 14, 'ENGAGED', { size: 8.5, fill: C.dim });
+  s += text(x + 286, ly, 'FRAME TGT', { size: 11, bold: true, fill: C.magenta, track: 0.6 }) + rect(x + 282, ly - 12, 78, 17, { stroke: C.white, sw: 1.5 }) + text(x + 286, ly + 14, 'NEW MODE, 10 S', { size: 8.5, fill: C.dim });
+  // flags
+  ly = y + 186;
+  s += line(x + 12, ly - 18, x + w - 12, ly - 18, C.graticule, 1);
+  s += path(`M${x + 20} ${ly + 10} A40 40 0 0 1 ${x + 76} ${ly + 10}`, C.dim, 1.5) + rect(x + 34, ly - 6, 28, 15, { stroke: C.amber, sw: 1.5 }) + text(x + 48, ly + 6, 'ATT', { size: 10, bold: true, fill: C.amber, anchor: 'middle' });
+  s += rect(x + 100, ly - 6, 60, 15, { stroke: C.amber, sw: 1.5 }) + text(x + 130, ly + 6, 'NO LOCK', { size: 10, bold: true, fill: C.amber, anchor: 'middle' });
+  s += text(x + 186, ly + 6, 'RNG', { size: 10, bold: true, fill: C.dim }) + text(x + 216, ly + 6, '---', { size: 13, bold: true, fill: C.white });
+  s += rect(x + 270, ly - 12, 54, 34, { fill: C.glass, stroke: '#2A3340', sw: 1 }) + line(x + 270, ly - 12, x + 324, ly + 22, C.red, 2.5) + line(x + 324, ly - 12, x + 270, ly + 22, C.red, 2.5);
+  s += text(x + 16, ly + 32, 'FLAG, NOT BLANK', { size: 8.5, fill: C.dim }) + text(x + 186, ly + 32, 'NO SOURCE', { size: 8.5, fill: C.dim }) + text(x + 270, ly + 32, 'FAILED DU', { size: 8.5, fill: C.dim });
+  // strokes
+  ly = y + 250;
+  s += line(x + 12, ly - 14, x + w - 12, ly - 14, C.graticule, 1);
+  [['1 U', 1, C.graticule, 'GRID, MINOR TICKS'], ['1.5 U', 1.5, C.white, 'SYMBOLS, SCALES'], ['2.5 U', 2.5, C.magenta, 'PRIMARY CUES']].forEach((r, i) => {
+    const yy = ly + i * 18;
+    s += line(x + 16, yy, x + 110, yy, r[2], r[1]);
+    s += text(x + 122, yy + 4, r[0], { size: 9.5, bold: true, fill: C.white }) + text(x + 162, yy + 4, r[3], { size: 9, bold: true, fill: C.dim, track: 0.4 });
+  });
+  // halo over a bright patch
+  s += rect(x + 296, ly - 8, 92, 52, { fill: '#5C626B' }) + rect(x + 296, ly + 18, 92, 26, { fill: '#9AA1AA' });
+  s += line(x + 304, ly + 30, x + 380, ly + 2, C.halo, 5.5) + line(x + 304, ly + 30, x + 380, ly + 2, C.green, 1.5);
+  s += text(x + 342, ly + 56, '3.5 U HALO', { size: 9, bold: true, fill: C.dim, anchor: 'middle', track: 0.4 });
+}
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

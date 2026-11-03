@@ -1,0 +1,253 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Flight deck</title>
+<link rel="stylesheet" href="fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="lib.js"></script>
+<script>
+// Exterior flight. Story: lining up for a burn in 12 min, a hostile locked, one of our missiles
+// on its way to it, propellant low (the only caution, so the only colour that asks for attention).
+const HDG = 42, PRO = 60, SEL = 75;
+let s = '';
+// World
+s += rect(0, 0, 1280, 800, { fill: '#010204' });
+s += `<circle cx="160" cy="1620" r="1000" fill="#07101A"/><circle cx="160" cy="1620" r="1000" fill="none" stroke="#1B3550" stroke-width="2" opacity="0.7"/>`;
+s += stars(1280, 800, 260);
+
+// Own ship (stand-in silhouette)
+const SX = 640, SY = 430;
+s += `<g transform="rotate(${HDG} ${SX} ${SY})">
+  <path d="M640 392 L652 404 L654 448 L662 462 L662 472 L618 472 L618 462 L626 448 L628 404 Z" fill="#5C626B" stroke="#2A2E33" stroke-width="1"/>
+  <rect x="633" y="412" width="14" height="20" fill="#474C54"/><rect x="630" y="472" width="8" height="6" fill="#3A3E44"/><rect x="642" y="472" width="8" height="6" fill="#3A3E44"/></g>`;
+
+// HUD layer: velocity trend, prograde/retrograde along 060
+const dir = (deg, r) => [SX + r * Math.sin(deg * Math.PI / 180), SY - r * Math.cos(deg * Math.PI / 180)];
+const [tx1, ty1] = dir(PRO, 82), [px, py] = dir(PRO, 104), [rx, ry] = dir(PRO + 180, 104);
+s += haloed((c, w) => line(SX, SY, tx1, ty1, c, w), C.white, 2.5);
+s += haloed((c, w) => sym.prograde(px, py, c, w), C.green);
+s += haloed((c, w) => sym.retrograde(rx, ry, c, w), C.green);
+// Burn attitude (075): magenta hollow diamond with a centre dot, at the markers' radius
+const [dx, dy] = dir(SEL, 104);
+s += haloed((c, w) => path(`M${dx} ${dy - 8} l8 8 l-8 8 l-8 -8 z`, c, w), C.magenta);
+s += `<circle cx="${dx}" cy="${dy}" r="1.6" fill="${C.magenta}"/>`;
+s += text(dx + 12, dy + 4, 'BURN', { size: 10, bold: true, fill: C.magenta, track: 0.6 });
+
+// Locked hostile with brackets, leader line and data block
+const tx = 760, ty = 214;
+s += haloed((c, w) => line(tx, ty, tx - 62, ty + 18, c, w), C.red, 1.5);
+s += haloed((c, w) => sym.diamond(tx, ty, 8, c, w, c), C.red);
+const br = (c, w) => { const r = 18, k = 6; return path(`M${tx - r} ${ty - r + k} V${ty - r} H${tx - r + k} M${tx + r - k} ${ty - r} H${tx + r} V${ty - r + k} M${tx + r} ${ty + r - k} V${ty + r} H${tx + r - k} M${tx - r + k} ${ty + r} H${tx - r} V${ty + r - k}`, c, w); };
+s += haloed(br, C.red);
+s += text(tx + 26, ty - 6, 'RAIDER', { size: 12, bold: true, fill: C.red, track: 0.6 });
+s += text(tx + 26, ty + 9, 'RNG  7.7 KM', { size: 11, fill: C.white });
+s += text(tx + 26, ty + 23, 'RR  −2 M/S', { size: 11, fill: C.white });
+// Our missile on its way (cyan, dashed predicted track)
+s += haloed((c, w) => path(`M${SX + 14} ${SY - 24} Q 712 320 ${tx - 8} ${ty + 16}`, c, w, { dash: '6 5' }), C.cyan, 1.5);
+s += haloed((c, w) => sym.chevron(706, 318, 28, c, w, 6), C.cyan);
+s += text(718, 330, 'MSL 1  TTI 41 S', { size: 11, fill: C.cyan });
+
+// Neutral hauler
+s += haloed((c, w) => line(500, 290, 540, 310, c, w), C.white);
+s += haloed((c, w) => sym.square(500, 290, 7, c, w), C.white);
+s += text(512, 278, 'HAULER 3', { size: 11, bold: true, fill: C.white, track: 0.6 });
+// Unknown
+s += haloed((c, w) => sym.quatrefoil(420, 640, 9, c, w), C.amber);
+s += text(434, 644, 'UNK', { size: 11, bold: true, fill: C.amber, track: 0.6 });
+// Station = nav target (magenta ring)
+s += haloed((c, w) => sym.station(880, 580, 8, c, w), C.white);
+s += haloed((c, w) => `<circle cx="880" cy="580" r="17" fill="none" stroke="${c}" stroke-width="${w}"/>`, C.magenta);
+s += text(906, 576, 'HIGHPORT', { size: 11, bold: true, fill: C.white, track: 0.6 });
+s += text(906, 590, 'RNG  12.4 KM', { size: 11, fill: C.magenta });
+
+// Glareshield
+s += bezelBody(0, 0, 1280, 44, 0);
+s += lens(14, 6, 64, 32, 'MASTER\nWARNING', null);
+s += lens(86, 6, 64, 32, 'MASTER\nCAUTION', C.amber);
+// FMA glass
+s += rect(166, 7, 694, 30, { fill: C.glass });
+const fma = [['ATT', 'HOLD', C.green], ['TRANS', 'MAN', C.white], ['FRAME', 'TGT', C.magenta, true], ['AP', 'OFF', C.dim], ['WARP', '1×', C.white]];
+fma.forEach((f, i) => {
+  const cx = 166 + 694 / 5 * (i + 0.5);
+  if (i) s += line(166 + 694 / 5 * i, 11, 166 + 694 / 5 * i, 33, C.graticule, 1);
+  s += text(cx - 6, 27, f[0], { size: 10, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+  s += text(cx, 27, f[1], { size: 13, bold: true, fill: f[2], track: 0.6 });
+  if (f[3]) s += rect(cx - 4, 12, 40, 20, { stroke: C.white, sw: 1.5 });
+});
+// MET and next event
+s += rect(872, 7, 250, 30, { fill: C.glass });
+s += text(882, 27, 'MET', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+s += text(908, 27, '002:14:07:31', { size: 14, bold: true, fill: C.white });
+s += text(1024, 27, 'BURN', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+s += text(1056, 27, 'T−12:40', { size: 14, bold: true, fill: C.magenta });
+s += lens(1130, 6, 64, 32, 'PROP\nLOW', C.amber);
+s += lens(1202, 6, 64, 32, 'DOCK\nCLR', null);
+
+// DU-1 PFD
+const pfd = du(8, 56, 312, 452, {
+  id: 1, plate: 'DU-1  PFD  P/N 4410-06',
+  keys: { bottom: [{ t: 'FLT', state: 'cur' }, 'DCLTR', 'TAPE', 'BRT', 'XFR'] },
+  content: (gx, gy, gw, gh) => {
+    let c = '';
+    const cx = gx + gw / 2;
+    c += text(cx, gy + 16, 'FLT', { size: 12, bold: true, fill: C.white, anchor: 'middle', track: 0.8 });
+    c += text(cx, gy + 31, 'EARTH ORBIT   ALT 400 KM', { size: 11, bold: true, fill: C.dim, anchor: 'middle', track: 0.5 });
+    c += line(gx + 8, gy + 38, gx + gw - 8, gy + 38, C.graticule, 1);
+    // Heading arc: ticks inward, labels inside, bug and prograde on the rim outside
+    const hx = cx, R = 96, hy = gy + 84 + R, span = 55;
+    const at = (deg, r) => { const a = (deg - HDG) * Math.PI / 180; return [hx + r * Math.sin(a), hy - r * Math.cos(a)]; };
+    const [ax0, ay0] = at(HDG - span, R), [ax1, ay1] = at(HDG + span, R);
+    c += path(`M${ax0} ${ay0} A${R} ${R} 0 0 1 ${ax1} ${ay1}`, C.white, 1.5);
+    for (let v = Math.ceil((HDG - span) / 5) * 5; v <= HDG + span; v += 5) {
+      const major = v % 10 === 0, len = major ? 8 : 4;
+      const [x1, y1] = at(v, R), [x2, y2] = at(v, R - len);
+      c += line(x1, y1, x2, y2, C.white, major ? 1.5 : 1);
+      if (v % 30 === 0) { const [lx, ly] = at(v, R - 22); c += text(lx, ly + 4, String((v + 360) % 360).padStart(3, '0'), { size: 11, fill: C.dim, anchor: 'middle' }); }
+    }
+    // fixed pointer and heading box
+    c += path(`M${hx} ${hy - R - 1} l-5 -8 h10 z`, C.white, 1, { fill: C.white });
+    c += rect(hx - 22, hy - R - 32, 44, 22, { stroke: C.white, fill: C.glass });
+    c += text(hx, hy - R - 15, '042', { size: 15, bold: true, fill: C.white, anchor: 'middle' });
+    // heading bug (cyan, outside on the rim) at SEL
+    let [bx, by] = at(SEL, R + 1);
+    c += `<g transform="rotate(${SEL - HDG} ${bx} ${by})">${path(`M${bx - 7} ${by} v-7 h14 v7 h-4 l-3 -4 l-3 4 z`, C.cyan, 1.5, { fill: C.cyan })}</g>`;
+    // prograde (green mini symbol, outside)
+    let [qx, qy] = at(PRO, R + 13);
+    c += `<g transform="rotate(${PRO - HDG} ${qx} ${qy})"><circle cx="${qx}" cy="${qy}" r="3.5" fill="none" stroke="${C.green}" stroke-width="1.5"/>${line(qx, qy - 3.5, qx, qy - 7, C.green, 1.5)}${line(qx - 3.5, qy, qx - 7, qy, C.green, 1.5)}${line(qx + 3.5, qy, qx + 7, qy, C.green, 1.5)}</g>`;
+    // director caret (magenta, inside) at SEL
+    let [mx, my] = at(SEL, R - 4);
+    c += `<g transform="rotate(${SEL - HDG} ${mx} ${my})">${path(`M${mx - 6} ${my + 8} L${mx} ${my} L${mx + 6} ${my + 8}`, C.magenta, 2.5)}</g>`;
+    c += text(gx + 10, gy + 58, 'SEL', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+    c += text(gx + 10, gy + 73, '075', { size: 13, bold: true, fill: C.cyan });
+    c += text(gx + gw - 10, gy + 58, 'PRO', { size: 10, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+    c += text(gx + gw - 10, gy + 73, '060', { size: 13, bold: true, fill: C.green, anchor: 'end' });
+
+    // Tapes
+    const top = gy + 150, th = 120, mid = top + th / 2;
+    const tape = (x0, right, label, cur, unit, mv, pxPer, tick, lab, opts) => {
+      let t = '';
+      const sx = right ? x0 : x0 + 64; // scale line
+      t += text(right ? x0 + 28 : x0 + 36, top - 10, label, { size: 10, bold: true, fill: C.dim, anchor: 'middle', track: 0.6 });
+      t += line(sx, top, sx, top + th, C.white, 1.5);
+      const lo = mv - th / 2 / pxPer, hi = mv + th / 2 / pxPer;
+      (opts.bands || []).forEach(([a, b, col]) => {
+        const ya = mid - (Math.min(b, hi) - mv) * pxPer, yb = mid - (Math.max(a, lo) - mv) * pxPer;
+        if (yb > ya) t += rect(right ? sx - 4 : sx + 1, ya, 3, yb - ya, { fill: col });
+      });
+      for (let v = Math.ceil(lo / tick) * tick; v <= hi; v += tick) {
+        const y = mid - (v - mv) * pxPer;
+        t += line(sx, y, sx + (right ? 6 : -6), y, C.white, 1);
+        if (Math.abs(v % lab) < 1e-6 && Math.abs(y - mid) > 14) t += text(right ? sx + 10 : sx - 10, y + 4, String(v).replace('-', '−'), { size: 11, fill: C.dim, anchor: right ? 'start' : 'end' });
+      }
+      if (opts.bug != null) { const y = mid - (opts.bug - mv) * pxPer; t += rect(right ? sx - 6 : sx, y - 5, 6, 10, { fill: C.cyan }); }
+      if (opts.trend != null) { const y = mid - (opts.trend - mv) * pxPer, xx = right ? sx + 3 : sx - 3; t += line(xx, mid, xx, y + 2, C.white, 2.5) + path(`M${xx - 4} ${y + 6} l4 -6 l4 6`, C.white, 1.5); }
+      const bw = right ? 50 : 58;
+      t += path(right ? `M${sx} ${mid} l8 -11 h${bw} v22 h-${bw} z` : `M${sx} ${mid} l-8 -11 h-${bw} v22 h${bw} z`, C.white, 1.5, { fill: C.glass });
+      t += text(right ? sx + 8 + bw / 2 : sx - 8 - bw / 2, mid + 6, cur, { size: 15, bold: true, fill: C.white, anchor: 'middle' });
+      t += text(right ? x0 + 28 : x0 + 36, top + th + 14, unit, { size: 10, fill: C.dim, anchor: 'middle' });
+      return t;
+    };
+    c += tape(gx + 6, false, 'V ORB', '7672.6', 'M/S', 7672.6, 1.5, 10, 20, { bug: 7714.6, trend: 7680 });
+    c += tape(gx + gw - 66, true, 'RR TGT', '−2.0', 'M/S', -2, 3.2, 2, 10, { bands: [[-15, -10, C.amber], [-40, -15, C.red]] });
+
+    // Target and orbit block between the tapes
+    const bx0 = gx + 86, by0 = top + 8;
+    c += text(bx0, by0, 'TGT', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+    c += sym.diamond(bx0 + 34, by0 - 4, 4.5, C.red, 1.5, C.red);
+    c += text(bx0 + 44, by0, 'RAIDER', { size: 12, bold: true, fill: C.red, track: 0.5 });
+    [['RNG', '7.70', 'KM'], ['SHOT', '2.6', 'S'], ['MSL', '3', 'RDY']].forEach((r, i) => {
+      c += text(bx0, by0 + 20 + i * 17, r[0], { size: 10, bold: true, fill: C.dim, track: 0.6 });
+      c += value(bx0 + 106, by0 + 20 + i * 17, r[1], r[2], { size: 13 });
+    });
+    c += line(bx0, by0 + 70, bx0 + 106, by0 + 70, C.graticule, 1);
+    [['AP', '400', 'KM'], ['PE', '398', 'KM'], ['T', '92.4', 'MIN']].forEach((r, i) => {
+      c += text(bx0, by0 + 86 + i * 16, r[0], { size: 10, bold: true, fill: C.dim, track: 0.6 });
+      c += value(bx0 + 106, by0 + 86 + i * 16, r[1], r[2], { size: 13 });
+    });
+
+    // Strip gauges: scale, quarter ticks, caution and warning bands on the scale, pointer and value
+    const gy0 = top + th + 36, gh0 = 40;
+    c += line(gx + 8, gy0 - 12, gx + gw - 8, gy0 - 12, C.graticule, 1);
+    [['PROP', 0.22, '22', C.amber], ['STRUC', 1, '100', C.white], ['PWR', 0.86, '86', C.white], ['O2', 0.97, '97', C.white]].forEach((g, i) => {
+      const x = gx + 22 + i * 70;
+      c += rect(x - 4, gy0 + gh0 * 0.75, 3, gh0 * 0.15, { fill: C.amber }) + rect(x - 4, gy0 + gh0 * 0.9, 3, gh0 * 0.1, { fill: C.red });
+      c += line(x, gy0, x, gy0 + gh0, C.white, 1.5);
+      for (let k = 0; k <= 4; k++) c += line(x, gy0 + gh0 * k / 4, x - 6, gy0 + gh0 * k / 4, C.white, 1);
+      const py2 = gy0 + gh0 * (1 - g[1]);
+      c += path(`M${x + 2} ${py2} l8 -5 v10 z`, g[3], 1, { fill: g[3] });
+      c += text(x + 14, py2 + 5, g[2], { size: 13, bold: true, fill: g[3] });
+      c += text(x - 6, gy0 + gh0 + 15, g[0], { size: 10, bold: true, fill: g[3] === C.white ? C.dim : g[3], track: 0.6 });
+    });
+    return c;
+  }
+});
+s += pfd.svg;
+
+// DU-2 MFD, NAV page
+const mfd = du(960, 56, 312, 452, {
+  id: 2, plate: 'DU-2  MFD R  P/N 4410-07',
+  keys: {
+    bottom: [{ t: 'NAV', state: 'cur' }, 'TGT', 'SYS', 'CREW', 'COMM'],
+    left: [{ t: 'ORB', state: 'on' }, 'TFC', 'DCLTR', 'XFR', 'RTN'],
+    right: ['RNG+', 'RNG−', 'BURN', 'WARP', 'CTR'],
+  },
+  content: (gx, gy, gw, gh) => {
+    let c = '';
+    const cx = gx + gw / 2, cy = gy + 150;
+    c += text(cx, gy + 16, 'NAV', { size: 12, bold: true, fill: C.white, anchor: 'middle', track: 0.8 });
+    c += text(cx, gy + 31, 'EARTH  400 × 398 KM', { size: 11, bold: true, fill: C.dim, anchor: 'middle', track: 0.5 });
+    c += line(gx + 44, gy + 38, gx + gw - 44, gy + 38, C.graticule, 1);
+    // range rings and cross
+    [45, 90].forEach(r => c += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${C.graticule}" stroke-width="1"/>`);
+    c += line(cx - 90, cy, cx + 90, cy, C.graticule, 1) + line(cx, cy - 90, cx, cy + 100, C.graticule, 1);
+    // Earth
+    c += `<circle cx="${cx}" cy="${cy}" r="34" fill="#0B1520" stroke="${C.dim}" stroke-width="1.5"/>`;
+    c += text(cx, cy + 4, 'EARTH', { size: 9, bold: true, fill: C.dim, anchor: 'middle', track: 0.6 });
+    // Moon, off scale: arrow on the outer ring
+    const ma = -22 * Math.PI / 180, mx = cx + 90 * Math.cos(ma), my = cy + 90 * Math.sin(ma);
+    c += `<g transform="rotate(-22 ${mx} ${my})">${path(`M${mx - 4} ${my - 5} L${mx + 4} ${my} L${mx - 4} ${my + 5} Z`, C.dim, 1, { fill: C.dim })}</g>`;
+    c += text(mx + 2, my - 9, 'MOON', { size: 9, bold: true, fill: C.dim, anchor: 'middle', track: 0.6 });
+    // another craft's orbit (graticule) with a hauler
+    c += `<ellipse cx="${cx + 6}" cy="${cy - 4}" rx="62" ry="56" fill="none" stroke="#24313D" stroke-width="1"/>`;
+    c += sym.square(cx - 54, cy + 22, 3.5, C.white, 1.5);
+    // Current orbit (white)
+    const r0 = 48;
+    c += `<circle cx="${cx}" cy="${cy}" r="${r0}" fill="none" stroke="${C.white}" stroke-width="1.5"/>`;
+    // Planned transfer (magenta), perigee at the burn (top, -90 deg), apogee below
+    const ra = 96, a = (r0 + ra) / 2, e = (ra - r0) / (ra + r0), b = a * Math.sqrt(1 - e * e);
+    const ecy = cy + (a - r0);
+    c += `<ellipse cx="${cx}" cy="${ecy}" rx="${b}" ry="${a}" fill="none" stroke="${C.magenta}" stroke-width="2.5"/>`;
+    // time ticks along the transfer, every 10 min (illustrative)
+    [35, 75, 115, 155].forEach(t => { const th = t * Math.PI / 180; const x = cx + b * Math.sin(th), y = ecy - a * Math.cos(th); c += `<circle cx="${x}" cy="${y}" r="1.8" fill="${C.magenta}"/>`; });
+    c += text(cx, ecy + a + 14, 'AP 12 400 KM', { size: 9.5, bold: true, fill: C.magenta, anchor: 'middle', track: 0.4 });
+    // burn diamond at perigee (top)
+    const bxx = cx, byy = cy - r0;
+    c += path(`M${bxx} ${byy - 6} l6 6 l-6 6 l-6 -6 z`, C.magenta, 1.5, { fill: C.glass });
+    c += text(bxx - 10, byy - 6, 'DV 42.0', { size: 10, fill: C.magenta, anchor: 'end' });
+    // own ship on the orbit, 49 deg behind the burn; the raider and Highport merged into it
+    const sa = (-90 + 49) * Math.PI / 180, sx = cx + r0 * Math.cos(sa), sy = cy + r0 * Math.sin(sa);
+    c += sym.chevron(sx, sy, -41, C.cyan, 1.5, 6);
+    c += text(sx + 9, sy + 12, '+2', { size: 9.5, bold: true, fill: C.dim });
+    c += sym.quatrefoil(cx - 26, cy + 72, 6, C.amber, 1.5);
+    // Range scale
+    c += text(gx + 48, gy + gh - 104, 'RNG 20 000 KM', { size: 9.5, fill: C.dim });
+    // Messages
+    const my2 = gy + gh - 88;
+    c += line(gx + 44, my2, gx + gw - 44, my2, C.graticule, 1);
+    c += text(gx + 48, my2 + 16, 'PROP LOW  22%', { size: 11, bold: true, fill: C.amber, track: 0.4 });
+    c += text(gx + 48, my2 + 31, 'HIGHPORT CLR PORT 1', { size: 11, bold: true, fill: C.white, track: 0.4 });
+    // Scratchpad
+    c += text(gx + 48, my2 + 52, 'DV 42.0', { size: 13, mono: true, fill: C.cyan });
+    c += rect(gx + 110, my2 + 41, 7, 13, { fill: C.cyan });
+    return c;
+  }
+});
+s += mfd.svg;
+
+// DU-3 stowed handle
+s += bezelBody(560, 784, 160, 16, 3);
+s += text(640, 796, 'DU-3  STOWED  [F3]', { size: 8, bold: true, fill: C.stencil, anchor: 'middle', track: 1 });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>
