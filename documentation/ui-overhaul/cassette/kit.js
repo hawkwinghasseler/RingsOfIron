@@ -298,11 +298,12 @@ function crtText(x,y,rows,{size=15,lh=19,cw=9.0}={}){
 }
 
 // ---------- shapes on tubes ----------
-function sym(kind,x,y,s,col,{fill=false,w=1.6}={}){
+function sym(kind,x,y,s,col,{fill=false,w=1.6,rot=0}={}){
   const f = fill?col:'none';
   switch(kind){
     case 'station': return `<rect x="${x-s}" y="${y-s}" width="${2*s}" height="${2*s}" stroke="${col}" stroke-width="${w}" fill="${f}"/>`;
-    case 'neutral': return `<path d="M${x} ${y-s*1.2}L${x+s} ${y+s*0.8}H${x-s}Z" stroke="${col}" stroke-width="${w}" fill="${f}"/>`;
+    // a notched dart along the ship's heading: never an upright triangle, which is the caution glyph
+    case 'neutral': return `<path transform="rotate(${rot} ${x} ${y})" d="M${x} ${y-s*1.35}L${x+s*0.72} ${y+s*0.95}L${x} ${y+s*0.45}L${x-s*0.72} ${y+s*0.95}Z" stroke="${col}" stroke-width="${w}" stroke-linejoin="round" fill="${f}"/>`;
     case 'hostile': return `<path d="M${x} ${y-s*1.25}L${x+s*1.1} ${y}L${x} ${y+s*1.25}L${x-s*1.1} ${y}Z" stroke="${col}" stroke-width="${w}" fill="${f}"/>`;
     case 'unknown': return `<circle cx="${x}" cy="${y}" r="${s}" stroke="${col}" stroke-width="${w}" fill="none"/>`;
     case 'own': return `<path d="M${x-s} ${y}H${x+s}M${x} ${y-s}V${y+s}M${x} ${y-s}l0 -${s}" stroke="${col}" stroke-width="${w}"/>`;
@@ -556,8 +557,8 @@ function stationG(x, y, k = 1) {
 }
 // Reflector-sight symbology: amber unless told otherwise
 const WS = { a: PH.amber, d: PH.dim, r: PH.red };
-function wsym(kind, x, y, s = 7, { col = WS.a, fill = false, w = 1.5 } = {}) {
-  return `<g filter="url(#glow)">${sym(kind, x, y, s, col, { fill, w })}</g>`;
+function wsym(kind, x, y, s = 7, { col = WS.a, fill = false, w = 1.5, rot = 0 } = {}) {
+  return `<g filter="url(#glow)">${sym(kind, x, y, s, col, { fill, w, rot })}</g>`;
 }
 function tgtBracketG(x, y, s = 22, col = WS.a) { return `<g filter="url(#glow)">${sym('bracket', x, y, s, col, { w: 1.8 })}</g>`; }
 function navBracketG(x, y, s = 22, col = WS.a) {
@@ -583,7 +584,7 @@ function threatG(d, head, col = WS.r) {
   // d: path; head: [x,y,angleDeg] of the missile
   const [hx, hy, ha] = head;
   return `<g filter="url(#glow)"><path d="${d}" stroke="${col}" stroke-width="1.6" fill="none" stroke-dasharray="9 7"/>
-   <g transform="translate(${hx},${hy}) rotate(${ha})" stroke="${col}" stroke-width="1.8" fill="none"><path d="M-7 0H7"/><path d="M-1 -5L-8 0L-1 5"/></g></g>`;
+   <g transform="translate(${hx},${hy}) rotate(${ha})" stroke="${col}" stroke-width="1.8" fill="none"><circle r="2.6" fill="${col}" stroke="none"/><path d="M0 0H13"/><path d="M8 -4.5L13.5 0L8 4.5"/></g></g>`;
 }
 function edgeG(x, y, ang, lines, { col = 'amber' } = {}) {
   const c = PH[col];
@@ -690,7 +691,7 @@ function softRailG(x, y, w, labels, { active = 0, pinned = false, folded = false
     s += flapG(kx + (kw - fw) / 2, y + 6.5 + (on ? 1.5 : 0), l, { cw: 8.4, ch: 11.5, size: 11.5, fill: on ? PH.amber : '#F3EEE2' });
   });
   const px = x + w - extra + 2;
-  s += `<rect x="${px - 1}" y="${y + 2}" width="26" height="${h - 4}" rx="2" fill="${C.alu}"/><g filter="url(#shadow)"><rect x="${px + 1}" y="${y + 4 + (pinned ? 2 : 0)}" width="22" height="${h - 9}" rx="2" fill="${pinned ? C.orange : C.bakelite}"/></g>`;
+  s += `<rect x="${px - 1}" y="${y + 2}" width="26" height="${h - 4}" rx="2" fill="#5a524b"/><g filter="url(#shadow)"><rect x="${px + 1}" y="${y + 4 + (pinned ? 2 : 0)}" width="22" height="${h - 9}" rx="2" fill="${pinned ? C.orange : C.bakelite}"/></g>`;
   s += `<text x="${px + 12}" y="${y + h / 2 + 4 + (pinned ? 2 : 0)}" text-anchor="middle" class="legend" font-size="12" fill="${pinned ? '#2a1606' : C.inkLight}">PIN</text>`;
   const fx = px + 29;
   s += `<g filter="url(#shadow)"><rect x="${fx}" y="${y + 3}" width="24" height="${h - 6}" rx="2.5" fill="${C.bakelite}"/></g>

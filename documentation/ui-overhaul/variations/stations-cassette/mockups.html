@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Ship Stations in Yard Standard</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow+Semi+Condensed:wght@600&family=Big+Shoulders+Stencil+Display:wght@800&family=IBM+Plex+Mono:wght@400;500&family=Special+Elite&family=VT323&family=Inter:wght@400;600&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow+Semi+Condensed:wght@600&family=Big+Shoulders+Stencil+Display:wght@800&family=IBM+Plex+Mono:wght@300;400;500&family=Special+Elite&family=VT323&family=Inter:wght@400;600&display=block" rel="stylesheet">
 <style>
   html, body { margin: 0; padding: 0; background: #0a0b0c; }
   svg { display: block; margin-bottom: 8px; }
@@ -18,137 +18,224 @@
 </style>
 </head>
 <body>
-<!-- Ship Stations functional design (round 2) skinned in Yard Standard. 1280 x 800 UI units. -->
+<!-- Ship Stations functional design (round 8) skinned in Yard Standard: round 2. 1280 x 800 UI units. -->
 <svg id="C-helm-green" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="D-helm-approach" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
 <svg id="E-weapons-red" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
 <svg id="B-deck-alert" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
 <svg id="G-docked-link" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="K-kit-states" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="K2-kit-pages" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="K3-world-deck" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
 <script src="../../cassette/kit.js"></script>
 <script>
-// ---------------- deck geometry (round 1) ----------------
-// The band is 184 tall like the spec's Z3, but flush with the bottom edge (y 616..800) instead of
-// 16 above it: hardware does not float. x 96..1184 as in the spec.
-const B = { y: 616, mfdL: 96, cl: 400, mfdR: 896, w: 288, cw: 480, h: 160, board: 780 };
+// =====================================================================
+// Ship Stations (spec round 8) in the Yard Standard, round 2.
+// The seated band stands flush with the bottom edge (y 616 to 800), which the spec allows.
+// The top column is a rack: two hanger rods from the top edge, and each overhead unit clamps to
+// them at its fixed height. A unit with nothing to say is drawn up out of sight; the others keep
+// their heights, so the ticker is always at y 108.
+// =====================================================================
+const XDEFS = `<defs>
+  <filter id="projglow" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur in="SourceGraphic" stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <pattern id="thinair" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#bcd6ff"/></pattern>
+  <pattern id="crates" width="27" height="27" patternUnits="userSpaceOnUse"><rect x="1.5" y="1.5" width="24" height="24" rx="1.5" fill="#3a3830" stroke="#23221d" stroke-width="1.5"/><path d="M1.5 1.5L25.5 25.5M25.5 1.5L1.5 25.5" stroke="#2c2a24" stroke-width="1.2"/></pattern>
+  <radialGradient id="fireG" cx="0.5" cy="0.6" r="0.6"><stop offset="0" stop-color="#ffd27a"/><stop offset="0.45" stop-color="#ff7a2a"/><stop offset="1" stop-color="#c8361c" stop-opacity="0"/></radialGradient>
+  <radialGradient id="smokeG" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#8d8a84" stop-opacity="0.45"/><stop offset="1" stop-color="#8d8a84" stop-opacity="0"/></radialGradient>
+  <radialGradient id="battleG" cx="0.5" cy="0.5" r="0.7"><stop offset="0" stop-color="#ff2a10" stop-opacity="0.07"/><stop offset="1" stop-color="#ff2a10" stop-opacity="0.2"/></radialGradient>
+  <linearGradient id="paperG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2EBD9"/><stop offset="1" stop-color="#E4DBC6"/></linearGradient>
+  <linearGradient id="livG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#727563"/><stop offset="1" stop-color="#4a4d40"/></linearGradient>
+</defs>`;
 
-function sill() {
-  return podG(88, 768, 1104, 32, { stripe: false, r: 4 });
+// Lamps sit in a dark bezel ring, so a lit white lens reads as lit on beige enamel
+const kitLampG = lampG;
+lampG = (cx, cy, r, color, lit) => `<circle cx="${cx}" cy="${cy}" r="${r + 2.9}" fill="#2b2723"/>` + kitLampG(cx, cy, r, color, lit);
+// The home bug: a house-shaped index in ink under a delta-v scale, never a triangle (the caution glyph)
+const homeBugG = (x, y) => `<path d="M${x} ${y}l5 4.2v6h-10v-6z" fill="#2a2420" stroke="#F3EEE2" stroke-width="0.6"/>`;
+const kitHmeterG = hmeterG;
+hmeterG = (x, y, w, o = {}) => {
+  const bugs = o.bugs || [], min = o.min ?? 0, max = o.max ?? 100, h = o.h ?? 16;
+  let s = kitHmeterG(x, y, w, { ...o, bugs: bugs.filter(b => !b.home) });
+  for (const b of bugs.filter(b => b.home)) s += homeBugG(x + (Math.max(min, Math.min(max, b.v)) - min) / (max - min) * w, y + h + 3);
+  return s;
+};
+const fit = (t, n) => t.length > n ? t.slice(0, n - 1) + '…' : t;   // long names are cut, never wrapped
+const lw = t => t.length * 6.7;                                      // width of a 12-unit legend
+const DIM_INK = '#8f8578';
+
+// World labels are light on glass: a lighter weight and a thinner halo than the tubes' text
+function wl(x, y, t, { c = 'amber', size = 13, anchor = 'start' } = {}) {
+  return `<text x="${x}" y="${y}" class="crt" font-size="${size}" text-anchor="${anchor}" font-weight="300" fill="${PH[c] || c}" filter="url(#projglow)" xml:space="preserve">${esc(t)}</text>`;
 }
-function board(keys, cond, state = null) {
-  // six station keys, then the condition drum and the layered state (DOCKED, EMERG) on a lamp
-  let s = '';
-  const x0 = 98, kw = 152, gap = 4;
-  keys.forEach((k, i) => { s += stationKeyG(x0 + i * (kw + gap), B.board - 3, kw, 22, k); });
-  s += lampG(1046, B.board + 8, 4, state === 'EMERG' ? 'red' : 'white', !!state) + tag(1054, B.board + 12.5, state || 'DOCKED', { fill: state ? C.inkLight : '#6f675b' });
-  s += condFlagG(1110, B.board - 1, 70, 18, cond);
+// A burn: a double chevron along the burn's direction, with its number and countdown
+function burnMarkG(x, y, rot, label) {
+  return `<g filter="url(#projglow)" transform="translate(${x},${y}) rotate(${rot})" stroke="${WS.a}" stroke-width="1.8" fill="none"><path d="M-9 -7L-1 0L-9 7M-1 -7L7 0L-1 7"/></g>` + wl(x + 16, y + 5, label);
+}
+// A small lens with a fixed legend, lit or dark; dark lenses keep their legend faintly
+function lensS(x, y, w, h, text, color = null, { glow = true, base = 'white' } = {}) {
+  const lit = !!color, [on, off] = LAMP[color || base];
+  let s = `<rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="2" fill="${C.alu}"/>`;
+  if (lit && glow) s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${on}" filter="url(#lampglow)" opacity="0.6"/>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.2" fill="${lit ? on : off}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#glassG)"/>`;
+  s += `<text x="${x + w / 2}" y="${y + h / 2 + 4.2}" text-anchor="middle" class="legend" font-size="12" fill="${lit ? '#241406' : 'rgba(240,230,210,0.42)'}">${esc(text)}</text>`;
   return s;
 }
+function dymoG(x, y, t, { fill = '#1C1B1A' } = {}) {
+  const w = t.length * 7.6 + 10;
+  return `<g transform="translate(${x},${y})"><rect width="${w}" height="15" rx="1.5" fill="${fill}"/><text x="${w / 2}" y="11.5" text-anchor="middle" class="dymo" font-size="12" fill="#f4efe6">${esc(t)}</text></g>`;
+}
+function engrave(x1, y1, x2, y2) {
+  return `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="#9f957c" stroke-width="1"/><path d="M${x1 + (y1 === y2 ? 0 : 1)} ${y1 + (y1 === y2 ? 1 : 0)}L${x2 + (y1 === y2 ? 0 : 1)} ${y2 + (y1 === y2 ? 1 : 0)}" stroke="#f4eedd" stroke-width="0.8"/>`;
+}
+
+// =====================================================================
+// THE TOP COLUMN: status strip (y 16), annunciator (y 44), warp strip (y 84), ticker (y 108)
+// =====================================================================
+const TC = { x: 280, w: 720 };
+function rackG(x, bottom) {
+  const rod = rx => `<rect x="${rx}" y="0" width="3.5" height="${bottom}" fill="#4a443f"/><rect x="${rx + 0.6}" y="0" width="1" height="${bottom}" fill="#fff" opacity="0.14"/>`;
+  return rod(x + 30) + rod(x + TC.w - 34);
+}
+function unitBarG(x, y, w, h) {
+  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="url(#chassisG)"/></g><rect x="${x + 2}" y="${y}" width="${w - 4}" height="1.2" fill="#76685b"/>`;
+}
+// Z1s: the condition on a drum flag (blank in Green), BATTLE STATIONS, DOCKED and LATCHED on lenses
+// with fixed legends, and the emergency on a red-phosphor tube
+function statusStripG(x, { cond = null, battle = false, state = null, emerg = null } = {}) {
+  const y = 16, w = TC.w, h = 24;
+  let s = unitBarG(x, y, w, h);
+  if (cond) s += condFlagG(x + 6, y + 4, 84, 16, cond);
+  else s += `<rect x="${x + 3}" y="${y + 1}" width="90" height="22" rx="2.5" fill="${C.bakelite}"/><rect x="${x + 6}" y="${y + 4}" width="84" height="16" fill="url(#drumG)"/>`;
+  s += lensS(x + 104, y + 4, 120, 16, 'BATTLE STATIONS', battle ? 'red' : null);
+  s += lensS(x + 234, y + 4, 62, 16, 'DOCKED', state === 'DOCKED' ? 'white' : null) + lensS(x + 304, y + 4, 66, 16, 'LATCHED', state === 'LATCHED' ? 'white' : null);
+  const t = tubeG(x + 382, y + 3, w - 388, 18, { r: 2, bezel: 3 });
+  s += t.under;
+  if (emerg) {
+    let ex = x + 390;
+    for (const seg of emerg) {
+      if (seg.k) { for (let i = 0; i < (seg.n || 1); i++) { s += tt(ex + 2, y + 16.5, seg.k, { rev: true, w: 14, size: 12.5, c: 'red' }); ex += 17; } ex += 4; }
+      else { s += tt(ex, y + 16.5, seg.t, { size: 12.5, c: seg.c || 'red' }); ex += seg.t.length * 7.5; }
+    }
+  }
+  return s + t.over;
+}
+// Z1: one row. Master WARNING at the left, master CAUTION at the right, six tiles between.
+// A tile: its tag on a lens lit in its role, its value on eight split flaps under it.
+function annTileG(x, y, t) {
+  const w = 94, h = 36;
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#0c0a09"/>`;
+  if (!t) return s + `<rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="15" fill="#2a2420"/>` + flapG(x + 9, y + 20, '        ', { cw: 9.5, ch: 13, size: 12 });
+  const color = t.sev === 'w' ? 'red' : 'amber', [on] = LAMP[color], op = t.clearing ? 0.4 : 1;
+  s += `<g opacity="${op}">`;
+  if (!t.ack && !t.clearing) s += `<rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="15" fill="${on}" filter="url(#lampglow)" opacity="0.8"/>`;
+  s += `<rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="15" fill="${on}"/><rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="15" fill="url(#glassG)"/>`;
+  s += `<text x="${x + w / 2}" y="${y + 13.8}" text-anchor="middle" class="legend" font-size="12" fill="#241406">${t.sev === 'w' ? '◆ ' : '▲ '}${esc(t.tag)}</text>`;
+  s += flapG(x + 9, y + 20, (t.val || '').padEnd(8).slice(0, 8), { cw: 9.5, ch: 13, size: 12 });
+  s += `</g>`;
+  if (t.fresh) s += `<rect x="${x - 2.5}" y="${y - 2.5}" width="${w + 5}" height="${h + 5}" rx="3.5" fill="none" stroke="${on}" stroke-width="2" opacity="0.85" filter="url(#lampglow)"/>`;
+  return s;
+}
+function annG(x, tiles, { mw = false, mc = false } = {}) {
+  const y = 44, w = TC.w, h = 36;
+  let s = unitBarG(x, y, w, h);
+  s += pushG(x + 4, y + 4, 48, 28, ['MASTER', 'WARNING'], { color: 'red', lit: mw });
+  s += pushG(x + w - 52, y + 4, 48, 28, ['MASTER', 'CAUTION'], { color: 'amber', lit: mc });
+  for (let i = 0; i < 6; i++) s += annTileG(x + 62 + i * 100, y, tiles[i]);
+  return s;
+}
+// Z1w: only in warp. The rate on flaps, RAILS on a lamp, the drop-out (or why it is held) on a tube
+function warpStripG(x, rate, text, { held = false, y = 84 } = {}) {
+  const w = TC.w, h = 20;
+  let s = unitBarG(x, y, w, h);
+  s += tag(x + 10, y + 14.5, 'WARP', { fill: C.inkLight }) + flapG(x + 48, y + 3, rate.padEnd(6), { cw: 9, ch: 14, size: 12.5, fill: PH.amber });
+  s += lampG(x + 120, y + 10, 3.6, 'white', true) + tag(x + 128, y + 14.5, 'RAILS', { fill: C.inkLight });
+  const t = tubeG(x + 176, y + 3, w - 182, 14, { r: 2, bezel: 2 });
+  s += t.under + tt(x + 184, y + 14, text, { size: 12.5, c: held ? 'amber' : 'dim' }) + t.over;
+  return s;
+}
+// Z2: three lines, newest at the bottom: station tag in reverse, the speaker, what they said
+function tickerG2(x, lines, { y = 108 } = {}) {
+  const w = TC.w, h = 60;
+  let s = `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="${C.bakelite}"/></g>`;
+  const t = tubeG(x + 5, y + 5, w - 10, h - 10, { r: 4, bezel: 4 });
+  s += t.under;
+  lines.forEach((l, i) => {
+    const yy = y + 21 + i * 16, mk = l.sev === 'w' ? '◆' : l.sev === 'c' ? '▲' : ' ';
+    s += tt(x + 14, yy, mk, { c: l.sev === 'w' ? 'red' : 'amber', size: 13 });
+    s += `<g filter="url(#glow)"><rect x="${x + 27}" y="${yy - 11}" width="46" height="13.5" fill="${PH.amber}"/></g><text x="${x + 30}" y="${yy}" class="crt" font-size="12.5" font-weight="500" fill="${C.crtBlack}">${esc(l.tag)}</text>`;
+    s += tt(x + 84, yy, l.who + ': ' + l.text, { size: 13 });
+  });
+  return s + t.over;
+}
+// The whole column, positioned (recentred left of a side panel when one is open)
+function topColumnG({ x = TC.x, strip = null, ann = null, warp = null, ticker = null } = {}) {
+  const bottom = ticker ? 112 : warp ? 88 : ann ? 48 : strip ? 20 : 0;
+  if (!bottom) return '';
+  let s = rackG(x, bottom);
+  if (strip) s += statusStripG(x, strip);
+  if (ann) s += annG(x, ann.tiles, ann);
+  if (warp) s += warpStripG(x, warp.rate, warp.text, warp);
+  if (ticker) s += tickerG2(x, ticker);
+  return s;
+}
+
+// =====================================================================
+// THE BAND: MFDs 288 x 160 at x 96 and 896, cluster 480 x 160 at x 400, station board under them
+// =====================================================================
+const B = { y: 616, mfdL: 96, cl: 400, mfdR: 896, w: 288, cw: 480, h: 160, board: 780 };
+function sill() { return podG(88, 768, 1104, 32, { stripe: false, r: 4 }); }
+// A station tile: number and name on a lens (lit white for the player's own stations in Yellow and
+// Red), the occupant on a label, and the alert on a lens of its own, so both show at once
+function boardTileG(x, y, t, dim) {
+  const w = 146, h = 22, lw0 = 62, you = t.you && !dim;
+  const [on, off] = LAMP.white;
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#2f2924"/>`;
+  s += `<rect x="${x + 2}" y="${y + 2}" width="${lw0}" height="${h - 4}" rx="1.5" fill="${C.alu}"/>`;
+  if (you) s += `<rect x="${x + 4}" y="${y + 4}" width="${lw0 - 4}" height="${h - 8}" fill="${on}" filter="url(#lampglow)" opacity="0.6"/>`;
+  s += `<rect x="${x + 4}" y="${y + 4}" width="${lw0 - 4}" height="${h - 8}" rx="1" fill="${you ? on : off}"/><rect x="${x + 4}" y="${y + 4}" width="${lw0 - 4}" height="${h - 8}" fill="url(#glassG)"/>`;
+  s += `<text x="${x + 4 + (lw0 - 4) / 2}" y="${y + h / 2 + 4.3}" text-anchor="middle" class="legend" font-size="12" fill="${you ? '#241406' : 'rgba(240,230,210,0.55)'}">${t.num} ${esc(t.name)}</text>`;
+  s += `<text x="${x + lw0 + 9}" y="${y + h / 2 + 4.3}" class="legend" font-size="12" fill="${t.struck ? '#7d7466' : C.inkLight}">${esc(t.occ || '')}</text>`;
+  // the alert part is a jewel lamp in a dark bezel, so unlit it reads as a lamp, not an empty box
+  const ax = x + w - 22, jx = ax + 9, jy = y + h / 2, jr = 7;
+  s += `<circle cx="${jx}" cy="${jy}" r="${jr + 2.6}" fill="#1f1b18"/>`;
+  if (t.alert) {
+    const [aon] = LAMP[t.alert === 'w' ? 'red' : 'amber'];
+    s += `<circle cx="${jx}" cy="${jy}" r="${jr}" fill="${aon}" filter="url(#lampglow)" opacity="0.75"/><circle cx="${jx}" cy="${jy}" r="${jr}" fill="${aon}"/>`;
+    s += `<text x="${jx}" y="${jy + 3.6}" text-anchor="middle" font-size="9.5" fill="#241406">${t.alert === 'w' ? '◆' : '▲'}</text>`;
+  } else s += `<circle cx="${jx}" cy="${jy}" r="${jr}" fill="#3b2c22"/>`;
+  s += `<circle cx="${jx}" cy="${jy}" r="${jr}" fill="url(#glassG)"/><ellipse cx="${jx - 2}" cy="${jy - 2.6}" rx="3" ry="1.6" fill="#fff" opacity="${t.alert ? 0.35 : 0.16}"/>`;
+  if (t.badge) s += `<g filter="url(#shadow)"><path d="M${ax - 22} ${y + 4}h14l4 4v10h-18z" fill="url(#paperG)"/></g><path d="M${ax - 8} ${y + 4}v4h4" fill="none" stroke="#9f957c" stroke-width="0.8"/><path d="M${ax - 19} ${y + 11}h10M${ax - 19} ${y + 14.5}h8" stroke="#6b6254" stroke-width="1"/>`;
+  if (t.struck) s += `<rect x="${x + 3}" y="${y + h / 2 - 1.5}" width="${w - 6}" height="3" fill="url(#barber)"/>`;
+  return s;
+}
+function boardG(tiles, { dim = false, day = '3', time = '14:22:05' } = {}) {
+  let s = '';
+  tiles.forEach((t, i) => s += boardTileG(96 + i * 150 + 2, B.board - 4, t, dim));
+  const cx = 1000, ink = dim ? DIM_INK : C.inkLight;
+  s += tag(cx + 6, B.board + 11.5, 'DAY', { fill: ink }) + drumG(cx + 34, B.board - 3, day, { cw: 11, ch: 17, size: 13.5, dimLead: false }) + drumG(cx + 58, B.board - 3, time, { cw: 11, ch: 17, size: 13.5, dimLead: false });
+  if (dim) s += `<rect x="96" y="${B.board - 6}" width="1088" height="26" fill="#000" opacity="0.36"/>`;
+  return s;
+}
+const T_ = (num, name, occ, o = {}) => ({ num, name, occ, ...o });
+
+// MFDs: raised (a tube and its soft-key rail) or folded down to the rail
 function mfdRaised(x, page, rail) {
   let s = podG(x, B.y, B.w, B.h);
   s += plateG(x + 5, B.y + 10, B.w - 10, 118, { screws: true });
   const tx = x + 16, ty = B.y + 18, tw = B.w - 32, th = 102;
-  const t = tubeG(tx, ty, tw, th, { r: 6, bezel: 5 });
-  s += t.under + page(tx, ty, tw, th) + t.over;
+  const t = tubeG(tx, ty, tw, th, { r: 6, bezel: 5, dead: !!rail.dead });
+  s += t.under + (rail.dead ? tt(tx + tw / 2, ty + th / 2 + 4, rail.dead, { anchor: 'middle', c: 'dim' }) : page(tx, ty, tw, th)) + t.over;
   s += softRailG(x + 5, B.y + 132, B.w - 10, rail.labels, rail);
   return s;
 }
-function mfdFolded(x, rail) {
-  return podG(x, B.y + 128, B.w, 32, { stripe: true }) + softRailG(x + 5, B.y + 134, B.w - 10, rail.labels, { ...rail, folded: true });
-}
-function row(tx, ty, i) { return ty + 14 + i * 15; }
+function mfdFolded(x, rail) { return podG(x, B.y + 128, B.w, 32, { stripe: true }) + softRailG(x + 5, B.y + 134, B.w - 10, rail.labels, { ...rail, folded: true }); }
 function title(tx, ty, tw, left, right) {
-  return tt(tx + 6, ty + 14, ' ' + left.padEnd(Math.floor((tw - 12) / 7.8) - right.length - 2) + right + ' ', { rev: true, w: tw - 10, size: 12.5 });
+  return tt(tx + 6, ty + 14, ' ' + left.padEnd(Math.floor((tw - 12) / 7.5) - right.length - 2) + right + ' ', { rev: true, w: tw - 10, size: 12.5 });
 }
+const ROW = (ty, i) => ty + 18 + i * 15;
 
-// ---------------- helm cluster ----------------
-function helmCluster({ ref, next, frame = 'ORBIT', speed = '7.67', unit = 'KM/S', assist = true, order = 'MANUAL', dv = 1840, home = 1210, plan = 210, day = '003', time = '14:22:05', rot = null, thr = false, warp = null, dark = {} }) {
-  const x = B.cl, y = B.y;
-  let s = podG(x, y, B.cw, B.h);
-  s += plateG(x + 5, y + 10, B.cw - 10, B.h - 14, {});
-  // reference + next event strip
-  s += stripG(x + 18, y + 20, B.cw - 36, 38, [ref ? { t: ref } : null, next ? { t: next } : null], { size: 13, lh: 16, pad: 7 });
-  // VELOCITY: frame flap, drums, unit lamps
-  const vy = y + 74;
-  s += tag(x + 16, vy, 'VELOCITY');
-  s += flapG(x + 16, vy + 8, frame.padEnd(6), { cw: 9, ch: 16, size: 13 });
-  s += drumG(x + 80, vy + 6, speed, { cw: 17, ch: 26, size: 20, dimLead: false });
-  const dw = drumW(speed, 17);
-  s += lampG(x + 80 + dw + 12, vy + 12, 3.6, 'white', unit === 'KM/S') + tag(x + 80 + dw + 19, vy + 16, 'KM/S');
-  s += lampG(x + 80 + dw + 12, vy + 27, 3.6, 'white', unit === 'M/S') + tag(x + 80 + dw + 19, vy + 31, 'M/S');
-  // modes: ASSIST push-light (OFF flag when off), helm order flap, THR / RCS lamps
-  const my = y + 118;
-  s += pushG(x + 16, my, 56, 22, ['ASSIST'], { color: 'white', lit: assist });
-  if (!assist) s += `<rect x="${x + 40}" y="${my + 13}" width="28" height="10" fill="${C.mustard}"/>` + tag(x + 54, my + 22, 'OFF', { anchor: 'middle', size: 12 });
-  s += keyG(x + 86, my + 4, 'X');
-  s += tag(x + 104, my + 16, 'HELM');
-  s += flapG(x + 138, my + 3, order.padEnd(8), { cw: 9, ch: 16, size: 13, fill: order === 'MANUAL' ? '#bdb6a8' : PH.amber });
-  s += lampG(x + 228, my + 7, 3.4, 'amber', thr) + tag(x + 235, my + 11, 'THR');
-  s += lampG(x + 228, my + 19, 3.4, 'amber', thr) + tag(x + 235, my + 23, 'RCS');
-  if (rot !== null) s += cneedleG(x + 238, vy + 24, 14, { value: rot, range: 3 }) + tag(x + 256, vy + 28, 'ROT');
-  // DELTA-V: drum, then the bar with the HOME bug and the PLAN bracket
-  const dx = x + 270;
-  s += tag(dx, vy, 'DELTA-V') + drumG(dx + 52, vy - 12, String(dv).padStart(4, '0'), { cw: 12, ch: 17, size: 14, unit: 'M/S', unitGap: 4 });
-  s += hmeterG(dx + 2, vy + 14, 116, { min: 0, max: 2500, value: dv, h: 13, bugs: home ? [{ v: home }] : [], bracket: plan ? [dv - plan, dv] : null, major: 5 });
-  if (home) s += tag(dx, vy + 46, 'HOME ' + home.toLocaleString('en-US'));
-  if (plan) s += tag(dx + 120, vy + 46, 'PLAN ' + plan, { anchor: 'end' });
-  // CHRONOMETER
-  const cx = x + 402;
-  s += tag(cx, vy, 'DAY') + drumG(cx + 30, vy - 12, day, { cw: 11, ch: 17, size: 14 });
-  s += drumG(cx, vy + 14, time, { cw: 9.5, ch: 18, size: 14, dimLead: false });
-  if (warp) s += tag(cx, vy + 52, 'WARP') + flapG(cx + 36, vy + 41, warp.padEnd(5), { cw: 8.6, ch: 14, size: 12, fill: PH.amber });
-  return s;
-}
-
-// ---------------- tactical cluster ----------------
-function mount(x, y, w, h, { name, state, crew, mode, lamp }) {
-  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${C.chassis}"/><rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${h - 2}" rx="2.5" fill="none" stroke="#6a5c50" stroke-width="0.8"/>`;
-  s += tag(x + 7, y + 15, name, { fill: C.inkLight });
-  if (crew) s += `<g transform="translate(${x + 40},${y + 4})"><rect width="${crew.length * 7.6 + 10}" height="15" rx="1.5" fill="${crew === 'YOU' ? '#2F4A7A' : '#1C1B1A'}"/><text x="${(crew.length * 7.6 + 10) / 2}" y="11.5" text-anchor="middle" class="dymo" font-size="12" fill="#f4efe6">${crew}</text></g>`;
-  s += lampG(x + 11, y + h - 12, 3.4, lamp[0], lamp[1]);
-  s += flapG(x + 19, y + h - 19, state.padEnd(6), { cw: 8.4, ch: 14, size: 12, fill: lamp[0] === 'red' ? PH.red : '#F3EEE2' });
-  const tx = x + w - 13, auto = mode === 'AUTO' || mode === 'YOURS';
-  s += tag(tx, y + 12, auto ? 'AUTO' : 'WILL', { anchor: 'middle', fill: C.inkLight, size: 12 }) + tag(tx, y + h - 3, auto ? 'YOURS' : 'HELD', { anchor: 'middle', fill: C.inkLight, size: 12 });
-  const up = mode === 'WILL' || mode === 'AUTO';
-  s += `<circle cx="${tx}" cy="${y + h / 2 + 1}" r="6.5" fill="${C.alu}"/><circle cx="${tx}" cy="${y + h / 2 + 1}" r="3.4" fill="#2a2725"/>
-    <g filter="url(#shadow)"><path d="M${tx - 1.8} ${y + h / 2 + 1}L${tx - 2.8} ${y + h / 2 + 1 + (up ? -10 : 10)}h5.6L${tx + 1.8} ${y + h / 2 + 1}Z" fill="url(#knobG)"/></g>`;
-  return s;
-}
-function tacticalCluster() {
-  const x = B.cl, y = B.y;
-  let s = podG(x, y, B.cw, B.h) + plateG(x + 5, y + 10, B.cw - 10, B.h - 14, {});
-  const mw = 111, my = y + 17;
-  s += mount(x + 14, my, mw, 50, { name: 'NOSE', state: 'READY', crew: 'YOU', mode: 'WILL', lamp: ['green', true] });
-  s += mount(x + 14 + (mw + 3), my, mw, 50, { name: 'PORT', state: '1.2 S', crew: 'YOU', mode: 'WILL', lamp: ['amber', true] });
-  s += mount(x + 14 + 2 * (mw + 3), my, mw, 50, { name: 'STBD', state: 'READY', crew: 'CHEN', mode: 'WILL', lamp: ['green', true] });
-  s += mount(x + 14 + 3 * (mw + 3), my, mw, 50, { name: 'PD', state: 'AUTO', crew: '', mode: 'AUTO', lamp: ['green', true] });
-  // launchers, decoys, shields (mode flap, mass bar), trim rose
-  const ry = y + 76;
-  s += tag(x + 16, ry + 14, 'MSL') + drumG(x + 46, ry + 1, '4', { cw: 14, ch: 19, size: 15 }) + lampG(x + 72, ry + 10, 3.4, 'green', true) + tag(x + 79, ry + 14, 'READY') + keyG(x + 128, ry + 3, 'R');
-  s += tag(x + 152, ry + 14, 'DECOY') + drumG(x + 194, ry + 1, '6', { cw: 14, ch: 19, size: 15 }) + keyG(x + 222, ry + 3, 'F');
-  s += tag(x + 244, ry + 14, 'SHIELD') + flapG(x + 290, ry + 3, 'RAISED', { cw: 8.4, ch: 14, size: 12, fill: PH.amber }) + keyG(x + 352, ry + 3, '9');
-  s += hmeterG(x + 290, ry + 23, 50, { min: 0, max: 100, value: 82, h: 9, major: 2, zones: [{ from: 0, to: 25, color: C.red }] }) + tag(x + 346, ry + 32, '82%');
-  const rx = x + 410, rcy = ry + 17;
-  s += `<circle cx="${rx}" cy="${rcy}" r="16" fill="${C.bakelite}"/><circle cx="${rx}" cy="${rcy}" r="12" fill="#2a2420"/>`;
-  s += tag(rx, rcy - 19, 'BOW', { anchor: 'middle' }) + tag(rx - 20, rcy + 4, 'P', { anchor: 'end' }) + tag(rx + 20, rcy + 4, 'S', { anchor: 'start' });
-  s += `<path d="M${rx} ${rcy + 2}L${rx - 4} ${rcy + 6}L${rx} ${rcy - 10}L${rx + 4} ${rcy + 6}Z" fill="${C.orange}"/><circle cx="${rx}" cy="${rcy}" r="2" fill="${C.inkLight}"/>`;
-  s += tag(rx + 30, rcy - 4, 'TRIM') + keyG(rx + 40, rcy + 1, '8');
-  // target strip + hit chance
-  s += stripG(x + 18, y + 118, 392, 28, [{ t: 'RAIDER cutter 7.7 km  closing 2  ToF 1.3s STRUCK' }], { size: 13, pad: 6 });
-  s += tag(x + 420, y + 128, 'HIT') + tag(x + 420, y + 142, '64%');
-  s += gaugeG(x + 458, y + 133, 11, { min: 0, max: 100, value: 64, ends: false });
-  return s;
-}
-
-// ---------------- MFD pages ----------------
-function pageNAV(tx, ty, tw, th) {
-  let s = title(tx, ty, tw, 'NAV', 'EARTH');
-  const L = [['ALT', '400 km'], ['AP', '403 km'], ['PE', '397 km'], ['PERIOD', '1:32:25'], ['NEXT', 'no SOI change']];
-  L.forEach(([a, b], i) => { s += tt(tx + 8, row(tx, ty, i + 1) + 4, a.padEnd(8) + b, { c: i === 4 ? 'dim' : 'amber' }); });
-  const ox = tx + tw - 52, oy = ty + 62;
-  s += `<g filter="url(#glow)"><ellipse cx="${ox}" cy="${oy}" rx="38" ry="31" fill="none" stroke="${PH.green}" stroke-width="1.3"/><circle cx="${ox}" cy="${oy}" r="13" fill="${PH.gdim}"/>
-    <circle cx="${ox + 30}" cy="${oy - 19}" r="2.4" fill="${PH.green}"/></g>`;
-  return s;
-}
-function scope(cx, cy, r, contacts, { sweep = -40 } = {}) {
+// ---------- pages ----------
+function scopeG(cx, cy, r, contacts, { sweep = -40 } = {}) {
   let s = `<g filter="url(#glow)">`;
   [1, 2].forEach(k => s += `<circle cx="${cx}" cy="${cy}" r="${r * k / 2}" fill="none" stroke="${PH.gdim}" stroke-width="0.9"/>`);
   s += `<path d="M${cx - r} ${cy}H${cx + r}M${cx} ${cy - r}V${cy + r}" stroke="${PH.gdim}" stroke-width="0.7" opacity="0.6"/>`;
@@ -157,249 +244,428 @@ function scope(cx, cy, r, contacts, { sweep = -40 } = {}) {
   s += sym('own', cx, cy, 4, PH.green, { w: 1.2 });
   for (const c of contacts) {
     if (c.k === 'msl') s += `<path d="M${c.x - 4} ${c.y}h8" stroke="${PH.red}" stroke-width="2"/>`;
-    else s += sym(c.k, c.x, c.y, c.s || 3.5, c.dim ? PH.gdim : PH.green, { fill: c.fill, w: 1.2 });
+    else s += sym(c.k, c.x, c.y, c.s || 3.5, c.col || PH.green, { fill: c.fill, w: 1.2 });
     if (c.lock) s += sym('bracket', c.x, c.y, 8, PH.green, { w: 1.1 });
   }
   return s + `</g>`;
 }
-function pageSENSORS(range, contacts, list) {
+function pageSENSORS(tx, ty, tw, th) {
+  let s = title(tx, ty, tw, 'SENSORS', '5 KM');
+  const cx = tx + 48, cy = ty + 62;
+  s += scopeG(cx, cy, 38, [{ k: 'hostile', x: cx + 30, y: cy - 10, fill: true, col: PH.red, lock: true }, { k: 'msl', x: cx + 14, y: cy - 22 }, { k: 'msl', x: cx + 21, y: cy - 19 }, { k: 'station', x: cx - 26, y: cy + 20, s: 3, col: PH.gdim }]);
+  const L = [{ t: 'HARPOON 2.2 km 0:03', c: 'red' }, { t: 'HARPOON 2.6 km 0:04', c: 'red' }, { t: 'RAIDER  2.8 km   H' }, { t: 'HIGHPORT 4.1 km', c: 'dim' }];
+  L.forEach((l, i) => { s += tt(tx + 98, ROW(ty, i + 1) + 2, l.t, { c: l.c || 'amber', size: 12.5 }); });
+  return s;
+}
+// The corvette's plan on the green tube: the Bridge forward, the Hold aft, the door between
+function shipPlanG(cx, cy, k, { hits = [] } = {}) {
+  const T = k, ox = cx - 9.8 * T, oy = cy - 3 * T;
+  const X = v => ox + v * T, Y = v => oy + (6 - v) * T;
+  let s = `<g filter="url(#glow)" fill="none" stroke-width="1.2">`;
+  s += `<path d="M${X(2)} ${Y(6)}H${X(18)}L${X(19.6)} ${Y(3)}L${X(18)} ${Y(0)}H${X(2)}Z" stroke="${PH.green}"/>`;
+  s += `<rect x="${X(3)}" y="${Y(5)}" width="${5 * T}" height="${4 * T}" stroke="${PH.gdim}"/><rect x="${X(8)}" y="${Y(5)}" width="${9 * T}" height="${4 * T}" stroke="${PH.gdim}"/>`;
+  s += `<path d="M${X(8)} ${Y(5)}V${Y(4)}M${X(8)} ${Y(3)}V${Y(1)}" stroke="${PH.green}" stroke-width="1.8"/>`;
+  s += `</g>`;
+  return s;
+}
+function pageDAMAGE(tx, ty, tw, th) {
+  let s = title(tx, ty, tw, 'DAMAGE', 'NO HITS');
+  const k = 9.6, cx = tx + tw / 2, cy = ty + 59, ox = cx - 9.8 * k;
+  s += shipPlanG(cx, cy, k);
+  s += tt(ox + 5.5 * k, cy + 4.5, 'HOLD', { size: 12.5, c: 'dim', anchor: 'middle' }) + tt(ox + 12.5 * k, cy + 4.5, 'BRIDGE', { size: 12.5, c: 'dim', anchor: 'middle' });
+  return s;
+}
+function pageDOCK(lines) {
   return (tx, ty, tw, th) => {
-    let s = title(tx, ty, tw, 'SENSORS', range);
-    s += scope(tx + 50, ty + 62, 40, contacts);
-    list.forEach((l, i) => { s += tt(tx + 100, row(tx, ty, i + 1) + 4, l.t, { c: l.c || 'amber', size: 12.5 }); });
+    let s = title(tx, ty, tw, 'DOCK', 'HIGHPORT');
+    lines.forEach((l, i) => { s += tt(tx + 8, ROW(ty, i + 1) + 2, l.t, { c: l.c || 'amber', size: 12.5 }); });
     return s;
   };
 }
-function pageDEFENSE(tx, ty, tw, th) {
-  let s = title(tx, ty, tw, 'DEFENSE', 'RAISED');
-  const cx = tx + 56, cy = ty + 62, r = 36;
-  s += `<g filter="url(#glow)">`;
-  for (let i = 0; i < 96; i++) {
-    const a = i * 3.75, ar = (a - 90) * Math.PI / 180, ar2 = (a + 3 - 90) * Math.PI / 180;
-    const weak = a > 235 && a < 300, thick = weak ? 1 : (a < 40 || a > 320 ? 4.5 : 3);
-    const col = weak ? PH.red : PH.green;
-    if (weak && i % 2) continue;
-    s += `<path d="M${cx + r * Math.cos(ar)} ${cy + r * Math.sin(ar)}A${r} ${r} 0 0 1 ${cx + r * Math.cos(ar2)} ${cy + r * Math.sin(ar2)}" stroke="${col}" stroke-width="${thick}" fill="none"/>`;
+
+// =====================================================================
+// HELM CLUSTER: five fixed slots (reference, next event, velocity, trigger, delta-v) engraved on
+// one plate. A slot with nothing to show stays where it is, dark.
+// =====================================================================
+function helmCluster(o = {}) {
+  const { ref = null, next = null, approach = null, frame = 'ORBIT', speed = '7.67', unit = 'KM/S', closing = false, docked = false,
+    control = 'MANUAL', assist = true, thr = false, rcs = false, rot = null, trigger = null, dv = '1840', home = 1210, plan = null } = o;
+  const x = B.cl, y = B.y;
+  let s = podG(x, y, B.cw, B.h) + plateG(x + 5, y + 10, B.cw - 10, B.h - 14, {});
+  // REF and NEXT: one strip tube of two rows, the slot names engraved beside it
+  s += tag(x + 16, y + 34, 'REF') + tag(x + 16, y + 52, 'NEXT');
+  if (approach) {
+    // the docking approach takes both rows: the ports and clearance on the tube, the approach on instruments
+    const t = tubeG(x + 54, y + 19, 352, 18, { r: 3, bezel: 4 });
+    s += t.under + tt(x + 62, y + 32.5, approach.ports, { size: 13 }) + t.over;
+    let ax = x + 54;
+    const put = (str, gap = 4) => { s += tag(ax, y + 56, str); ax += lw(str) + gap; };
+    put('RANGE', 6); s += drumG(ax, y + 42, approach.range, { cw: 11, ch: 17, size: 14, dimLead: false }); ax += drumW(approach.range, 11) + 4; put('M', 12);
+    put('OFF'); s += flapG(ax, y + 44, approach.off.padEnd(4), { cw: 8.4, ch: 14, size: 12.5 }); ax += 4 * 8.4 + 4; put('M', 12);
+    put('ANG'); s += flapG(ax, y + 44, approach.ang.padEnd(5), { cw: 8.4, ch: 14, size: 12.5 }); ax += 5 * 8.4 + 14;
+    put('SAFE'); s += drumG(ax, y + 42, approach.safe, { cw: 11, ch: 17, size: 14, dimLead: false });
+    // closing as a share of the safe speed for this range: green to the limit, mustard to 1.5 times, red beyond
+    const gx = x + 440, gy = y + 38, r = 20, max = 1.9;
+    s += gaugeG(gx, gy, r, { min: 0, max, value: approach.closing / approach.safe, ends: false, zones: [{ from: 0, to: 1, color: '#4f8a43' }, { from: 1, to: 1.5, color: C.mustard }, { from: 1.5, to: max, color: C.red }] });
+    { const a = (150 + 1 / max * 240) * Math.PI / 180; s += `<line x1="${gx + (r + 1) * Math.cos(a)}" y1="${gy + (r + 1) * Math.sin(a)}" x2="${gx + (r - 9) * Math.cos(a)}" y2="${gy + (r - 9) * Math.sin(a)}" stroke="${C.ink}" stroke-width="2"/>`; }
+  } else {
+    const t = tubeG(x + 54, y + 19, 408, 38, { r: 3, bezel: 4 });
+    s += t.under + (ref ? tt(x + 62, y + 33, ref, { size: 13 }) : '') + (next ? tt(x + 62, y + 51, next, { size: 13 }) : '') + t.over;
   }
-  s += `<path d="M${cx} ${cy - 22}L${cx + 6} ${cy - 14}L${cx + 7} ${cy + 16}H${cx - 7}L${cx - 6} ${cy - 14}Z" fill="none" stroke="${PH.green}" stroke-width="1.2"/>`;
-  s += `<path d="M${cx - 5} ${cy - r - 9}l5 6l5 -6" stroke="${PH.amber}" stroke-width="1.6" fill="none"/></g>`;
-  const L = [{ t: 'MASS   82%' }, { t: 'TRIM   BOW' }, { t: 'EMIT   PORT OUT', c: 'red' }, { t: 'DECOY  6' }, { t: 'PD     AUTO' }];
-  L.forEach((l, i) => { s += tt(tx + 112, row(tx, ty, i + 1) + 4, l.t, { c: l.c || 'amber', size: 12.5 }); });
-  return s;
-}
-function pageDOCK(tx, ty, tw, th) {
-  let s = title(tx, ty, tw, 'DOCK', 'HIGHPORT');
-  const L = [{ t: 'PORT 1/1  S   LATCHED' }, { t: 'BERTH     HIGHPORT 2  S' }, { t: 'STRAIN    under 25%', c: 'dim' }, { t: 'CLEARANCE GRANTED' }, { t: 'UNDOCK    [U]', c: 'dim' }];
-  L.forEach((l, i) => { s += tt(tx + 8, row(tx, ty, i + 1) + 4, l.t, { c: l.c || 'amber', size: 12.5 }); });
+  s += engrave(x + 12, y + 66, x + 468, y + 66);
+  // VELOCITY: the frame on flaps, the speed on drums, then the mode chips: control, ASSIST, THR and RCS
+  s += tag(x + 16, y + 81, 'VELOCITY');
+  s += flapG(x + 16, y + 86, frame.padEnd(6), { cw: 9, ch: 15, size: 13 });
+  if (!docked) {
+    s += drumG(x + 80, y + 74, speed, { cw: 16, ch: 25, size: 19, dimLead: false });
+    const dw = drumW(speed, 16);
+    s += tag(x + 86 + dw, y + 88, unit) + (closing ? tag(x + 86 + dw, y + 101, 'CLOSING') : '');
+  } else s += drumG(x + 80, y + 74, '    ', { cw: 16, ch: 25, size: 19 });
+  if (rot !== null) s += cneedleG(x + 200, y + 88, 12, { value: rot, range: 3 }) + tag(x + 216, y + 92, 'ROT');
+  s += flapG(x + 236, y + 75, control.padEnd(13).slice(0, 13), { cw: 8.4, ch: 16, size: 13, fill: control === 'MANUAL' ? '#F3EEE2' : PH.amber }) + tag(x + 236, y + 103, 'CONTROL');
+  s += pushG(x + 356, y + 76, 54, 18, ['ASSIST'], { color: 'white', lit: assist });
+  if (!assist) s += `<rect x="${x + 386}" y="${y + 84}" width="24" height="10" fill="url(#barber)"/>` + tag(x + 383, y + 106, 'OFF', { anchor: 'middle' });
+  s += lampG(x + 430, y + 81, 3.6, 'white', thr) + tag(x + 438, y + 85.5, 'THR') + lampG(x + 430, y + 97, 3.6, 'white', rcs) + tag(x + 438, y + 101.5, 'RCS');
+  s += engrave(x + 12, y + 110, x + 468, y + 110) + engrave(x + 256, y + 112, x + 256, y + 152);
+  s += triggerSlotG(x + 12, y + 112, trigger);
+  // DELTA-V: left in the tanks, the home bug, the planned burns bracketed
+  s += tag(x + 266, y + 125, 'DELTA-V') + drumG(x + 316, y + 113, dv, { cw: 12, ch: 17, size: 14, dimLead: false }) + tag(x + 322 + drumW(dv, 12), y + 126, 'M/S');
+  s += homeBugG(x + 398, y + 116) + tag(x + 406, y + 126, 'HOME ' + home);
+  const dvn = +dv;
+  s += hmeterG(x + 268, y + 132, 194, { min: 0, max: 2500, value: dvn, h: 11, major: 5, bugs: home ? [{ v: home, home: true }] : [], bracket: plan ? [dvn - plan, dvn] : null });
   return s;
 }
 
-// ---------------- world helpers ----------------
-function corridorG(x, y, rot, len, col = PH.green) {
-  return `<g filter="url(#glow)" transform="translate(${x},${y}) rotate(${rot})" stroke="${col}" stroke-width="1.4" fill="none" opacity="0.85">
-   <path d="M-14 0V${len}M14 0V${len}" stroke-dasharray="8 6"/>${[0.25, 0.5, 0.75].map(k => `<path d="M-14 ${len * k}h6M14 ${len * k}h-6"/>`).join('')}</g>`;
+// =====================================================================
+// TACTICAL CLUSTER: the seat is the mode, said once in the slot labels
+// =====================================================================
+const GUN_LAMP = { READY: 'green', BURNING: 'green', CHARGING: 'amber', RELOADING: 'amber', 'OUT OF ARC': 'amber', 'OUT REACH': 'amber', STUNNED: 'x', 'NO POWER': 'x', DESTROYED: 'x' };
+function gunChipG(x, y, w, { at, gunner = null, state, secs = null, share = null, hit }) {
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="36" rx="3" fill="${C.chassis}"/><rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="34" rx="2.5" fill="none" stroke="#6a5c50" stroke-width="0.8"/>`;
+  s += tag(x + 8, y + 14, at, { fill: C.inkLight });
+  if (gunner) s += dymoG(x + 12 + lw(at), y + 3, gunner);
+  s += tag(x + w - 8, y + 14, 'HIT', { anchor: 'end', fill: C.inkLight });
+  const lamp = GUN_LAMP[state];
+  if (lamp === 'x') s += `<rect x="${x + 6}" y="${y + 20}" width="12" height="12" fill="url(#barber)" stroke="${C.alu}" stroke-width="1.2"/>`;
+  else s += lampG(x + 12, y + 26, 3.6, lamp || 'white', !!lamp);
+  // the state on flaps; a time after it on a drum, in seconds; a beam's share of its draw on a drum
+  const cells = share != null ? 7 : secs ? 9 : 10;
+  s += flapG(x + 24, y + 19, state.padEnd(cells).slice(0, cells), { cw: 8.2, ch: 14, size: 12.5, fill: lamp === 'x' ? PH.red : '#F3EEE2' });
+  if (secs) { const dx = x + 28 + cells * 8.2; s += drumG(dx, y + 18, secs, { cw: 11, ch: 15, size: 13.5, dimLead: false }) + tag(dx + drumW(secs, 11) + 4, y + 30, 'S', { fill: C.inkLight }); }
+  if (share != null) s += drumG(x + 88, y + 18, String(share), { cw: 11, ch: 15, size: 13.5, dimLead: false }) + tag(x + 92 + drumW(String(share), 11), y + 30, '%', { fill: C.inkLight });
+  s += drumG(x + w - 40, y + 18, hit, { cw: 12, ch: 15, size: 13.5, dimLead: false }) + tag(x + w - 13, y + 30, '%', { fill: C.inkLight });
+  return s;
+}
+// The decoy: the player's too (F), so it rides with the guns. Ready, or seconds to ready
+function decoyChipG(x, y, { secs = null } = {}) {
+  let s = `<rect x="${x}" y="${y}" width="68" height="36" rx="3" fill="${C.chassis}"/><rect x="${x + 1}" y="${y + 1}" width="66" height="34" rx="2.5" fill="none" stroke="#6a5c50" stroke-width="0.8"/>`;
+  s += tag(x + 7, y + 14, 'DECOY', { fill: C.inkLight }) + keyG(x + 11 + lw('DECOY'), y + 2, 'F', { anchor: 'start' });
+  s += lampG(x + 13, y + 26, 3.6, secs ? 'amber' : 'green', true) + flapG(x + 22, y + 19, (secs ? secs + ' S' : 'READY').padEnd(5), { cw: 8.2, ch: 14, size: 12.5 });
+  return s;
+}
+// The defence rail along the foot of the cluster: three bays of fixed width, the same on every hull,
+// so a hull without a system shows that bay blanked and nothing else moves. (x, y) is a bay's top left.
+const BAY = { pd: 186, launcher: 144, shields: 126 };
+function pdBayG(x, y, { engaging = false, up = '2', of = '2', down = null } = {}) {
+  // the mode, said once; ENGAGING lit while the mounts fire; how many mounts work
+  let s = tag(x + 7, y + 12, 'PD') + lensS(x + 25, y + 2, 36, 13, 'AUTO', 'white', { glow: false });
+  s += lensS(x + 66, y + 2, 62, 13, 'ENGAGING', engaging ? 'green' : null, { glow: false, base: 'green' });
+  s += drumG(x + 139, y + 3, up, { cw: 11, ch: 13, size: 12, dimLead: false }) + tag(x + 156, y + 12, 'OF ' + of);
+  // a mount that is not working: its name and state on flaps, blank while all work; seconds on a drum
+  const d = down || { at: '', state: '', secs: '' };
+  s += flapG(x + 8, y + 21, d.at.padEnd(8), { cw: 7.4, ch: 14, size: 12 });
+  s += flapG(x + 73, y + 21, d.state.padEnd(9), { cw: 7.4, ch: 14, size: 12, fill: PH.red });
+  s += drumG(x + 147, y + 20, d.secs || ' ', { cw: 11, ch: 15, size: 13.5, dimLead: false }) + tag(x + 163, y + 32.5, 'S');
+  return s;
+}
+function launcherBayG(x, y, { at = 'AFT PORT', left, of = '4', state = 'READY', secs = '', salvo }) {
+  let s = tag(x + 8, y + 12, at) + keyG(x + 12 + lw(at), y + 1, 'R', { anchor: 'start' });
+  s += tag(x + 123, y + 12, 'SALVO', { anchor: 'end' }) + drumG(x + 127, y + 3, String(salvo), { cw: 11, ch: 13, size: 12, dimLead: false });
+  // missiles left of the magazine (its size is fixed, so printed); ready or seconds on flaps
+  s += tag(x + 8, y + 32.5, 'MSL') + drumG(x + 33, y + 20, left, { cw: 12, ch: 15, size: 13.5, dimLead: false }) + tag(x + 51, y + 32.5, 'OF ' + of);
+  if (state === 'EMPTY') s += `<rect x="${x + 81}" y="${y + 22}" width="12" height="12" fill="url(#barber)" stroke="${C.alu}" stroke-width="1.2"/>`;
+  else s += lampG(x + 87, y + 28, 3.6, state === 'READY' ? 'green' : 'amber', true);
+  s += flapG(x + 97, y + 21, (state === 'RELOAD' ? secs + ' S' : state).padEnd(6), { cw: 7.4, ch: 14, size: 12 });
+  return s;
+}
+// Shields: mode, the cloud's mass as a share of capacity, trim on a rose. On a hull without an
+// emitter the bay is a blanking plate on quarter-turn fasteners, with no legend
+function dzusG(x, y) { const a = rnd() * 180; return `<circle cx="${x}" cy="${y}" r="4.4" fill="none" stroke="#8f8571" stroke-width="0.8"/><g transform="translate(${x},${y}) rotate(${a})"><circle r="3.2" fill="url(#screwG)" stroke="#5d5a53" stroke-width="0.6"/><path d="M-2.4 0H2.4" stroke="#4b4842" stroke-width="1.3"/></g>`; }
+function shieldsBayG(x, y, sh) {
+  if (!sh) return `<rect x="${x + 4}" y="${y + 1}" width="${BAY.shields - 6}" height="40" rx="2" fill="#bdb29a" stroke="#8f8571" stroke-width="0.8"/><path d="M${x + 6} ${y + 2.2}H${x + BAY.shields - 4}" stroke="#e7dfca" stroke-width="1" opacity="0.8"/>` + dzusG(x + 11, y + 8) + dzusG(x + BAY.shields - 9, y + 8) + dzusG(x + 11, y + 34) + dzusG(x + BAY.shields - 9, y + 34);
+  let s = tag(x + 7, y + 12, 'SHIELDS') + keyG(x + 10 + lw('SHIELDS'), y + 1, '9', { anchor: 'start' });
+  s += tag(x + 78, y + 12, 'TRIM') + keyG(x + 81 + lw('TRIM'), y + 1, '8', { anchor: 'start' });
+  s += flapG(x + 8, y + 21, sh.mode.padEnd(7), { cw: 6.6, ch: 14, size: 11.5 });
+  s += drumG(x + 59, y + 20, String(sh.mass).padStart(3), { cw: 9, ch: 15, size: 13 }) + tag(x + 91, y + 32.5, '%');
+  // the rose: five jewels, the lit one is the trim (bow up, as the ship plan draws it)
+  const rx = x + 113, ry = y + 28, d = 6.5, pos = { EVEN: [0, 0], BOW: [0, -d], STBD: [d, 0], STERN: [0, d], PORT: [-d, 0] };
+  for (const [k, [dx, dy]] of Object.entries(pos)) s += lampG(rx + dx, ry + dy, 2, 'white', k === sh.trim);
+  return s;
+}
+// TRIGGER at the helm: the pilot's guns, missiles and decoy, and SHIELDS lit amber while lowered on a
+// hull with an emitter (on the corvette that place is bare plate). Dark until a target is locked or the
+// condition is Red. (x, y) is the slot's top left, the helm cluster's (x + 12, y + 112)
+function triggerSlotG(x, y, tr, { emitter = false } = {}) {
+  const ink = tr ? C.ink : DIM_INK;
+  let s = tag(x + 4, y + 13, 'TRIGGER', { fill: ink });
+  if (emitter) s += lensS(x + 58, y + 3, 52, 13, 'SHIELDS', tr && tr.shieldsLow ? 'amber' : null, { glow: false });
+  s += tag(x + 120, y + 13, 'MSL', { fill: ink }) + drumG(x + 147, y + 3, tr ? tr.msl : ' ', { cw: 11, ch: 13, size: 12, dimLead: false });
+  s += lampG(x + 169, y + 9.5, 3.6, tr && tr.mslState !== 'READY' ? 'amber' : 'green', !!tr) + flapG(x + 178, y + 3, (tr ? tr.mslState : '').padEnd(5), { cw: 7.4, ch: 13, size: 12 });
+  s += lampG(x + 10, y + 29, 3.6, tr && tr.guns === 'RELOADING' ? 'amber' : 'green', !!tr) + tag(x + 18, y + 33.5, 'GUNS', { fill: ink });
+  s += flapG(x + 52, y + 22, (tr ? tr.mode : '').padEnd(7), { cw: 8.4, ch: 14, size: 12.5 });
+  s += tag(x + 120, y + 33.5, 'DECOY', { fill: ink }) + lampG(x + 169, y + 29, 3.6, tr && tr.decoy !== 'READY' ? 'amber' : 'green', !!tr) + flapG(x + 178, y + 22, (tr ? tr.decoy : '').padEnd(5), { cw: 7.4, ch: 14, size: 12 });
+  return s;
+}
+function tacticalCluster({ target, guns, pd, launcher, decoy = {}, shields = null } = {}) {
+  const x = B.cl, y = B.y;
+  let s = podG(x, y, B.cw, B.h) + plateG(x + 5, y + 10, B.cw - 10, B.h - 14, {});
+  s += tag(x + 16, y + 33, 'TARGET');
+  const t = tubeG(x + 66, y + 19, 396, 20, { r: 3, bezel: 4 });
+  s += t.under + tt(x + 74, y + 33.5, target, { size: 13 }) + t.over;
+  s += engrave(x + 12, y + 47, x + 468, y + 47);
+  s += tag(x + 16, y + 61, 'GUNS IN HAND') + lensS(x + 104, y + 51, 50, 13, 'YOURS', 'white', { glow: false });
+  guns.forEach((g, i) => s += gunChipG(x + 14 + i * 192, y + 67, 188, g));
+  s += decoyChipG(x + 400, y + 67, decoy);
+  s += engrave(x + 12, y + 109, x + 468, y + 109);
+  // the defence rail: point defence (both autocannons), the launcher, and the shields bay
+  const bx = [x + 12, x + 12 + BAY.pd, x + 12 + BAY.pd + BAY.launcher];
+  s += pdBayG(bx[0], y + 112, pd) + engrave(bx[1], y + 112, bx[1], y + 152);
+  s += launcherBayG(bx[1], y + 112, launcher) + engrave(bx[2], y + 112, bx[2], y + 152);
+  s += shieldsBayG(bx[2], y + 112, shields);
+  return s;
 }
 
 // =====================================================================
-// C. Seated at the helm, cruising (Green). Both MFDs folded.
+// THE DECK: the starter corvette's interior from its chassis data (Hold aft, Bridge forward)
 // =====================================================================
+function deckG({ T = 54, ox = 127, oy = 238, battle = false } = {}) {
+  const X = v => ox + v * T, Y = v => oy + (6 - v) * T;
+  const R = (a, b, w, h) => [X(a), Y(b + h), w * T, h * T];
+  const box = ([x, y, w, h], f = '#33373b', p = 4) => `<rect x="${x + p}" y="${y + p}" width="${w - 2 * p}" height="${h - 2 * p}" rx="3" fill="${f}" stroke="#151719" stroke-width="2"/>`;
+  let s = `<rect width="1280" height="800" fill="#08090b"/>`;
+  s += `<path d="M${X(2)} ${Y(6)}H${X(18)}L${X(19.6)} ${Y(3)}L${X(18)} ${Y(0)}H${X(2)}Z" fill="#1b1e21" stroke="#30353a" stroke-width="3"/>`;
+  [[0, 1], [0, 4]].forEach(([a, b]) => { const [x, y, w, h] = R(a, b, 2, 1); s += `<path d="M${x + w} ${y + 8}H${x + 26}L${x + 2} ${y - 3}V${y + h + 3}L${x + 26} ${y + h - 8}H${x + w}Z" fill="#2a2d30" stroke="#3a3e41" stroke-width="2"/>`; });
+  { const [x, y, w, h] = R(3, 1, 14, 4); s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#25292c"/>`; }
+  { const [x, y, w, h] = R(9, 1, 6, 4); s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#2d2a2c"/>`; }
+  s += `<g opacity="0.5">`;
+  for (let i = 3; i <= 17; i++) s += `<line x1="${X(i)}" y1="${Y(5)}" x2="${X(i)}" y2="${Y(1)}" stroke="#343a3f" stroke-width="1"/>`;
+  for (let j = 1; j <= 5; j++) s += `<line x1="${X(3)}" y1="${Y(j)}" x2="${X(17)}" y2="${Y(j)}" stroke="#343a3f" stroke-width="1"/>`;
+  s += `</g>`;
+  [[3, 2], [3, 3]].forEach(([a, b]) => { const [x, y] = R(a, b, 1, 1); s += `<circle cx="${x + 27}" cy="${y + 27}" r="20" fill="#2f3a40" stroke="#151719" stroke-width="2"/><circle cx="${x + 27}" cy="${y + 27}" r="9" fill="#26302f"/>`; });
+  s += `<path d="M${X(3.5)} ${Y(4.5)}H${X(4.5)}V${Y(1.5)}H${X(3.5)}" stroke="#4a4f53" stroke-width="5" fill="none"/>`;
+  [[5, 1], [5, 3]].forEach(([a, b]) => { const [x, y, w, h] = R(a, b, 3, 2); s += `<rect x="${x + 4}" y="${y + 4}" width="${w - 8}" height="${h - 8}" fill="url(#crates)" stroke="#151719" stroke-width="2"/>`; });
+  s += `<path d="M${X(8)} ${Y(5)}V${Y(4)}M${X(8)} ${Y(3)}V${Y(1)}" stroke="#101214" stroke-width="9"/><rect x="${X(8) - 4}" y="${Y(4)}" width="8" height="${T}" fill="#3a3f43"/>`;
+  { const [x, y, w, h] = R(7, 5, 1, 1); s += `<rect x="${x + 6}" y="${y + 18}" width="${w - 12}" height="${h - 18}" fill="#3b4044" stroke="#5a5f63" stroke-width="2"/>`; }
+  { const [x, y] = R(8, 1, 1, 1); s += `<circle cx="${x + 27}" cy="${y + 27}" r="19" fill="#3a3a33" stroke="#151719" stroke-width="2"/>`; }
+  s += box(R(9, 1, 1, 1), '#2a3036') + `<rect x="${X(9) + 12}" y="${Y(2) + 14}" width="30" height="16" fill="#1d2b24"/>`;
+  s += box(R(9, 3, 1, 1), '#2a3036') + box(R(9, 4, 1, 1), '#2a3036');
+  [[11, 1], [11, 4], [14, 1], [14, 4], [16, 2]].forEach(([a, b]) => { const [x, y] = R(a, b, 1, 1); s += `<circle cx="${x + 27}" cy="${y + 27}" r="17" fill="none" stroke="#3f454a" stroke-width="4"/><circle cx="${x + 27}" cy="${y + 27}" r="6" fill="#3f454a"/>`; });
+  [[12, 4], [15, 1]].forEach(([a, b]) => s += `<rect x="${X(a) + 6}" y="${Y(b + 1) + 6}" width="42" height="42" fill="url(#crates)" stroke="#151719" stroke-width="2"/>`);
+  { const [x, y, w, h] = R(15, 3, 2, 2); s += `<rect x="${x + 4}" y="${y + 4}" width="${w - 8}" height="${h - 8}" rx="9" fill="#1f2326" stroke="#4b4f52" stroke-width="2"/><circle cx="${x + w / 2}" cy="${y + h / 2}" r="32" fill="#16191b" stroke="#3a3e41" stroke-width="2"/>`; }
+  { const [x, y, w] = R(12, 0, 1, 1); s += `<rect x="${x + 6}" y="${y}" width="${w - 12}" height="22" fill="#3b4044" stroke="#5a5f63" stroke-width="2"/>`; }
+  s += `<text x="${X(3) + 14}" y="${Y(1) - 12}" class="stencil" font-size="18" letter-spacing="1.5" fill="#4d5256">HOLD</text><text x="${X(10) + 6}" y="${Y(1) - 12}" class="stencil" font-size="18" letter-spacing="1.5" fill="#4d5256">BRIDGE</text>`;
+  return { s, X, Y, R, T };
+}
+// The captain's suit readout, Z6: a forearm unit strapped on (deck only)
+function suitG(x, y, { air = '4:10', kpa = 31, o2low = true, fire = false, wound = false } = {}) {
+  let s = `<rect x="${x + 30}" y="${y - 6}" width="34" height="92" rx="5" fill="${C.rubber}"/><rect x="${x + 136}" y="${y - 6}" width="34" height="92" rx="5" fill="${C.rubber}"/>`;
+  s += plateG(x, y, 200, 80, { screws: true });
+  s += tag(x + 12, y + 18, 'SUIT AIR') + drumG(x + 12, y + 27, air, { cw: 15, ch: 26, size: 19, dimLead: false });
+  s += gaugeG(x + 102, y + 38, 20, { min: 0, max: 101, value: kpa, zones: [{ from: 0, to: 50, color: C.red }], ends: false });
+  s += tag(x + 102, y + 74, kpa + ' KPA', { anchor: 'middle' });
+  s += lampG(x + 140, y + 18, 4, 'amber', o2low) + tag(x + 149, y + 22.5, 'O2 LOW');
+  s += lampG(x + 140, y + 39, 4, 'red', fire) + tag(x + 149, y + 43.5, 'FIRE');
+  s += lampG(x + 140, y + 60, 4, 'amber', wound) + tag(x + 149, y + 64.5, 'WOUND');
+  return s;
+}
+
+// =====================================================================
+// C. Seated at the helm, cruising (Green). Both MFDs folded, the board dim, the top column up.
+// =====================================================================
+const BOARD_HELM = (o = {}) => [T_(1, 'HELM', 'YOU', { you: true }), T_(2, 'NAV', 'YOU', { you: true }), T_(3, 'TAC', 'COLE'), T_(4, 'ENG', '—'), T_(5, 'COMMS', 'YOU', { you: true, badge: o.badge }), T_(6, 'CMD', '')];
 function sceneC() {
-  let s = DEFS + spaceG(1280, 800, { seed: 11 }) + planetG(-120, 1480, 1060);
+  let s = DEFS + XDEFS + spaceG(1280, 800, { seed: 11 }) + planetG(-120, 1480, 1060);
+  // the camera sits 92 up while seated, so the ship stays centred in the world above the band
   s += hullG(640, 300, 28, 0.72);
-  s += `<path d="M640 300L702 184" stroke="${PH.dim}" stroke-width="1" stroke-dasharray="3 6" filter="url(#glow)"/>`;
+  s += `<path d="M640 300L702 184" stroke="${PH.dim}" stroke-width="1" stroke-dasharray="3 6" filter="url(#projglow)"/>`;
   s += progradeG(706, 178) + retrogradeG(576, 418);
-  s += burnG(518, 372, 28, '1  12:04');
+  s += burnMarkG(522, 372, 205, '1  12:04');
   s += stationG(960, 250, 0.6) + navBracketG(960, 250, 30);
-  s += wtext(1000, 236, 'HIGHPORT') + wtext(1000, 252, '1.2 km  closing 3.9', { c: 'dim' });
-  s += wsym('neutral', 268, 146, 6, { col: PH.dim }) + wsym('neutral', 1118, 452, 6, { col: PH.dim });
-  // deck
+  s += wl(996, 240, 'HIGHPORT');
+  // neutral traffic, icon only: darts along their headings
+  s += wsym('neutral', 268, 146, 6, { col: PH.dim, rot: 118 }) + wsym('neutral', 1118, 452, 6, { col: PH.dim, rot: 292 });
   s += sill();
   s += mfdFolded(B.mfdL, { labels: ['NAV', 'PLAN'], active: 0 });
   s += mfdFolded(B.mfdR, { labels: ['SNS', 'WPN', 'DEF'], active: 0 });
-  s += helmCluster({ ref: 'HIGHPORT   1.2 km   closing 3.9 m/s   CPA 140 m in 2:10', next: 'BURN 1   in 12:04   210 m/s prograde' });
-  s += board([
-    { num: 1, name: 'HELM', occ: 'YOU', state: 'you' }, { num: 2, name: 'NAV', occ: 'YOU', state: 'you' },
-    { num: 3, name: 'TAC', occ: '—', state: 'empty' }, { num: 4, name: 'ENG', occ: 'OKAFOR', state: 'crewed' },
-    { num: 5, name: 'COMMS', occ: 'YOU', state: 'you' }, { num: 6, name: 'CMD', occ: '', state: 'empty' }], 'GREEN');
+  s += helmCluster({ ref: 'HIGHPORT 1.2 km  closing 3.9 m/s  CPA 140 m 2:10', next: 'BURN 1  in 12:04  210 m/s prograde', plan: 210 });
+  s += boardG(BOARD_HELM(), { dim: true });
   return s;
 }
 
 // =====================================================================
-// E. Seated at the weapons console, in a fight (Red)
+// D. Seated at the helm, docking approach (Green). The approach takes the REF and NEXT rows.
 // =====================================================================
-function sceneE() {
-  let s = DEFS + spaceG(1280, 800, { seed: 5 });
-  // world
-  const ox = 470, oy = 330;
-  s += `<g filter="url(#glow)" opacity="0.5" stroke="${PH.amber}" fill="none" stroke-width="1"><path d="M${ox} ${oy}L${ox + 300} ${oy - 150}A335 335 0 0 1 ${ox + 330} ${oy + 40}Z" stroke-dasharray="2 5"/></g>`;
-  s += hullG(ox, oy, 72, 0.72);
-  s += wsym('hostile', 900, 250, 10, { col: PH.amber }) + tgtBracketG(900, 250, 24);
-  s += wtext(932, 240, 'RAIDER  CUTTER') + wtext(932, 256, '7.7 km   HIT 64%', { c: 'dim' });
-  s += `<path d="M${ox + 30} ${oy - 12}L852 238" stroke="${PH.dim}" stroke-width="1" stroke-dasharray="3 5" filter="url(#glow)"/>` + leadG(852, 238);
-  s += wsym('hostile', 720, 520, 6, { col: PH.amber }) + wtext(734, 524, 'DART  2.1 km', { c: 'dim', size: 13 });
-  s += wsym('hostile', 1040, 158, 6, { col: PH.amber }) + wtext(1054, 162, 'DART  3.0 km', { c: 'dim', size: 13 });
-  s += threatG(`M1000 420 Q760 430 ${ox + 18} ${oy + 14}`, [1000, 420, 0]) + threatG(`M1040 470 Q800 470 ${ox + 22} ${oy + 20}`, [1040, 470, 2]);
-  s += impactG(ox + 22, oy + 18);
-  s += wtext(1014, 412, 'MSL 0:37', { c: 'red', size: 13 });
-  // overhead: annunciator and ticker (top-centre column)
-  s += overheadG(640, [{ tag: 'MISSILE', val: '2  0:37', sev: 'warning' }, { tag: 'HOSTILE', val: 'FIRING', sev: 'caution' }], { mw: true, mc: true, y: 12, w: 720, h: 40 });
-  s += tickerG([{ tag: 'TAC', who: 'Chen', text: 'dart down.', sev: null }, { tag: 'HELM', who: 'Ruiz', text: 'holding position under fire.', sev: null }], { x: 280, y: 58, w: 720, h: 48, hang: false });
-  // deck
-  s += deckBandG({ y: 9999 }); // no full-width band; pods only
-  s += `<rect x="0" y="${B.y - 3}" width="1280" height="3" fill="${LAMP.red[0]}" filter="url(#lampglow)" opacity="0.7"/>`;
+function sceneD() {
+  let s = DEFS + XDEFS + spaceG(1280, 800, { seed: 23 });
+  const sx = 640, sy = 308, px = 1050, py = 175;
+  const L = Math.hypot(px - sx, py - sy), u = [(px - sx) / L, (py - sy) / L], n = [-u[1], u[0]];
+  const hd = Math.atan2(u[0], -u[1]) * 180 / Math.PI;
+  const P = (t, k) => [sx + u[0] * t + n[0] * k, sy + u[1] * t + n[1] * k];
+  // Highport: a hub with its small ports on piers; port 2 faces the ship
+  s += `<g transform="translate(${px},${py}) rotate(${hd})">
+    <rect x="-118" y="-112" width="236" height="86" rx="6" fill="#4c4f4c" stroke="#2b2d2c" stroke-width="3"/>
+    ${[0, 1, 2, 3].map(i => `<rect x="${-108 + i * 56}" y="-104" width="48" height="70" fill="#575a57" stroke="#3b3d3b" stroke-width="1.5"/>`).join('')}
+    <rect x="-8" y="-28" width="16" height="24" fill="#5e615d" stroke="#2b2d2c" stroke-width="2"/><circle cx="0" cy="0" r="7" fill="#7a7d79" stroke="#2b2d2c" stroke-width="2"/>
+    <rect x="-86" y="-28" width="12" height="20" fill="#5e615d" stroke="#2b2d2c" stroke-width="2"/><circle cx="-80" cy="-6" r="5" fill="#6b6e6a" stroke="#2b2d2c" stroke-width="1.5"/></g>`;
+  // the approach corridor, green while the closing speed is safe; its chevrons point at the port
+  { const [a0, a1] = [P(62, -16), P(L - 10, -16)], [b0, b1] = [P(62, 16), P(L - 10, 16)];
+    let g = `<path d="M${a0[0]} ${a0[1]}L${a1[0]} ${a1[1]}M${b0[0]} ${b0[1]}L${b1[0]} ${b1[1]}"/>`;
+    for (let t = 110; t < L - 30; t += 64) { const [p, q] = [P(t, -16), P(t + 9, -8)], [p2, q2] = [P(t, 16), P(t + 9, 8)]; g += `<path d="M${p[0]} ${p[1]}L${q[0]} ${q[1]}M${p2[0]} ${p2[1]}L${q2[0]} ${q2[1]}"/>`; }
+    s += `<g filter="url(#projglow)" stroke="${PH.green}" stroke-width="1.4" fill="none">${g}</g>`; }
+  // the nav target, bracketed and named; its numbers are in the cluster
+  { const [x0, y0, x1, y1] = [1024, 20, 1208, 290], k = 10;
+    s += `<g filter="url(#glow)" stroke="${WS.a}" stroke-width="1.6" fill="none"><path d="M${x0 + k} ${y0}H${x0}V${y1}H${x0 + k}M${x1 - k} ${y0}H${x1}V${y1}H${x1 - k}"/><path d="M${(x0 + x1) / 2 - 4} ${y1 + 4}l4 5l4 -5"/></g>`; }
+  s += wl(1080, 318, 'HIGHPORT');
+  s += hullG(sx, sy, hd, 0.72);
   s += sill();
-  s += mfdRaised(B.mfdL, (tx, ty, tw, th) => pageSENSORS('10 KM', [
-    { k: 'hostile', x: tx + 50 + 31, y: ty + 62 - 16, fill: true, lock: true }, { k: 'hostile', x: tx + 50 + 22, y: ty + 62 + 9, fill: true, s: 3 },
-    { k: 'hostile', x: tx + 50 + 26, y: ty + 62 - 28, fill: true, s: 3 }, { k: 'msl', x: tx + 50 + 20, y: ty + 62 + 3 }, { k: 'msl', x: tx + 50 + 25, y: ty + 62 + 5 }],
-    [{ t: 'MSL x2  0:37 ◆', c: 'red' }, { t: 'RAIDER  7.7  H' }, { t: 'DART    2.1  H' }, { t: 'DART    3.0  H' }, { t: 'HIGHPORT 48', c: 'dim' }])(tx, ty, tw, th),
-    { labels: ['SNS', 'WPN', 'DEF'], active: 0 });
-  s += mfdRaised(B.mfdR, pageDEFENSE, { labels: ['SNS', 'WPN', 'DEF'], active: 2, pinned: true });
-  s += tacticalCluster();
-  s += board([
-    { num: 1, name: 'HELM', occ: 'RUIZ', state: 'crewed' }, { num: 2, name: 'NAV', occ: '—', state: 'empty' },
-    { num: 3, name: 'TAC', occ: 'YOU', state: 'you' }, { num: 4, name: 'ENG', occ: 'OKAFOR', state: 'caution' },
-    { num: 5, name: 'COMMS', occ: '—', state: 'empty' }, { num: 6, name: 'CMD', occ: '', state: 'empty' }], 'RED');
+  s += mfdRaised(B.mfdL, pageDOCK([{ t: 'OWN PORT  1/1  S  ARMED' }, { t: 'TO        2    S  GRANTED' }, { t: 'S PORTS   1 in use, 2 yours', c: 'dim' }, { t: 'STRAIN    --', c: 'dim' }, { t: '[H] next port  [G] disarm', c: 'dim' }]), { labels: ['DOCK', 'HELM'], active: 0 });
+  s += mfdFolded(B.mfdR, { labels: ['SNS', 'WPN', 'DEF'], active: 0 });
+  s += helmCluster({ approach: { ports: 'PORT 1/1 S ARMED > HIGHPORT 2 (S)  GRANTED', range: '312', closing: 2.4, safe: '7.9', off: '+0.8', ang: '-1.5°' }, frame: 'PORT', speed: '2.4', unit: 'M/S', closing: true, rcs: true, dv: '1780', home: 1210 });
+  s += boardG(BOARD_HELM(), { dim: true, time: '14:41:10' });
+  // "Clearance granted" is an advisory whose home is on screen (the DOCK page, the Ports field), so it
+  // goes to the log without a callout (13.5): in Green with nothing to say, the top column is empty
   return s;
 }
 
 // =====================================================================
-// B. On deck: fire in the galley (crew on it), cargo 2 venting (nobody on it), missiles inbound
+// E. Seated at the weapons console, in a fight (Red): the First Play fight
 // =====================================================================
-function interior() {
-  let s = `<rect width="1280" height="800" fill="#07080a"/>`;
-  seed = 31;
-  for (let i = 0; i < 160; i++) s += `<circle cx="${rnd() * 1280}" cy="${rnd() * 800}" r="${rnd() * 0.7 + 0.2}" fill="#e8e0d0" opacity="${0.2 + rnd() * 0.5}"/>`;
-  // hull
-  const HULL = 'M150 260 L1040 260 Q1150 260 1190 400 Q1150 540 1040 540 L150 540 Q110 540 110 500 L110 300 Q110 260 150 260Z';
-  s += `<clipPath id="hullclip"><path d="${HULL}"/></clipPath><path d="${HULL}" fill="#2b2e31" stroke="#4b4f52" stroke-width="6"/>`;
-  // floor tiles
-  s += `<g opacity="0.55" clip-path="url(#hullclip)">`;
-  for (let x = 120; x < 1180; x += 20) s += `<line x1="${x}" y1="264" x2="${x}" y2="536" stroke="#3b3f43" stroke-width="0.8"/>`;
-  for (let y = 264; y < 540; y += 20) s += `<line x1="114" y1="${y}" x2="1186" y2="${y}" stroke="#3b3f43" stroke-width="0.8"/>`;
-  s += `</g>`;
-  // rooms: [x,y,w,h,name]
-  const R = [[120, 264, 170, 272, 'ENGINES'], [290, 264, 210, 126, 'CARGO 1'], [290, 410, 210, 126, 'CARGO 2'], [500, 264, 180, 126, 'REACTOR'], [500, 410, 180, 126, 'LIFE SUPPORT'], [680, 264, 200, 126, 'GALLEY'], [680, 410, 200, 126, 'QUARTERS'], [880, 264, 300, 272, 'BRIDGE']];
-  s += `<g clip-path="url(#hullclip)">`;
-  for (const [x, y, w, h, n] of R) s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#16181a" stroke-width="5"/><text x="${x + 10}" y="${y + h - 10}" class="stencil" font-size="15" letter-spacing="1" fill="#5d6064" opacity="0.8">${n}</text>`;
-  s += `</g>`;
-  // corridor
-  s += `<rect x="290" y="390" width="590" height="20" fill="#34383c"/>`;
-  // doors (gaps) with indicator lights
-  const doors = [[390, 390, 'ok'], [390, 410, 'vac'], [590, 390, 'ok'], [590, 410, 'ok'], [780, 390, 'fire'], [780, 410, 'ok'], [880, 400, 'ok'], [290, 400, 'ok']];
-  for (const [x, y, st] of doors) {
-    const vert = x === 880 || x === 290;
-    s += vert ? `<rect x="${x - 3}" y="${y - 10}" width="6" height="20" fill="#34383c"/>` : `<rect x="${x - 10}" y="${y - 3}" width="20" height="6" fill="#34383c"/>`;
-    const col = st === 'fire' ? LAMP.red[0] : st === 'vac' ? '#9cc7ff' : '#5f6a4f';
-    s += `<circle cx="${x + (vert ? 0 : 14)}" cy="${y + (vert ? 14 : 0)}" r="3" fill="${col}" ${st !== 'ok' ? 'filter="url(#lampglow)"' : ''}/>`;
-  }
-  // consoles: [x,y,label,glow]
-  const cons = [[1110, 380, 'helm', null], [1110, 430, 'weapons', null], [560, 282, 'reactor', 'red'], [560, 518, 'life', 'red'], [960, 290, 'gun', null]];
-  for (const [x, y, , g] of cons) {
-    if (g) s += `<rect x="${x - 16}" y="${y - 8}" width="32" height="16" fill="${LAMP[g][0]}" filter="url(#lampglow)" opacity="0.8"/>`;
-    s += `<rect x="${x - 14}" y="${y - 7}" width="28" height="14" rx="2" fill="#1b1d1f" stroke="#5a5f62"/><rect x="${x - 10}" y="${y - 4}" width="20" height="8" fill="${g ? LAMP[g][0] : '#2d4a33'}" opacity="${g ? 0.9 : 0.6}"/>`;
-  }
-  // fire in the galley: glowing tiles, smoke
-  s += `<radialGradient id="fireG" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffcf6a"/><stop offset="0.45" stop-color="#ff6a2a"/><stop offset="1" stop-color="#ff3a1a" stop-opacity="0"/></radialGradient>`;
-  [[740, 312, 46], [790, 340, 34], [712, 352, 26]].forEach(([x, y, r]) => s += `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#fireG)" opacity="0.9"/>`);
-  s += `<rect x="680" y="264" width="200" height="126" fill="#8d8a84" opacity="0.28"/><rect x="600" y="390" width="320" height="20" fill="#8d8a84" opacity="0.18"/>`;
-  // cargo 2: vacuum, venting out of a breach
-  s += `<rect x="292" y="412" width="206" height="122" fill="#1d2a40" opacity="0.65"/>`;
-  s += `<g stroke="#b8d4ff" stroke-width="1" opacity="0.6">${[0, 1, 2, 3, 4, 5].map(i => `<path d="M${380 + i * 8} 532 l${-6 + i * 2} ${26 + i * 4}"/>`).join('')}</g>`;
-  s += `<path d="M372 536 l10 -6 l8 7 l9 -5" stroke="#0a0b0c" stroke-width="4" fill="none"/>`;
-  // alarm beacons (rotating light cones)
-  [[690, 274, 'red'], [300, 420, 'red']].forEach(([x, y, c]) => { s += `<path d="M${x} ${y}L${x + 70} ${y + 22}L${x + 60} ${y + 44}Z" fill="${LAMP[c][0]}" opacity="0.18"/><circle cx="${x}" cy="${y}" r="5" fill="${LAMP[c][0]}" filter="url(#lampglow)"/>`; });
-  // crew
-  const crew = [[760, 372, 'OK', '#d9cfb4'], [1090, 405, 'RU', '#d9cfb4'], [1080, 455, 'CH', '#d9cfb4'], [430, 300, 'BE', '#d9cfb4']];
-  for (const [x, y, n, c] of crew) s += `<circle cx="${x}" cy="${y}" r="8" fill="${c}" stroke="#2a2420" stroke-width="1.5"/><text x="${x}" y="${y + 3.5}" text-anchor="middle" class="legend" font-size="9" fill="#2a2420">${n}</text>`;
-  s += `<path d="M768 366 l22 -16" stroke="#e8eef5" stroke-width="3" opacity="0.7"/>`; // extinguisher spray
-  // avatar (the captain, suited)
-  s += `<circle cx="600" cy="338" r="10" fill="${C.orange}" stroke="#1a1614" stroke-width="2"/><path d="M600 328 l0 -8" stroke="#1a1614" stroke-width="2"/>`;
+function raiderG(x, y, rot, k = 0.5) { return `<g style="filter:brightness(0.75) sepia(0.3)">${hullG(x, y, rot, k)}</g>`; }
+function sceneE() {
+  let s = DEFS + XDEFS + spaceG(1280, 800, { seed: 5 });
+  // the ship at the seated camera centre, holding with the Raider off its starboard bow, where the
+  // nose coilgun's arc and the laser's starboard-quarter arc overlap
+  const ox = 640, oy = 308, hd = 46;
+  const arc = (a0, a1, r) => { const p = a => [ox + r * Math.sin(a * Math.PI / 180), oy - r * Math.cos(a * Math.PI / 180)]; const [x0, y0] = p(a0), [x1, y1] = p(a1); return `<path d="M${ox} ${oy}L${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}Z"/>`; };
+  s += `<g filter="url(#projglow)" opacity="0.45" stroke="${PH.amber}" fill="none" stroke-width="1" stroke-dasharray="2 5">${arc(hd - 50, hd + 50, 560)}${arc(hd + 10, hd + 170, 500)}</g>`;
+  s += hullG(ox, oy, hd, 0.72);
+  // the Raider: name only, its numbers are in the TARGET row
+  const rx = 1060, ry = 205;
+  s += raiderG(rx, ry, 250, 0.6) + wsym('hostile', rx, ry, 10, { col: PH.red }) + tgtBracketG(rx, ry, 26);
+  s += wl(rx + 34, ry - 18, 'RAIDER');
+  // the lead point and the intercept line from the nose
+  s += `<path d="M${ox + 36} ${oy - 34}L${rx - 38} ${ry - 4}" stroke="${PH.dim}" stroke-width="1" stroke-dasharray="3 5" filter="url(#projglow)"/>` + leadG(rx - 38, ry - 4);
+  // two harpoons hooking past the bow to come in on the port side; no countdown in the world (3.8)
+  s += threatG(`M1046 214 Q 1005 240, 965 262 C 880 300, 760 240, 690 214 S 580 218, 602 270`, [965, 262, 156]);
+  s += threatG(`M1058 220 Q 1040 228, 1022 238 C 930 280, 770 226, 696 204 S 572 212, 598 276`, [1022, 238, 156]);
+  // point defence (the forward autocannons) firing on the nearer harpoon
+  s += `<path d="M${ox + 22} ${oy - 16}L954 264" stroke="${PH.amber}" stroke-width="1.4" stroke-dasharray="1 7" filter="url(#projglow)"/>`;
+  // one impact mark for the port side, with the count, just outside the hull
+  s += impactG(606, 274) + wl(622, 258, '2', { c: 'red' });
+  s += topColumnG({
+    strip: { cond: 'RED' },
+    ann: { tiles: [{ tag: 'MISSILE', val: '2  0:03', sev: 'w', fresh: true }, { tag: 'HOSTILE', val: 'FIRING', sev: 'c' }], mw: true, mc: true },
+    ticker: [{ tag: 'TAC', who: 'Cole', text: 'harpoons from port. PD has them.' }, { tag: 'HELM', who: 'Bea', text: 'holding position.' }]
+  });
+  s += sill();
+  s += mfdRaised(B.mfdL, pageSENSORS, { labels: ['SNS', 'WPN', 'DEF'], active: 0 });
+  s += mfdRaised(B.mfdR, pageDAMAGE, { labels: ['DMG', 'PWR', 'ATM'], active: 0 });
+  s += tacticalCluster({
+    target: 'RAIDER  pirate corvette  2.8 km  closing 40 m/s',
+    guns: [{ at: 'NOSE', gunner: 'COLE', state: 'CHARGING', hit: '81' }, { at: 'AFT STBD', state: 'BURNING', share: 60, hit: '58' }],
+    pd: { engaging: true }, launcher: { at: 'AFT PORT', left: '4', of: '4', state: 'READY', salvo: 4 }
+  });
+  s += boardG([T_(1, 'HELM', 'BEA'), T_(2, 'NAV', 'BEA'), T_(3, 'TAC', 'YOU', { you: true, alert: 'w' }), T_(4, 'ENG', '—'), T_(5, 'COMMS', '—'), T_(6, 'CMD', '')], { time: '15:02:44' });
   return s;
 }
-function wristG(x, y) {
-  // the captain's suit readout: a forearm unit, 200 x 80, strapped on
-  let s = `<rect x="${x + 30}" y="${y - 6}" width="34" height="92" rx="5" fill="${C.rubber}"/><rect x="${x + 136}" y="${y - 6}" width="34" height="92" rx="5" fill="${C.rubber}"/>`;
-  s += plateG(x, y, 200, 80, { screws: true });
-  s += tag(x + 12, y + 17, 'SUIT AIR') + drumG(x + 12, y + 26, '4:10', { cw: 15, ch: 26, size: 19, dimLead: false });
-  s += gaugeG(x + 102, y + 38, 20, { min: 0, max: 100, value: 31, zones: [{ from: 0, to: 50, color: C.red }], ends: false });
-  s += tag(x + 102, y + 74, '31 KPA', { anchor: 'middle' });
-  s += lampG(x + 138, y + 18, 4, 'amber', true) + tag(x + 146, y + 22, 'O2 LOW');
-  s += lampG(x + 138, y + 38, 4, 'red', false) + tag(x + 146, y + 42, 'FIRE');
-  s += lampG(x + 138, y + 58, 4, 'amber', false) + tag(x + 146, y + 62, 'WOUND');
-  return s;
-}
+
+// =====================================================================
+// B. On deck: fire in the Bridge (Ada on it), the Hold venting (nobody on it), harpoons inbound
+// =====================================================================
 function sceneB() {
-  let s = DEFS + interior();
-  // deck symbology: the unattended breach outlined, the crew member who needs help marked
-  s += `<rect x="296" y="416" width="198" height="114" fill="none" stroke="${PH.red}" stroke-width="1.6" stroke-dasharray="7 5" filter="url(#glow)"/>`;
-  s += wtext(300, 432, 'CARGO 2  VENTING', { c: 'red', size: 13 });
-  s += `<g filter="url(#glow)"><circle cx="430" cy="300" r="15" fill="none" stroke="${PH.amber}" stroke-width="1.5" stroke-dasharray="4 3"/></g>` + wtext(450, 296, 'BELL  hurt', { size: 13 });
-  s += promptPlateG(600, 366, 'REACTOR', [['E', 'USE']]);
-  // overhead
-  s += overheadG(640, [{ tag: 'MISSILE', val: '2  0:37', sev: 'warning' }, { tag: 'BREACH', val: 'CARGO 2', sev: 'warning' }, { tag: 'FIRE', val: 'GALLEY', sev: 'caution', ack: false }], { mw: true, mc: true, y: 12, w: 720, h: 40 });
-  s += tickerG([
-    { tag: 'ENG', who: 'Okafor', text: "fire in the galley, I'm on it.", sev: 'caution' },
-    { tag: 'TAC', who: 'SHIP', text: 'two missiles inbound, port side, 37 seconds.', sev: 'warning' },
-    { tag: 'ENG', who: 'SHIP', text: 'cargo 2 venting, nobody on it.', sev: 'warning' }], { x: 280, y: 58, w: 720, h: 66, hang: false });
-  s += wristG(16, 704);
+  const D = deckG({});
+  const { X, Y, R, T } = D;
+  let s = DEFS + XDEFS + D.s;
+  // the Hold venting through a breach in its port hull, its air thin; streaks of air leaving
+  { const [x, y, w, h] = R(3, 1, 5, 4); s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#thinair)" opacity="0.22"/>`; }
+  { const bx = X(6.2), by = Y(5); s += `<path d="M${bx - 14} ${by + 2}l7 -9l6 5l8 -8l7 6l6 -4v10z" fill="#000"/><g opacity="0.45" stroke="#dfe8ee" stroke-width="2" fill="none"><path d="M${bx - 4} ${by - 4}q-6 -20 4 -44"/><path d="M${bx + 8} ${by - 6}q10 -22 -2 -46"/><path d="M${bx - 14} ${by - 2}q-14 -16 -8 -36"/></g>`; }
+  // the fire in the Bridge, its smoke, Ada on it with an extinguisher
+  [[12, 2], [13, 2], [13, 3]].forEach(([a, b]) => { const [x, y] = R(a, b, 1, 1); s += `<rect x="${x}" y="${y}" width="${T}" height="${T}" fill="#7a2a14" opacity="0.85"/><ellipse cx="${x + 27}" cy="${y + 24}" rx="30" ry="33" fill="url(#fireG)" opacity="0.95"/>`; });
+  s += `<ellipse cx="${X(13)}" cy="${Y(3)}" rx="170" ry="110" fill="url(#smokeG)"/>`;
+  const fig = (x, y) => `<circle cx="${x}" cy="${y}" r="10" fill="#d9cfb4" stroke="#2a2420" stroke-width="1.5"/>`;
+  s += `<path d="M${X(11.3) + 8} ${Y(2.6)}L${X(12.1)} ${Y(2.6) - 14}L${X(12.1)} ${Y(2.6) + 14}Z" fill="#e8eef2" opacity="0.35"/>` + fig(X(11.3), Y(2.6));
+  // Bea at the helm and Cole at the weapons console, seated
+  s += fig(X(9.5), Y(4.5)) + fig(X(9.5), Y(3.5));
+  // the captain, suited, in the Hold
+  s += `<circle cx="${X(4.5)}" cy="${Y(2.5)}" r="11" fill="${C.orange}" stroke="#1a1614" stroke-width="2"/><circle cx="${X(4.5)}" cy="${Y(2.5)}" r="5" fill="#2b241f" opacity="0.6"/>`;
+  // in-world cues: consoles glow in their station's alert role (Engineering at the reactor, Tactical
+  // at the weapons console); the door light shows what is on the far side; beacons in both rooms
+  { const [x, y, w, h] = R(15, 3, 2, 2); s += `<rect x="${x + 10}" y="${y + 10}" width="${w - 20}" height="${h - 20}" rx="8" fill="none" stroke="${LAMP.red[0]}" stroke-width="3" filter="url(#lampglow)" opacity="0.9"/>`; }
+  s += `<rect x="${X(9) + 10}" y="${Y(4) + 12}" width="34" height="20" fill="${LAMP.red[0]}" filter="url(#lampglow)" opacity="0.85"/>`;
+  s += `<circle cx="${X(8) - 9}" cy="${Y(4) - 6}" r="3.4" fill="#ff8a3a" filter="url(#lampglow)"/><circle cx="${X(8) + 9}" cy="${Y(4) - 6}" r="3.4" fill="#9cc7ff" filter="url(#lampglow)"/>`;
+  [[X(5), Y(5) + 12], [X(12), Y(5) + 12]].forEach(([bx, by]) => { s += `<path d="M${bx} ${by}L${bx + 80} ${by + 26}L${bx + 66} ${by + 52}Z" fill="${LAMP.red[0]}" opacity="0.14"/><circle cx="${bx}" cy="${by}" r="5" fill="${LAMP.red[0]}" filter="url(#lampglow)"/>`; });
+  // battle lighting: Red, so a player on deck knows the ship's state at a glance. It lights the
+  // interior only; space outside the hull stays black
+  s += `<path d="M${X(2)} ${Y(6)}H${X(18)}L${X(19.6)} ${Y(3)}L${X(18)} ${Y(0)}H${X(2)}Z" fill="url(#battleG)"/>`;
+  // Ada's callout as a speech bubble for its first 3 s
+  { const bx = X(11.3) - 16, by = Y(2.6) - 64; s += `<g filter="url(#shadow)"><path d="M${bx} ${by}h214v30h-188l-12 12v-12h-14z" fill="url(#paperG)"/></g>` + `<text x="${bx + 10}" y="${by + 20}" class="paper" font-size="13" fill="#2a2420">Fire in the bridge, I'm on it.</text>`; }
+  s += topColumnG({
+    strip: { cond: 'RED' },
+    ann: { tiles: [{ tag: 'MISSILE', val: '2  0:11', sev: 'w', fresh: true }, { tag: 'BREACH', val: 'HOLD', sev: 'w' }, { tag: 'FIRE', val: 'BRIDGE', sev: 'c', ack: true }], mw: true, mc: false },
+    ticker: [{ tag: 'ENG', who: 'Ada', text: "fire in the bridge, I'm on it.", sev: 'c' }, { tag: 'TAC', who: 'SHIP', text: 'missiles inbound from port.', sev: 'w' }, { tag: 'ENG', who: 'SHIP', text: 'the hold is venting, nobody on it.', sev: 'w' }]
+  });
+  s += suitG(16, 704, {});
   return s;
 }
 
 // =====================================================================
-// G. Docked at Highport, seated at the helm, Station link open
+// G. Docked at Highport, seated at the helm, the Station link open (the camera 240 left)
 // =====================================================================
 function pianoKeysG(x, y, labels, sel, { kw = 72, h = 26 } = {}) {
   let s = `<rect x="${x - 4}" y="${y - 4}" width="${labels.length * (kw + 3) + 5}" height="${h + 8}" rx="3" fill="${C.chassisDeep}"/>`;
   labels.forEach((l, i) => {
     const down = i === sel, kx = x + i * (kw + 3);
-    s += `<g filter="url(#shadow)"><rect x="${kx}" y="${y + (down ? 4 : 0)}" width="${kw}" height="${h - (down ? 4 : 0)}" rx="2" fill="${down ? '#cfc6ae' : '#ECE4CE'}"/></g>
+    s += `<g filter="url(#shadow)"><rect x="${kx}" y="${y + (down ? 4 : 0)}" width="${kw}" height="${h - (down ? 4 : 0)}" rx="2" fill="${down ? '#3e3732' : '#ECE4CE'}"/></g>
       <rect x="${kx}" y="${y + h - 5}" width="${kw}" height="5" fill="#9f957c" opacity="${down ? 0 : 1}"/>
-      <text x="${kx + kw / 2}" y="${y + h / 2 + 4 + (down ? 2 : 0)}" text-anchor="middle" class="legend" font-size="12" fill="${C.ink}">${esc(l)}</text>`;
-    if (down) s += `<rect x="${kx + kw / 2 - 8}" y="${y + 6}" width="16" height="2.5" fill="${C.orange}"/>`;
+      <text x="${kx + kw / 2}" y="${y + h / 2 + 4 + (down ? 2 : 0)}" text-anchor="middle" class="legend" font-size="12" fill="${down ? PH.amber : C.ink}" ${down ? 'filter="url(#glow)"' : ''}>${esc(l)}</text>`;
   });
   return s;
 }
 function stationLink(x, y, w, h) {
-  const liv = '#5E6152', livL = '#727563', livD = '#4a4d40';
-  let s = `<linearGradient id="livG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${livL}"/><stop offset="1" stop-color="${livD}"/></linearGradient>`;
-  // patch cable from the deck
-  const cab = `M${x + 40} ${y + h - 2} C ${x + 40} ${y + h + 40}, ${x - 30} ${y + h - 6}, ${x - 52} ${y + h + 40}`;
-  s += `<path d="${cab}" stroke="#151311" stroke-width="8" fill="none"/><path d="${cab}" stroke="#3a3632" stroke-width="3" fill="none" stroke-dasharray="2 5"/>`;
-  s += `<rect x="${x + 30}" y="${y + h - 14}" width="20" height="16" rx="2" fill="${C.alu}" stroke="#555" stroke-width="0.8"/><rect x="${x + 34}" y="${y + h - 10}" width="12" height="4" fill="#333"/>`;
+  let s = '';
+  // the station's terminal, patched into the helm cluster by a cable in the station's livery
+  const cab = `M${x + 40} ${y + h - 2} C ${x + 36} ${y + h + 14}, ${x - 70} ${y + h - 6}, ${x - 104} ${y + h + 12}`;
+  s += `<path d="${cab}" stroke="#141210" stroke-width="6" fill="none" stroke-linecap="round"/><path d="${cab}" stroke="#4a4641" stroke-width="1.2" fill="none" transform="translate(0,-1.4)"/>`;
+  s += `<rect x="${x - 112}" y="${y + h + 8}" width="14" height="9" rx="1.5" fill="#2b2723" stroke="#5a524b" stroke-width="1"/>`;
   s += plateG(x, y, w, h, { fill: 'url(#livG)', screws: true });
-  s += `<rect x="${x}" y="${y + 40}" width="${w}" height="4" fill="${C.red}"/>`;
-  // title bar: berth, owner, credits, hold
-  s += `<rect x="${x + 14}" y="${y + 10}" width="30" height="22" rx="2" fill="#2b2d26"/><path d="M${x + 22} ${y + 26}l7 -12l7 12z" fill="${C.inkLight}"/>`;
-  s += tag(x + 52, y + 21, 'HIGHPORT', { size: 15, fill: '#F0EBDD' }) + tag(x + 52, y + 34, 'TERRAN PATROL AUTHORITY', { fill: '#cfd2c0' });
-  s += tag(x + 268, y + 21, 'CREDITS', { fill: '#cfd2c0' }) + drumG(x + 268, y + 25, '5000', { cw: 12, ch: 14, size: 12, unit: null });
-  s += tag(x + 340, y + 21, 'HOLD M3', { fill: '#cfd2c0' }) + hmeterG(x + 340, y + 27, 70, { min: 0, max: 40, value: 12, h: 9, major: 2 });
-  s += tag(x + 418, y + 35, '12/40', { fill: '#F0EBDD' });
-  // tabs
-  s += pianoKeysG(x + 16, y + 54, ['MARKET', 'YARD', 'SHIPS', 'BOARD', 'HIRING'], 0, { kw: 85 });
-  // body: the market on a tube
-  const tx = x + 22, ty = y + 100, tw = w - 44, th = h - 210;
+  s += `<rect x="${x}" y="${y + 44}" width="${w}" height="4" fill="#2f4767"/><rect x="${x}" y="${y + 48}" width="${w}" height="1" fill="#e6e2d2" opacity="0.5"/>`;
+  // title bar: the berth, its owner, credits and hold
+  s += `<rect x="${x + 14}" y="${y + 10}" width="30" height="26" rx="2" fill="#2b2d26"/>` + tag(x + 29, y + 27.5, 'TPA', { anchor: 'middle', size: 12, fill: '#E6E2D2' });
+  s += tag(x + 52, y + 23, 'HIGHPORT', { size: 15, fill: '#F0EBDD' }) + tag(x + 52, y + 37, 'TERRAN PATROL AUTHORITY', { fill: '#cfd2c0' });
+  s += tag(x + 262, y + 21, 'CREDITS', { fill: '#cfd2c0' }) + drumG(x + 262, y + 25, '5000', { cw: 12, ch: 15, size: 13, dimLead: false });
+  s += tag(x + 340, y + 21, 'HOLD M³', { fill: '#cfd2c0' }) + hmeterG(x + 340, y + 27, 70, { min: 0, max: 40, value: 12, h: 9, major: 2 }) + tag(x + 418, y + 37, '12/40', { fill: '#F0EBDD' });
+  // the tabs Highport offers: its yard repairs and refits but sells no ships
+  s += pianoKeysG(x + 16, y + 58, ['MARKET', 'YARD', 'BOARD', 'HIRING', 'INFIRMARY'], 0, { kw: 84 });
+  // the market on an amber tube: the commodities Highport trades
+  // the terminal's tube fills the body: the list at the top, the trade being made at the foot, by its controls
+  const tx = x + 22, ty = y + 104, tw = w - 44, th = 352;
   const t = tubeG(tx, ty, tw, th, { r: 6, bezel: 6 });
   s += t.under;
-  s += tt(tx + 10, ty + 20, 'COMMODITY   STOCK   BUY  SELL  HELD', { c: 'dim', size: 13 });
-  const rows = [['WATER', 610, 6, 5, 0], ['FOOD', 240, 14, 12, 2], ['ORE', 0, '—', 31, 12], ['STEEL', 80, 85, 80, 4], ['MACHINERY', 22, 310, 280, 0], ['FUEL', 900, 9, 8, 0]];
-  rows.forEach((r, i) => {
-    const y0 = ty + 42 + i * 19, line = `${String(r[0]).padEnd(10)} ${String(r[1]).padStart(6)} ${String(r[2]).padStart(5)} ${String(r[3]).padStart(5)} ${String(r[4]).padStart(5)}`;
-    s += tt(tx + 10, y0, line, { rev: i === 3, w: tw - 20, size: 13 });
-  });
-  s += tt(tx + 10, ty + th - 32, 'BUY 10 STEEL    850 cr    +4 m3 in the hold', { size: 13 });
-  s += tt(tx + 10, ty + th - 14, 'Hold after: 16 / 40 m3   Credits after: 4,150', { c: 'dim', size: 13 });
+  s += tt(tx + 10, ty + 22, 'COMMODITY   STOCK   BUY  SELL  HELD', { c: 'dim', size: 13 });
+  const rows = [['WATER', 80, 15, 14, 4], ['FOOD', 420, 38, 36, 0], ['MACHINERY', 6, 640, 615, 0]];
+  rows.forEach((r, i) => { s += tt(tx + 10, ty + 48 + i * 22, `${String(r[0]).padEnd(10)} ${String(r[1]).padStart(6)} ${String(r[2]).padStart(5)} ${String(r[3]).padStart(5)} ${String(r[4]).padStart(5)}`, { rev: i === 1, w: tw - 20, size: 13 }); });
+  s += tt(tx + 10, ty + th - 34, 'BUY 1 FOOD       38 cr    +1 m3 in the hold', { size: 13 });
+  s += tt(tx + 10, ty + th - 14, 'Hold after: 13 / 40 m3   Credits after: 4962', { c: 'dim', size: 13 });
   s += t.over;
-  // quantity control, total, confirm
-  const qy = y + h - 96;
-  s += tag(x + 26, qy + 2, 'QUANTITY');
-  s += rotary(x + 60, qy + 42, 14, ['1', '10', 'ALL'], 1, { arc: [-70, 70], size: 12 });
-  s += tag(x + 122, qy + 8, 'TOTAL');
-  s += drumG(x + 122, qy + 18, '00850', { cw: 15, ch: 24, size: 18, unit: 'CR' });
-  s += pushG(x + 300, qy + 14, 130, 34, ['CONFIRM'], { color: 'green', lit: true });
-  s += keyG(x + 365, qy + 54, 'ENTER');
-  // footer: soft keys with key caps; responses land here
+  // one quantity control: three interlocked keys; the total; buy
+  const qy = ty + th + 22;
+  s += tag(x + 24, qy + 12, 'QUANTITY', { fill: '#E6E2D2' }) + pianoKeysG(x + 92, qy, ['1', '10', 'ALL'], 0, { kw: 40, h: 22 });
+  s += tag(x + 248, qy + 12, 'TOTAL', { fill: '#E6E2D2' }) + drumG(x + 290, qy, '38', { cw: 14, ch: 20, size: 16, dimLead: false, unit: 'CR' });
+  s += pushG(x + 352, qy - 2, 50, 26, ['BUY'], { color: 'green', lit: true }) + keyG(x + 377, qy + 30, 'ENTER');
+  s += pushG(x + 408, qy - 2, 50, 26, ['SELL'], { color: 'white', lit: false }) + tag(x + 433, qy + 41, 'NONE HELD', { anchor: 'middle', size: 12, fill: '#cfd2c0' });
+  // footer: soft keys with their key caps; responses land here
   const fy = y + h - 28;
-  s += `<rect x="${x + 12}" y="${fy - 6}" width="${w - 24}" height="1" fill="#2b2d26"/>`;
+  s += `<rect x="${x + 12}" y="${fy - 8}" width="${w - 24}" height="1" fill="#2b2d26"/>`;
   s += keyG(x + 22, fy, 'T', { anchor: 'start' }) + tag(x + 42, fy + 11, 'MARKET', { fill: '#E6E2D2' });
   s += keyG(x + 104, fy, 'Y', { anchor: 'start' }) + tag(x + 124, fy + 11, 'YARD', { fill: '#E6E2D2' });
   s += keyG(x + 170, fy, 'J', { anchor: 'start' }) + tag(x + 190, fy + 11, 'BOARD', { fill: '#E6E2D2' });
@@ -407,31 +673,256 @@ function stationLink(x, y, w, h) {
   return s;
 }
 function sceneG() {
-  let s = DEFS + spaceG(1280, 800, { seed: 19, haze: false });
-  // the station's docking arm and the ship at its berth
-  s += `<rect x="560" y="0" width="120" height="300" fill="#4c4f4c" stroke="#2b2d2c" stroke-width="3"/><rect x="590" y="0" width="60" height="320" fill="#5c5f5b"/>`;
-  for (let i = 0; i < 6; i++) s += `<rect x="566" y="${20 + i * 46}" width="108" height="6" fill="#3b3d3b"/>`;
-  s += `<circle cx="620" cy="322" r="10" fill="#6b6e6a" stroke="#2b2d2c" stroke-width="2"/>`;
-  s += hullG(620, 400, 180, 0.72);
-  s += wtext(650, 470, 'HIGHPORT  PORT 2', { c: 'dim', size: 13 });
-  // band: docked, both MFDs folded under the panel's footprint
+  let s = DEFS + XDEFS + spaceG(1280, 800, { seed: 19, haze: false });
+  // the camera moves 240 left with the panel open: the berth and ship sit in the world that is left
+  const cx = 392;
+  s += `<rect x="${cx - 60}" y="0" width="120" height="300" fill="#4c4f4c" stroke="#2b2d2c" stroke-width="3"/><rect x="${cx - 30}" y="0" width="60" height="320" fill="#5c5f5b"/>`;
+  for (let i = 0; i < 6; i++) s += `<rect x="${cx - 54}" y="${20 + i * 46}" width="108" height="6" fill="#3b3d3b"/>`;
+  s += `<rect x="${cx - 9}" y="318" width="18" height="44" fill="#5e615d" stroke="#2b2d2c" stroke-width="2"/>${[326, 336, 346].map(yy => `<rect x="${cx - 11}" y="${yy}" width="22" height="4" fill="#3b3d3b"/>`).join('')}`;
+  s += `<circle cx="${cx}" cy="322" r="10" fill="#6b6e6a" stroke="#2b2d2c" stroke-width="2"/>`;
+  s += hullG(cx, 402, 180, 0.72);
   s += sill();
-  s += mfdRaised(B.mfdL, pageDOCK, { labels: ['DOCK', 'HELM'], active: 0 });
+  s += mfdRaised(B.mfdL, pageDOCK([{ t: 'PORT 1/1  S   DOCKED' }, { t: 'BERTH HIGHPORT 2  S' }, { t: 'STRAIN     under 25%', c: 'dim' }, { t: '[U] undock', c: 'dim' }]), { labels: ['DOCK', 'HELM'], active: 0 });
   s += mfdFolded(B.mfdR, { labels: ['CARGO', 'COMMS'], active: 0 });
-  s += helmCluster({ ref: 'DOCKED AT HIGHPORT   port 2 (S)', next: null, frame: 'PORT', speed: '0.0', unit: 'M/S', order: 'MANUAL', dv: 1840, home: 0, plan: 0, time: '14:52:31' });
-  s += board([
-    { num: 1, name: 'HELM', occ: 'YOU', state: 'you' }, { num: 2, name: 'NAV', occ: 'YOU', state: 'you' },
-    { num: 3, name: 'TAC', occ: '—', state: 'empty' }, { num: 4, name: 'ENG', occ: 'OKAFOR', state: 'crewed' },
-    { num: 5, name: 'COMMS', occ: 'YOU  ●', state: 'you' }, { num: 6, name: 'CMD', occ: '', state: 'empty' }], 'GREEN', 'DOCKED');
-  // the station's terminal, patched in, above the band
+  // latched: the frame reads DOCKED, and REF and NEXT go dark
+  s += helmCluster({ frame: 'DOCKED', docked: true, dv: '1840', home: 1210 });
+  s += boardG(BOARD_HELM({ badge: true }), { dim: true, time: '14:52:31' });
   s += stationLink(784, 16, 480, 584);
+  // the top column recentres in the space left of the panel; only the state is lit
+  s += topColumnG({ x: (784 - TC.w) / 2, strip: { state: 'DOCKED' } });
+  return s;
+}
+
+// =====================================================================
+// K. Kit sheet: the states the spec asks every style to draw
+// =====================================================================
+function cap(x, y, t, { size = 13, fill = '#c9c2b4', anchor = 'start' } = {}) { return `<text x="${x}" y="${y}" class="ooc" font-size="${size}" fill="${fill}" text-anchor="${anchor}">${esc(t)}</text>`; }
+function head(x, y, t, sub = '') { return `<text x="${x}" y="${y}" class="ooc" font-size="15" font-weight="600" fill="#ece6da">${esc(t)}</text>` + (sub ? cap(x + 230, y, sub, { size: 13, fill: '#9d968a' }) : ''); }
+function sceneK() {
+  let s = DEFS + XDEFS + `<rect width="1280" height="800" fill="#16171a"/>`;
+  s += `<text x="40" y="34" class="ooc" font-size="20" font-weight="600" fill="#f1ece2">Ship Stations kit: the states the spec asks for</text>`;
+  // status strip
+  s += head(40, 66, 'Status strip', 'condition on a drum flag, fixed-legend lenses, the emergency on a red tube');
+  const SX = 40;
+  let g = `<g transform="translate(0,64)">${statusStripG(SX, { cond: 'YELLOW' })}</g>`;
+  g += `<g transform="translate(0,96)">${statusStripG(SX, { cond: 'RED', battle: true })}</g>`;
+  g += `<g transform="translate(0,128)">${statusStripG(SX, { state: 'DOCKED' })}</g>`;
+  g += `<g transform="translate(0,160)">${statusStripG(SX, { cond: 'RED', emerg: [{ t: 'DISABLED: NO POWER  ' }, { k: 'P', n: 2 }, { t: 'ABANDON  ' }, { k: 'B', n: 2 }, { t: 'TOW' }] })}</g>`;
+  s += g;
+  s += cap(776, 94, 'Yellow') + cap(776, 126, 'Red, battle stations called') + cap(776, 158, 'Docked, in Green') + cap(776, 190, 'Emergency: P twice, B twice');
+  s += cap(1000, 94, 'In Green with nothing to say', { fill: '#9d968a' }) + cap(1000, 110, 'the strip is drawn up out of sight.', { fill: '#9d968a' });
+  // annunciator tiles
+  s += head(40, 236, 'Annunciator tiles', 'one row of six between the master lamps; a tile is a lens and eight flaps');
+  const tiles = [[{ tag: 'MISSILE', val: '2  0:03', sev: 'w', fresh: true }, 'new: the ring flashes'], [{ tag: 'BREACH', val: 'HOLD', sev: 'w' }, 'raised'], [{ tag: 'FIRE', val: 'BRIDGE+1', sev: 'c', ack: true }, 'acknowledged'], [{ tag: 'POWER', val: '1 SYS', sev: 'c', clearing: true }, 'clearing'], [null, 'empty slot'], [{ tag: '+3 MORE', val: '', sev: 'c' }, 'past six, the last tile']];
+  tiles.forEach(([t, c], i) => { s += annTileG(40 + i * 190, 252, t) + cap(40 + i * 190, 306, c); });
+  s += cap(990, 322, 'to fill; opens the log');
+  // warp strip
+  s += head(40, 344, 'Warp strip', 'only in warp, at y 84; a hold replaces the drop-out');
+  s += `<g transform="translate(-240,0)">${warpStripG(280, '100X', 'drops out in 4:12 for burn 2', { y: 356 })}</g>` + cap(776, 371, 'warping');
+  s += `<g transform="translate(-240,0)">${warpStripG(280, '1000X', 'held: crew outside', { held: true, y: 382 })}</g>` + cap(776, 397, 'held, with the reason');
+  // station board tiles
+  s += head(40, 442, 'Station board tiles', 'occupancy and alert are separate parts, so both show');
+  const bt = [[T_(1, 'HELM', 'YOU', { you: true }), false, 'you (Yellow, Red)'], [T_(1, 'HELM', 'YOU', { you: true }), true, 'you, dim in Green'], [T_(3, 'TAC', 'COLE'), false, 'crewed'], [T_(4, 'ENG', '—'), false, 'empty'], [T_(4, 'ENG', 'ADA', { alert: 'c' }), false, 'caution, Ada on it'], [T_(3, 'TAC', 'YOU', { you: true, alert: 'w' }), false, 'yours and a warning'], [T_(5, 'COMMS', '—', { struck: true }), false, 'console unpowered']];
+  bt.forEach(([t, dim, c], i) => { const x = 40 + (i % 4) * 300, y = 458 + Math.floor(i / 4) * 52; s += boardTileG(x, y, t, dim) + (dim ? `<rect x="${x}" y="${y}" width="146" height="22" fill="#000" opacity="0.36"/>` : '') + cap(x + 156, y + 15, c); });
+  // gun chips
+  s += head(40, 584, 'Gun chips', 'state lamp or the OFF flag, the state on flaps, a time on a drum, the gunner on tape, its hit chance');
+  const gc = [{ at: 'NOSE', state: 'READY', hit: '74' }, { at: 'NOSE', state: 'RELOADING', secs: '1.2', hit: '74' }, { at: 'AFT STBD', state: 'OUT OF ARC', hit: '--' }, { at: 'NOSE', gunner: 'COLE', state: 'STUNNED', secs: '4', hit: '--' }, { at: 'AFT STBD', state: 'NO POWER', hit: '--' }, { at: 'NOSE', state: 'DESTROYED', hit: '--' }];
+  gc.forEach((c, i) => { s += gunChipG(40 + (i % 3) * 330, 600 + Math.floor(i / 3) * 48, 188, c); });
+  s += decoyChipG(1030, 600, {}) + cap(1110, 622, 'decoy ready') + decoyChipG(1030, 648, { secs: '2' }) + cap(1110, 670, '2 s to ready');
+  // the helm's trigger slot, lit, and the berth card
+  s += head(40, 718, 'Helm trigger slot, lit', 'with a target locked, or in Red');
+  { const x0 = 40, y0 = 728;
+    s += plateG(x0, y0, 250, 46, { screws: false }) + triggerSlotG(x0 - 2, y0 + 1, { guns: 'READY', mode: 'AT WILL', msl: '4', mslState: 'READY', decoy: '2 S', shieldsLow: true }, { emitter: true }); }
+  s += cap(300, 750, 'decoy 2 s from ready; SHIELDS lit: lowered') + cap(300, 766, 'SHIELDS only on a hull with an emitter');
+  s += head(700, 718, 'Berth card', '8 s under the ticker, then a badge on COMMS');
+  s += `<g filter="url(#shadow)"><rect x="700" y="730" width="420" height="40" rx="2" fill="url(#paperG)"/></g><path d="M704 734.5H1116" stroke="#b9ae95" stroke-width="1" stroke-dasharray="2 3"/>`;
+  s += `<text x="712" y="755" class="paper" font-size="14" fill="#2a2420">Docked at Highport.</text>` + keyG(880, 742, 'T', { anchor: 'start' }) + tag(900, 754, 'MARKET') + keyG(960, 742, 'Y', { anchor: 'start' }) + tag(980, 754, 'YARD') + keyG(1030, 742, 'J', { anchor: 'start' }) + tag(1050, 754, 'BOARD');
+  return s;
+}
+
+// =====================================================================
+// K2. Kit sheet, continued: the seats' other chips, MFD pages, the prompt line, the suit and the guide card
+// =====================================================================
+function pageNAV(tx, ty, tw, th) {
+  let s = title(tx, ty, tw, 'NAV', 'EARTH');
+  const cx = tx + 52, cy = ty + 62;
+  s += `<g filter="url(#glow)" fill="none"><circle cx="${cx}" cy="${cy}" r="17" stroke="${PH.gdim}" stroke-width="1.2"/><ellipse cx="${cx + 1.2}" cy="${cy}" rx="33" ry="31" stroke="${PH.green}" stroke-width="1.2"/>`;
+  s += `<path d="M${cx + 34.2} ${cy - 4}v8M${cx - 31.8} ${cy - 4}v8" stroke="${PH.green}" stroke-width="1.4"/><circle cx="${cx + 12}" cy="${cy - 28.9}" r="2.4" fill="${PH.green}" stroke="none"/></g>`;
+  [['ALT', '404 km'], ['AP', '412 km'], ['PE', '396 km'], ['PERIOD', '1:32:31']].forEach(([k, v], i) => { s += tt(tx + 120, ROW(ty, i + 1) + 6, k.padEnd(7) + v, { size: 12.5 }); });
+  return s;
+}
+function pageDEFENSE(tx, ty, tw, th) {
+  let s = title(tx, ty, tw, 'DEFENSE', 'RAISED');
+  // the ring of 96 segments round the hull, brighter where the cloud is thicker (trimmed to the bow)
+  const cx = tx + 56, cy = ty + 61, r = 36;
+  s += `<g filter="url(#glow)">`;
+  for (let i = 0; i < 96; i++) {
+    const a0 = (i / 96) * Math.PI * 2 - Math.PI / 2, a1 = ((i + 0.72) / 96) * Math.PI * 2 - Math.PI / 2;
+    const bow = Math.cos(a0 + Math.PI / 2), k = 0.35 + 0.65 * Math.max(0, bow) ** 1.4;
+    s += `<path d="M${cx + r * Math.cos(a0)} ${cy + r * Math.sin(a0)}A${r} ${r} 0 0 1 ${cx + r * Math.cos(a1)} ${cy + r * Math.sin(a1)}" stroke="${PH.green}" stroke-width="${3 + 2 * k}" opacity="${k}" fill="none"/>`;
+  }
+  s += `<path d="M${cx} ${cy - 20}L${cx + 8} ${cy - 8}V${cy + 16}H${cx - 8}V${cy - 8}Z" stroke="${PH.gdim}" stroke-width="1.2" fill="none"/></g>`;
+  [['MASS', '230 / 300 kg'], ['TRIM', 'BOW'], ['EMITTER', 'heat 61%'], ['DECOY', 'ready'], ['PD', 'AUTO']].forEach(([k, v], i) => { s += tt(tx + 104, ROW(ty, i + 1) + 2, k.padEnd(8) + v, { size: 12.5, c: i > 2 ? 'dim' : 'amber' }); });
+  return s;
+}
+function zline(x, y, w, h) { const t = tubeG(x, y, w, h, { r: 2, bezel: 3 }); return { a: unitBarG(x - 4, y - 3, w + 8, h + 6) + t.under, b: t.over }; }
+function suitStateG(x, y, { air = null, noSuit = false, kpa, fire = false, temp = null, wound = null }) {
+  let s = `<rect x="${x + 30}" y="${y - 6}" width="34" height="92" rx="5" fill="${C.rubber}"/><rect x="${x + 136}" y="${y - 6}" width="34" height="92" rx="5" fill="${C.rubber}"/>`;
+  s += plateG(x, y, 200, 80, { screws: true });
+  if (noSuit) s += tag(x + 12, y + 18, 'SUIT') + lensS(x + 12, y + 28, 68, 26, 'NO SUIT', 'red');
+  else if (air) s += tag(x + 12, y + 18, 'SUIT AIR') + drumG(x + 12, y + 27, air, { cw: 15, ch: 26, size: 19, dimLead: false });
+  else s += tag(x + 12, y + 18, 'SUIT AIR', { fill: DIM_INK }) + drumG(x + 12, y + 27, '    ', { cw: 15, ch: 26, size: 19 });
+  if (temp) s += tag(x + 12, y + 72, temp);
+  else if (wound) s += tag(x + 12, y + 72, wound, { fill: '#9E2A23' });
+  s += gaugeG(x + 102, y + 38, 20, { min: 0, max: 101, value: kpa, zones: [{ from: 0, to: 50, color: C.red }], ends: false });
+  s += tag(x + 102, y + 74, kpa + ' KPA', { anchor: 'middle' });
+  s += lampG(x + 140, y + 18, 4, 'amber', kpa < 70) + tag(x + 149, y + 22.5, 'O2 LOW');
+  s += lampG(x + 140, y + 39, 4, 'red', fire) + tag(x + 149, y + 43.5, 'FIRE');
+  s += lampG(x + 140, y + 60, 4, wound && wound.startsWith('CRIT') ? 'red' : 'amber', !!wound) + tag(x + 149, y + 64.5, 'WOUND');
+  return s;
+}
+function sceneK2() {
+  let s = DEFS + XDEFS + `<rect width="1280" height="800" fill="#16171a"/>`;
+  s += `<text x="40" y="34" class="ooc" font-size="20" font-weight="600" fill="#f1ece2">Ship Stations kit, continued: chips, pages, the prompt line, the suit</text>`;
+  // the defence rail's bays and the decoy chip, at the size the cluster draws them
+  const bay = (x, y, w) => plateG(x, y, w, 44, { screws: false });
+  s += head(40, 66, 'Point defence', 'one bay for both forward autocannons');
+  s += bay(40, 78, BAY.pd) + pdBayG(40, 79, { engaging: true }) + cap(40, 140, 'engaging missiles');
+  s += bay(290, 78, BAY.pd) + pdBayG(290, 79, { engaging: false }) + cap(290, 140, 'armed, nothing to shoot');
+  s += bay(540, 78, BAY.pd) + pdBayG(540, 79, { engaging: true, up: '1', down: { at: 'FWD PORT', state: 'STUNNED', secs: '6' } }) + cap(540, 140, 'one mount down: which, and why');
+  s += head(40, 170, 'Launchers', 'missiles left, ready or seconds, and how many one press throws');
+  s += bay(40, 182, BAY.launcher) + launcherBayG(40, 183, { left: '4', state: 'READY', salvo: 4 }) + cap(40, 244, 'ready, the whole magazine');
+  s += bay(290, 182, BAY.launcher) + launcherBayG(290, 183, { left: '2', state: 'RELOAD', secs: '2.1', salvo: 2 }) + cap(290, 244, 'reloading, 2 left');
+  s += bay(540, 182, BAY.launcher) + launcherBayG(540, 183, { left: '0', state: 'EMPTY', salvo: 0 }) + cap(540, 244, 'empty');
+  // shields: the same bay on every hull, blanked where there is no emitter
+  s += head(820, 66, 'Shields bay', '');
+  s += cap(820, 84, 'mode, cloud mass of capacity, trim rose', { fill: '#9d968a' });
+  s += bay(820, 96, BAY.shields) + shieldsBayG(820, 97, { mode: 'RAISED', mass: 77, trim: 'BOW' }) + cap(820, 156, 'raised, trimmed to the bow');
+  s += bay(1040, 96, BAY.shields) + shieldsBayG(1040, 97, { mode: 'STOWING', mass: 77, trim: 'EVEN' }) + cap(1040, 156, 'stowing: in the store in 3 s');
+  s += bay(820, 176, BAY.shields) + shieldsBayG(820, 177, { mode: 'LOWERED', mass: 100, trim: 'EVEN' }) + cap(820, 236, 'lowered, the store full');
+  s += bay(1040, 176, BAY.shields) + shieldsBayG(1040, 177, null) + cap(1040, 236, 'no emitter: blank, no legend');
+  // MFD pages: the units as the band draws them, moved up onto the sheet
+  s += head(40, 280, 'MFD pages', 'pinned, a dead screen, the small orbit drawing, the shield ring');
+  const mfdAt = (x, y, page, rail) => `<g transform="translate(${x - B.mfdL},${y - B.y})">${mfdRaised(B.mfdL, page, rail)}</g>`;
+  s += mfdAt(40, 292, pageNAV, { labels: ['NAV', 'PLAN'], active: 0, pinned: true }) + cap(40, 470, 'NAV, pinned: auto-paging leaves it alone');
+  s += mfdAt(350, 292, pageDEFENSE, { labels: ['SNS', 'WPN', 'DEF'], active: 2 }) + cap(350, 470, 'DEFENSE, on a hull with an emitter');
+  s += mfdAt(660, 292, null, { labels: ['DMG', 'PWR', 'ATM'], active: 1, dead: 'ENG: NO SIGNAL' }) + cap(660, 470, 'dead screen: the console has no power');
+  // gunner sight
+  s += head(980, 280, 'Gunner sight', '');
+  s += cap(980, 298, 'seated at a gun: no MFDs', { fill: '#9d968a' });
+  { const x = 960, y = 310;
+    // the coilgun has no magazine, so there is no ammunition to show; its time to ready is on drums
+    s += podG(x, y, 290, 96) + plateG(x + 5, y + 10, 280, 82, { screws: false });
+    s += tag(x + 14, y + 28, 'NOSE COILGUN') + lampG(x + 20, y + 44, 3.6, 'amber', true) + flapG(x + 30, y + 37, 'RELOADING', { cw: 8.2, ch: 14, size: 12.5 });
+    s += tag(x + 150, y + 28, 'READY IN') + drumG(x + 150, y + 33, '0.4', { cw: 12, ch: 16, size: 13.5, dimLead: false }) + tag(x + 186, y + 46, 'S');
+    s += engrave(x + 12, y + 56, x + 278, y + 56);
+    const t = tubeG(x + 12, y + 62, 266, 22, { r: 3, bezel: 4 });
+    s += t.under + tt(x + 20, y + 77, 'RAIDER  2.8 km  TOF 1.4 s  HIT 81%', { size: 12.5 }) + t.over; }
+  s += boardTileG(960, 416, T_(3, 'TAC', 'YOU', { you: true }), false) + cap(1114, 431, 'the gun\'s own tile');
+  // the prompt line, Z7
+  s += head(40, 500, 'Prompt line (Z7)', 'a response for 4 s; else up to three learning hints');
+  { const z = zline(44, 516, 712, 20); s += z.a + tt(54, 530.5, 'Navigation target: Highport', { size: 13 }) + z.b + cap(776, 531, 'response to the player\'s own input'); }
+  { const z = zline(44, 550, 712, 20); s += z.a; let hx = 54; for (const [k, v] of [['O', 'acknowledge alerts'], ['ALT+2', 'NAV to the right MFD'], ['7', 'battle stations']]) { s += tt(hx, 564.5, k, { rev: true, size: 12.5, c: 'dim' }); hx += k.length * 7.5 + 10; s += tt(hx, 564.5, v, { size: 13, c: 'dim' }); hx += v.length * 7.8 + 22; } s += z.b + cap(776, 565, 'learning hints, dim, retired after 3 uses'); }
+  // suit readout
+  s += head(40, 604, 'Suit readout (deck)', 'only what the room makes matter');
+  s += suitStateG(40, 622, { noSuit: true, kpa: 31 }) + cap(40, 730, 'no suit in thin air: a warning');
+  s += suitStateG(280, 622, { air: '6:40', kpa: 88, fire: true, temp: '61 C' }) + cap(280, 730, 'suited, the room on fire');
+  s += suitStateG(520, 622, { air: '3:12', kpa: 40, wound: 'CRIT 4:10' }) + cap(520, 730, 'critically wounded, bleeding out');
+  // guide card: out of fiction, so none of the hardware
+  s += head(800, 604, 'Guide card (Z5)', '');
+  s += cap(800, 622, 'out of fiction: flat, plain type, no hardware', { fill: '#9d968a' });
+  s += `<rect x="800" y="634" width="248" height="104" rx="6" fill="#f7f5f0"/><text x="814" y="656" class="ooc" font-size="12" font-weight="600" fill="#6b6b6b">FIRST PLAY  ·  2 OF 7</text>`;
+  s += `<text x="814" y="678" class="ooc" font-size="15" font-weight="600" fill="#1d1d1f">Take the helm</text><text x="814" y="698" class="ooc" font-size="13" fill="#3a3a3c">Walk to the helm console and</text><text x="814" y="715" class="ooc" font-size="13" fill="#3a3a3c">sit down to fly the ship.</text>`;
+  s += `<rect x="814" y="722" width="18" height="12" rx="2" fill="none" stroke="#8e8e93"/><text x="823" y="731.5" text-anchor="middle" class="ooc" font-size="10" fill="#3a3a3c">V</text><text x="838" y="732" class="ooc" font-size="12" fill="#6b6b6b">sit</text>`;
+  return s;
+}
+
+// =====================================================================
+// K3. World and deck marks
+// =====================================================================
+function pipG(cx, cy, r, name) {
+  let s = `<circle cx="${cx}" cy="${cy}" r="${r + 7}" fill="#8f949a"/><circle cx="${cx}" cy="${cy}" r="${r + 5}" fill="url(#knobG)" opacity="0.7"/><circle cx="${cx}" cy="${cy}" r="${r + 1.5}" fill="#111"/>`;
+  s += `<clipPath id="pipc"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath><g clip-path="url(#pipc)"><rect x="${cx - r}" y="${cy - r}" width="${2 * r}" height="${2 * r}" fill="#0d130f"/>`;
+  s += `<g style="filter:grayscale(1) sepia(0.6) hue-rotate(50deg) brightness(1.15)">${hullG(cx, cy + 4, 250, 1.1)}</g>`;
+  for (let yy = cy - r; yy < cy + r; yy += 2.2) s += `<rect x="${cx - r}" y="${yy}" width="${2 * r}" height="0.9" fill="#000" opacity="0.28"/>`;
+  s += `<circle cx="${cx - r * 0.35}" cy="${cy - r * 0.4}" r="${r * 0.9}" fill="#fff" opacity="0.05"/></g>`;
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; s += screwG(cx + (r + 4) * Math.cos(a), cy + (r + 4) * Math.sin(a)); }
+  s += dymoG(cx - (name.length * 7.6 + 10) / 2, cy + r + 12, name);
+  return s;
+}
+function corridorG(x, y0, y1, state) {
+  const col = state === 'safe' ? PH.green : state === 'fast' ? PH.amber : PH.red;
+  const dash = state === 'safe' ? '' : state === 'fast' ? 'stroke-dasharray="10 6"' : 'stroke-dasharray="3 4"';
+  let s = `<g filter="url(#projglow)" stroke="${col}" stroke-width="1.4" fill="none"><path d="M${x - 16} ${y0}V${y1}M${x + 16} ${y0}V${y1}" ${dash}/>`;
+  for (let yy = y1 - 20; yy > y0 + 10; yy -= 40) s += `<path d="M${x - 16} ${yy}l8 -9M${x + 16} ${yy}l-8 -9"/>`;
+  return s + `</g>`;
+}
+function sceneK3() {
+  let s = DEFS + XDEFS + spaceG(1280, 800, { seed: 31, haze: false });
+  s += `<rect width="1280" height="800" fill="#000" opacity="0.25"/>`;
+  s += `<text x="40" y="34" class="ooc" font-size="20" font-weight="600" fill="#f1ece2">Ship Stations kit: world and deck marks</text>`;
+  const c2 = (x, y, t) => cap(x, y, t, { fill: '#c9c2b4' });
+  // edge markers, on a drawn screen edge
+  const hd2 = (x, y, t, sub) => head(x, y, t) + cap(x, y + 19, sub, { fill: '#9d968a' });
+  s += hd2(40, 66, 'Edge markers', 'off screen: a pointer and the range; missiles add seconds');
+  s += `<path d="M408 104V286" stroke="#5a5650" stroke-width="1" stroke-dasharray="4 4"/>` + cap(300, 304, 'the screen\'s edge', { size: 12, fill: '#7d776d' });
+  s += edgeG(400, 120, 0, ['RAIDER  6.2 km']) + tgtBracketG(262, 116, 8);
+  s += edgeG(400, 162, 0, ['HARPOON  0:07'], { col: 'red' });
+  s += edgeG(400, 204, 0, ['HIGHPORT  41 km']) + navBracketG(250, 200, 8);
+  s += edgeG(400, 246, 0, ['PIRATE CORVETTE  9.4 km']);
+  s += c2(40, 304, 'target, missile, nav target, hostile');
+  // PiP optics
+  s += hd2(480, 66, 'Optics (PiP)', 'the seat\'s long-range camera');
+  s += pipG(560, 178, 52, 'RAIDER') + c2(640, 160, 'a ported lens,') + c2(640, 178, 'monochrome video,') + c2(640, 196, 'the name on tape');
+  // collision cue
+  s += hd2(860, 66, 'Collision cue', 'closest approach under 200 m within 60 s');
+  { const ox = 930, oy = 236, cx2 = 1150, cy2 = 130;
+    s += wsym('own', ox, oy, 7) + hullG(ox, oy, 60, 0.32);
+    s += wsym('neutral', cx2, cy2, 7, { col: PH.amber, rot: 236 });
+    s += `<g filter="url(#projglow)" stroke="${PH.amber}" fill="none" stroke-width="1.4"><circle cx="${cx2}" cy="${cy2}" r="16" stroke-dasharray="5 3"/><path d="M${cx2 - 12} ${cy2 + 9}L${ox + 34} ${oy - 24}" stroke-dasharray="6 4"/><path d="M${ox + 28} ${oy - 32}l12 16"/></g>`;
+    s += c2(860, 286, 'the contact ringed, its track to the CPA tick;'); s += c2(860, 304, 'the time is on the COLLIDE tile'); }
+  // labels: cluster label, contact labels
+  s += hd2(40, 344, 'Labels', 'the world identifies; the instruments measure');
+  s += wsym('station', 80, 396, 6) + wsym('neutral', 96, 408, 5, { col: PH.dim, rot: 30 }) + wsym('neutral', 70, 414, 5, { col: PH.dim, rot: 200 }) + wl(110, 401, 'HIGHPORT +2') + c2(40, 446, 'labels within 48 merge: hover to open');
+  s += wsym('hostile', 330, 396, 8, { col: PH.amber }) + wl(346, 401, 'PIRATE CORVETTE  3.4 km') + c2(320, 446, 'hostile in Yellow: class and range');
+  s += wsym('neutral', 660, 398, 6, { col: PH.dim, rot: 120 }) + c2(640, 446, 'neutral: icon only');
+  // crew adrift: a figure, in the warning role (ADRIFT is a warning), never the waypoint's ringed cross
+  s += `<g filter="url(#projglow)" stroke="${PH.red}" stroke-width="1.5" fill="none"><circle cx="840" cy="389" r="3.2"/><path d="M840 392.5V402M835 396H845M840 402l-4 6M840 402l4 6"/></g>` + wl(854, 401, 'ADA  140 m', { c: 'red' }) + c2(830, 446, 'own crew adrift: name and range');
+  // PD kill, corridor states
+  s += hd2(40, 486, 'Threats and the corridor', 'the corridor\'s line and colour both change, so it reads without colour');
+  { const kx = 90, ky = 556; s += `<g filter="url(#projglow)" stroke="${PH.amber}" stroke-width="1.6">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<path d="M${kx + 5 * Math.cos(a)} ${ky + 5 * Math.sin(a)}L${kx + (i % 2 ? 10 : 14) * Math.cos(a)} ${ky + (i % 2 ? 10 : 14) * Math.sin(a)}"/>`; }).join('')}</g>`;
+    s += threatG(`M250 526 Q 210 546, 180 571`, [180, 571, 140]) + impactG(140, 626) + c2(40, 676, 'PD kill (fades in 1 s), a track, its impact cross'); }
+  s += corridorG(450, 526, 646, 'safe') + cap(450, 676, 'safe', { anchor: 'middle', fill: '#c9c2b4' });
+  s += corridorG(560, 526, 646, 'fast') + cap(560, 676, 'over the limit', { anchor: 'middle', fill: '#c9c2b4' });
+  s += corridorG(670, 526, 646, 'danger') + cap(670, 676, 'well over', { anchor: 'middle', fill: '#c9c2b4' });
+  // deck marks, on a patch of deck
+  s += hd2(780, 486, 'Deck marks', 'kept to what the deck cannot show by itself');
+  const dx = 780, dy = 516, T = 44;
+  s += `<rect x="${dx}" y="${dy}" width="460" height="226" rx="4" fill="#1b1e21" stroke="#30353a" stroke-width="2"/>`;
+  for (let i = 1; i < 10; i++) s += `<line x1="${dx + i * T + 14}" y1="${dy + 4}" x2="${dx + i * T + 14}" y2="${dy + 226}" stroke="#2a2f33"/>`;
+  for (let j = 1; j < 5; j++) s += `<line x1="${dx + 4}" y1="${dy + j * T + 6}" x2="${dx + 456}" y2="${dy + j * T + 6}" stroke="#2a2f33"/>`;
+  // the room an alert names, outlined for a moment when its tile is clicked
+  s += `<rect x="${dx + 14}" y="${dy + 14}" width="210" height="140" fill="none" stroke="${PH.red}" stroke-width="2" stroke-dasharray="8 5" filter="url(#projglow)"/>` + wl(dx + 22, dy + 32, 'HOLD', { c: 'red' });
+  // a crew member who needs help: out of air, with the timer
+  s += `<ellipse cx="${dx + 90}" cy="${dy + 78}" rx="13" ry="8" fill="#d9cfb4" stroke="#2a2420" stroke-width="1.5"/><g filter="url(#projglow)"><circle cx="${dx + 90}" cy="${dy + 78}" r="20" fill="none" stroke="${PH.red}" stroke-width="1.8"/></g>` + wl(dx + 28, dy + 128, 'COLE  out of air  1:20', { c: 'red' });
+  // the nearest free suit, while the avatar is unsuited in bad air
+  s += `<rect x="${dx + 400}" y="${dy + 24}" width="30" height="40" rx="3" fill="#3b4044" stroke="#5a5f63" stroke-width="2"/><path d="M${dx + 408} ${dy + 34}h14v22h-14z" fill="${C.orange}" opacity="0.8"/>`;
+  s += `<g filter="url(#projglow)" stroke="${PH.white}" stroke-width="1.6" fill="none"><path d="M${dx + 392} ${dy + 18}h-6v52h6M${dx + 438} ${dy + 18}h6v52h-6"/></g>` + wl(dx + 415, dy + 88, 'SUIT', { c: 'white', anchor: 'middle' });
+  // a console prompt and a door prompt, in the world by what they belong to
+  s += `<rect x="${dx + 330}" y="${dy + 140}" width="40" height="34" rx="3" fill="#2a3036" stroke="#151719" stroke-width="2"/>` + promptPlateG(dx + 350, dy + 180, 'HELM', [['E', 'USE'], ['V', 'SIT']]);
+  s += `<rect x="${dx + 222}" y="${dy + 62}" width="8" height="${T}" fill="#3a3f43"/>` + promptPlateG(dx + 312, dy + 72, '', [['F', 'FORCE'], ['B', 'CUT']]);
+  s += c2(780, 770, 'a room outline, a crew member who needs help, the nearest suit,') + c2(780, 788, 'console and door prompts');
   return s;
 }
 
 document.getElementById('C-helm-green').innerHTML = sceneC();
+document.getElementById('D-helm-approach').innerHTML = sceneD();
 document.getElementById('E-weapons-red').innerHTML = sceneE();
 document.getElementById('B-deck-alert').innerHTML = sceneB();
 document.getElementById('G-docked-link').innerHTML = sceneG();
+document.getElementById('K-kit-states').innerHTML = sceneK();
+document.getElementById('K2-kit-pages').innerHTML = sceneK2();
+document.getElementById('K3-world-deck').innerHTML = sceneK3();
 </script>
 </body>
 </html>

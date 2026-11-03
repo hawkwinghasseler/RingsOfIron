@@ -317,13 +317,13 @@ importance:
 |---|---|
 | Own ship | Small cross with a heading tick |
 | Station | Square |
-| Neutral ship | Triangle |
+| Neutral ship | Notched dart pointing along its heading (never an upright triangle: that is the caution glyph ▲) |
 | Hostile ship | Diamond |
 | Unknown contact | Open circle |
 | Locked target | The symbol in a four-corner bracket that blinks once on lock |
-| Missile | Short dash, with a chevron tail pointing back along its track |
+| Missile | A dot with a short leader and a chevron at its tip, pointing where it flies |
 | Waypoint | Upright cross in a circle |
-| Planned burn | Hollow triangle on the path, apex in the burn direction |
+| Planned burn | Double chevron on the path, pointing in the burn direction (a triangle would read as the caution glyph) |
 
 Filled symbols are *real and current*; open/dashed are *predicted or old*. Brightness: the selected
 thing is full intensity, its neighbours at 60%, distant or stale contacts at 30%.
@@ -341,6 +341,7 @@ This is the core of the language. A functional spec says "show X"; this table sa
 | An exact number you read carefully (speed, range, credits, Δv, time) | **Drum counter**, white on black, rolling | Precision; the roll shows *direction and rate of change* for free |
 | A direction (heading, prograde, target bearing) | **Compass card** behind a fixed lubber line, rotating | The one familiar dial for orientation |
 | An on/off or a fault state | **Lamp** in the annunciator, or a lamp on its own control | A grid of lamps lets a player see "all dark = all good" |
+| A word that changes (a state, a mode, a frame, a name) | **Split-flap window**, a fixed number of cells | Mechanical and legible, and the riffle shows that it changed |
 | Space, paths, positions | **Vector CRT** (green) | Lines, afterglow and persistence suit orbits and sweeps |
 | Words, lists, tables, choices | **Raster CRT** page (amber) | A character grid, cursor keys and soft keys |
 | A value over time (market price, power history) | **Strip chart**: a pen trace on a scrolling paper strip in a window | Physical history; it keeps scrolling while you watch |
@@ -359,6 +360,12 @@ Instrument rules:
   Today's `--` readings become these flags.
 * **Units are engraved, not typed.** If a counter can change units (m/s to km/s), it has a small lamp
   beside each unit legend, and the lit one is the unit in use.
+* **Engravings never change.** A legend is engraved once. If its words change with the state
+  (ENGAGING or idle, a mount's name, RELOAD or READY), they go on a lens that lights, on flaps or on a
+  drum. A time after a state goes on a drum, with `S` engraved after it.
+* **A missing system is a blanking plate.** Where a hull lacks a system that other hulls fit (shields
+  on the corvette), its bay keeps its size and is covered by a plain plate on quarter-turn fasteners,
+  with no legend, so it can't read as switched off.
 
 ### 8.1 The annunciator
 

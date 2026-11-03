@@ -4,7 +4,7 @@ Each functional design (Ship Stations, Context-driven, Task-driven) is combined 
 
 | Variation | Spec version used | Round | Screens | Open criticism |
 |---|---|---|---|---|
-| [Ship Stations × Cassette](stations-cassette/README.md) | Stations round 2 | 1 | C helm, E weapons, B deck, G docked | 5 style, 5 functional |
+| [Ship Stations × Cassette](stations-cassette/README.md) | Stations round 9 | 2 | C helm, D approach, E weapons, B deck, G docked; kit sheets K, K2, K3 | 1 style, 9 functional |
 | [Context-driven × Cassette](context-cassette/README.md) | Context v2 | 1 | 01 cruise, 03 approach, 04 combat, 07 deck emergency, 12 orders menu | 6 style, 13 functional |
 | [Task-driven × Cassette](task-cassette/README.md) | Task round 3 | 1 | 01 helm at rest, 02 gunnery, 03 deck, 04 terminal, 05 map, 06 crisis, 07 FLT modes and lamp states | 5 style, 9 functional |
 
@@ -75,3 +75,27 @@ Notes sent to the task designer:
 7. DEPARTURE's "crew aboard against berths" never reads ok on a ship with spare berths.
 8. "Bo" in the FIRE samples isn't a crew name the game gives.
 9. The gunnery wireframe's missile path repeats the band's impact time in the world.
+
+## Round 2: Ship Stations
+
+Stations spec round 9. Eight sheets: the four screens of round 1 redrawn, the docking approach (D), and three kit sheets that draw every element of the spec's kit (17.5) except the full-screen panel frame. Critique and changes are in the [variation's README](stations-cassette/README.md#round-2-critique).
+
+The biggest fix was to the weapons cluster. The kit sheet had drawn point defence, the launcher and the shields at their own sizes, wider than their places on screen, and the shields slot in E could hold no shield readout. The cluster's foot is now a rail of three bays of fixed width (point defence, the launcher, shields), drawn by the same code on screen and on the kit sheet, with the decoy moved up beside the guns. A hull without an emitter shows the shields bay as a blanking plate with no legend, as round 9 asks.
+
+Three fixes to the shared kit came out of this round. They also apply to the context and task variations:
+
+- **Neutral ships were upright triangles**, the caution glyph. They are now notched darts pointing along their heading. Burns are double chevrons, and a missile is a dot with a leader and a chevron at its tip, so ◆ and ▲ stay with the lamps.
+- **The PIN latch's surround** was aluminium, too bright beside the dark soft keys; it is now dark.
+- **Printed legends must not change their words.** A state that changes goes on a lens, flaps or a drum, and a time on a drum after the state.
+
+Notes sent to the stations designer:
+
+1. The burn's arrow and the Next slot both carry its countdown at the helm.
+2. 7.7's emergency text is 74 characters; the status strip holds about 44.
+3. The DOCK page repeats the Ports field during an approach.
+4. 7.2's clearance callout never plays at the helm (13.5).
+5. The CMD tile's occupancy part is undefined.
+6. The Market hides cargo the station doesn't trade (8 of the sample's 12 m³).
+7. Wireframe G lists a Shipyard at Highport, which has none, and leaves out the Infirmary; its rows are out of catalog order.
+8. The cluster holds the corvette's weapons; the frigate and destroyer carry more launchers and guns.
+9. (Minor) A crew callout shows twice on deck, in the bubble and the ticker.
