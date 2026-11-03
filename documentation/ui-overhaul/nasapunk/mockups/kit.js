@@ -105,9 +105,9 @@ const W = {
     s += path(`M${cx - 14} ${cy} h8 M${cx + 6} ${cy} h8 M${cx} ${cy - 14} v8 M${cx} ${cy + 6} v8`, C.white, 1);
     s += path(`M${x + 4} ${y + 4 + k} V${y + 4} H${x + 4 + k} M${x + w - 4 - k} ${y + 4} H${x + w - 4} V${y + 4 + k} M${x + w - 4} ${y + h - 4 - k} V${y + h - 4} H${x + w - 4 - k} M${x + 4 + k} ${y + h - 4} H${x + 4} V${y + h - 4 - k}`, C.white, 1);
     const cs = fs(9);
-    s += text(x + 6, y + 4 + cs, o.tl || '', { size: 9, bold: true, fill: C.white, track: 0.6 });
-    s += text(x + w - 6, y + h - 7, o.br || '', { size: 9, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
-    if (o.tr) s += text(x + w - 6, y + 4 + cs, o.tr, { size: 9, bold: true, fill: o.trColor || C.dim, anchor: 'end', track: 0.6 });
+    s += text(x + 6, y + 4 + cs, o.tl || '', { size: 9, bold: true, fill: C.white, track: 0.6, halo: true });
+    s += text(x + w - 6, y + h - 7, o.br || '', { size: 9, bold: true, fill: C.white, anchor: 'end', track: 0.4, halo: true });
+    if (o.tr) s += text(x + w - 6, y + 4 + cs, o.tr, { size: 9, bold: true, fill: o.trColor || C.dim, anchor: 'end', track: 0.6, halo: true });
     return s;
   },
 };
@@ -458,7 +458,7 @@ const CORVETTE = {
 // chassis x 0 at ox. o: { fire:[[tx,ty,r]], fireRoom, smoke:[[tx,ty,r]], breach:[tx,ty] (a hull
 // tile blown out), short:[tx,ty], thin:[room], vacuum:[room], battle (Red battle lighting),
 // alarm:[[tx,ty,angle]], glow:{helm|weapons|life|reactor: 'caution'|'warning'}, door:'ok'|'bad'|'shut',
-// crew:[[tx,ty,name,bubble]], avatar:[tx,ty], labels, dark, unpowered }. Points are chassis
+// crew:[[tx,ty,name,bubble]], down:[[tx,ty,angle]] (casualties), avatar:[tx,ty], labels, dark, unpowered }. Points are chassis
 // corner coordinates (a tile's centre is x + 0.5, y + 0.5).
 function corvetteDeck(ox, oy, k, o = {}) {
   const X = tx => ox + tx * k, Y = ty => oy + (6 - ty) * k;
@@ -566,8 +566,11 @@ function corvetteDeck(ox, oy, k, o = {}) {
   // people: crew in orange suits; the captain blue-grey with a cyan ring
   const person = (tx, ty, suit, helmet) => `<ellipse cx="${X(tx)}" cy="${Y(ty)}" rx="${k * 0.36}" ry="${k * 0.26}" fill="${suit}" stroke="#1A1A1A" stroke-width="1"/><circle cx="${X(tx)}" cy="${Y(ty)}" r="${k * 0.17}" fill="${helmet ? '#DDE3E8' : '#C99A78'}" stroke="#1A1A1A" stroke-width="0.8"/>`;
   (o.crew || []).forEach(([tx, ty]) => s += person(tx, ty, '#E06A2C'));
+  // a casualty lying on the deck (o.down: [[tx, ty, angle]]): full length, the head at one end
+  (o.down || []).forEach(([tx, ty, a = 0]) => s += `<g transform="rotate(${a} ${X(tx)} ${Y(ty)})"><ellipse cx="${X(tx)}" cy="${Y(ty)}" rx="${k * 0.44}" ry="${k * 0.2}" fill="#E06A2C" stroke="#1A1A1A" stroke-width="1"/><circle cx="${X(tx) + k * 0.4}" cy="${Y(ty)}" r="${k * 0.16}" fill="#C99A78" stroke="#1A1A1A" stroke-width="0.8"/></g>`);
   if (o.avatar) { const [tx, ty] = o.avatar; s += `<circle cx="${X(tx)}" cy="${Y(ty)}" r="${k * 0.55}" fill="none" stroke="${C.cyan}" stroke-width="1.5"/>` + person(tx, ty, '#5D7086', true); }
-  if (o.labels) [['HOLD', 'hold'], ['BRIDGE', 'bridge']].forEach(([n, r]) => { const [tx, ty, w] = CORVETTE.rooms[r]; s += text(X(tx + w / 2), Y(ty + 4) + 15, n, { size: 9, bold: true, fill: 'rgba(200,205,210,0.4)', anchor: 'middle', track: 2, legend: true }); });
+  // room stencils on the floor: at the top of the room, or where o.labelAt puts them ({room: [tx, ty]})
+  if (o.labels) [['HOLD', 'hold'], ['BRIDGE', 'bridge']].forEach(([n, r]) => { const [tx, ty, w] = CORVETTE.rooms[r], at = (o.labelAt || {})[r]; s += text(at ? X(at[0]) : X(tx + w / 2), at ? Y(at[1]) + 3 : Y(ty + 4) + 15, n, { size: 9, bold: true, fill: 'rgba(200,205,210,0.4)', anchor: 'middle', track: 2, legend: true }); });
   return s;
 }
 

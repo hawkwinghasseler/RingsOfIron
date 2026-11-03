@@ -32,13 +32,16 @@ function text(x, y, s, o = {}) {
   const family = o.mono ? MONO : SANS, weight = o.bold ? 700 : 400;
   const ls = o.track ? `letter-spacing="${o.track}"` : '';
   const lg = o.legend ? ' data-legend="1"' : '';
-  return `<text x="${x}" y="${y}" font-family="${family}" font-weight="${weight}" font-size="${size}" fill="${fill}" text-anchor="${anchor}" ${ls}${lg}>${esc(s)}</text>`;
+  const t = (paint) => `<text x="${x}" y="${y}" font-family="${family}" font-weight="${weight}" font-size="${size}" ${paint} text-anchor="${anchor}" ${ls}${lg}>${esc(s)}</text>`;
+  // o.halo: a dark outline under the text, for text laid over a picture
+  return (o.halo ? t('fill="none" stroke="rgba(0,0,0,0.8)" stroke-width="3" stroke-linejoin="round"') : '') + t(`fill="${fill}"`);
 }
 
 // A value with its unit in dim, right-aligned at x.
 function value(x, y, v, unit, o = {}) {
   const size = o.size || 15;
-  const unitW = unit ? unit.length * (size - 4) * 0.66 + 3 : 0;
+  // the unit, one size step smaller, sits 4 units after the value (as the variations' val())
+  const unitW = unit ? tw(unit, size - 4) + 4 : 0;
   return text(x - unitW, y, v, { size, mono: o.mono, fill: o.fill || C.white, anchor: 'end', bold: o.bold })
     + (unit ? text(x, y, unit, { size: size - 4, fill: C.dim, anchor: 'end' }) : '');
 }
@@ -75,7 +78,8 @@ function softKey(x, y, w, h, pressed) {
 }
 
 // A display unit. keys: {bottom:[legends], left:[...], right:[...], top:[...]}; a legend is
-// a string, or {t, state} with state 'cur' (white), 'on' (boxed green), 'na' (hidden), default dim.
+// a string, or {t, state, w} with state 'cur' (white), 'on' (boxed green), 'na' (hidden), default
+// dim, and w its share of the edge (default 1).
 // Returns svg; o.content(gx, gy, gw, gh) draws the glass content.
 function du(x, y, w, h, o = {}) {
   const b = o.b || 12, keyRow = 14;
@@ -83,15 +87,20 @@ function du(x, y, w, h, o = {}) {
   const padT = kb.top ? keyRow : 0, padB = kb.bottom ? keyRow : 0, padL = kb.left ? keyRow : 0, padR = kb.right ? keyRow : 0;
   const gx = x + b + padL, gy = y + b + padT, gw = w - 2 * b - padL - padR, gh = h - 2 * b - padT - padB - (o.plate ? 10 : 0);
   let s = bezelBody(x, y, w, h);
-  s += fastener(x + 6, y + 6) + fastener(x + w - 6, y + 6) + fastener(x + 6, y + h - 6) + fastener(x + w - 6, y + h - 6);
+  // a thin bezel (o.b under 8) has no room for its fasteners beside the glass
+  if (b >= 8) s += fastener(x + 6, y + 6) + fastener(x + w - 6, y + 6) + fastener(x + 6, y + h - 6) + fastener(x + w - 6, y + h - 6);
   s += rect(gx, gy, gw, gh, { fill: C.glass });
   s += rect(gx + 0.5, gy + 0.5, gw - 1, gh - 1, { stroke: '#0E141A', sw: 1 });
   const legends = [];
   const edge = (list, side) => {
     const n = list.length, long = side === 'top' || side === 'bottom';
-    const span = long ? gw : gh, step = span / n, kw = long ? 26 : 10, kh = long ? 10 : 22;
+    // a legend's w (default 1) is its share of the edge, so a narrow function key (PIN, FOLD) can
+    // give its room to the page names beside it
+    const span = long ? gw : gh, wt = l => (typeof l === 'object' && l.w) || 1, unit = span / list.reduce((a, l) => a + wt(l), 0), kw = long ? 26 : 10, kh = long ? 10 : 22;
+    let run = 0;
     list.forEach((lg, i) => {
-      const c = (long ? gx : gy) + step * (i + 0.5);
+      const c = (long ? gx : gy) + unit * (run + wt(lg) / 2);
+      run += wt(lg);
       let kx, ky, lx, ly, anchor;
       if (side === 'bottom') { kx = c - kw / 2; ky = gy + gh + (o.plate ? 2 : 3); lx = c; ly = gy + gh - 6; anchor = 'middle'; }
       if (side === 'top') { kx = c - kw / 2; ky = y + b - 1; lx = c; ly = gy + 15; anchor = 'middle'; }
@@ -105,8 +114,8 @@ function du(x, y, w, h, o = {}) {
       const fill = L.state === 'cur' ? C.white : L.state === 'on' ? C.green : C.dim;
       legends.push(text(lx, ly, L.t, { size: 11, bold: true, fill, anchor, track: 0.6 }));
       if (L.state === 'on' || L.state === 'cur') {
-        const tw = L.t.length * 7.4 + 8, bx = anchor === 'middle' ? lx - tw / 2 : anchor === 'end' ? lx - tw + 4 : lx - 4;
-        if (L.state === 'on') legends.push(rect(bx, ly - 11, tw, 15, { stroke: C.green, sw: 1 }));
+        const bw = tw(L.t, fs(11), true, 0.6) + 8, bx = anchor === 'middle' ? lx - bw / 2 : anchor === 'end' ? lx - bw + 4 : lx - 4;
+        if (L.state === 'on') legends.push(rect(bx, ly - 11, bw, 15, { stroke: C.green, sw: 1 }));
       }
     });
   };

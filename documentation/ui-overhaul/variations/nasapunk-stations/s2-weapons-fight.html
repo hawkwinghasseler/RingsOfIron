@@ -48,7 +48,7 @@ s += haloed((c, w) => line(SX + 16, SY - 4, q(0.22, T1[0], T1[2], T1[4]) - 8, q(
 // Long-range optics on the locked target, clear of the top column
 s += haloed((c, w) => line(TX + 17, TY - 17, 1060, 150, c, w), 'rgba(238,241,243,0.5)', 1);
 s += W.cctv(1060, 70, 176, 110, {
-  id: 1, tl: 'OPT 1  TGT', br: 'RAIDER  ×40',
+  id: 1, tl: 'OPT 1  TARGET', br: 'RAIDER  ×40',
   picture: (cx, cy) => `<g filter="url(#mono)">${raiderHull(cx, cy, 300, 1.6)}</g>`,
 });
 
@@ -61,7 +61,7 @@ s += ticker(280, Z.ticker.y, [['TAC', 'Cole:', 'harpoons off the Raider, port si
 s += promptHints(640, Z.prompt.y, [['SPACE', 'FIRE'], ['R', 'MISSILES'], ['F', 'DECOY']]);
 
 // Band: SENSORS left, the tactical cluster, DAMAGE right
-s += mfd(Z.mfdL.x, Z.mfdL.y, 4, [{ t: 'SNS', state: 'cur' }, 'WPN', 'DEF', 'PIN', 'FOLD'], (gx, gy, gw, gh) => {
+s += mfd(Z.mfdL.x, Z.mfdL.y, 4, [{ t: 'SENSORS', state: 'cur' }, 'WEAPONS', 'DEFENSE', PIN, FOLD], (gx, gy, gw, gh) => {
   let c = pageHead(gx, gy, gw, 'SENSORS', '10 KM');
   c += I.scope(gx + 50, gy + 66, 40, [
     { kind: 'hostile', x: 0.55, y: -0.25, locked: true },
@@ -78,7 +78,7 @@ s += mfd(Z.mfdL.x, Z.mfdL.y, 4, [{ t: 'SNS', state: 'cur' }, 'WPN', 'DEF', 'PIN'
 });
 
 s += du(Z.cluster.x, Z.cluster.y, 480, 160, {
-  id: 3, b: 8, title: 'TACTICAL',
+  id: 3, b: 8, title: 'TAC',
   content: (gx, gy, gw, gh) => {
     let c = '';
     const L = gx + 8, R = gx + gw - 8, C0 = L + 70, row = i => gy + 1 + i * 23.7;
@@ -109,7 +109,7 @@ s += du(Z.cluster.x, Z.cluster.y, 480, 160, {
   }
 }).svg;
 
-s += mfd(Z.mfdR.x, Z.mfdR.y, 5, [{ t: 'DMG', state: 'cur' }, 'PWR', 'ATM', 'PIN', 'FOLD'], (gx, gy, gw, gh) => {
+s += mfd(Z.mfdR.x, Z.mfdR.y, 5, [{ t: 'DAMAGE', state: 'cur' }, 'POWER', 'ATMOS', PIN, FOLD], (gx, gy, gw, gh) => {
   let c = pageHead(gx, gy, gw, 'DAMAGE', 'NO DAMAGE');
   const k = 12.2;
   c += corvettePlan(gx + gw / 2 - 10.5 * k, gy + 30, k, { id: 's2', crew: [[10.25, 4.5], [16.5, 2.5], [12.6, 3.3]], captain: [10.3, 3.5] });

@@ -17,7 +17,7 @@
 // The Patrol Corvette as ships.toml fits it: the coilgun in the nose, a point-defence autocannon on
 // each beam forward, the harpoon launcher aft to port (magazine 4), the laser aft to starboard
 // (3 km reach). At the weapons console every gun but point defence is in hand
-// (PlayerGunnery.inHand). There is no shield emitter, so no shields row and no SHLD lamp.
+// (PlayerGunnery.inHand). There is no shield emitter, so no shields row and no SHIELD lamp.
 let s = space({ px: -300, py: 1500, pr: 1000, seed: 17 });
 const SX = 640, SY = 390, HDG = 60;
 // the point-defence kill ring: the autocannons' 4 km reach (about 282 px at this zoom)
@@ -31,12 +31,12 @@ s += raiderHull(TX, TY, 240, 0.42) + W.contact('hostile', TX, TY, { locked: true
 const RX = 798, RY = 242;
 s += W.hitLane(SX + 18, SY - 18, RX, RY);
 s += haloed((c, w) => `<circle cx="${RX}" cy="${RY}" r="8" fill="none" stroke="${c}" stroke-width="${w}"/>` + line(RX - 12, RY, RX - 8, RY, c, w) + line(RX + 8, RY, RX + 12, RY, c, w) + line(RX, RY - 12, RX, RY - 8, c, w) + line(RX, RY + 8, RX, RY + 12, c, w), C.cyan);
-// two missiles inbound from bearing 080 on their paths, seconds to impact on each
+// two missiles inbound from bearing 080 on their paths. Markers carry no numbers (round 4): the
+// time to impact is the band's alone
 s += W.track(`M 1010 300 Q 830 360 ${SX + 16} ${SY + 10}`) + W.missile(880, 335, 252, C.red);
 s += W.track(`M 1040 380 Q 860 410 ${SX + 18} ${SY + 14}`) + W.missile(900, 400, 258, C.red);
-[[880, 335, '14 S'], [900, 400, '17 S']].forEach(([x, y, t]) => s += text(x, y - 13, t, { size: 12, bold: true, fill: C.red, anchor: 'middle', track: 0.4 }));
-// the hit already taken, one mark on the port side aft with its count
-s += W.impact(SX - 30, SY - 4) + text(SX - 62, SY - 8, '×1', { size: 12, bold: true, fill: C.red });
+// the hit already taken: an impact mark on the port side aft
+s += W.impact(SX - 30, SY - 4);
 
 s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1X', note: 'HELD: HOSTILES NEAR' });
 s += annunciatorPanel({ FIRE: 'caution', CREW: 'caution' });
@@ -44,8 +44,8 @@ s += annunciatorPanel({ FIRE: 'caution', CREW: 'caution' });
 // ALR: the warning row with its one number and its action; the caution row under it, each caution
 // naming who handles it. Point defence engaging is the warning's own second line.
 s += alertBand({
-  warning: { tag: 'MISSILE\n2 IN', big: 'IMPACT 14 S', big2: 'BEARING 080', line2: 'POINT DEFENCE ENGAGING', actions: [['F', 'DECOY']] },
-  cautions: [['FIRE', 'HOLD', 'ADA ON IT'], ['CREW', 'COLE WOUNDED', 'NOBODY']],
+  warning: { tag: 'MISSILE\n2 IN', big: 'IMPACT 14 S', big2: 'BEARING 080', line2: 'POINT DEFENSE ENGAGING', actions: [['F', 'DECOY']] },
+  cautions: [['FIRE', 'HOLD', 'ADA ON IT'], ['WOUNDED', 'COLE', 'NO MEDIC FREE']],
 });
 
 // OBJ: the bounty, which is the navigation target here (no next step, so no second line)
@@ -67,7 +67,7 @@ s += du(1024, 328, 240, 200, {
     for (let i = 0; i < 4; i++) c += rect(L + 46 + i * 25, gy + 76, 22, 11, i < 3 ? { fill: C.white } : { stroke: '#4C5864', sw: 1 });
     c += text(R, gy + 86.5, 'DAMAGED', { size: TB, bold: true, fill: C.white, anchor: 'end', track: 0.2 });
     // range and closing side by side, labels over values, both at body size
-    c += text(L, gy + 107, 'RANGE', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(L + 112, gy + 107, 'CLOSING', { size: 12, bold: true, fill: C.dim, track: 0.4 });
+    c += text(L, gy + 107, 'RNG', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(L + 112, gy + 107, 'CLOSING', { size: 12, bold: true, fill: C.dim, track: 0.4 });
     c += text(L, gy + 125, '3.2 KM', { size: TV, bold: true, fill: C.white }) + text(L + 112, gy + 125, '41 M/S', { size: TV, bold: true, fill: C.white });
     c += text(L, gy + 147, 'CPA', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(L + 38, gy + 147, '0.6 KM  IN 1:12', { size: TB, bold: true, fill: C.white });
     c += line(gx + 4, gy + 156, gx + gw - 4, gy + 156, C.graticule, 1);
@@ -83,7 +83,7 @@ s += du(ZT.arms.x, ZT.arms.y, ZT.arms.w, ZT.arms.h, {
   content: (gx, gy, gw) => {
     let c = '';
     const L = gx + 8, R = gx + gw - 8, X = { m: L, w: L + 72, by: L + 166, st: L + 210 };
-    c += text(L, gy + 15, 'GUNS IN HAND  ·  POINT DEFENCE AUTOMATIC', { size: 12, bold: true, fill: C.dim, track: 0.3 });
+    c += text(L, gy + 15, 'GUNS IN HAND  ·  POINT DEFENSE AUTOMATIC', { size: 12, bold: true, fill: C.dim, track: 0.3 });
     c += line(gx + 4, gy + 22, gx + gw - 4, gy + 22, C.graticule, 1);
     const rows = [
       ['NOSE', 'COILGUN', 'HAND', 'READY', 'normal', '1.1 S'],
@@ -100,7 +100,8 @@ s += du(ZT.arms.x, ZT.arms.y, ZT.arms.w, ZT.arms.h, {
     });
     // the launcher: rounds left of its magazine of 4, ready, the seeker's lock
     const ly = row(4, 'AFT PORT', 'HARPOON', 'HAND');
-    c += text(X.st, ly + 0.5, '3/4', { size: TV, bold: true, fill: C.white }) + text(X.st + tw('3/4', TV, true) + 8, ly, 'READY', { size: 12, bold: true, fill: C.white, track: 0.2 }) + I.box(R - 46, ly - 13, 46, 17, 'LOCK', 'engaged', { size: 12 });
+    // state, rounds left, then the seeker's lock: green, a good lock (style 3), as a word for want of room
+    c += text(X.st, ly, 'READY', { size: 12, bold: true, fill: C.white, track: 0.2 }) + text(X.st + tw('READY', 12, true, 0.2) + 8, ly + 0.5, '3/4', { size: TV, bold: true, fill: C.white }) + text(R, ly, 'LOCK', { size: 12, bold: true, fill: C.green, anchor: 'end', track: 0.4 });
     c += line(gx + 4, gy + 131, gx + gw - 4, gy + 131, C.graticule, 1);
     // the decoy: ready, or seconds until it is (unlimited, one every 3 s: no count)
     c += text(L, gy + 148, 'DECOY', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(X.w, gy + 148, 'READY', { size: 12, bold: true, fill: C.white, track: 0.2 });
@@ -134,7 +135,8 @@ s += du(ZT.sch.x, ZT.sch.y, ZT.sch.w, ZT.sch.h, {
 // HLM: at gunnery FLT is hidden; who flies and the order take its place
 s += helmStatus(376, 736, 320, 'BEA', 'HOLDING 2\u2009000 M OFF RAIDER');
 
-s += hintLine([['SPACE', 'FIRE'], ['R', 'MISSILE'], ['F', 'DECOY'], ['TAB', 'NEXT TARGET'], ['F1', 'CONTROLS']]);
+// F is the warning's own action, so it doesn't repeat here (round 4)
+s += hintLine([['SPACE', 'FIRE'], ['R', 'MISSILE'], ['TAB', 'NEXT TARGET'], ['F1', 'CONTROLS']]);
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>

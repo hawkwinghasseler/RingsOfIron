@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Context: fire control, combat</title>
+<html><head><meta charset="utf-8"><title>Context: fire control</title>
 <link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
 <style>html,body{margin:0;background:#000}svg{display:block}</style>
 </head><body>
@@ -8,163 +8,148 @@
 <script src="../../nasapunk/mockups/kit.js"></script>
 <script src="context.js"></script>
 <script>
-// Walkthrough 11.5: at the weapons console in a fight. Bea holds the helm. One missile inbound with
-// point defence on it; nothing is wrong with the ship, so P2 draws nothing and H4's lenses stay dark.
-// Mounts as the game's Patrol Corvette carries them (ships.toml): coilgun in the nose, laser aft to
-// starboard and the harpoon launcher aft to port are in hand at the weapons console; the two
-// autocannons are point defence and fire by themselves (PlayerGunnery.inHand, GunCrews).
-let s = space({ px: 1500, py: 1500, pr: 1100, seed: 9 });
-const SX = 640, SY = 405, HDG = 90;
+// Walkthrough 11.5: the captain at the weapons console of a gunship (it has a shield emitter, which
+// the starting corvette lacks), Bea holding the helm. A raider has fired one missile; point
+// defence is on it. The other hostile is out at 14 km. The ship is unhurt, so P2 is dark and H4's
+// three lights are out.
+let s = space({ px: 1500, py: 1300, pr: 900, seed: 11 });
+const SX = 640, SY = 405, HDG = -35, K = 0.085;
+// a point of the gunship's hull art on screen (art units, nose +x, port -y)
+const ART = HULL_ART.gunship, ACX = (ART.x0 + ART.x1) / 2;
+const onShip = (ax, ay) => { const r = HDG * Math.PI / 180, dx = (ax - ACX) * K, dy = ay * K; return [SX + dx * Math.cos(r) - dy * Math.sin(r), SY + dx * Math.sin(r) + dy * Math.cos(r)]; };
+s += hullArt('gunship', SX, SY, HDG, K);
+// W6: the missile, its predicted track to the hull and where it would strike; point defence's
+// stream from the forward port autocannon reaching for it
+const [MX, MY] = [742, 318], [IX, IY] = onShip(560, -250), [PX, PY] = onShip(500, -230);
+s += W.track(`M${MX} ${MY} Q${708} ${352} ${IX} ${IY}`);
+s += W.impact(IX, IY, 7);
+s += haloed((c, w) => line(PX, PY, MX - 6, MY + 6, c, w, { dash: '2 5' }), C.white, 1.6);
+s += W.missile(MX, MY, 232);
+// W5: the nose cannon's hit lane and lead reticle on the Lock (its hit chance is F2's)
+const [NX, NY] = onShip(844.8, 0), [RX, RY] = [842, 262], [LX, LY] = [822, 286];
+s += W.hitLane(NX, NY, LX, LY);
+s += haloed((c, w) => line(LX + 6, LY - 6, RX - 7, RY + 7, c, w), 'rgba(60,203,230,0.6)', 1);   // the reticle's line back to the target, as LeadReticle draws it
+s += haloed((c, w) => `<circle cx="${LX}" cy="${LY}" r="8" fill="none" stroke="${c}" stroke-width="${w}"/>` + line(LX - 13, LY, LX - 8, LY, c, w) + line(LX + 8, LY, LX + 13, LY, c, w) + line(LX, LY - 13, LX, LY - 8, c, w) + line(LX, LY + 8, LX, LY + 13, c, w), C.cyan);
+// W1: the Lock and the other hostile, names only (their ranges are F1's and F4's)
+s += W.contact('hostile', RX, RY, { locked: true, label: ['RAIDER'], lx: 26, ly: -10 });
+s += W.contact('hostile', 868, 520, { label: ['RAIDER 2'], lx: 18, ly: 4 });
 
-// W5: the hit lane to the lock and the lead reticle with the hit chance. One reticle: the coilgun
-// is the only gun in hand with a muzzle speed (the laser is a beam). No fire arcs: the guns' arcs
-// are 300 degrees, so a wedge would claim a limit that isn't there.
-s += hull(SX, SY, HDG, 0.9);
-const TX = 868, TY = 292;
-s += raiderHull(TX, TY, 250, 0.42);
-// W1: the lock, labelled with name and range (range shows only for lock, nav and hostiles)
-s += W.contact('hostile', TX, TY, { locked: true, label: ['RAIDER', '2.8 KM'], lx: 26, ly: -4 });
-s += W.hitLane(SX + 30, SY - 6, 846, 262);
-s += W.lead(846, 262, 64);
-// A second raider, further out: class and range
-s += W.contact('hostile', 1180, 470, { label: ['RAIDER 2', '14 KM'], lx: -14, ly: -16, anchor: 'end' });
-// W6: the inbound missile on its predicted track, ending in the intercept cross on the hull; the
-// first one's point-defence kill mark fading behind it
-s += W.track(`M 900 210 Q 760 270 ${SX + 22} ${SY - 12}`);
-s += W.missile(756, 280, 236, C.red);
-s += W.impact(SX + 22, SY - 12);
-s += W.pdKill(560, 300);
+s += statusStrip({ seat: 'FIRE CONTROL', authority: 'HELM: BEA · HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:44', warp: '1X' });
+// P3: at fire control F4 has each missile's impact time, so P3 keeps the count and the decoy
+s += threatAlert('1 MISSILE INBOUND', ['DECOY READY', { key: 'F' }, '·  PD ENGAGING']);
+// P4: gunnery's events of the last 5 s merge into one line
+s += feed([['GUN', '2 hits on Raider']]);
 
-// P1 glareshield: seat, who has the helm, battle stations
-s += glareStrip({ seat: 'FIRE CONTROL', authority: 'BEA, HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:44', warp: '1X' });
-
-// P3 threat alert, top centre: the one interrupt
-s += threatAlert({ count: 1, tti: '21 S', ttiS: 21, lines: ['PD ENGAGING', 'DECOY READY  [F]'] });
-// P4 message feed: gunnery events merged in combat
-s += feed([['GUNNERY', '1 down']]);
-
-// F4 threat list, left middle
-s += du(12, 176, 308, 132, {
-  id: 'f4', b: 8, title: 'THREATS',
+// F4 threat list (L-MID): inbound missiles by impact time, then the hostiles other than the Lock.
+// Rows are 24 tall: a click on one locks it.
+s += du(12, ZC.lmid.y, 308, 12 + 2 * 24, {
+  id: 'f4', b: 6,
   content: (gx, gy, gw) => {
     let c = '';
-    const L = gx + 8, R = gx + gw - 8;
-    c += sym.chevron(L + 6, gy + 15, 236, C.red, 1.6, 5) + text(L + 18, gy + 20, 'MISSILE', { size: B, bold: true, fill: C.red, track: 0.4 });
-    c += text(L + 96, gy + 20, 'T−21 S', { size: V, bold: true, fill: C.white }) + text(L + 160, gy + 20, '040°', { size: B, fill: C.white });
-    c += I.box(R - 64, gy + 7, 64, 17, 'PD ON IT', 'engaged', { size: 10 });
-    c += line(gx + 4, gy + 30, gx + gw - 4, gy + 30, C.graticule, 1);
-    const ships = [['RAIDER', '2.8 KM', 'KITING', true], ['RAIDER 2', '14 KM', 'CLOSING']];
-    ships.forEach(([n, r, st, lock], i) => {
-      const yy = gy + 52 + i * 22;
-      c += sym.diamond(L + 6, yy - 4.5, 5, C.red, 1.4, lock ? C.red : null);
-      if (lock) c += path(`M${L - 2} ${yy - 9} V${yy - 13} H${L + 2} M${L + 10} ${yy - 13} H${L + 14} V${yy - 9} M${L + 14} ${yy} V${yy + 4} H${L + 10} M${L + 2} ${yy + 4} H${L - 2} V${yy}`, C.red, 1);
-      c += text(L + 20, yy, n, { size: B, bold: true, fill: C.red, track: 0.4 }) + text(L + 160, yy, r, { size: B, bold: true, fill: C.white, anchor: 'end' }) + text(R, yy, st, { size: 11.5, bold: true, fill: C.white, anchor: 'end', track: 0.5 });
-    });
+    const R = gx + gw - 6, T = gx + 150, D = gx + 162;
+    let yy = gy + 16.7;
+    c += sym.chevron(gx + 11, yy - 5, 0, C.red, 1.5, 5.5) + text(gx + 24, yy, 'MSL', { size: B, bold: true, fill: C.red, track: 0.4 });
+    c += val(T, yy, 'T−21 S', null, { anchor: 'end' }) + lab(D, yy, 'BRG') + text(D + 30, yy, '040', { size: B, bold: true });
+    c += I.box(R - 56, yy - 14, 56, 18, 'PD ON', 'engaged', { size: LB });
+    c += line(gx + 4, gy + 24, gx + gw - 4, gy + 24, C.graticule, 1);
+    yy += 24;
+    c += sym.diamond(gx + 11, yy - 4.7, 4.6, C.red, 1.4) + text(gx + 24, yy, 'RAIDER 2', { size: B, bold: true, fill: C.red, track: 0.4 });
+    c += val(T, yy, '14', 'KM', { anchor: 'end' }) + text(D, yy, 'CLOSING', { size: B, fill: C.white, track: 0.3 });
     return c;
   },
 }).svg;
 
-// F3 shield control with H4's lenses, left bottom
-s += du(12, 558, 308, 230, {
-  id: 'f3', b: 8, title: 'SHIELDS  ·  SHIP',
+// F1 full lock card (R-MID): name and state, the FIRING ON YOU flag lit, then what is known
+s += du(960, ZC.rmid.y, 308, 148, {
+  id: 'f1', b: 6,
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 8, R = gx + gw - 8, M = gx + 154;
+    c += sym.diamond(L + 6, gy + 14, 5, C.red, 1.4, C.red) + path(`M${L - 2} ${gy + 9} v-4 h4 M${L + 10} ${gy + 5} h4 v4 M${L + 14} ${gy + 19} v4 h-4 M${L + 2} ${gy + 23} h-4 v-4`, C.red, 1.2);
+    c += text(L + 22, gy + 20, 'RAIDER', { size: V, bold: true, fill: C.red, track: 0.5 });
+    c += lab(R - valW('1.3', 'S') - 6, gy + 20, 'SHOT', { anchor: 'end' }) + val(R, gy + 20, '1.3', 'S', { anchor: 'end' });
+    c += I.box(L, gy + 30, 78, 20, 'HOSTILE', 'warning', { size: B });
+    c += rect(L + 86, gy + 30, R - L - 86, 20, { fill: C.red, r: 1.5 }) + text((L + 86 + R) / 2, gy + 44.7, '◆ FIRING ON YOU', { size: B, bold: true, fill: '#0A0A0A', anchor: 'middle', track: 0.6 });
+    c += line(gx + 4, gy + 58, gx + gw - 4, gy + 58, C.graticule, 1);
+    let yy = gy + 77;
+    c += lab(L, yy, 'RNG') + val(L + 44, yy, '3.4', 'KM') + lab(M, yy, 'CLOSING') + val(R, yy, '12', 'M/S', { anchor: 'end' }); yy += 19;
+    c += lab(L, yy, 'REL') + val(L + 44, yy, '38', 'M/S') + lab(M, yy, 'COURSE') + val(R, yy, '220°', null, { anchor: 'end' }); yy += 19;
+    c += lab(L, yy, 'DOING') + text(L + 60, yy, 'KITING AT GUN RANGE', { size: B, fill: C.white, track: 0.3 }); yy += 19;
+    c += lab(L, yy, 'KNOWN') + text(L + 60, yy, 'ENGINE DAMAGED', { size: B, fill: C.white, track: 0.3 });
+    return c;
+  },
+}).svg;
+
+// F3 shield control (L-BOTTOM, H4's three lights under it). The ring is the control: a click on a
+// side leans the shield there, on the centre sets it even. Each sector's width is the cloud there.
+s += du(12, 558, 308, 186, {
+  id: 'f3', b: 6,
   content: (gx, gy, gw, gh) => {
     let c = '';
-    const L = gx + 8, R = gx + gw - 8;
-    // eight sectors summed from the cloud; thinner aft-port where the cloud is still returning
-    c += I.shieldRing(L + 58, gy + 66, 44, [0.95, 0.85, 0.7, 0.55, 0.4, 0.3, 0.55, 0.85], { trim: 0 });
-    const X = L + 128;
-    c += text(X, gy + 20, 'CLOUD', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 20, '230/300 KG', { size: B, bold: true, fill: C.white, anchor: 'end' });
-    c += text(X, gy + 42, 'MODE', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + I.box(R - 64, gy + 29, 64, 18, 'RAISED', 'engaged', { size: 10.5 });
-    // trim: five positions, the current one engaged, each a click target
-    // trim is set on the ring itself: click a side to lean the cloud there, the centre for even (8 cycles)
-    c += text(X, gy + 66, 'TRIM', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + I.box(R - 64, gy + 53, 64, 18, 'BOW', 'engaged', { size: 10.5 });
-    c += text(X, gy + 90, 'EMIT 1', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(X + 58, gy + 90, '100%', { size: B, bold: true, fill: C.white });
-    c += text(X, gy + 108, 'HEAT', { size: 9.5, bold: true, fill: C.dim, track: 0.6 }) + I.hbar(X + 40, gy + 108, 92, 0.42, { notch: 0.85, notchColor: C.amber });
-    c += line(gx + 4, gy + 128, gx + gw - 4, gy + 128, C.graticule, 1);
-    // H4 merged: the four condition lenses, dark (nominal)
-    ['HULL\n81%', 'SHIELDS', 'POWER', 'LIFE SUP'].forEach((n, i) => c += lens(L + i * 72, gy + 146, 68, 30, n, null));
+    const cx = gx + 70, cy = gy + gh / 2, r = 50;
+    const thick = [0.95, 0.8, 0.6, 0.5, 0.42, 0.5, 0.6, 0.8];   // leaned to the bow
+    const p = (a, R) => [cx + R * Math.sin(a * Math.PI / 180), cy - R * Math.cos(a * Math.PI / 180)];
+    thick.forEach((t, i) => {
+      const a0 = i * 45 - 22.5 + 2.5, a1 = i * 45 + 22.5 - 2.5, w = 2 + t * 8, rr = r + w / 2;
+      const [x0, y0] = p(a0, rr), [x1, y1] = p(a1, rr), col = t <= 0.05 ? C.red : t < 0.35 ? C.amber : C.white;
+      c += `<path d="M${x0} ${y0} A${rr} ${rr} 0 0 1 ${x1} ${y1}" fill="none" stroke="${col}" stroke-width="${w}"/>`;
+    });
+    const [t0x, t0y] = p(-24, r + 17), [t1x, t1y] = p(24, r + 17);
+    c += `<path d="M${t0x} ${t0y} A${r + 17} ${r + 17} 0 0 1 ${t1x} ${t1y}" fill="none" stroke="${C.cyan}" stroke-width="2.5"/>`;
+    c += hullArt('gunship', cx, cy, -90, 0.05, { outline: true });
+    const X = gx + 152, R = gx + gw - 8;
+    c += lab(X, gy + 20, 'CLOUD') + val(X, gy + 44, '230', 'OF 300 KG', { size: 20 });
+    c += I.box(X, gy + 56, R - X, 24, 'RAISED', 'engaged', { size: B });
+    c += I.box(X, gy + 86, R - X, 24, 'TRIM  BOW', 'selected', { size: B });
+    c += line(X, gy + 122, R, gy + 122, C.graticule, 1);
+    c += lab(X, gy + 140, 'EMITTER S') + text(R, gy + 140, 'HOLDING', { size: B, bold: true, fill: C.white, anchor: 'end' });
+    c += lab(X, gy + 158, 'HEAT') + val(R, gy + 158, '40%', null, { anchor: 'end', size: B });
+    c += I.hbar(X + 44, gy + 158, R - X - 84, 0.4, { notch: 1, notchColor: C.red });
     return c;
   },
 }).svg;
+s += condLights(12, 748, ['HULL', 'POWER', 'LIFE SUP']);
 
-// F2 weapons rack, bottom centre: a row per mount, the mounts in hand marked
-s += du(330, 632, 620, 156, {
-  id: 'f2', b: 10, title: '',
+// F2 weapons rack (bottom centre) under the master alert hood. One row per mount: who fires it,
+// its state, the hit chance on the Lock (pips and word, in the hit-chance cyan), launchers' rounds.
+s += masterHood(330, 638, 620, null);
+s += du(330, 638, 620, 150, {
+  id: 'f2', b: 8,
   content: (gx, gy, gw) => {
     let c = '';
-    const cols = [{ t: '', w: 16 }, { t: 'MOUNT', w: 62 }, { t: 'WEAPON', w: 150 }, { t: 'STATE', w: 140 }, { t: 'HIT', w: 112 }, { t: 'BY', w: 70, align: 'right' }];
-    let hx = gx + 10;
-    cols.forEach(col => { c += text(col.align === 'right' ? hx + col.w : hx, gy + 14, col.t, { size: 10, bold: true, fill: C.dim, anchor: col.align === 'right' ? 'end' : 'start', track: 0.6 }); hx += col.w; });
-    c += line(gx + 4, gy + 19, gx + gw - 4, gy + 19, C.graticule, 1);
-    const pips = (n) => { let p = ''; for (let i = 0; i < 3; i++) p += `<circle cx="${i * 9}" cy="0" r="3" fill="${i < n ? C.cyan : 'none'}" stroke="${C.cyan}" stroke-width="1"/>`; return p; };
+    const R = gx + gw - 10;
     const rows = [
-      [true, 'NOSE', 'COILGUN MK1', ['READY', 'normal'], [3, 'GOOD'], 'YOU'],
-      // the laser burns 5 MW against a 3 MW reactor: between pulses it waits on the store
-      [true, 'AFT S', 'LASER MK1', ['CHARGING', 'normal'], [3, 'GOOD'], 'YOU'],
-      [true, 'AFT P', 'HARPOON LAUNCHER', ['READY  3 OF 4', 'normal'], null, 'YOU'],
-      [false, 'PORT', 'AUTOCANNON MK1', ['PD ENGAGING', 'engaged'], null, 'AUTO'],
-      [false, 'STBD', 'AUTOCANNON MK1', ['PD ENGAGING', 'engaged'], null, 'AUTO'],
+      ['NOSE', 'HEAVY CANNON', ['READY'], [2, '62%', 'FAIR'], '', 'YOU'],
+      ['FWD PORT', 'AUTOCANNON', ['ENGAGING', C.green], null, '', 'PD'],
+      ['FWD STBD', 'AUTOCANNON', ['IDLE', C.dim], null, '', 'PD'],
+      ['AFT PORT', 'HARPOON', ['READY'], null, '3 LEFT', 'YOU'],
+      ['AFT STBD', 'HARPOON', ['RELOADING', C.white, '0.6 S'], null, '2 LEFT', 'YOU'],
     ];
-    rows.forEach(([hand, m, wpn, [st, stS], hit, by], i) => {
-      const yy = gy + 35 + i * 18;
-      let x = gx + 10;
-      if (hand) c += path(`M${x} ${yy - 10} L${x + 7} ${yy - 5} L${x} ${yy}`, C.cyan, 1.5, { fill: C.cyan });
-      x += 16;
-      c += text(x, yy, m, { size: B, bold: true, fill: C.white, track: 0.4 }); x += 62;
-      c += text(x, yy, wpn, { size: B, fill: C.white }); x += 150;
-      if (stS === 'normal') c += text(x, yy, st, { size: B, bold: true, fill: C.white });
-      else c += I.box(x - 2, yy - 13, st.length * 8.2 + 10, 17, st, stS, { size: 11 });
-      x += 140;
-      if (hit) c += `<g transform="translate(${x + 3} ${yy - 4.5})">${pips(hit[0])}</g>` + text(x + 30, yy, hit[1], { size: B, bold: true, fill: C.cyan });
-      x += 112;
-      c += text(x + 70, yy, by, { size: B, bold: true, fill: by === 'YOU' ? C.cyan : C.dim, anchor: 'end' });
+    rows.forEach(([mount, weapon, [st, stc, stv], hit, ammo, who], i) => {
+      const top = gy + 7 + i * 24, yy = top + 16.7;
+      if (i) c += line(gx + 4, top, gx + gw - 4, top, C.graticule, 1);
+      c += text(gx + 12, yy, mount, { size: B, bold: true, fill: C.white, track: 0.4 });
+      c += text(gx + 112, yy, weapon, { size: B, fill: C.white, track: 0.3 });
+      c += text(gx + 240, yy, st, { size: B, bold: true, fill: stc || C.white, track: 0.4 });
+      if (stv) c += val(gx + 240 + tw(st, B, true, 0.4) + 8, yy, stv, null, { size: B });
+      if (hit) {
+        const [pips, pct, word] = hit;
+        for (let k = 0; k < 3; k++) c += `<circle cx="${gx + 376 + k * 9}" cy="${yy - 4.5}" r="3" fill="${k < pips ? C.cyan : 'none'}" stroke="${C.cyan}" stroke-width="1.2"/>`;
+        c += text(gx + 402, yy, pct, { size: B, bold: true, fill: C.cyan }) + text(gx + 440, yy, word, { size: B, bold: true, fill: C.cyan, track: 0.4 });
+      }
+      if (ammo) c += text(gx + 490, yy, ammo, { size: B, fill: C.white, track: 0.3 });
+      c += text(R, yy, who, { size: B, bold: true, fill: who === 'YOU' ? C.cyan : C.white, anchor: 'end', track: 0.6 });
     });
-    c += line(gx + 4, gy + 114, gx + gw - 4, gy + 114, C.graticule, 1);
-    // the rack's foot: decoys (unlimited in the game, on a 3 s cooldown: ready or seconds) and point defence
-    c += text(gx + 26, gy + 130, 'DECOY', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(gx + 76, gy + 130, 'READY', { size: B, bold: true, fill: C.white });
-    c += text(gx + 160, gy + 130, 'SEEKER', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + I.box(gx + 214, gy + 117, 52, 17, 'LOCK', 'engaged', { size: 10 });
-    return c;
-  },
-}).svg;
-// the master alert hood over the rack
-s += masterHood(330, 632, 620, null, 'WEAPONS');
-
-// F1 lock card, full, right middle
-s += du(960, 176, 308, 210, {
-  id: 'f1', b: 8, title: 'LOCK',
-  content: (gx, gy, gw) => {
-    let c = '';
-    const L = gx + 8, R = gx + gw - 8;
-    c += sym.diamond(L + 6, gy + 15, 6, C.red, 1.5, C.red) + text(L + 20, gy + 21, 'RAIDER', { size: V, bold: true, fill: C.red, track: 0.6 });
-    c += I.box(R - 70, gy + 8, 70, 18, 'HOSTILE', 'warning', { size: 10.5 });
-    c += text(L + 20, gy + 40, 'FIRING ON YOU  ·  KITING', { size: 11.5, bold: true, fill: C.white, track: 0.5 });
-    c += line(gx + 4, gy + 50, gx + gw - 4, gy + 50, C.graticule, 1);
-    c += text(L, gy + 70, 'RNG', { size: 11, bold: true, fill: C.dim }) + text(L + 34, gy + 70, '2.8 KM', { size: V, bold: true, fill: C.white });
-    c += text(L + 124, gy + 70, 'CLOSING', { size: 11, bold: true, fill: C.dim }) + text(R, gy + 70, '12 M/S', { size: V, bold: true, fill: C.white, anchor: 'end' });
-    c += text(L, gy + 90, 'REL', { size: 11, bold: true, fill: C.dim }) + text(L + 34, gy + 90, '38 M/S', { size: B, bold: true, fill: C.white }) + text(L + 124, gy + 90, 'TOWARD', { size: 11, bold: true, fill: C.dim }) + text(R, gy + 90, '220°', { size: B, bold: true, fill: C.white, anchor: 'end' });
-    c += line(gx + 4, gy + 100, gx + gw - 4, gy + 100, C.graticule, 1);
-    // the guns in hand against this target: the coilgun, the laser inside its 3 km reach, the launcher
-    const guns = [['NOSE', 'COILGUN', 'IN ARC', 3, 'GOOD'], ['AFT S', 'LASER', 'IN REACH', 3, 'GOOD'], ['AFT P', 'HARPOON', 'LOCKED', 0, '']];
-    guns.forEach(([m, w, arc, n, h], i) => {
-      const yy = gy + 120 + i * 20;
-      c += text(L, yy, m, { size: B, bold: true, fill: C.white }) + text(L + 50, yy, w, { size: B, fill: C.white });
-      c += text(L + 132, yy, arc, { size: 11.5, bold: true, fill: C.white, track: 0.4 });
-      if (n) { for (let k = 0; k < 3; k++) c += `<circle cx="${R - 64 + k * 9}" cy="${yy - 4.5}" r="3" fill="${k < n ? C.cyan : 'none'}" stroke="${C.cyan}" stroke-width="1"/>`; c += text(R, yy, h, { size: B, bold: true, fill: C.cyan, anchor: 'end' }); }
-    });
-    c += line(gx + 4, gy + 172, gx + gw - 4, gy + 172, C.graticule, 1);
-    c += text(L, gy + 190, 'KNOWN', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(L + 60, gy + 190, 'ENGINES DAMAGED', { size: B, bold: true, fill: C.white });
     return c;
   },
 }).svg;
 
-// H5 contact scope, right bottom: the range that holds the lock and the missile
-s += du(1068, 588, 200, 200, {
-  id: 'h5', b: 8, title: 'SCOPE',
-  content: (gx, gy, gw, gh) => I.scope(gx + gw / 2, gy + gh / 2, gw / 2 - 10, [
-    { kind: 'hostile', x: 0.42, y: -0.21, locked: true }, { kind: 'hostile', x: 0.86, y: 0.12 },
-    { kind: 'missile', x: 0.22, y: -0.09, a: 236 }, { kind: 'neutral', x: -0.5, y: 0.6 },
-  ], { heading: 90, range: '10 KM' }),
-}).svg;
+// H5 contact scope at 10 km, the smallest step holding the Lock and the missile; Raider 2 at 14 km
+// is past the rim, a tick at its bearing
+s += contactScope([
+  { kind: 'hostile', x: 0.277, y: -0.196, locked: true },
+  { kind: 'missile', x: 0.118, y: -0.098, a: 232 },
+], { heading: 55, range: '10', rim: [[117, 'hostile']] });
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>

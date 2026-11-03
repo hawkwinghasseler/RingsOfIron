@@ -1,5 +1,6 @@
-// Checks Nasa-punk mockup pages for text problems: text over text, text cut by its display's glass,
-// text off the 1280 x 800 page, and glass text under a size floor (hardware legends excepted).
+// Checks Nasa-punk mockup pages for text problems: text over text or crowding it, text crossing or
+// touching a box's frame, text cut by its display's glass, text off the 1280 x 800 page, and glass
+// text under a size floor (hardware legends excepted).
 // Usage: node nasapunk/mockups/check.js [--floor 12] [file.html | dir ...]
 const { chromium } = require('playwright');
 const path = require('path');
@@ -35,8 +36,26 @@ const fs = require('fs');
       };
       // tight vertical extent: the font box is taller than the ink, so shrink it to the cap height
       const ink = b => { const fs = parseFloat(b.el.getAttribute('font-size')); const base = parseFloat(b.el.getAttribute('y')); return { x: b.x, x2: b.x + b.w, y: base - fs * 0.72, y2: base + fs * 0.08 }; };
+      // stroked rectangles (boxes, frames, slips): text must sit inside one or clear of it
+      // A frame drawn before the opaque plate a text sits on (its glass, a slip, a key plate) is
+      // hidden under that plate there, so only frames drawn after the plate count.
+      const rb = r => { const b = r.getBoundingClientRect(); return { x: b.left, y: b.top, x2: b.right, y2: b.bottom, el: r }; };
+      const rects = [...document.querySelectorAll('svg rect')].filter(r => !r.closest('clipPath, defs, pattern, g[clip-path*="cctv"]'));   // a camera's picture is not a frame
+      const frames = rects.filter(r => { const st = r.getAttribute('stroke'); return st && st !== 'none' && +r.getAttribute('width') > 4 && +r.getAttribute('height') > 4; }).map(rb);
+      const opaque = f => { if (!f || f === 'none' || f.startsWith('url')) return false; const m = f.match(/rgba\([^)]*,\s*([\d.]+)\)/); return !m || +m[1] >= 0.85; };
+      const plates = rects.filter(r => opaque(r.getAttribute('fill')) && !(r.getAttribute('fill-opacity') && +r.getAttribute('fill-opacity') < 0.85)).map(rb);
+      const before = (a, b) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
       for (let i = 0; i < boxes.length; i++) {
         const a = boxes[i], A = ink(a);
+        const under = plates.filter(P => before(P.el, a.el) && A.x >= P.x - 0.5 && A.x2 <= P.x2 + 0.5 && A.y >= P.y - 0.5 && A.y2 <= P.y2 + 0.5).pop();
+        for (const F of frames) {
+          if (under && before(F.el, under.el)) continue;
+          const inside = A.x >= F.x - 0.5 && A.x2 <= F.x2 + 0.5 && A.y >= F.y - 0.5 && A.y2 <= F.y2 + 0.5;
+          if (inside) continue;
+          const ox = Math.min(A.x2, F.x2) - Math.max(A.x, F.x), oy = Math.min(A.y2, F.y2) - Math.max(A.y, F.y);
+          if (ox > 1 && oy > 1) out.push(`crosses a frame: "${a.t}" at ${Math.round(a.x)},${Math.round(A.y2)} (frame ${Math.round(F.x)},${Math.round(F.y)} to ${Math.round(F.x2)},${Math.round(F.y2)})`);
+          else if (oy > 0.5 * (A.y2 - A.y) && ox > -2.5) out.push(`against a frame: "${a.t}" at ${Math.round(a.x)},${Math.round(A.y2)} (gap ${(-ox).toFixed(1)}; frame ${Math.round(F.x)},${Math.round(F.y)} to ${Math.round(F.x2)},${Math.round(F.y2)})`);
+        }
         const fs = parseFloat(a.el.getAttribute('font-size'));
         if (fs < floor && !a.el.hasAttribute('data-legend')) out.push(`small ${fs}: "${a.t}" at ${Math.round(a.x)},${Math.round(A.y2)}`);
         if (!a.el.hasAttribute('data-legend') && (A.x < 0 || A.x2 > 1280 || A.y < 0 || A.y2 > 800)) out.push(`off page: "${a.t}" at ${Math.round(a.x)},${Math.round(A.y2)}`);

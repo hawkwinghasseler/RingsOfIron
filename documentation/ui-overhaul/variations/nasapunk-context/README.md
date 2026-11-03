@@ -1,10 +1,12 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 2 when drawn, on branch
+The context-driven functional spec (`functional-context.md`, version 4 when drawn, on branch
 `claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`). Mockups are 1280 x 800 UI units drawn at 2x; sources are
-the HTML files here, using `context.js` and the shared kit in `../../nasapunk/mockups/`. Render
-with `node nasapunk/mockups/render.js variations/nasapunk-context` from `documentation/ui-overhaul`.
+the HTML files here, using `context.js` and the shared kit in `../../nasapunk/mockups/`. From
+`documentation/ui-overhaul`, render with `node nasapunk/mockups/render.js variations/nasapunk-context`
+and check with `node nasapunk/mockups/check.js variations/nasapunk-context` (text overlaps, text
+touching a frame, text cut by its glass, and the 12-unit floor).
 
 Round history is in [`../nasapunk-round-log.md`](../nasapunk-round-log.md).
 
@@ -12,80 +14,118 @@ Round history is in [`../nasapunk-round-log.md`](../nasapunk-round-log.md).
 
 | Spec element | Nasa-punk container |
 |---|---|
-| P1 context strip | The glareshield strip: seat, who has the helm, the BATTLE STATIONS lens, the clock and time warp. |
-| P2 ship alerts | An EICAS-style crew alerting list: severity shape (◆ warning, ▲ caution), short code, detail, crew dots for who is on it (a NO CREW flag when nobody is), timer. A sixth row becomes "+n more". |
-| P3 threat alert | A red-framed glass with a lens, IMPACT T−x large and a 60 s tape of the inbound missiles. |
-| P4 message feed | Comm-loop callout slips. |
-| P5 objective | A two-line slip with a magenta tab (magenta is the style's plan and objective colour). |
-| P6 hints | Key caps with verbs, above the primary instrument. |
-| H1 flight display | A DU under a hood that carries the MASTER WARN and MASTER CAUT lenses, so the master cue sits over the primary instrument. |
-| H2 navigation | A DU with an orbit picture, apsides, the NAV block, the next event on a timeline and the plan's delta-v against what is left. |
-| H4 ship condition | Four condition lenses, dark when well. |
-| H5 contacts | A scope DU, folded to a key with a count when nothing is near. |
-| F1 lock, F2 weapons, F3 shields, F4 threats | DUs. F3 is a ring of sectors around the hull outline, and the ring itself is the trim control. F2 has a row per mount with hit-chance pips in cyan. |
-| X3 emergency | A guarded card with hazard-stripe framing: the ways out, their keys and costs. |
-| D1 personal | The EMU chest display (DCM). |
-| D3 off-screen pointers | HUD-layer edge chevrons with what and how far. |
+| P1 status strip | One long glass across the top. Each field has a fixed place and its reserved width, so a field that empties leaves dark glass and nothing moves. BATTLE STATIONS is an amber lens set into it. |
+| P2 caution and warning | An EICAS list of rows 24 tall: severity shape (◆ warning, ▲ caution), code, detail, handling, timer. Handling is a cyan YOU flag (needs the captain), a white dot per crew member on it, or BACK with the recovery time. Harm timers are white, recovery timers dim. The sixth row is "+n MORE" with a chevron, since a click opens Ship › Systems. |
+| Master alert cue | MASTER WARN and MASTER CAUT lenses, 24 tall since a click acknowledges them, on a hood across the top of the seat's primary instrument. On deck, docked or latched the two lenses stand alone at the bottom centre, but only while one is lit. A lit lens shows the newest code. |
+| P3 threat alert | A red-framed glass with a lit lamp carrying the missile glyph, the count at 22, the decoy with its key cap and point defence on the second line. |
+| P4 message feed | Comm-loop slips: a source tag, then the message in sentence case (speech and events are prose; instruments are caps). |
+| P5 objective | A two-line slip with a kapton tab. |
+| H1 flight display | A DU under the hood. The frame is an FMA box, green while picked automatically and white when pinned. The speed is in that frame, beside the assist box. Below them are the thruster pictogram, delta-v, and the propellant tape. |
+| H2 navigation | Label, value and time columns: ORBIT, NAV in magenta with its ring, NEXT with its diamond, PLAN. Values at 15 with units dim at 12. |
+| H4 ship condition | Lenses in a bezel, dark when well: three on a ship with no shield emitter. Expanded on deck, each lens heads a row with its reading and a tape. |
+| H5 scope | A 200 x 200 DU with − and + at 24, the range in the corner, and off-scale contacts as rim ticks at their bearing. In cruise it folds to a 48 x 48 key with the count. |
+| C1 orders menu | A mode control panel, as on a flight deck: the helm orders are interlocked lit keys under their number caps. Autopilot, crew and shield orders are lit keys whose lower line is their state. Abandon and the tow sit under hinged guards with striped rims. A barber-pole strip marks an order that can't be given now, and the panel's foot gives each reason once with the keys it blocks. |
+| F1 lock card | The name in the allegiance colour with the lock brackets. HOSTILE is a box, and FIRING ON YOU a lit red flag. Then RNG, REL, what it is doing and what is known. |
+| F2 weapons rack | One row per mount: mount, weapon, state, hit chance as cyan pips with the number and word, rounds left, who fires it (YOU in cyan, PD). Point defence engaging reads green, like an engaged autoflight mode. |
+| F3 shield control | A ring of eight sectors around the ship's outline, each as wide as the cloud there. The trim is a cyan arc outside the side leaned to, and the ring itself is the control. Beside it: cloud mass, RAISED, TRIM, the emitter and its heat against the trip. |
+| F4 threat list | Rows 24 tall (a click locks): the missile's impact time, bearing and PD ON, then the other hostiles. |
+| X2 boarding panel | A DU of label and value rows, with K BOARDING and U CAST OFF as buttons 26 tall. |
+| X3 emergency card | A hazard-striped card: the cause at 22, then the ways out as the same guarded switches as C1, with the tow's costs. |
+| D1 captain vitals | The suit's own chest display (the DCM): suit-grey bezel, orange tab. |
+| D3 hazard markers | Tags on the deck by P2's code or the casualty's name, with a leader to the spot. |
+| The ships | The game's own hull outlines (`HULL_ART`), plate grey for your ship, red-brown for hostiles, dark for a beaten one. |
 
 ## Screens
 
-![Helm, cruising](c1-helm-cruise.png)
+![Helm, cruising, orders open](c1-helm-cruise.png)
 
-**C1, helm, cruising in Earth orbit, nothing wrong.** P2, P3 and P4 draw nothing; H4 is four
-unlit lenses; H5 has folded to a key. The objective is two lines, H2 shows the orbit and the plan,
-H1 sits bottom centre under its hood, and the nav target is off screen with one edge marker.
+**C1, helm, cruising in Earth orbit with the orders menu open (11.1 and 11.12).** Nothing is
+wrong, so P2, P3 and P4 draw nothing. H4 is three dark lenses and H5 has folded to a key. No helm
+order is running, so P1's helm field is empty and no helm key is down. Four helm orders need a Nav
+in the bubble, the shield orders need an emitter, and the tow is refused while the ship can fly
+home. Each carries the strip, and the foot says why once.
 
 ![Fire control](c2-fire-control.png)
 
-**C2, weapons console in a fight.** Bea holds the helm. One missile inbound with point defence on
-it: the threat alert with its 60 s tape, the threats DU, the shield ring (trim by clicking a side),
-the weapons rack with hit-chance pips, the lock DU and the scope.
+**C2, the weapons console of a gunship (11.5).** Bea holds the helm. One missile is inbound with
+point defence on it: P3 has the count and the decoy, F4 the impact time. The shield ring leans to
+the bow. In F2 the nose cannon has the hit chance on the Lock, the autocannons are point defence
+(one engaging, one idle), and the harpoon launchers show their rounds. The scope is at 10 km with
+Raider 2 as a rim tick.
 
 ![Deck emergency](c3-deck-emergency.png)
 
-**C3, on deck, ship disabled and venting.** P2 ranks the warnings, with SUIT AIR in it because the
-captain's air is under 240 s. The emergency card gives the ways out; the off-screen pointers to the
-fire and the casualty are dimmed under it. Bottom left: H4's deck face (no plan, since the deck is
-the plan) and the captain's DCM.
+**C3, on deck, the corvette disabled (11.7).** The reactor is stunned and the hold is at vacuum.
+Bea fights the fire in the bridge and Cole treats Ada. The suited captain stands in the hold. P2
+ranks the five warnings and folds SMOKE into "+1 MORE". X3 offers the ways out; P1 and P5 are
+dimmed under it. D3 tags the fire, the vacuum and Ada. Bottom left is H4's deck face (no plan,
+since the deck is the plan) over the DCM, and the master cue stands alone at the bottom centre.
 
-## Round 1 critique
+![Boarding, latched](c4-boarding.png)
+
+**C4, latched to a taken raider (11.13).** Latched, the screen is the docked one. P5 has the
+bounty's next step, X2 sits where the station panel would be, and H4 has its quiet lights. The
+raider lies the way the game docks two ships: half a turn apart, port to port. That puts it over
+the corvette's port side, upside down and nose aft. Its lock brackets and name stay, but there is
+no lock card and no range.
+
+## Round 2 critique
 
 What works:
 
-- P2 as an EICAS list ranks cleanly, and the crew dots say who is handling each alert without
-  another column of names.
-- The guarded emergency card makes the irreversible choices look guarded.
-- The hood puts the master cue where the eyes already are in each context.
+- The 12-unit floor reshaped the variation for the better. With no room for bezel titles, each
+  widget is known by its zone and its face, and the labels that remain are ones a reader uses.
+- C1's panel shows every order, whether it can be given, and why not. It does that with the
+  hardware's own grammar (interlocks, guards, flags) rather than a list.
+- X3's guarded switches are C1's, so a player who has seen the menu knows the emergency card.
+- P2's handling column reads at a glance: cyan for you, white dots for crew, dim BACK for a
+  condition clearing itself.
 
-What was wrong in the spec, found while drawing and sent to the designer (all 12 adopted for v3):
+Problems in the spec, found while drawing and sent to the designer:
 
-- Power as supply and the 2 s store, not demand; a SYS DOWN caution.
-- Decoys ready or seconds, not counted.
-- A room naming rule (by system or hull position), since rooms have no names in the code.
-- P2 short codes of 10 characters at most; ranking puts what needs you first, and SUIT AIR always
-  first.
-- L-TOP and R-TOP 150 tall, with the MID zones from y 194; insets 140 x 112 plus 22.
-- Wireframe 07 fixed; D3 stays lit under X3.
-- A master cue that latches for warnings until acknowledged, on a new key (`\`).
-- P5 in two lines; the F3 ring as the trim control; hit-chance colours left to the styles.
+- **11.5's numbers don't fit the game.** F1's Lock is at 7.7 km, while F2 gives the nose heavy
+  cannon 62% fair. The heavy cannon opens fire at 50% around 3.7 km (`HitChance.OPEN_FIRE`), so at
+  7.7 km it would be poor. Drawn at 3.4 km.
+- **H5's 20 km is not a scope step.** `RadarScope.RANGES` are 0.5, 2, 10, 50, 250 and 1 000 km.
+  Drawn at 10 km, the smallest step holding the Lock and the missile, with Raider 2 as a rim tick.
+- **Wireframe 05's rack.** The autocannons are point defence (`autocannon_mk1` has
+  `point_defense = true`), so at the console they read PD, not YOU. The rows name PORT and STBD
+  twice; the mounts are FWD PORT, FWD STBD, AFT PORT and AFT STBD. A harpoon launcher's cooldown
+  is 1 s, not 4 s.
+- **11.7's crew dots.** FIRE ●● and CREW CRIT ● need three workers. With Ada down, the starting
+  crew has two (Bea and Cole). Drawn with one on each.
+- **11.13's party.** "PARTY 4 aboard" is more people than the corvette carries. The crew is three,
+  and the captain is at the helm. Drawn as 2 aboard.
+- **11.13's feed.** "Boarding: the Raider is taken" has a source, Boarding, that P4's list of
+  sources lacks. Drawn with a BRD tag.
+- **Wireframe 13** draws the raider ahead of the nose. The corvette's port is on its port side, so
+  the latched raider lies alongside.
+- **W3 repeats H2.** The burn cue's countdown is the same datum as H2's NEXT line, on screen at the
+  same time. Drawn as the spec says; one home per datum would drop the cue's countdown at the
+  helm.
 
-What is still wrong in these screens, fixed in round 2:
+What is still wrong in these screens, for round 3:
 
-- **C2's rack has the hand flags backwards.** On the game's Patrol Corvette the autocannons are
-  point defence and stay automatic at the weapons console (`PlayerGunnery.inHand`), while the
-  laser and the harpoon launcher are in hand. So the autocannon rows lose their hit chance and
-  read AUTO, the laser and launcher rows get the hand mark, and the laser's 3 km reach
-  (`max_range`) belongs on its row.
-- **Fire arcs** drawn as narrow wedges, where the guns' arcs are 300°.
-- **D3 dimmed under X3**, which v3 reverses.
-- **Type below the guide's floor** (labels at 9.5 to 10.5 u) and **commas as thousands
-  separators**, where the guide says a thin space.
-- **v3's layout:** L-TOP and R-TOP 150, MID from 194, P2 codes of 10 characters, the new ranking,
-  the latched master cue with its key, insets 140 x 112.
+- The orders panel's groups are paired to fit its 620 width (AUTOPILOT with SHIP, CREW with
+  SHIELDS), not in the spec's order.
+- The trim is a step key, not a five-way selector. On the corvette both shield orders are dark, so
+  it doesn't show here, but a gunship's menu should get the selector.
+- C3's alarm beacons and the dark deck make the bridge's floor hard to read away from the fire.
+- No screen yet shows an armed guarded order (amber ARMED), which C1 and X3 both need for the 3 s
+  between presses.
 
 ## Deviations from the spec
 
-- SUIT AIR appears in C3's P2 list though the spec's wireframe leaves it out: the captain's air is
-  under 240 s, which the spec's own rule makes a P2 row. (v3 adopts this.)
-- P3 shows the time to impact as a tape as well as a number, so two missiles' spacing reads at a
-  glance.
+- **Thousands take a thin space** ("1 240 KM", "7 672 M/S"), the style guide's rule, where the
+  spec writes a comma.
+- **Instruments are in caps**, as the guide has it; P4's messages are prose and stay in sentence
+  case.
+- **No bezel titles.** The floor applies to legends, and titles at 12 would crowd the bezels. The
+  zone says what a widget is.
+- **The master cue is hidden on deck, docked or latched while it is unlit.** Dark there, it would
+  be hardware with nothing to say over the deck.
+- **No hand mark in F2 at the console.** Every mount is in hand there, so the mark carries nothing.
+  It belongs to the gun seat's single row.
+- **No fire arcs at fire control.** The nose cannon's arc is 270° and would cover the view. The
+  hit lane and the lead reticle (with its line back to the target, as `LeadReticle` draws it) show
+  where the shot goes.

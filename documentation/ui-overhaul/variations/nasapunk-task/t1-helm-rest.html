@@ -29,7 +29,7 @@ s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1X' });
 s += annunciatorPanel({});
 
 // FLT in CRUISE: the mode named FMA-style, the frame and the speed in it, delta-v against home,
-// rotation assist, the main engine and RCS lamps (dark: idle)
+// the main engine and RCS lamps (dark: idle). Rotation assist is on, so it isn't shown (round 4).
 s += du(ZT.flt.x, ZT.flt.y, ZT.flt.w, ZT.flt.h, {
   id: 'flt', b: 8, title: 'FLIGHT',
   content: (gx, gy, gw) => {
@@ -45,7 +45,6 @@ s += du(ZT.flt.x, ZT.flt.y, ZT.flt.w, ZT.flt.h, {
     c += I.hbar(bx, gy + 64, bw, 7007 / max, { notch: 410 / max });
     c += text(bx + bw * 410 / max + 6, gy + 51, 'HOME 410', { size: 12, bold: true, fill: C.dim, track: 0.3 });
     c += line(gx + 4, gy + 73, gx + gw - 4, gy + 73, C.graticule, 1);
-    c += I.box(L, gy + 78, 72, 18, 'ASSIST', 'engaged', { size: 12 });
     c += lens(R - 100, gy + 78, 48, 18, 'MAIN', null) + lens(R - 48, gy + 78, 48, 18, 'RCS', null);
     return c;
   },

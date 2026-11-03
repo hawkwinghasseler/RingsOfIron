@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Context: helm, cruise</title>
+<html><head><meta charset="utf-8"><title>Context: helm, cruise, orders open</title>
 <link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
 <style>html,body{margin:0;background:#000}svg{display:block}</style>
 </head><body>
@@ -8,72 +8,96 @@
 <script src="../../nasapunk/mockups/kit.js"></script>
 <script src="context.js"></script>
 <script>
-// Walkthrough 11.1: at the helm, cruising in Earth orbit, nothing wrong. P2, P3 and P4 are empty and
-// draw nothing (the dark cockpit); H4 is four unlit lenses; H5 has folded to a key.
-let s = space({ px: 260, py: 1700, pr: 1250, seed: 5 });
-const SX = 640, SY = 405, HDG = 90;
-s += hull(SX, SY, HDG, 0.9);
-// W2 velocity markers, orbit frame, 70 from the ship; W3 the next burn's arrow and countdown
+// Walkthroughs 11.1 and 11.12: at the helm of the starting corvette, cruising in Earth orbit with
+// nothing wrong, and the captain has pressed O. P2, P3 and P4 are empty and draw nothing (the dark
+// cockpit); H4 is three unlit lenses (no shield emitter aboard); H5 has folded to a key. No helm
+// order is running, so P1's authority field is empty and no helm key is down.
+let s = space({ px: 260, py: 1700, pr: 1250, seed: 5 }) + controlDefs();
+const SX = 640, SY = 318;
+s += hullArt('corvette', SX, SY, 0, 0.075);
+// W2 velocity markers, orbit frame, 70 from the ship. W3: the next burn's arrow, with its countdown.
 s += W.pro(SX + 70, SY) + W.retro(SX - 70, SY);
-s += haloed((c, w) => line(SX + 18, SY + 22, SX + 54, SY + 22, c, w) + path(`M${SX + 46} ${SY + 16} L${SX + 55} ${SY + 22} L${SX + 46} ${SY + 28}`, c, w), C.magenta, 2.5);
-s += text(SX + 62, SY + 26, '1  T−12:05', { size: B, bold: true, fill: C.magenta });
-// W1: the Nav target is off screen: one edge marker with its range
-s += haloed((c, w) => path(`M1238 300 L1250 308 L1238 316`, c, w), C.magenta, 2.5);
-s += text(1230, 304, 'SHACKLETON ICE', { size: 11, bold: true, fill: C.magenta, anchor: 'end', track: 0.6 }) + text(1230, 319, '1,240 KM', { size: 11, bold: true, fill: C.white, anchor: 'end' });
+s += haloed((c, w) => line(SX - 20, SY + 30, SX + 34, SY + 30, c, w) + path(`M${SX + 26} ${SY + 24} L${SX + 35} ${SY + 30} L${SX + 26} ${SY + 36}`, c, w), C.magenta, 2.5);
+s += text(SX + 44, SY + 35, 'BURN 1  T−12:05', { size: B, bold: true, fill: C.magenta, halo: true });
+// W1: the Nav is off screen to the right. Its edge marker carries no range: H2 has it.
+s += haloed((c, w) => path(`M1238 236 L1250 244 L1238 252`, c, w), C.magenta, 2.5);
+s += text(1230, 249, 'SHACKLETON ICE', { size: LB, bold: true, fill: C.magenta, anchor: 'end', track: 0.6, halo: true });
 
-// P1 glareshield strip
-s += glareStrip({ seat: 'HELM', clock: 'DAY 0 · 00:33', warp: '1X' });
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:33', warp: '1X' });
 
 // L-MID: P5 objective (compact), then H2 navigation
-s += objective(12, 176, 308, 'OBJ', 'DELIVER 120 WATER', '→ SHACKLETON ICE', 'T−1.4 D');
-s += du(12, 226, 308, 232, {
-  id: 'h2', b: 8, title: 'NAVIGATION',
+const p5 = objective(['DELIVER 120 WATER', '→ SHACKLETON ICE · 1.4 D LEFT']);
+s += p5.svg;
+s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
+  id: 'h2', b: 6,
   content: (gx, gy, gw) => {
     let c = '';
-    const L = gx + 8, R = gx + gw - 8;
-    // ORBIT: a small orbit picture beside the apsis lines
-    const ox = L + 30, oy = gy + 32;
-    c += `<circle cx="${ox}" cy="${oy}" r="9" fill="none" stroke="${C.dim}" stroke-width="1.2"/>`;
-    c += `<ellipse cx="${ox + 2}" cy="${oy}" rx="26" ry="19" fill="none" stroke="${C.white}" stroke-width="1.4"/>`;
-    c += line(ox + 28, oy - 4, ox + 28, oy + 4, C.white, 1.5) + line(ox - 24, oy - 4, ox - 24, oy + 4, C.white, 1.5);
-    c += `<circle cx="${ox + 14}" cy="${oy - 15.5}" r="3" fill="${C.cyan}"/>`;
-    c += text(L + 66, gy + 18, 'ORBIT', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(L + 116, gy + 18, 'EARTH  400 KM', { size: B, bold: true, fill: C.white });
-    c += text(L + 66, gy + 37, 'AP', { size: 11, bold: true, fill: C.dim }) + text(L + 90, gy + 37, '403 KM', { size: B, bold: true, fill: C.white }) + text(R, gy + 37, 'T−24:10', { size: B, bold: true, fill: C.white, anchor: 'end' });
-    c += text(L + 66, gy + 56, 'PE', { size: 11, bold: true, fill: C.dim }) + text(L + 90, gy + 56, '397 KM', { size: B, bold: true, fill: C.white }) + text(R, gy + 56, 'T−1 H 10 M', { size: B, bold: true, fill: C.white, anchor: 'end' });
-    c += line(gx + 4, gy + 66, gx + gw - 4, gy + 66, C.graticule, 1);
-    // NAV: name in the nav colour, range and rate, closest approach
-    c += `<circle cx="${L + 6}" cy="${gy + 81}" r="5.5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/>`;
-    c += text(L + 18, gy + 86, 'SHACKLETON ICE', { size: B, bold: true, fill: C.magenta, track: 0.5 });
-    c += text(R, gy + 86, '1,240 KM', { size: V, bold: true, fill: C.white, anchor: 'end' });
-    c += text(L + 18, gy + 105, 'OPENING', { size: 11, bold: true, fill: C.dim, track: 0.5 }) + text(R, gy + 105, '220 M/S', { size: B, bold: true, fill: C.white, anchor: 'end' });
-    c += text(L + 18, gy + 124, 'CLOSEST 3.2 KM', { size: 11, bold: true, fill: C.dim, track: 0.5 }) + text(R, gy + 124, 'T−2 H 05 M', { size: B, bold: true, fill: C.white, anchor: 'end' });
-    c += line(gx + 4, gy + 134, gx + gw - 4, gy + 134, C.graticule, 1);
-    // NEXT: the next event on a timeline, flown by
-    c += text(L, gy + 154, 'NEXT', { size: 11, bold: true, fill: C.dim, track: 0.6 });
-    c += path(`M${L + 46} ${gy + 143} l6 6 l-6 6 l-6 -6 z`, C.magenta, 1.5, { fill: C.glass });
-    c += text(L + 58, gy + 154, 'BURN 1/2', { size: B, bold: true, fill: C.magenta }) + text(L + 136, gy + 154, 'T−12:05', { size: B, bold: true, fill: C.white });
-    c += text(R, gy + 154, '420 M/S', { size: B, bold: true, fill: C.white, anchor: 'end' });
-    c += text(L + 58, gy + 170, 'FLOWN BY HELM', { size: 10, bold: true, fill: C.dim, track: 0.6 });
-    c += line(gx + 4, gy + 178, gx + gw - 4, gy + 178, C.graticule, 1);
-    // PLAN: what the planned burns need against what is left
-    const max = 1600, bx = L + 120, bw = gw - 140;
-    c += text(L, gy + 196, 'PLAN ΔV', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(L + 62, gy + 196, '860', { size: B, bold: true, fill: C.magenta });
-    c += I.hbar(bx, gy + 196, bw, 1240 / max, { bracket: [0, 860 / max] });
-    c += text(bx + bw * 1240 / max + 6, gy + 189, '1,240', { size: 10, bold: true, fill: C.white });
+    const L = gx + 8, M = L + 56, R = gx + gw - 8, P = 17.5;
+    let yy = gy + 18;
+    const rule = () => { c += line(gx + 4, yy - 13, gx + gw - 4, yy - 13, C.graticule, 1); yy += 4; };
+    const right = (v, unit) => val(R, yy, v, unit, { anchor: 'end' });
+    // ORBIT: the body and height, then each apsis with the time to it
+    c += lab(L, yy, 'ORBIT') + text(M, yy, 'EARTH', { size: B, bold: true }) + lab(R - valW('400', 'KM') - 6, yy, 'ALT', { anchor: 'end' }) + right('400', 'KM'); yy += P;
+    c += lab(M, yy, 'AP') + val(M + 26, yy, '403', 'KM') + right('T−24:10'); yy += P;
+    c += lab(M, yy, 'PE') + val(M + 26, yy, '397', 'KM') + right('T−1 H 10 M'); yy += P + 1;
+    rule();
+    // NAV: the Nav's name in the nav colour, its range, rate and closest approach
+    c += lab(L, yy, 'NAV') + `<circle cx="${M + 5}" cy="${yy - 4.5}" r="5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/>` + text(M + 16, yy, 'SHACKLETON ICE', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right(num(1240), 'KM'); yy += P;
+    c += lab(M, yy, 'OPENING') + right('220', 'M/S'); yy += P;
+    c += lab(M, yy, 'CLOSEST') + val(M + 66, yy, '3.2', 'KM', { size: B }) + right('T−2 H 05 M'); yy += P + 1;
+    rule();
+    // NEXT: the next event of any kind, and who flies it
+    c += lab(L, yy, 'NEXT') + path(`M${M + 5} ${yy - 10} l5.5 5.5 l-5.5 5.5 l-5.5 -5.5 z`, C.magenta, 1.5) + text(M + 16, yy, 'BURN 1/2', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right('T−12:05'); yy += P;
+    c += val(M + 16, yy, '420', 'M/S', { size: B }) + text(R, yy, 'HELM FLIES IT', { size: B, fill: C.white, anchor: 'end', track: 0.3 }); yy += P + 1;
+    rule();
+    // PLAN: what the planned burns need and what they leave (delta-v left is H1's)
+    c += lab(L, yy, 'PLAN') + lab(M, yy, 'ΔV') + val(M + 22, yy, '860', 'M/S') + lab(R - valW('380', 'M/S') - 6, yy, 'LEAVES', { anchor: 'end' }) + right('380', 'M/S');
     return c;
   },
 }).svg;
 
-// P6 learning hints, above the primary instrument while nothing on screen is the subject
-const hints = [['M', 'MAP'], ['N', 'PLAN A BURN'], ['O', 'ORDERS']];
-let hx = 640 - 140;
-hints.forEach(([k, t]) => { s += softKey(hx, 640, 16, 15, false) + text(hx + 8, 652, k, { size: 10, bold: true, fill: C.stencil, anchor: 'middle' }) + text(hx + 22, 652, t, { size: 11.5, bold: true, fill: C.dim, track: 0.6 }); hx += 28 + t.length * 8 + 16; });
+// C1, the orders menu: a mode control panel opened over the world, its foot on H1's hood.
+// Helm orders are interlocked keys under their number caps; the others carry their key cap at
+// their left. What can't be given now is drawn, not hidden, with a barber-pole strip, and the
+// foot gives each reason once with the keys it blocks.
+{
+  const x = 330, y = 408, w = 620, h = 250, L = x + 16, C0 = x + 112;
+  s += bezelBody(x, y, w, h, 4) + fastener(x + 7, y + 7) + fastener(x + w - 7, y + 7) + fastener(x + 7, y + h - 7) + fastener(x + w - 7, y + h - 7);
+  const legend = (yy, t, lx = L) => text(lx, yy, t, { size: LB, bold: true, fill: C.stencil, track: 1 });
+  const capped = (cx, yy, k) => capKey(cx, yy + 12, k, 17);   // a key cap beside a 40-tall control
+  // HELM: one order at a time (giving one releases the one running); CANCEL ends it
+  const kw = 76, kg = 6;
+  [['1', 'FLY', 'BURNS'], ['2', 'MATCH', 'VELOCITY', 'na'], ['3', 'HOLD', 'POSITION', 'na'], ['4', 'APPROACH', '500 M', 'na'], ['5', 'DOCK', 'AT NAV', 'na'], ['0', 'CANCEL', '']].forEach(([k, a, b, st], i) => {
+    const bx = C0 + i * (kw + kg);
+    s += capKey(bx + kw / 2 - capW(k) / 2, y + 11, k, 16) + korry(bx, y + 31, kw, 40, a, b, st || 'idle', { name: true });
+  });
+  s += legend(y + 56, 'HELM');
+  // AUTOPILOT (off, on, or held) and the SHIP's guarded orders, with the tow's fee
+  let yy = y + 84;
+  s += legend(yy + 24, 'AUTOPILOT') + capped(C0, yy, '6') + korry(C0 + 22, yy, 76, 40, 'TO NAV', 'OFF');
+  s += legend(yy + 24, 'SHIP', C0 + 120);
+  s += capped(C0 + 160, yy, 'P') + guarded(C0 + 187, yy, 76, 40, 'ABANDON', 'SHIP', 'idle', { name: true });
+  s += capped(C0 + 280, yy, 'B') + guarded(C0 + 307, yy, 84, 40, 'CALL TOW', '3 400 CR', 'na');
+  // CREW: two toggles; SHIELDS: raise or lower, and the trim (8 steps through its five)
+  yy = y + 136;
+  s += legend(yy + 24, 'CREW') + korry(C0, yy, 118, 40, 'SUITS AT BATTLE', 'ON', 'on') + korry(C0 + 124, yy, 126, 40, 'HOLD IN FROM EVA', 'OFF');
+  s += legend(yy + 24, 'SHIELDS', C0 + 268);
+  s += capped(C0 + 330, yy, '9') + korry(C0 + 352, yy, 56, 40, 'RAISE', '--', 'na');
+  s += capped(C0 + 414, yy, '8') + korry(C0 + 436, yy, 56, 40, 'TRIM', '--', 'na');
+  // the foot: a glass strip with each reason once, and the keys it blocks
+  const fy = y + 186;
+  s += rect(x + 12, fy, w - 24, 54, { fill: C.glass });
+  [['NEEDS A NAV IN THE BUBBLE', '2 3 4 5'], ['NO SHIELD EMITTER ABOARD', '8 9'], ['YOUR SHIP CAN STILL FLY HOME', 'B']].forEach(([why, keys], i) => {
+    const ly = fy + 16 + i * 16;
+    s += barber(x + 22, ly - 7) + text(x + 44, ly, why, { size: B, fill: C.white, track: 0.3 }) + text(x + 44 + tw(why, B, false, 0.3) + 8, ly, keys, { size: B, bold: true, fill: C.white, track: 0.6 });
+  });
+}
 
-// H1 flight display, bottom centre
-s += flightDisplay(440, 688, { frame: 'ORBIT  ·  AUTO', frameAuto: true, speed: '7,672', speedUnit: 'M/S', assist: true, dv: '1,240', prop: 0.72 });
-// H4 four quiet lenses; H5 folded to a key with the count of contacts beyond 50 km
-s += condLights(12, 748, {});
-s += scopeKey(1220, 740, 3);
+// H1 flight display under its hood (the master alert cue, dark: nothing new to acknowledge)
+s += flightDisplay(440, 688, { frame: 'ORBIT · AUTO', frameAuto: true, speed: num(7672), assist: true, dv: num(1240), prop: 0.72 });
+// H4: three quiet lenses (no shield emitter); H5 folded to a key with the count beyond 50 km
+s += condLights(12, 748, ['HULL', 'POWER', 'LIFE SUP']);
+s += scopeKey(3);
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>

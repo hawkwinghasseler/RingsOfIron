@@ -36,9 +36,10 @@ s += annunciatorPanel({ FIRE: 'caution', AIR: 'caution', POWER: 'caution', CREW:
 // PER as the suit's chest display: condition, suit and its air, the air where you stand
 s += O.dcm(16, 144, [['CONDITION', 'UNHURT', 'nominal'], ['PRESSURE SUIT', 'AIR 7:40', 'nominal'], ['HERE', 'BRIDGE: THIN', 'caution']], { w: ZT.self.w });
 
-// ALR: no warning, so the warning row is empty and the cautions keep their row (section 9.1)
+// ALR: no warning, so the warning row is empty and the cautions keep their row (section 9.1).
+// Three full texts don't fit the row, so each cell takes its short form (round 4)
 s += alertBand({
-  cautions: [['FIRE', 'HOLD', 'COLE ON IT'], ['VENTING', 'BRIDGE', 'NOBODY'], ['POWER', 'BRIDGE SHORT', 'ADA ON IT']],
+  cautions: [['FIRE', 'HOLD', 'COLE'], ['VENTING', 'BRIDGE', 'NOBODY'], ['POWER', 'BRIDGE', 'ADA']],
 });
 
 // OBJ and NTF: the slow loop, top right
@@ -48,7 +49,8 @@ s += ob.svg + news(ob.y, [['PAYDAY', '2\u2009000 CR PAID']]);
 // HLM: who holds the ship while the captain is on foot
 s += helmStatus(420, 736, 440, 'BEA', 'HOLDING HEADING', 'normal', 'NO ORDER');
 
-s += hintLine([['W/A/S/D', 'WALK'], ['E', 'USE'], ['V', 'SIT'], ['O', 'LIGHTS'], ['F1', 'CONTROLS']]);
+// E and V are the console prompt's, so they don't repeat here (round 4)
+s += hintLine([['W/A/S/D', 'WALK'], ['O', 'LIGHTS'], ['F1', 'CONTROLS']]);
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>

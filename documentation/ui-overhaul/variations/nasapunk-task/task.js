@@ -29,15 +29,15 @@ function chronometer(o) {
 
 // ANN: ten lamps in two rows of five, a caution-and-warning lens panel, dark when well. A lamp is
 // dark, advisory (lit softly: a light legend on a grey lens), caution (amber) or warning (red, with
-// a ring, so the level reads without colour). A ship without shields has no SHLD lamp: its place
+// a ring, so the level reads without colour). A ship without shields has no SHIELD lamp: its place
 // is a blanking plate, as on a panel built for a system this ship doesn't carry.
 function annunciatorPanel(lit, o = {}) {
   const { x, y, w } = ZT.self, h = 64;
   let s = bezelBody(x, y, w, h, 3) + fastener(x + 6, y + 6) + fastener(x + w - 6, y + 6) + fastener(x + 6, y + h - 6) + fastener(x + w - 6, y + h - 6);
-  const names = ['HULL', 'FIRE', 'AIR', 'POWER', 'PROP', 'DRIVE', 'ARMS', 'CREW', 'EVA', 'SHLD'];
+  const names = ['HULL', 'FIRE', 'AIR', 'POWER', 'PROP', 'DRIVE', 'ARMS', 'CREW', 'EVA', 'SHIELD'];
   names.forEach((n, i) => {
     const col = i % 5, row = Math.floor(i / 5), lx = x + 11 + col * 51, ly = y + 8 + row * 26;
-    if (n === 'SHLD' && !o.shields) {
+    if (n === 'SHIELD' && !o.shields) {
       s += rect(lx - 1, ly - 1, 51, 24, { fill: '#151719', r: 2 }) + rect(lx, ly, 49, 22, { fill: '#26292D', r: 1.5 });
       [lx + 7, lx + 42].forEach(fx => s += `<circle cx="${fx}" cy="${ly + 11}" r="2" fill="#1A1C1F" stroke="${C.edgeHi}" stroke-width="0.5"/>`);
       return;

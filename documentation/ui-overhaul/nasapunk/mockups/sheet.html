@@ -47,7 +47,7 @@ const label = (x, y, t, fill = C.dim, size = 10) => text(x, y, t, { size, bold: 
   let yy = y + 22;
   const role = (t) => { s += label(x + 16, yy, t); yy += 20; };
   role('B612 BOLD 12  ·  LABELS AND MODES, CAPS');
-  s += text(x + 16, yy, 'PROP   STRUC   PWR   O2   ATT HOLD', { size: 12, bold: true, fill: C.white, track: 0.7 }); yy += 26;
+  s += text(x + 16, yy, 'PROP   HULL   POWER   O2   ATT HOLD', { size: 12, bold: true, fill: C.white, track: 0.7 }); yy += 26;
   role('B612 15  ·  VALUES (TABULAR FIGURES), UNIT IN DIM');
   s += value(x + 120, yy, '7 672.6', 'M/S') + value(x + 240, yy, '12 400', 'KM') + value(x + 340, yy, '41', 'S'); yy += 26;
   role('B612 BOLD 20  ·  POINTER BOX');
@@ -59,7 +59,7 @@ const label = (x, y, t, fill = C.dim, size = 10) => text(x, y, t, { size, bold: 
     s += text(x + 16, yy, r[0], { size: 12, bold: true, fill: C.white, track: 0.6 }) + value(x + 130, yy, r[1], '', { size: 13 }) + value(x + 200, yy, r[2], '', { size: 13 }) + value(x + 270, yy, r[3], '', { size: 13 });
     yy += 16;
   });
-  s += text(x + 290, yy - 24, 'B612 MONO', { size: 10, bold: true, fill: C.dim, track: 0.6 }) + text(x + 290, yy - 8, 'DV 42.0', { size: 13, mono: true, fill: C.cyan }) + rect(x + 350, yy - 19, 7, 13, { fill: C.cyan });
+  s += text(x + 290, yy - 24, 'B612 MONO', { size: 10, bold: true, fill: C.dim, track: 0.6 }) + text(x + 290, yy - 8, 'ΔV 42.0', { size: 13, mono: true, fill: C.cyan }) + rect(x + 350, yy - 19, 7, 13, { fill: C.cyan });
   s += text(x + 290, yy + 4, 'SCRATCHPAD ONLY', { size: 8.5, bold: true, fill: C.dim, track: 0.4 });
   yy += 10;
   role('INTER 15  ·  PROSE ONLY');
@@ -92,7 +92,7 @@ const label = (x, y, t, fill = C.dim, size = 10) => text(x, y, t, { size, bold: 
   cell(0, 3, (cx, cy) => sym.chevron(cx, cy, 0, C.cyan, 1.5, 8), 'OWN SHIP');
   cell(1, 3, (cx, cy) => path(`M${cx - 30} ${cy + 8} A60 60 0 0 1 ${cx + 30} ${cy + 8}`, C.white, 1.5) + path(`M${cx - 7} ${cy} v-7 h14 v7 h-4 l-3 -4 l-3 4 z`, C.cyan, 1.5, { fill: C.cyan }), 'HEADING BUG');
   cell(2, 3, (cx, cy) => sym.diamond(cx - 10, cy + 6, 6, C.red, 1.5) + line(cx - 10, cy + 6, cx + 26, cy - 10, C.red, 1.5), 'LEADER  30 S');
-  cell(3, 3, (cx, cy) => text(cx - 26, cy - 6, 'RAIDER', { size: 10, bold: true, fill: C.red }) + text(cx - 26, cy + 6, 'RNG 7.7 KM', { size: 9.5, fill: C.white }) + text(cx - 26, cy + 18, 'RR −2 M/S', { size: 9.5, fill: C.white }), 'DATA BLOCK');
+  cell(3, 3, (cx, cy) => text(cx - 26, cy - 6, 'RAIDER', { size: 10, bold: true, fill: C.red }) + text(cx - 26, cy + 6, 'RNG 7.7 KM', { size: 9.5, fill: C.white }) + text(cx - 26, cy + 18, 'CLOSING 2 M/S', { size: 9.5, fill: C.white }), 'DATA BLOCK');
 }
 
 // 4. Hardware (on the bezel itself, no glass)
@@ -136,26 +136,26 @@ const label = (x, y, t, fill = C.dim, size = 10) => text(x, y, t, { size, bold: 
   s += text(x, y - 8, '5  DISPLAY UNIT ANATOMY', { size: 10, bold: true, fill: C.stencil, track: 1.6 });
   const d = du(x, y, 236, 322, {
     id: 5, plate: 'DU-2  MFD R',
-    keys: { bottom: [{ t: 'NAV' }, { t: 'SYS', state: 'cur' }, 'CREW', 'COMM'], left: [{ t: 'PWR', state: 'on' }, 'LIFE', 'PROP', 'RTN'], right: ['', 'XTIE', '', 'DCLTR'] },
+    keys: { bottom: [{ t: 'NAV' }, { t: 'SYSTEMS', state: 'cur' }, 'COMMS'], left: ['RTN', { t: 'POWER', state: 'on' }, 'LIFE SUP', 'PROP'], right: ['', 'XTIE', '', 'DCLTR'] },
     content: (gx, gy, gw, gh) => {
       let c = '';
       const cx = gx + gw / 2;
-      c += text(cx, gy + 15, 'SYS  PWR', { size: 11, bold: true, fill: C.white, anchor: 'middle', track: 0.8 });
-      c += text(cx, gy + 29, 'RCTR 3.0 MW', { size: 9.5, bold: true, fill: C.dim, anchor: 'middle', track: 0.5 });
+      c += text(cx, gy + 15, 'POWER', { size: 11, bold: true, fill: C.white, anchor: 'middle', track: 0.8 });
+      c += text(cx, gy + 29, 'REACTOR 3.0 MW', { size: 9.5, bold: true, fill: C.dim, anchor: 'middle', track: 0.5 });
       c += line(gx + 40, gy + 35, gx + gw - 40, gy + 35, C.graticule, 1);
-      // mini synoptic: reactor -> bus -> three loads
-      const ry = gy + 74;
-      c += rect(cx - 22, ry - 12, 44, 24, { stroke: C.white }) + text(cx, ry + 4, 'RCTR', { size: 9.5, bold: true, fill: C.white, anchor: 'middle' });
-      c += line(cx, ry + 12, cx, ry + 34, C.green, 2.5);
-      const l0 = gx + 52, l1 = gx + gw - 52;
-      c += line(l0, ry + 34, l1, ry + 34, C.green, 2.5);
-      [['ENG', C.green, ''], ['WPN', C.amber, ''], ['SENS', C.dim, '4 3']].forEach((L, i) => {
+      // mini synoptic: reactor -> bus -> three loads, kept between the key legends' rows
+      const ry = gy + 62, sx = cx + 6;
+      c += rect(sx - 30, ry - 12, 60, 24, { stroke: C.white }) + text(sx, ry + 4, 'REACTOR', { size: 9.5, bold: true, fill: C.white, anchor: 'middle' });
+      c += line(sx, ry + 12, sx, ry + 26, C.green, 2.5);
+      const l0 = sx - 38, l1 = sx + 38;
+      c += line(l0, ry + 26, l1, ry + 26, C.green, 2.5);
+      [['DRIVE', C.green, ''], ['GUNS', C.amber, ''], ['RADAR', C.dim, '4 3']].forEach((L, i) => {
         const lx = l0 + i * (l1 - l0) / 2;
-        c += line(lx, ry + 34, lx, ry + 62, L[1], L[1] === C.dim ? 1.5 : 2.5, { dash: L[2] });
-        c += rect(lx - 18, ry + 62, 36, 18, { stroke: L[1] === C.green ? C.white : L[1] }) + text(lx, ry + 75, L[0], { size: 8.5, bold: true, fill: L[1] === C.green ? C.white : L[1], anchor: 'middle' });
+        c += line(lx, ry + 26, lx, ry + 56, L[1], L[1] === C.dim ? 1.5 : 2.5, { dash: L[2] });
+        c += rect(lx - 16, ry + 56, 32, 18, { stroke: L[1] === C.green ? C.white : L[1] }) + text(lx, ry + 69, L[0], { size: 8.5, bold: true, fill: L[1] === C.green ? C.white : L[1], anchor: 'middle' });
       });
-      c += text(cx, ry + 112, 'WPN BUS DEGRADED', { size: 9.5, bold: true, fill: C.amber, anchor: 'middle', track: 0.4 });
-      c += text(cx, ry + 126, 'SENS OFF', { size: 9.5, bold: true, fill: C.dim, anchor: 'middle', track: 0.4 });
+      c += text(sx, ry + 90, 'GUNS STORE LOW', { size: 9.5, bold: true, fill: C.amber, anchor: 'middle', track: 0.4 });
+      c += text(sx, ry + 104, 'RADAR OFF', { size: 9.5, bold: true, fill: C.dim, anchor: 'middle', track: 0.4 });
       return c;
     }
   });
@@ -166,10 +166,10 @@ const label = (x, y, t, fill = C.dim, size = 10) => text(x, y, t, { size, bold: 
     [x + 118, y + 6, 'BEZEL, 12 U, 4 U RADIUS'],
     [x + 18, y + 6, 'FASTENER, 6 U IN'],
     [x + 6, (midKeyY(1) + midKeyY(2)) / 2, 'SOFT KEY, NO TEXT ON CAP'],
-    [d.gx + 50, midKeyY(2) + 1, 'LEGEND ON GLASS'],
+    [d.gx + 70, midKeyY(2) + 1, 'LEGEND ON GLASS'],
     [d.gx + d.gw / 2 + 42, d.gy + 11, 'PAGE TITLE'],
-    [d.gx + d.gw / 2 + 48, d.gy + 25, 'STATUS STRIP'],
-    [d.gx + d.gw / 2 + 36, d.gy + 62, 'CONTENT ON THE 8 U GRID'],
+    [d.gx + d.gw / 2 + 54, d.gy + 25, 'STATUS STRIP'],
+    [d.gx + d.gw / 2 + 42, d.gy + 52, 'CONTENT ON THE 8 U GRID'],
     [d.gx + d.gw / 2 + 2, d.gy + d.gh - 26, 'PAGE MENU (SIBLINGS)'],
     [x + 96, y + h - 9, 'PART PLATE, KAPTON STRIPE'],
   ];
@@ -206,10 +206,10 @@ const label = (x, y, t, fill = C.dim, size = 10) => text(x, y, t, { size, bold: 
   // soft key legend states
   let ly = y + 128;
   s += line(x + 12, ly - 16, x + w - 12, ly - 16, C.graticule, 1);
-  s += text(x + 16, ly, 'TGT', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(x + 16, ly + 14, 'AVAILABLE', { size: 8.5, fill: C.dim });
+  s += text(x + 16, ly, 'TARGET', { size: 11, bold: true, fill: C.dim, track: 0.6 }) + text(x + 16, ly + 14, 'AVAILABLE', { size: 8.5, fill: C.dim });
   s += text(x + 106, ly, 'NAV', { size: 11, bold: true, fill: C.white, track: 0.6 }) + text(x + 106, ly + 14, 'CURRENT', { size: 8.5, fill: C.dim });
-  s += text(x + 196, ly, 'ORB', { size: 11, bold: true, fill: C.green, track: 0.6 }) + rect(x + 192, ly - 11, 32, 15, { stroke: C.green, sw: 1 }) + text(x + 192, ly + 14, 'ENGAGED', { size: 8.5, fill: C.dim });
-  s += text(x + 286, ly, 'FRAME TGT', { size: 11, bold: true, fill: C.magenta, track: 0.6 }) + rect(x + 282, ly - 12, 78, 17, { stroke: C.white, sw: 1.5 }) + text(x + 286, ly + 14, 'NEW MODE, 10 S', { size: 8.5, fill: C.dim });
+  s += text(x + 196, ly, 'ORBIT', { size: 11, bold: true, fill: C.green, track: 0.6 }) + rect(x + 192, ly - 11, 48, 15, { stroke: C.green, sw: 1 }) + text(x + 192, ly + 14, 'ENGAGED', { size: 8.5, fill: C.dim });
+  s += text(x + 286, ly, 'TARGET', { size: 11, bold: true, fill: C.magenta, track: 0.6 }) + rect(x + 282, ly - 12, 56, 17, { stroke: C.white, sw: 1.5 }) + text(x + 286, ly + 14, 'NEW MODE, 10 S', { size: 8.5, fill: C.dim });
   // flags
   ly = y + 186;
   s += line(x + 12, ly - 18, x + w - 12, ly - 18, C.graticule, 1);

@@ -92,9 +92,12 @@ function stationBoard(tiles, o) {
 function foldedRail(x, y, legends) {
   let s = bezelBody(x, y + 136, 288, 24, 3);
   s += rect(x + 6, y + 138, 276, 16, { fill: C.glass });
-  const n = legends.length, step = 276 / n;
-  legends.forEach((L, i) => {
-    const l = typeof L === 'string' ? { t: L } : L, cx = x + 6 + step * (i + 0.5);
+  // each legend's w (default 1) is its share of the rail, as on the open MFD's key row
+  const wt = L => (typeof L === 'object' && L.w) || 1, unit = 276 / legends.reduce((a, L) => a + wt(L), 0);
+  let run = 0;
+  legends.forEach(L => {
+    const l = typeof L === 'string' ? { t: L } : L, cx = x + 6 + unit * (run + wt(L) / 2);
+    run += wt(L);
     const fill = l.state === 'on' ? C.green : l.state === 'cur' ? C.white : C.dim;
     s += text(cx, y + 150.5, l.t, { size: 12, bold: true, fill, anchor: 'middle', track: 0.5 });
     if (l.state === 'on') { const w0 = tw(l.t, 12, true, 0.5) + 8; s += rect(cx - w0 / 2, y + 139, w0, 14, { stroke: C.green, sw: 1 }); }
@@ -104,6 +107,9 @@ function foldedRail(x, y, legends) {
 }
 
 // An open MFD: 288 x 160, page keys along the bottom edge (page legends, then PIN and FOLD).
+// PIN and FOLD are function keys with short names, so they take a little over half a page key's
+// room each and the page names keep their full spelling (one name per page, as on the tabs).
+const PIN = { t: 'PIN', w: 0.55 }, FOLD = { t: 'FOLD', w: 0.55 }, FOLDED = { t: 'FOLD', w: 0.55, state: 'cur' };
 function mfd(x, y, id, keys, content, o = {}) {
   return du(x, y, 288, 160, { id, b: 8, keys: { bottom: keys }, content, title: o.title }).svg;
 }

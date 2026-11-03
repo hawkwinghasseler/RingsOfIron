@@ -1,0 +1,64 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: boarding, latched</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="context.js"></script>
+<script>
+// Walkthrough 11.13: the fight is over and the corvette has latched onto the beaten raider, port
+// to port; the party has taken it. Latched, the ship can't fly, so the screen is the docked one:
+// P1, P5 with the bounty's next step, H4's quiet lights, X2 where the station panel would be. The
+// raider is still the Lock, but there is no lock card: X2 names it, and its range says nothing at
+// 40 m. Nothing is lit, so no master cue stands at the bottom centre.
+let s = space({ px: 1180, py: -900, pr: 1100, seed: 21 });
+// The pair: the raider's dorsal port (5, 4) meets the corvette's port (7..9, 5). Docked ships lie
+// half a turn apart, so the raider sits over the corvette's port side upside down, nose aft.
+// Units are the corvette's hull art (64 a tile, origin at chassis corner (13, 3), y down).
+const SX = 640, SY = 404, K = 0.22, PCX = -374.4, PCY = -182.4;
+const toScreen = (ax, ay) => [SX + (ax - PCX) * K, SY + (ay - PCY) * K];
+s += `<g transform="translate(${SX} ${SY}) scale(${K}) translate(${-PCX} ${-PCY})">`
+  + `<g transform="translate(-544 -352) rotate(180)">${hullArt('raider', 0, 0, 0, K, { side: 'beaten', raw: true })}</g>`
+  + rect(-330, -212, 84, 22, { fill: '#2A2E33', stroke: '#15181B', sw: 1 / K })   // the latched collar
+  + hullArt('corvette', 0, 0, 0, K, { raw: true }) + '</g>';
+// W1: the Lock's brackets on the raider, in the beaten colour, and its name alone (X2 has its state)
+{
+  const [x0, y0] = toScreen(-1209.6, -540), [x1, y1] = toScreen(12.8, -150), c = C.dim, k = 12;
+  s += haloed((cc, w) => path(`M${x0} ${y0 + k} V${y0} H${x0 + k} M${x1 - k} ${y0} H${x1} V${y0 + k} M${x1} ${y1 - k} V${y1} H${x1 - k} M${x0 + k} ${y1} H${x0} V${y1 - k}`, cc, w), c, 1.8);
+  s += text(x0, y0 - 9, 'RAIDER', { size: LB, bold: true, fill: C.white, track: 0.6, halo: true });
+}
+
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:30', warp: '1X' });
+s += feed([['BRD', 'The Raider is taken']]);
+s += objective(['BOUNTY: RAIDER · TAKEN', '→ TURN IN AT HIGHPORT']).svg;
+
+// X2, the boarding panel, in R-MID where the station panel would be: how the boarding stands, and
+// the two ways on from it (K opens M4, where the orders are; U at the helm casts off)
+s += du(960, ZC.rmid.y, 308, 148, {
+  id: 'x2', b: 6,
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 8, M = L + 58, P = 19;
+    let yy = gy + 19;
+    const words = (x, y, parts) => { let px = x; parts.forEach(([t, col]) => { c += text(px, y, t, { size: B, bold: true, fill: col || C.white, track: 0.3 }); px += tw(t, B, true, 0.3) + 4; }); };
+    c += lab(L, yy, 'BOARD'); words(M, yy, [['RAIDER'], ['·', C.dim], ['LATCHED'], ['·', C.dim], ['TAKEN', C.green]]); yy += P;
+    c += lab(L, yy, 'PARTY'); words(M, yy, [['2 ABOARD'], ['·', C.dim], ['HOLDING']]); yy += P;
+    c += lab(L, yy, 'SALV'); words(M, yy, [['3 PARTS MARKED'], ['·', C.dim], ['1 OFF']]); yy += P;
+    c += lab(L, yy, 'CARGO'); words(M, yy, [['2 LOTS COMING ACROSS']]); yy += P;
+    words(M, yy, [['PRISONERS TO BRING ABOARD']]);
+    // the two keys as buttons, 26 tall
+    const btn = (bx, bw, key, t) => { c += rect(bx, gy + 106, bw, 26, { fill: '#1F2226', stroke: '#3A434D', sw: 1, r: 1.5 }) + capKey(bx + 5, gy + 110, key, 18) + text(bx + 5 + capW(key) + 8, gy + 123.5, t, { size: B, bold: true, fill: C.white, track: 0.5 }); };
+    btn(L - 2, 136, 'K', 'BOARDING');
+    btn(gx + gw - 6 - 136, 136, 'U', 'CAST OFF');
+    return c;
+  },
+}).svg;
+
+// H4: three quiet lenses
+s += condLights(12, 748, ['HULL', 'POWER', 'LIFE SUP']);
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

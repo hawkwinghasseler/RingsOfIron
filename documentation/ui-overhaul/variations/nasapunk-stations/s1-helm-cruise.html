@@ -45,8 +45,8 @@ s += W.cctv(1040, 112, 176, 110, {
 s += promptHints(640, Z.prompt.y, [['N', 'PLAN A BURN'], ['M', 'PLOT'], ['Q', 'NAV TARGET']]);
 
 // Band: folded MFD rails either side of the helm cluster
-s += foldedRail(Z.mfdL.x, Z.mfdL.y, [{ t: 'NAV' }, { t: 'PLAN' }, { t: 'PIN' }, { t: 'FOLD', state: 'cur' }]);
-s += foldedRail(Z.mfdR.x, Z.mfdR.y, [{ t: 'SNS' }, { t: 'WPN' }, { t: 'DEF' }, { t: 'PIN' }, { t: 'FOLD', state: 'cur' }]);
+s += foldedRail(Z.mfdL.x, Z.mfdL.y, [{ t: 'NAV' }, { t: 'PLAN' }, PIN, FOLDED]);
+s += foldedRail(Z.mfdR.x, Z.mfdR.y, [{ t: 'SENSORS' }, { t: 'WEAPONS' }, { t: 'DEFENSE' }, PIN, FOLDED]);
 
 const cl = du(Z.cluster.x, Z.cluster.y, 480, 160, {
   id: 3, b: 8, title: 'HELM',
@@ -62,8 +62,9 @@ const cl = du(Z.cluster.x, Z.cluster.y, 480, 160, {
     const bw = t => tw(t, 12, true, 0.5) + 12;
     c += I.box(L, row(0) + 5, bw('ORBIT'), 18, 'ORBIT', 'normal', { size: 12 });
     c += text(L + bw('ORBIT') + 10, row(0) + 22, '7.67', { size: 19, bold: true, fill: C.white }) + text(L + bw('ORBIT') + 15 + tw('7.67', 19, true), row(0) + 22, 'KM/S', { size: 12, fill: C.dim });
-    c += lens(R - 32, row(0) + 6, 32, 16, 'RCS', null) + lens(R - 68, row(0) + 6, 32, 16, 'THR', null);
-    c += I.box(R - 76 - bw('ASSIST'), row(0) + 5, bw('ASSIST'), 18, 'ASSIST', 'engaged', { size: 12 }) + I.box(R - 82 - bw('ASSIST') - bw('MANUAL'), row(0) + 5, bw('MANUAL'), 18, 'MANUAL', 'normal', { size: 12 });
+    // which thrusters fire: MAIN and RCS, the task variation's names for them (both dark: coasting)
+    c += lens(R - 36, row(0) + 6, 36, 16, 'RCS', null) + lens(R - 78, row(0) + 6, 40, 16, 'MAIN', null);
+    c += I.box(R - 86 - bw('ASSIST'), row(0) + 5, bw('ASSIST'), 18, 'ASSIST', 'engaged', { size: 12 }) + I.box(R - 92 - bw('ASSIST') - bw('MANUAL'), row(0) + 5, bw('MANUAL'), 18, 'MANUAL', 'normal', { size: 12 });
     // 2 Reference: the nav target; name, range, closing, CPA (it truncates from the right)
     let x = L;
     c += `<circle cx="${x + 6}" cy="${row(1) + 14}" r="5.5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/><circle cx="${x + 6}" cy="${row(1) + 14}" r="1.4" fill="${C.magenta}"/>`;
@@ -76,7 +77,7 @@ const cl = du(Z.cluster.x, Z.cluster.y, 480, 160, {
     c += val(R, row(2) + 19, '210 M/S  PROGRADE', { anchor: 'end', fill: C.white });
     // 4 Trigger: dark in Green with no target locked (the slot holds its place)
     // 5 Delta-v: pointer, the plan's bracket (magenta, like the burn), the notch at what home takes
-    c += lab(L, row(4) + 19, 'DELTA-V');
+    c += lab(L, row(4) + 19, 'ΔV');
     c += text(L + 120, row(4) + 19.5, '1\u2009840', { size: 15, bold: true, fill: C.white, anchor: 'end' }) + text(L + 124, row(4) + 19, 'M/S', { size: 12, fill: C.dim });
     const bx = L + 168, bw2 = R - bx - 96, max = 2500;
     c += I.hbar(bx, row(4) + 19, bw2, 1840 / max, { bracket: [(1840 - 210) / max, 1840 / max], notch: 1210 / max });
