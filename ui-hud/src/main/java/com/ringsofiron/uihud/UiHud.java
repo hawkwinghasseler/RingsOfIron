@@ -102,6 +102,8 @@ public class UiHud implements Disposable {
     /** Classic parts hidden by the variant, enforced each frame. */
     private final java.util.EnumSet<ClassicPart> hidden = java.util.EnumSet.noneOf(ClassicPart.class);
     private Table promptRowRef;
+    private Table dockRowRef;
+    private Label dockHintRef;
     private final WireframeMinimap minimap;
     private final Table minimapPanel;
     private final Table flightPanel;
@@ -241,6 +243,8 @@ public class UiHud implements Disposable {
         dockRow.top().padTop(100f);
         dockRow.add(dockHint);
         stage.addActor(dockRow);
+        dockRowRef = dockRow;
+        dockHintRef = dockHint;
         variantLayer.setTouchable(Touchable.childrenOnly);
         stage.addActor(variantLayer);
         tradeWindow = new TradeWindow(skin, dockHint);
@@ -273,7 +277,7 @@ public class UiHud implements Disposable {
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         hudRenderSystem.keepClear(threatBanner, () -> threatOverlay.isVisible() && threatBanner.getText().length() > 0);
-        hudRenderSystem.keepClear(dockHint, dockHint::isVisible);
+        hudRenderSystem.keepClear(dockHint, () -> dockHint.isVisible() && dockRow.isVisible());
         // Names by the bottom edge rise clear of the ship and orbit panels rather than writing over them,
         // and names by the left edge clear the flight readout, the gauges and the radar
         hudRenderSystem.keepClear(() -> stageBounds(minimapPanel));
@@ -660,6 +664,8 @@ public class UiHud implements Disposable {
         placeBanner();
         syncVariant();
         if (variant != null) {
+            data.promptAction = interactPromptSystem.getAction();
+            data.dockHint = dockHintRef.isVisible() ? dockHintRef.getText().toString() : "";
             data.refresh();
             variant.update(delta);
         }
@@ -738,6 +744,7 @@ public class UiHud implements Disposable {
         flightPanel.setVisible(true);
         gauges.setVisible(true);
         bannerRow.setVisible(true);
+        dockRowRef.setVisible(true);
         applyViewMode(viewMode.getMode());
     }
 
@@ -752,6 +759,8 @@ public class UiHud implements Disposable {
         if (hidden.contains(ClassicPart.MISSILE_BANNER)) bannerRow.setVisible(false);
         if (hidden.contains(ClassicPart.THREAT_OVERLAY)) threatOverlay.setVisible(false);
         if (hidden.contains(ClassicPart.WORLD_MARKERS)) markerLayer.setVisible(false);
+        if (hidden.contains(ClassicPart.DOCK_BANNER)) dockRowRef.setVisible(false);
+        if (hidden.contains(ClassicPart.PROMPT)) promptRowRef.setVisible(false);
     }
 
     private static void relayout(com.badlogic.gdx.scenes.scene2d.Actor a) {

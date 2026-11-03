@@ -2,8 +2,7 @@ package com.ringsofiron.uihud.variants;
 
 /**
  * The pieces of the classic HUD a variant can keep or hide ({@link HudVariant#keeps}). Windows
- * (market, yard, missions, crew, boarding, the console window and the map), the console prompt and
- * the world overlays the game draws under the HUD (burn arrows, fire arcs, picture-in-picture) are not
+ * (market, yard, missions, crew, boarding, the console window and the map) and the world overlays the game draws under the HUD (burn arrows, fire arcs, picture-in-picture) are not
  * here: they stay under every variant until a variant replaces them in its own PR.
  */
 public enum ClassicPart {
@@ -26,5 +25,9 @@ public enum ClassicPart {
     /** The game's status column, top right (clock, target, notices, docking, navigation, contracts, helm). */
     STATUS_COLUMN,
     /** The key hint line along the bottom. */
-    KEY_HINTS
+    KEY_HINTS,
+    /** The docked banner under the clock ("Docked at Highport [T] Trade [Y] Yard"); its text is {@code HudData#dockHint}. */
+    DOCK_BANNER,
+    /** The E prompt above the bottom edge ("Press [E] to put on a pressure suit"); its words are {@code HudData#promptAction}. */
+    PROMPT
 }
