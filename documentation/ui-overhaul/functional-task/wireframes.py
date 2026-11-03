@@ -126,8 +126,10 @@ def ann(s, lit=(), shields=True):
             s.text(x + 21, y + 12.5, name, size=9.5, fill="#b0b0aa", anchor="middle")
 
 
-def hnt(s, text):
+def hnt(s, text, note=None):
     s.box(16, 768, 1248, 24, "", text, kind="cond")
+    if note:  # a designer's note about the strip, not text the game shows
+        s.text(1252, 784, note, size=9.5, fill="#999", anchor="end", style="italic")
 
 
 def legend(s, y=None):
@@ -170,12 +172,12 @@ def helm_quiet(out):
     s.screen_bg("HELM, at rest (no target, no plan, nothing wrong)")
     s.clear_zone()
     s.ship(640, 390)
-    chr_(s, "WARP 1x", "nothing planned")
+    chr_(s, "WARP 1x", "")
     ann(s, shields=False)
     s.box(420, 664, 440, 96, "FLT", "Flight: CRUISE", [
         "frame Highport (station, 3.0 km)   speed 0.4 m/s",
         "dv left 7,007 m/s   |----------|^---|  home 410",
-        "rotation assist ON         main  RCS  (idle)"])
+        "[main] [RCS]   (indicators, dark at rest)"])
     s.box(1088, 584, 176, 176, "SNS", "Scope 10 km", [])
     s.box(500, 300, 70, 28, "", "Highport", kind="world")
     s.add('<polygon points="720,470 732,476 720,482" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>')
@@ -196,7 +198,7 @@ def gunnery_combat(out):
     s.ship(640, 390)
     chr_(s, "WARP 1x (held: hostiles)", "battle stations")
     alr(s, ("MISSILE  2 inbound  impact 14 s", "bearing 080   F decoy   point defence engaging"),
-        ("FIRE  Hold   Bo on it", "CREW  Ivo wounded, no medic free"))
+        ("FIRE  Hold   Ada on it", "WOUNDED  Cole, no medic free"))
     ann(s, [("FIRE", "caut"), ("CREW", "caut")], shields=False)
     s.box(16, 610, 300, 150, "SCH", "Ship (shown: FIRE, CREW lit)", ["", "  [deck plan: fire in the Hold,", "   crew as dots, you at", "   the weapons console]"], kind="cond")
     obj(s, ["Bounty: Raider 'Vex'   2d 21h"])
@@ -218,11 +220,11 @@ def gunnery_combat(out):
         "(a ship with an emitter adds a",
         " shields row: state, %, trim, 4 sectors)"])
     s.box(1088, 584, 176, 176, "SNS", "Scope 10 km (auto)", ["", "", "", "", "", "", "", "1 hostile"])
-    s.box(400, 734, 360, 26, "HLM", "Helm: Ada   holding 2,000 m off Raider", kind="cond")
+    s.box(400, 734, 360, 26, "HLM", "Helm: Bea   holding 2,000 m off Raider", kind="cond")
     s.box(760, 250, 110, 30, "", "[ Raider 'Vex' ]", kind="world")
     s.box(812, 300, 64, 24, "", "lead +", kind="world")
-    s.box(420, 230, 150, 28, "", "missile path, 14 s", kind="world")
-    hnt(s, "Space fire   R missile   F decoy   Tab next target   F1 controls")
+    s.box(420, 230, 150, 28, "", "missile path", kind="world")
+    hnt(s, "Space fire   R missile   Tab next target   V stand up   F1 controls", "note: F decoy is not repeated, the band names it")
     legend(s, 470)
     s.save(os.path.join(out, "gunnery-combat.svg"))
 
@@ -230,13 +232,13 @@ def gunnery_combat(out):
 # ---- 4. flight instrument modes -------------------------------------------------------------
 
 def flt_modes(out):
-    s = Svg("The flight instrument's five modes", w=1280, h=560)
+    s = Svg("The flight instrument's four modes", w=1280, h=560)
     s.rect(0, 0, 1280, 560, fill="#e9e9e6", stroke="#9a9a9a", rx=0, sw=1)
-    s.text(16, 26, "FLT shows one mode at a time, chosen by the first that applies, top to bottom.", size=13, weight="bold")
+    s.text(16, 26, "FLT shows one mode at a time, chosen by the first that applies, top to bottom; in rails warp it hides.", size=13, weight="bold")
     s.box(16, 44, 600, 112, "1", "DEPARTURE  (docked)", [
         "Docked at Highport, port 1 (S)       undock clearance: given",
         "dv        7,007 m/s  ok   (furthest contract needs ~3,900)",
-        "repairs   none needed  ok      crew  6/6 aboard  ok",
+        "repairs   none needed  ok      crew  all aboard  ok",
         "missiles  2/4   short   [Yard: fill for 2,000 cr]",
         "[U] undock          [T] station terminal"])
     s.box(664, 44, 600, 112, "2", "DOCK  (dockable target within 5 km, port armed or dock order)", [
@@ -247,32 +249,31 @@ def flt_modes(out):
         "[G] arm/ask   [H] next port   [5] helm: dock for me"])
     s.box(16, 176, 600, 112, "3", "BURN  (next burn starts within 3 min, or one is being flown)", [
         "Burn 1 of 2     T-1:52   (turn starts T-2:00)",
-        "dv to go 3,084 m/s   burn time 4:17   end Ap 378,029 km",
+        "dv to go 3,084 m/s   burn time 4:17",
         "nose error 31 deg  [align marker on screen]",
-        "flown by: flight computer (hands off)  |  helmsman Ada",
+        "flown by: flight computer (hands off)",
         "[/] warp to burn"])
-    s.box(664, 176, 600, 112, "4", "WARP  (rails warp)", [
-        "WARP 10,000x (rails)",
-        "next stop: Burn 2 in 3d 04:11  (drops out 60 s early)",
-        "held back by: nothing",
-        "",
-        "[,] slower   [.] faster"])
-    s.box(16, 308, 600, 112, "5", "CRUISE  (otherwise)", [
-        "frame TARGET Raider   speed in frame 41 m/s closing",
+    s.box(664, 176, 600, 112, "4", "CRUISE  (otherwise)", [
+        "frame Raider (locked target)   speed 41 m/s",
         "dv left 7,007 m/s  |------^---|  home 410 m/s",
-        "rotation assist ON   main / RCS indicators",
-        "helm order (if any): Ada holds 2,000 m from Raider",
+        "[main] [RCS]  lit while firing",
+        "rotation assist OFF   (shown only when off)",
         ""])
+    s.box(16, 308, 600, 112, "", "Rails warp: FLT hides", [
+        "The chronometer already has the rate, the next stop (its",
+        "countdown allows for the drop-out lead) and what holds warp.",
+        "At 10,000x there is nothing to steer, so Z8 stays empty",
+        "unless HLM has an order to show."], kind="cond")
     s.box(664, 308, 600, 112, "", "Rules for every mode", [
         "Same zone, same size class: modes swap, they don't stack.",
-        "Frame: target, nav target or station within 5 km, else orbit.",
+        "Frame: locked target, nav target or station within 5 km, else orbit.",
         "dv is always 'left' against 'what home takes' (Navigation).",
-        "A mode's keys appear only in the mode, never in the hint line too.",
-        "Gunnery: FLT hides; HLM (who flies, what order) takes its place.",
-        "DOCK: the target card keeps identity only; numbers are FLT's."])
+        "A key on screen in a mode is never repeated on the hint line.",
+        "Who flies: HLM's line when a helmsman does; BURN names only you or the computer.",
+        "Closing speed is the target card's; apsides are the map's."])
     s.text(16, 450, "Mode order is a priority list: docked beats everything; a dock approach beats a burn (a burn",
            size=11.5, fill="#444")
-    s.text(16, 466, "planned while docking waits); a burn beats warp (warp drops out for it); warp beats cruise.",
+    s.text(16, 466, "planned while docking waits); a burn beats cruise. Rails warp drops out for a burn, so BURN never meets it.",
            size=11.5, fill="#444")
     s.save(os.path.join(out, "flight-modes.svg"))
 
@@ -294,18 +295,18 @@ def deck(out):
     # hazards, each tagged with its worker's progress or "nobody"
     s.box(392, 316, 120, 40, "", "fire (medium)", ["[======    ]"], kind="world")
     s.add('<circle cx="452" cy="380" r="5" fill="#888"/>')
-    s.text(462, 384, "Bo", size=10, fill="#777")
+    s.text(462, 384, "Cole", size=10, fill="#777")
     s.box(660, 316, 120, 40, "", "conduit short", ["[=======   ]"], kind="world")
     s.add('<circle cx="700" cy="372" r="5" fill="#888"/>')
     s.text(710, 376, "Ada", size=10, fill="#777")
-    s.box(796, 424, 112, 40, "", "breach, venting", ["nobody"], kind="world")
+    s.box(796, 352, 112, 40, "", "breach, venting", ["nobody"], kind="world")
     s.add('<circle cx="880" cy="320" r="5" fill="#888"/>')
-    s.text(870, 324, "Cy", size=10, fill="#777", anchor="end")
+    s.text(870, 324, "Bea (helm)", size=10, fill="#777", anchor="end")
     s.add('<circle cx="700" cy="430" r="6" fill="#555"/>')
     s.text(712, 434, "you", size=10, fill="#555")
-    s.box(640, 446, 136, 26, "", "E  Weapons console", kind="world")
+    s.box(640, 446, 200, 26, "", "V  sit at the weapons console", kind="world")
     chr_(s, "WARP 1x (held: fire aboard)", "")
-    alr(s, None, ("FIRE  Hold, Bo on it", "VENTING  Bridge, nobody", "POWER  Bridge short, Ada"))
+    alr(s, None, ("FIRE Hold  Cole", "VENTING Bridge  nobody", "POWER Bridge  Ada"))
     ann(s, [("FIRE", "caut"), ("POWER", "caut"), ("AIR", "caut"), ("CREW", "adv")], shields=False)
     s.box(16, 144, 240, 78, "PER", "You", [
         "health  light wound",
@@ -313,8 +314,8 @@ def deck(out):
         "here    Bridge: thin"], kind="cond")
     obj(s, ["Delivery: ice to Freehold  1d 4h"])
     ntf(s, ["Payday: 2,000 cr"], y=66)
-    s.box(420, 734, 440, 26, "HLM", "Helm: Cy holds the heading   (no order)", kind="cond")
-    hnt(s, "W/A/S/D walk   E use   V sit   O lights   F1 controls")
+    s.box(420, 734, 440, 26, "HLM", "Helm: Bea holds the heading", kind="cond")
+    hnt(s, "W/A/S/D walk   O lights   F1 controls", "note: E and V are not repeated, the prompt shows them")
     legend(s, 600)
     s.save(os.path.join(out, "deck.svg"))
 
@@ -351,7 +352,7 @@ def map_(out):
         "[;] plan  [Enter] accept  [Bksp] discard"])
     s.box(944, 412, 320, 100, "MAP.3", "FLY IT", [
         "[/] warp to burn 1",
-        "[1] helm: fly burns     helmsman: Ada",
+        "[1] helm: fly burns     helmsman: Bea",
         "[6] autopilot           ready",
         "",
         "greyed with the reason when not allowed"])
@@ -453,7 +454,7 @@ def book(out):
         "says where to go ('walk there' marker)"])
     s.box(16, 536, 1248, 224, "BOOK.3", "Damage and work", [
         "what                  where         who's on it                progress",
-        "fire (medium)         Hold          Bo                         shrinking",
+        "fire (medium)         Hold          Cole                       shrinking",
         "conduit short         Bridge        Ada                        [=======   ]",
         "breach, venting       Bridge        nobody: no patches left    needs a yard (Y there)",
         "RCS block wrecked     outside, aft  waiting: EVA is held       [let out]"])
@@ -469,7 +470,7 @@ def boarding(out):
     s.text(300, 220, "your ship (deck)", size=10, fill="#777", anchor="middle", style="italic")
     s.rect(500, 260, 300, 160, fill="#d0d0cc", stroke="#555", sw=1.5)
     s.text(650, 250, "Raider 'Vex' (taken)", size=10, fill="#777", anchor="middle", style="italic")
-    s.box(540, 300, 150, 40, "", "Hal: stripping laser", ["Ivo: carrying ore"], kind="world")
+    s.box(540, 300, 160, 40, "", "Ada: stripping laser", ["Cole: carrying ore"], kind="world")
     chr_(s, "WARP 1x", "")
     ann(s, shields=False)
     s.box(904, 72, 360, 684, "BRD", "Boarding: Raider 'Vex'", [
@@ -478,8 +479,8 @@ def boarding(out):
         "cost      none (outlaw)",
         "",
         "PARTY                 status",
-        "Hal (marine)          stripping the laser",
-        "Ivo (marine)          carrying ore across",
+        "Ada (engineer)        stripping the laser",
+        "Cole (marine)         carrying ore across",
         "                      [Recall all]",
         "",
         "SALVAGE    value   work    hold",
@@ -492,8 +493,8 @@ def boarding(out):
         "                         [take all]",
         "hold after all of it: 18 of 40 m3",
         "",
-        "PRISONERS 3     berths free 2",
-        "[bring aboard]  (1 will not fit)",
+        "PRISONERS 3     berths free 4",
+        "[bring aboard]  (all fit)",
         "",
         "PRIZE  hand over at a shipyard:",
         "sale 21,000 cr  /  turn in +8 standing"])
@@ -518,10 +519,10 @@ def crisis(out):
         "[wait]          let the crew work",
         "[B][B] tow      fee 9,600 cr, -3 standing, 3 days,",
         "                docks at Highport with ship and crew",
-        "[P][P] abandon  pod: 1 (S), 4 seats for 6 aboard",
+        "[P][P] abandon  pod: 1 (S), 4 seats for 4 aboard",
         "",
         "air aboard: 41 min at this crew"])
-    hnt(s, "B twice: tow   P twice: abandon   F1 controls")
+    hnt(s, "F1 controls", "note: the crisis keys live in the panel, not here")
     s.save(os.path.join(out, "crisis.svg"))
 
 
