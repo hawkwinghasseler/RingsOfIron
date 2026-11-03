@@ -268,7 +268,7 @@ def flt_modes(out):
         "missiles  2/4   short   [Yard: fill for 2,000 cr]",
         "[U] undock          [T] station terminal"])
     s.box(664, 44, 600, 112, "2", "DOCK  (dockable target within 5 km, port armed or dock order)", [
-        "your port 1/1 (S, active)  >  Highport port 6   CLEARED",
+        "your port 1/1 (S, active)  >  Highport port 2 (S)   CLEARED",
         "range 312 m     closing 6.1 m/s   safe up to 7.9 m/s",
         "|====== safe =====o==|~ caution ~|!! warning !!|",
         "offset  L 2.2 m     angle  turn 4 deg left",
@@ -339,7 +339,7 @@ def deck(out):
         "health  light wound",
         "suit    pressure   air 7:40",
         "here    Bridge: thin"], kind="cond")
-    obj(s, ["Delivery: ice to Freehold  1d 4h"])
+    obj(s, ["Delivery: Shackleton Ice  2d 20h"])
     ntf(s, ["Payday: 2,000 cr"], y=66)
     s.box(420, 734, 440, 26, "HLM", "Helm: Bea   holding heading", kind="cond")
     hnt(s, "W/A/S/D walk   O lights   F1 controls", "note: E and V are not repeated, the prompt shows them")
@@ -359,14 +359,15 @@ def map_(out):
     s.text(28, 122, "EARTH SYSTEM   [M] or [Esc] close", size=12, weight="bold", fill="#444")
     chr_(s, "WARP 1x", "")  # over the map the plan's times are MAP.2's and MAP.5's, not the chronometer's
     s.box(320, 16, 640, 76, "ALR", "(alerts stay visible over the map, both rows)", kind="cond")
-    s.box(944, 100, 320, 120, "MAP.1", "DESTINATION", [
+    s.box(944, 100, 320, 134, "MAP.1", "DESTINATION", [
         "Shackleton Ice  (Selene Combine)",
         "relation: neutral  standing 12",
-        "services: market, yard, contracts",
+        "services: market, yard, shipyard,",
+        "          contracts, hiring",
         "serves: Delivery contract",
         "distance 385,479 km",
         "[Q] next   [Shift+Q] back   list >"])
-    s.box(944, 228, 320, 176, "MAP.2", "PLAN", [
+    s.box(944, 242, 320, 176, "MAP.2", "PLAN", [
         "proposal: transfer, 2 burns",
         "dv needs 3,912   left 7,007",
         "after plan 3,095  home from there 520",
@@ -377,13 +378,13 @@ def map_(out):
         "burn 2  T-3d 17h      828 m/s  retro",
         "",
         "[;] plan  [Enter] accept  [Bksp] discard"])
-    s.box(944, 412, 320, 100, "MAP.3", "FLY IT", [
+    s.box(944, 426, 320, 100, "MAP.3", "FLY IT", [
         "[/] warp to burn 1",
         "burn 1 flown by  Bea (helmsman)",
         "[6] autopilot           ready",
         "",
         "greyed with the reason when not allowed"])
-    s.box(944, 520, 320, 60, "MAP.4", "SELECTED BURN", [
+    s.box(944, 534, 320, 60, "MAP.4", "SELECTED BURN", [
         "burn 1   prograde +3,083.6   radial +0.0",
         "drag a handle; Shift finer; Del delete"], kind="cond")
     s.box(16, 692, 1248, 92, "MAP.5", "PLAN TIMELINE  (now to arrival, log scale)", [
@@ -405,33 +406,35 @@ def terminal(out):
     s.box(320, 16, 640, 76, "ALR", "(alerts stay visible over every screen, both rows)", kind="cond")
     s.box(16, 100, 1248, 52, "TRM.H", "HIGHPORT   Terran Patrol Authority (your sponsor)   standing 22", [
         "credits 18,450 cr     hold 6 / 40 m3     contracts held 1 / 3                         [Esc] back to the deck"])
-    tabs = ["CONTRACTS", "MARKET", "YARD", "SHIPYARD", "CREW"]
+    # Highport repairs and refits but sells no ships (the Patrol's shipyard is Anvil Yards), so no SHIPYARD tab
+    tabs = ["CONTRACTS", "MARKET", "YARD", "CREW"]
     x = 16
     for i, t in enumerate(tabs):
         s.rect(x, 160, 150, 28, fill="#ffffff" if i == 0 else "#f0f0ec", stroke="#3a3a3a", sw=2 if i == 0 else 1)
         s.text(x + 75, 179, t, size=12, weight="bold" if i == 0 else "normal", anchor="middle")
         x += 158
+    s.text(x + 4, 179, "(no SHIPYARD tab: Highport sells no ships; Anvil Yards does)", size=10, fill="#999", style="italic")
     s.box(16, 196, 760, 588, "TRM.1", "Offers (5 today, 1 operation)", [
-        "type      job                       pay      stdg  time   reach",
-        "OPER.  Clear the Lanes (1/3)        8,000    +6    --     LOCKED: Lieutenant",
-        "BOUNTY Raider 'Vex', near Highport  5,000    +6    3d     here    ok",
-        "DELIV. Ice to Freehold, 18 m3       1,240+   +3    2d     1.2 h   ok  dv 410",
-        "ESCORT Hauler 'Brigid' to Anvil     1,500    +4    2d     40 min  ok",
-        "PATROL Deepwell and back            1,000    +3    2d     3 h     ok  dv 620",
+        "type   job                            pay      stdg  time    reach",
+        "OPER.  Clear the Lanes (1/3)          8,000    +6    --      LOCKED: Lieutenant",
+        "BOUNTY Raider 'Vex', near Highport    5,000    +6    3d      here     ok",
+        "DELIV. Food to Shackleton Ice         1,240+   +3    2d 20h  3.8 d    LATE 23h",
+        "ESCORT Hauler Kestrel to Anvil Yards  1,500    +4    2d      2.1 h    ok  dv 3,000",
+        "PATROL Deepwell Depot and back        1,000    +3    2d      2 h      ok  dv 1,860",
         "",
-        "'reach' = travel time and dv from here, checked against dv left",
+        "'reach' = travel time and dv from here, checked against dv left and the deadline",
         "",
         "sorted by: pay / time / distance (player's choice)"])
-    s.box(784, 196, 480, 588, "TRM.2", "Delivery: Ice to Freehold", [
+    s.box(784, 196, 480, 588, "TRM.2", "Delivery: Food to Shackleton Ice", [
         "giver   Highport (sponsor)",
-        "cargo   18 m3 water ice, loaded here",
+        "cargo   18 m3 food, loaded here",
         "pay     1,240 cr on delivery + sale",
         "standing +3   fail -1.5",
-        "deadline 2 days (Day 5 14:22)",
+        "deadline Day 6 11:00 (2d 20h)",
         "",
-        "route   Freehold, same orbit band",
-        "        transfer ~410 m/s, ~1.2 h",
-        "        arrive Day 3 15:40 -> 1d 23h spare",
+        "route   Shackleton Ice, at the Moon",
+        "        transfer ~3,900 m/s, ~3.8 d",
+        "        arrive Day 7 09:40 -> 22h 40m late",
         "hold    needs 18 m3, 34 free -> fits",
         "",
         "[Take]        [Show route on map]"])
