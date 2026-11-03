@@ -9,7 +9,6 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.hawkwing.RingsOfIron.wiring.PlayerOrbitInfo;
 import com.ringsofiron.combatsys.ContactState;
 import com.ringsofiron.combatsys.components.SensorComponent;
-import com.ringsofiron.combatsys.fire.Track;
 import com.ringsofiron.combatsys.systems.SensorTrackingSystem;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
@@ -130,15 +129,7 @@ public class PlayerFlightStatus implements FlightStatusProvider {
 
     /** Where the locked target is: from the sensor track as the target card reads it, else as it is. */
     private boolean target(SensorComponent sensor, Entity locked) {
-        Track track = sensor.trackFor(locked);
-        if (track != null) {
-            float age = sensors.ageOf(track);
-            if (track.positionAt(age, pos) != null) {
-                track.velocityAt(age, vel);
-                return true;
-            }
-        }
-        return HudContacts.read(locked, pos, vel);
+        return HudContacts.sensed(sensor, sensors, locked, pos, vel);
     }
 
     /** The ship against the object at {@link #pos} moving at {@link #vel}. */
