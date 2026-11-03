@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 10.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 11.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -174,6 +174,7 @@ Fallback rules, so no hull loses a function:
 1. If no console hosts a station, the **helm console** hosts it, as an extra tab.
 2. If the hosting console is **destroyed**, the station can still be read (from repeaters and the slate) and acting falls back to the helm console, except Helm itself, which falls back to nothing: the ship drifts, as `Bridge` already rules.
 3. If the hosting console is **unpowered or stunned**, its pages read "NO POWER" everywhere, its controls do nothing, and a caution names it.
+4. In a **blackout**, with no reactor running, every console is unpowered. The clusters and MFDs go dark on their NO POWER face, so the player sees at once that the ship can neither fly nor fight. What the player needs to get out stays up, as if on the ship's emergency supply: the overlay (7), and on the slate the Engineering pages, the Command tabs and COMMS for the beacon. POWER is the first of them, since it says why the reactor is down and what brings it back (switching it on, a repair and who is on it, the seconds left on a stun). Helm, Navigation and Tactical pages read NO POWER on the slate too. The simulation has no battery, so this is a rule of the UI, not a system to model: without it, rule 3 would hide the one page that says how to get the power back.
 
 ### 5.2 Helm
 
@@ -371,7 +372,7 @@ A condition that clears removes its tile with a short fade and leaves a line in 
 | Console prompt | The console's name and verbs: "HELM  [E] Use  [V] Sit"; at a reactor "REACTOR  [E] Use" | In the world, by the console tile, within `INTERACT_RADIUS` |
 | Door prompt | "[F] Force  [B] Cut" | In the world, by the door |
 | Response | The answer to the player's own input: "Navigation target: Highport", "Undock from the helm: [V] at the helm, then [U]" | Z7 for 4 s; in a panel's footer when a panel is open |
-| Learning hints | At most 3 contextual hints from `HintRegistry`, each retired once the player has used that action 3 times (new; counts kept in settings) | Z7 when no response is showing |
+| Learning hints | At most 3 contextual hints from `HintRegistry`, each retired once the player has used that action 3 times (new; counts kept in settings). The tow's hint stays while a tow is on offer (13.4) | Z7 when no response is showing |
 
 ### 7.4 Suit readout
 
@@ -403,7 +404,7 @@ The tutorial layer (First Play objectives and the opening walkthrough) is **out 
 |---|---|---|
 | Condition | YELLOW or RED (12); RED with "BATTLE STATIONS" when the player called it | In Yellow and Red; dark in Green |
 | State | DOCKED or LATCHED | While it holds |
-| Emergency text | The cause and the player's options in a short form of at most 44 characters, keys first: "DISABLED: NO POWER [P][P] ABANDON [B][B] TOW". The full sentence ("Ship disabled: no power. Press P twice to abandon ship, B twice to call a tow") is the alert's log line and its SHIP callout | In Emergency |
+| Emergency text | The state and the player's options, keys first, in at most 44 characters: "DISABLED [P][P] ABANDON [B][B] TOW". The tow is offered only while the beacon would answer (`DistressBeacon.refusal`; not with missiles inbound), so under fire it reads "DISABLED [P][P] ABANDON". Once abandon ship is ordered, P launches the pods with whoever is in them: "ABANDON SHIP [P] LAUNCH NOW". The cause is not repeated here, since its tile is already up (POWER / NONE for a reactor down, HULL for a broken hull; 13.4). The SHIP callout names it in the game's words (`DisabledComponent.Reason.label`): "SHIP: disabled, reactor down." The log line has the full sentence: "Ship disabled: reactor down. P twice abandons ship, B twice calls a tow" | In Emergency |
 
 In Green, undocked and with no emergency, the whole strip is dark (3.4).
 
@@ -517,7 +518,7 @@ Budget: six tiles of 150 (900), the chronometer 188.
 | Weapons | Red | SENSORS | DEFENSE; DAMAGE on a hull with no shield emitter, where DEFENSE would only repeat the cluster's decoy and point defence |
 
 - **Auto-paging**: when a caution or warning is raised, the right MFD unfolds and turns to the alert's home page, unless the player pinned it; then the left MFD does, unless it is pinned too. When the alert clears, after 10 s, the MFD goes back to what it showed before, folded again if it was. With several alerts, the most severe and then the newest has the MFD; the rest wait on the annunciator.
-- A station whose console has no power shows a dead page ("ENG: NO SIGNAL") rather than a stale one.
+- A station whose console has no power shows a dead page reading "NO POWER" rather than a stale one (5.1). In a blackout the slate keeps the pages that 5.1's rule 4 lists.
 
 ### 9.2 Page catalogue
 
@@ -675,13 +676,13 @@ T0 cues that need art or lighting work, listed so the artists can plan for them:
 | **Yellow** | A hostile contact within 50 km, or pirates intercepting | Hostile brackets and class labels; SENSORS unfolds |
 | **Red** | Fired upon, a missile inbound, a hostile inside its weapons' range, boarders latched, or **battle stations** called by the player | Fire arcs and hostile brackets at the helm too; MFDs SENSORS and DAMAGE; Tactical board reachable from the TAC tile |
 
-Two states layer over the condition:
+Three states layer over the condition:
 
 | State | When | Effect |
 |---|---|---|
 | **Docked** | Latched to a station | Combat symbology off (guns hold when docked, as now); MFDs DOCK and CARGO; berth card; Station link. A Red condition while docked restores the threat symbology over this |
 | **Latched** | Latched to another ship | The slate's Boarding tab; CARGO shows the other ship's hold |
-| **Emergency** | Ship disabled or abandon ship ordered | The status strip's emergency text with the cause and the player's options: "DISABLED: NO POWER [P][P] ABANDON [B][B] TOW" (7.7). The condition carries on beside it |
+| **Emergency** | Ship disabled or abandon ship ordered | The status strip's emergency text: the state and the player's options, "DISABLED [P][P] ABANDON [B][B] TOW" (7.7). The cause is on its own tile. The condition carries on beside it |
 
 **Battle stations** (new action, 16.2) sets Red until the player stands down or the ship docks. Whether it should also send the crew to their stations is an open question (20.5).
 
@@ -731,7 +732,7 @@ About half of today's notices are **responses** ("Lighting on", "Navigation targ
 | `active` | A condition: the alert clears itself when it goes false |
 | `rearm` | Hysteresis, as `FlightWarnings` re-arms low propellant only past 25% |
 
-Clicking a tile or a callout shows `homePage`: on the MFD when seated, in the slate's page viewer on deck, or the `actionTab` when the player is already at its console.
+Clicking a tile or a callout shows `homePage`: on the MFD when seated, in the slate's page viewer on deck or in a blackout (5.1), or the `actionTab` when the player is already at its console.
 
 **Places need names (new).** Rooms have no names in the game today, and an alert that cannot say where is half an alert. The rule is the one the task-based design uses, so the designs name rooms alike:
 
@@ -766,13 +767,14 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 | `PirateBoarding` latched on | None | Warning | BOARDERS / 1:20 | Tactical | SENSORS |
 | Impact trajectory (`OrbitInfoProvider`) | Orbit panel text | Warning | IMPACT / 12:40 | Navigation | NAV |
 | Collision risk (new) | None | Caution, Warning under 20 s | COLLIDE / 0:42 | Helm | SENSORS |
-| Ship disabled (`ShipDisablement`) | Red status line | Emergency (status strip) | | Command | Slate Ship |
+| Ship disabled (`ShipDisablement`) | Red status line | Emergency (status strip) | None of its own: the cause's (POWER / NONE, HULL / 43%) | Command | Slate Ship |
 | Abandon ship (`AbandonShip`) | Red status line | Emergency (status strip) | | Command | CREW |
 | Fire (`GridHazardSystem`) | Minimap alert list | Escalating | FIRE / BRIDGE | Engineering | DAMAGE |
 | Breach venting (`DamageControl`) | Notice, minimap | Escalating | BREACH / HOLD | Engineering | DAMAGE |
 | Out of patches (`DamageControl`) | Notice | Caution | PATCHES / NONE | Engineering | DAMAGE |
 | Short circuit (`DamageStates`) | Notice | Caution, as POWER: a short that cuts a system off is counted in the POWER tile, not given a tile of its own; one that cuts nothing off is an advisory. The callout says where and what it cut off: "SHIP: aft starboard gun shorted, back in 31 s" | POWER / n SYS | Engineering | POWER |
 | Tank burst (`DamageStates`) | Notice | Caution | TANK / BURST | Engineering | DAMAGE |
+| Hull integrity (`ShipDisablement.hullIntegrity`, the mean of the hull tiles) | Minimap alert list under 75% (`ShipAlerts.HULL_DAMAGED`) | Caution under 75%; Warning under 55%, ten points before the ship is disabled at 45% (`ShipDisablement.DISABLED_HULL`) | HULL / 52% | Engineering | DAMAGE |
 | Oxygen tanks dry (`AirWatch`) | Warning notice | Warning | O2 TANKS / DRY | Engineering | ATMOS |
 | Crew air running out (`AirWatch`) | Revised warning | Escalating | SUIT AIR / 3:50 | Command | CREW |
 | Crew critically wounded (`CrewMedical`) | Notice | Escalating | CASUALTY / 1 4:10 | Command | CREW |
@@ -798,6 +800,8 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 | Yard work done, salvage, boarding progress | Notices | Advisory | | Comms, Command | |
 | Contract taken, door forcing progress, nav target picked, reload refused, warp step refused | Notices | Response | | | |
 | Career over, ship lost | Crash screen | Out of fiction | | | |
+
+**The tow.** While the ship is disabled, the status strip offers it (7.7). The beacon also answers while the ship still flies but is under 20% of its tanks (`DistressBeacon.stranded`). Then the prompt line keeps "[B][B] Call a tow" among its hints for as long as the offer stands (7.3), and COMMS shows the fee and the standing it costs. Today the game offers it only while disabled, so a player short of propellant never learns it is there.
 
 ### 13.5 Crew callouts
 
@@ -849,6 +853,7 @@ A response shows where the player is looking: on the prompt line (Z7), or in the
 | Warp above 1x | Warp strip. The cluster's slots go dark except Next event, and the MFDs fold (nothing on them changes fast enough to read); any caution or warning restores them |
 | Yellow, Red | Symbology and MFD defaults as in 11.1 and 9.1 |
 | Emergency | The status strip's emergency text |
+| Blackout (no reactor running) | Clusters, MFDs and console panels on their NO POWER face; the overlay stays up; the slate keeps Engineering's pages, Command's tabs and COMMS, and tile clicks open there (5.1) |
 | A side panel open while seated | The band stays; the panel stops above it; the top-centre column recentres left of it |
 
 ---
@@ -1098,7 +1103,7 @@ The artists change how this looks, not what it says or where it is. A style may 
 4. **Motion is limited**: flashing at 2 Hz or slower, only the master lamps and newly raised tiles; a "reduce motion" setting turns flashing into a steady lit state.
 5. **Elements to design**, the full kit:
    - Overlay: annunciator tile (raised, acknowledged, clearing, "+n MORE"); master lamps; status strip (condition, state, emergency text); warp strip; ticker line with station tag and speaker; prompt line; response; suit readout; guide card; berth card.
-   - Seats: cluster slots, lit and dark (reference, next event, velocity with mode chips, trigger, Δv bar with home notch and plan bracket); docking approach (closing-speed bar with its limit, alignment); gun chip (state, hit chance, gunner); point-defence chip; launcher chip; shield rose; gunner sight readout.
+   - Seats: cluster slots, lit and dark (reference, next event, velocity with mode chips, trigger, Δv bar with home notch and plan bracket); docking approach (closing-speed bar with its limit, alignment); gun chip (state, hit chance, gunner); point-defence chip; launcher chip; shield rose; gunner sight readout; a blacked-out seat, its cluster and MFDs on their NO POWER face (5.1).
    - MFDs: frame with title and soft keys; folded rail; pin; dead screen; radar scope; contact list; ship plan; shield ring; small orbit drawing.
    - Station board tile in five states; the whole board dim (Green) and lit; its right end, the chronometer. (The condition and the ship's state are in the status strip.)
    - Panels: side and full frames with title bar, tabs and footer; table rows; quantity control.
@@ -1123,7 +1128,7 @@ The artists change how this looks, not what it says or where it is. A style may 
 | SHIP STATUS: Oxygen | Moved | ATMOS page; O2 tiles; suit readout on deck |
 | RADAR | Moved | SENSORS page |
 | ORBIT minimap and its hints | Moved | NAV page; the hints dropped (learning hints cover them) |
-| SHIP wireframe minimap, HULL %, ALL SYSTEMS NOMINAL | Moved | DAMAGE page, auto-paged on damage; "nominal" text dropped |
+| SHIP wireframe minimap, HULL %, ALL SYSTEMS NOMINAL | Moved | DAMAGE page, auto-paged on damage; the HULL tile under 75% (13.4); "nominal" text dropped |
 | Status column: clock and warp | Moved | Chronometer on the station board; warp strip |
 | Status column: Target line, "FIRING ON YOU" | Dropped, changed | Duplicate dropped; HOSTILE / FIRING caution |
 | Status column: Missile line | Moved | Tactical launcher chips; pilot's trigger in the Reference row |
@@ -1215,6 +1220,21 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 11 (my own critique: a disabled ship, from the strip to a blackout)
+
+| Problem found | Change |
+|---|---|
+| Round 10's 44-character form fit only one cause. "Hull broken", the game's other way to disable the player's ship, ran it to 47 | The strip names the state, not the cause: "DISABLED [P][P] ABANDON [B][B] TOW" is 34 characters whatever the cause (7.7, 12) |
+| The strip repeated the cause that the POWER / NONE tile already showed | The cause is on its tile and in the callout, not on the strip (7.7, 13.4) |
+| The tow was offered even while the beacon refuses it (missiles inbound), which the game's own line doesn't do | Offered only while `DistressBeacon.refusal` is clear (7.7) |
+| Abandon ship, once ordered, had no strip text, though P then launches the pods | "ABANDON SHIP [P] LAUNCH NOW" (7.7) |
+| The full sentence was also the SHIP callout, at 77 characters against the 50-character rule | The callout is "SHIP: disabled, reactor down.", in the game's words (`DisabledComponent.Reason.label`); the full sentence is only the log line (7.7) |
+| Engineering owns the hull integrity alerts, but the catalogue had none, so nothing warned that the hull was nearing the 45% at which the ship is disabled | HULL / 52%: Caution under 75%, the game's own threshold (`ShipAlerts.HULL_DAMAGED`), Warning under 55% (13.4, 18) |
+| Under 20% of its tanks the ship can call a tow, but nothing said so unless it was disabled | The tow's hint stays on the prompt line while the offer stands (7.3, 13.4) |
+| Rule 3 darkens a station's pages everywhere when its console loses power, so a blackout would have hidden POWER, the one page that says how to get the reactor back | Rule 4: in a blackout the clusters and MFDs go dark; the overlay, and on the slate Engineering's pages, Command's tabs and COMMS, stay up. A tile's home page then opens on the slate (5.1, 9.1, 13.2, 14.2, 17) |
+| A dead page had two texts, "NO POWER" (5.1) and "ENG: NO SIGNAL" (9.1) | One: NO POWER (9.1) |
+| "Two states layer over the condition" introduced three | Corrected (12) |
 
 ### Round 10 (Cassette artist's round 2 notes, checked against the data)
 
