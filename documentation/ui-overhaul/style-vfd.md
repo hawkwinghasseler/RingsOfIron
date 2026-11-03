@@ -125,7 +125,7 @@ Segment glyphs, bars, rings and icons are geometry and stay sharp at any scale. 
 
 At full drive the centre of a segment whitens toward its hot core while the glow around it keeps the hue.
 
-**Filters are places, not paint.** An amber or red filter covers a fixed region of a module's glass, so that region is always that colour, and nothing outside it can be. A warning cannot turn a zinc readout red; it lights a red element that was built for it. Every module that can raise a caution or a warning therefore has its amber or red element designed in at a fixed place: the low end of a bar, an annunciator cell, a tile's frame. This is the single biggest layout consequence of the style (section 12).
+**Filters are places, not paint.** An amber or red filter covers a fixed region of a module's glass, so that region is always that colour, and nothing outside it can be. A warning cannot turn a zinc readout red; it lights a red element that was built for it. Every module that can raise a caution or a warning therefore has its amber or red element designed in at a fixed place: a pair of severity pips leading a row, a bar's notches, an annunciator cell, a tile's frame. This is the single biggest layout consequence of the style (section 12).
 
 ### 4.2 Drive levels
 
@@ -138,7 +138,7 @@ Brightness is the grid's duty cycle. Four levels, no others:
 | L2 | **Normal** | 80%, full colour and glow | Primary values, active states |
 | L3 | **Full** | 100%, white-hot core, wide bloom | The one thing that matters now: warnings, the focused row, the locked target |
 
-Budgets: at most one L3 element per module outside an alarm. A nominal value is never above L1.
+Budgets: at most one L3 element per module outside an alarm. A status reading that is nominal (hull, shields, power, air) stays at L1, so the row in trouble is the bright one; the values the seat works with (speed, range, time to go) are L2.
 
 ### 4.3 The dimmer
 
@@ -147,6 +147,7 @@ The brightness the player sees is `setting x bus x module`:
 - **Setting**: the player's brightness, 25% to 100%.
 - **Bus**: the ship's power. A brownout dims every tube, with a 1 to 3% jitter; the floor is 35% so the UI stays readable.
 - **Module**: a console without power goes dark (all ghost, then not even that); a damaged console flickers and loses segments (9.5).
+- **Spotlight**: when a spec dims everything but a few widgets (an emergency card), FILAMENT does it with the bus: the other modules drop to 45%. The caution and warning list never dims, because it is the evidence the player decides on.
 
 ### 4.4 Inks that do not glow
 
@@ -157,7 +158,7 @@ The brightness the player sees is `setting x bus x module`:
 | `silk` | `#8D949A`, dim `#5B6167` | Printed legends on the bezel |
 | `key` | `#26282C` | Rubber keys |
 | `led` | red `#FF3C32`, amber `#FFAA28`, green `#5AFF78` | LEDs |
-| `lcd` | `#A7B294` to `#8F9A7F`, ink `#1A2016`, backlight `#4FD6C4` | Personal devices, backup strip |
+| `lcd` | `#97A386` to `#7F8A70`, ink `#1A2016`, backlight `#68B3A4` to `#4F978A` | Personal devices, backup strip |
 | `card` | `#E9E6DC`, ink `#1C1C1C` | Out-of-fiction help (7.12) |
 
 ---
@@ -172,6 +173,7 @@ Four lettering systems, each with one job.
 - **Fixed-width fields**, right aligned, leading blanks (never leading zeros, except in clock fields). The minus sign takes its own cell. The layout never moves when a value changes.
 - **Autoranging**, like a multimeter: the field keeps its width and the unit legend beside it steps (`M` to `KM`, `M/S` to `KM/S`) with the decimal point. A 4-digit field reads ` 312 M`, `1.24 KM`, `12.4 KM`, ` 124 KM`.
 - **No data** is `----` (segment g only) at L1. **Over range** is `OL`. **Estimated** values are L1 with an `EST` legend lit.
+- **Colons** take their own narrow cell (a fifth of a digit), so `14:22:05` doesn't crowd. **Long times** carry their unit as a segment letter inside the field: `1h10`, `2d21h`, `1.4d`.
 - **Refresh rate** is fixed per readout: 5 Hz for fast values (speed, range), 2 Hz for slow ones, 1 Hz for clocks. Never per frame: the last digit must be readable.
 
 ### 5.2 Fourteen segments: short words
@@ -190,7 +192,7 @@ Four lettering systems, each with one job.
 ### 5.4 Legends: printed words
 
 - Only for a **fixed vocabulary** (section 14): units, frames, states, page and station names, alert tags.
-- Face: Inter Bold (already in `assets/fonts`), condensed horizontally to 80%, tracking +6%, all capitals, size 10 to 14.
+- Face: Inter SemiBold (already in `assets/fonts`), condensed horizontally to 80%, tracking +6%, all capitals, size 10 to 14.
 - **If it can change state, it is phosphor; if it never changes, it is silk.** A phosphor legend is lit or ghosted (`ASSIST`, `DOCKED`, `PIN`); a silk legend is printed on the bezel in grey and never glows (a module's title, a key's name).
 
 ---
@@ -199,7 +201,7 @@ Four lettering systems, each with one job.
 
 - **Segmented.** Each icon is built from separate strokes and fills with visible breaks where the glass separates them, on a 16-unit grid, strokes 1.5 units, no detail under 2 units.
 - Every icon has its ghost (always visible on its home module) and its lit state, in one colour. An icon never changes shape.
-- The first set, drawn in the specimen sheet: missile, lock, dock, propellant, power, oxygen, fire, breach, crew, cargo, warp, autopilot, save (a floppy disk), comms, caution, shield, heat, ship, station, orbit, clock, tow, message, point defence, target, cassette.
+- The first set, drawn in the specimen sheet: missile, lock, dock, propellant, power, oxygen, fire, breach, crew, cargo, warp, autopilot, save (a floppy disk), comms, caution, shield, heat, ship, station, orbit, clock, tow, message, point defence, target, drive, EVA, cassette.
 - Icons stand beside a word, not instead of one, wherever space allows. On the projected HUD they are dot sprites instead (section 8).
 
 ---
@@ -212,8 +214,9 @@ A label (phosphor legend at L1, or silk), a seven-segment value (L2) and a unit 
 
 ### 7.2 Bars
 
-- 10, 20 or 30 segments, 1.2 units apart. Thresholds are printed as silk ticks under the bar.
-- **Fixed filter zones.** A depleting resource (propellant, air, shield mass): the lowest 20% of segments are red, the next 30% amber, the rest zinc. A rising hazard (heat, strain, closing speed): the top 20% red, the 20% before amber.
+- 10, 20 or 30 segments, 1.2 units apart.
+- **A depleting resource** (propellant, hull, air, shield mass) fills in zinc: a full tank is not news. Its thresholds are **notches**, short ticks under the bar behind amber and red filters, ghosted until the value falls past them, and the alarm is the row's **severity pips** (7.6), which lead the row. *Round 1 drew these bars with red and amber feet; every healthy bar then showed red, which broke the dark cockpit.*
+- **A rising hazard** (heat, strain, closing speed) keeps **fixed filter zones** at the top: the top 20% of segments red, the 20% before them amber. They only light when the hazard is high, so a quiet bar stays zinc.
 - **Markers ride on the bar, not over it.** A limit or a target (the Δv needed to get home) is one segment lit at L2 beyond the fill, plus a silk notch. A range on the bar (the Δv a plan will spend) lights a thin second rail of segments under the bar: a two-rail bar.
 - Ballistics: a bar rises at once and falls at 30 segments a second; a peak segment holds for 1.5 s where a peak matters.
 
@@ -235,6 +238,7 @@ A label (phosphor legend at L1, or silk), a seven-segment value (L2) and a unit 
 ### 7.6 Lists and tables
 
 - Columns are counted in cells. Headers are legends (L1 phosphor or silk); rows are dot matrix at L2; numbers right aligned. Seven segments are for single values, not table cells.
+- **Severity pips.** A list of conditions (cautions and warnings, mounts, ship systems) leads each row with two 3-unit pips in fixed columns, amber then red. The row's words stay zinc: the pips carry the severity, by colour and by column, so it reads without colour too.
 - **Focus is inverse video**: the focused row's cells invert, and a `▶` sits in column 0. There is no hover state: the pointer moves the cursor.
 - **Paging, not scrolling.** A list shows a fixed number of rows; `PG 1/3` and lit `▲ ▼` legends say there is more. The cursor steps by row; Page Up and Page Down step by page.
 
@@ -246,10 +250,14 @@ A label (phosphor legend at L1, or silk), a seven-segment value (L2) and a unit 
 
 ### 7.8 Annunciator cells
 
-Two forms:
+Four forms:
 
-- **Fixed panel**: one cell per condition, ghosted when inactive. For small, fixed sets: a station's own conditions on its module.
-- **Tile row**: for a list ordered by severity, where conditions come and go. A tile is a cell holding a legend tag and a dot-matrix value. A **caution** tile sits behind an amber filter and is drawn as an outlined cell; a **warning** tile sits behind a red filter and is drawn **inverse** (a solid lit block with dark letters). Severity is told apart by colour, form and blink rate together.
+- **Fixed panel**: one cell per condition, ghosted when inactive. For small, fixed sets: a station's own conditions on its module. Each cell is **dual-filtered**: its frame sits behind amber and its block behind red, so the same cell lights as an amber outline for a caution or a red inverse block for a warning.
+- **Tell-tales**: a fixed panel whose cells carry an icon beside the word, like a dashboard's warning lamps. For a ship-wide set of ten or so conditions the player learns by position and shape.
+- **Tile row**: for a list ordered by severity, where conditions come and go. A tile is a cell holding a legend tag and a dot-matrix value. A **caution** tile sits behind an amber filter and is drawn as an outlined cell; a **warning** tile sits behind a red filter and is drawn **inverse** (a solid lit block with dark letters). The row has two filtered zones: warnings fill inward from the `MASTER WARN` lamp at one end, cautions inward from `MASTER CAUT` at the other. Severity is told apart by colour, form, end and blink rate together.
+- **Message centre**: a dot-matrix window behind red glass that holds the one standing warning in words, over a row of cells behind amber glass for up to three cautions. A warning can only be red because there is nowhere else for it to light.
+
+Inverse text (a warning tile, an active mode, the seat in use) is cut out of a lit block. The cut letters must stay dark through the bloom, so they are at least legend size 9 or dot pitch 2; smaller inverse text fills in with glow and can't be read.
 
 ### 7.9 Master lamps
 
@@ -265,6 +273,7 @@ The ship glows; the captain's own kit reflects.
 
 - **Personal devices** (the slate, the suit readout) are reflective LCD: dark segments and dots on grey-green, each with a faint shadow cast on the reflector behind, no glow. The electroluminescent backlight (blue-green) comes on for 3 s on an alert or a key press.
 - **The backup strip**: every rack has a narrow LCD strip that shows nothing while the ship has power. When power is lost the tubes go dark and the strip shows what keeps the crew alive: hull, air, time, and the master alarm.
+- The backlight is a dim teal, not white: in a dark cockpit a bright backlit panel outshines every alarm.
 
 ### 7.12 Out-of-fiction help
 
@@ -279,6 +288,8 @@ The symbology over the outside view is written by a dot-matrix projector, the de
 - **Dots only.** Every marker is a dot sprite on a 2-unit grid (dots 1.6 units). Lines are dot chains with dots every 4 to 6 units. There are no solid strokes and no curves.
 - **Two channels.** Zinc for everything; red for threats (hostiles, incoming missiles, the impact cross). Amber appears only for the collision cue and an unsafe docking corridor.
 - No ghosting and no mesh (it is projected), the same bloom.
+- **Under the hardware.** The projection lands on the world, so racks, pods and slabs cover it. It never draws over a module.
+- **Tags on the deck.** Over the lit interior a tag is hard to read, so the deck view darkens a soft pill under each tag. The world is dimmed; the projector still draws no black.
 - **Shape before colour**, so every role reads without colour:
 
 | Role | Sprite |
@@ -366,7 +377,7 @@ A piezo beeper and a relay. Square waves, short, never a melody. Every alarm is 
 | Data | Built as |
 |---|---|
 | A value that changes | Seven segments in a fixed field, unit legend, autoranging |
-| A quantity with thresholds | A bar with fixed filter zones; limits and targets ride on it (7.2) |
+| A quantity with thresholds | A depleting resource: a zinc bar with notches, its alarm on the row's pips. A rising hazard: a bar with filter zones at the top. Limits and targets ride on it (7.2) |
 | A quantity against a budget (Δv against the trip home, demand against generation) | Two rails on one scale, sharing a limit segment |
 | A bearing or coverage | A ring of sectors |
 | Positions | A graphic dot panel, or a sector scope when the world view already holds the precision |
@@ -381,7 +392,7 @@ A piezo beeper and a relay. Square waves, short, never a melody. Every alarm is 
 These are the ways FILAMENT changes more than the look. They are what the functional designs adopt when skinned in this style; where one clashes with a spec, it is raised with that spec's designer as a critique, not quietly changed.
 
 1. **Racks, not floating panels.** Persistent instruments live in opaque racks along the screen edges. The outside view is the window between them, and the camera centres the ship in that window, not on the screen.
-2. **Fixed homes.** A module never moves or resizes. In a rack, a field with nothing to show goes dark (ghosted) instead of collapsing, so every other field stays where the player learned it. In the overlay, a slab with nothing to show powers down and is gone. "Hidden when empty" means dark in a rack and gone in the overlay.
+2. **Fixed homes.** A module never moves or resizes. In a rack, a field with nothing to show goes dark (ghosted) instead of collapsing, so every other field stays where the player learned it. In the overlay, a slab with nothing to show powers down and is gone. "Hidden when empty" means dark in a rack and gone in the overlay. A rack module that a post doesn't need **folds**: its glass sinks into the rack and only its soft-key rail stays, so it can be called back where it was.
 3. **Character budgets.** Every text field has a cell count, and every module is sized from those counts. Specs give maximum lengths; this guide's lexicon (section 14) shortens the rest.
 4. **Soft keys instead of buttons.** Every action in a module is a soft key with a key cap. Mouse clicks land on soft keys and rows; nothing changes under a hovering pointer.
 5. **States are lit words, not text.** `ASSIST ON/OFF` becomes the legend `ASSIST`, lit or ghosted. Booleans never take text.

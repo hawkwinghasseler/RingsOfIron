@@ -211,6 +211,9 @@
     msg: [['l', [[1.5, 3.5], [14.5, 3.5], [14.5, 12.5], [1.5, 12.5], [1.5, 3.5]]], ['l', [[1.5, 3.5], [8, 8.5], [14.5, 3.5]]]],
     pd: [['c', 8, 8, 6.5, 0, 360], ['l', [[8, 4], [8, 12]]], ['l', [[4, 8], [12, 8]]], ['d', 8, 8, 1.6]],
     target: [['p', [[8, 1], [15, 8], [8, 15], [1, 8]]]],
+    drive: [['p', [[0.8, 5.4], [3.6, 5.4], [3.6, 10.6], [0.8, 10.6]]], ['p', [[4.6, 6.8], [6.4, 6.8], [10.2, 2.8], [10.2, 13.2], [6.4, 9.2], [4.6, 9.2]]],
+      ['l', [[11.6, 5.2], [15.2, 4]]], ['l', [[11.6, 8], [15.6, 8]]], ['l', [[11.6, 10.8], [15.2, 12]]]],
+    eva: [['c', 5.4, 3.8, 2.4, 0, 360], ['p', [[1.2, 14.6], [2, 9.8], [3.6, 8.4], [7.2, 8.4], [8.8, 9.8], [9.6, 14.6]]], ['l', [[9.6, 11.6], [11.4, 9.4], [13, 11.8], [15, 8.6]]]],
     cassette: [['l', [[1, 3], [15, 3], [15, 13], [1, 13], [1, 3]]], ['c', 5.2, 7.5, 1.8, 0, 360], ['c', 10.8, 7.5, 1.8, 0, 360], ['l', [[4, 13], [5, 10.5], [11, 10.5], [12, 13]]]],
   };
 
@@ -600,9 +603,9 @@
       const b = this.base; b.save();
       b.fillStyle = '#000'; rrect(b, x - 1.5, y - 1.5, w + 3, h + 3, 3); b.fill();
       const g = b.createLinearGradient(0, y, 0, y + h);
-      g.addColorStop(0, o.backlight ? '#8fd8c8' : '#a7b294'); g.addColorStop(1, o.backlight ? '#6cbcac' : '#8f9a7f');
+      g.addColorStop(0, o.backlight ? '#68b3a4' : '#97a386'); g.addColorStop(1, o.backlight ? '#4f978a' : '#7f8a70');
       b.fillStyle = g; rrect(b, x, y, w, h, 2); b.fill(); b.restore();
-      if (o.backlight) { const c = this.glass; c.fillStyle = 'rgba(60,220,200,0.07)'; rrect(c, x, y, w, h, 2); c.fill(); }
+      if (o.backlight) { const c = this.glass; c.fillStyle = 'rgba(60,220,200,0.045)'; rrect(c, x, y, w, h, 2); c.fill(); }
     }
     // LCD segments are dark, cast a faint shadow on the reflector, and ghost very slightly.
     lcdSeg7(x, y, h, str, o = {}) {

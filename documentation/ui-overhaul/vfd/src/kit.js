@@ -182,10 +182,33 @@ const KIT = (() => {
   // ------------------------------------------------------------ bars
   const DEPLETE = (i, n) => (i < n * 0.2 ? 'red' : i < n * 0.5 ? 'amber' : 'zinc');
   const RISING = (i, n) => (i >= n * 0.8 ? 'red' : i >= n * 0.6 ? 'amber' : 'zinc');
+  // A depleting resource (propellant, hull, air, shield mass). A full tank is not news, so the fill is plain
+  // zinc; the thresholds are filtered notches printed under the bar, lit while the value is past them. The
+  // alarm itself is the row's pips (amber, red), which lead the row in fixed columns as they do in lists.
+  // Returns the severity, so the caller can light its pips.
+  const NOTCHES = [{ at: 0.5, color: 'amber' }, { at: 0.2, color: 'red' }];
+  function dsev(frac, notches = NOTCHES) {
+    let sev = null;
+    for (const nt of notches) if (frac <= nt.at && sev !== 'red') sev = nt.color;
+    return sev;
+  }
+  function dbar(S, x, y, w, h, n, frac, o = {}) {
+    const notches = o.notches ?? NOTCHES;
+    S.bar(x, y, w, h, n, frac, { level: o.level ?? 'norm', gap: o.gap });
+    for (const nt of notches) {
+      const past = frac <= nt.at, nx = x + w * nt.at;
+      S.rectLit(nx - 0.6, y + h + 1.4, 1.2, 3.4, past ? { color: nt.color, level: 'norm' } : { ghostOnly: true, color: nt.color, k: 3 });
+    }
+    return dsev(frac, notches);
+  }
   function barRow(S, x, y, label, frac, o = {}) {
-    const lw = o.labelW ?? 34, bw = o.w ?? 120, bh = o.h ?? 6, n = o.n ?? 20;
+    const lw = o.labelW ?? (o.zone ? 34 : 46), bw = o.w ?? 120, bh = o.h ?? 6, n = o.n ?? 20;
     S.legend(x, y + bh, label, { size: o.labelSize ?? 8, level: o.labelLevel ?? 'dim' });
-    S.bar(x + lw, y, bw, bh, n, frac, { zone: o.zone ?? DEPLETE, level: o.level ?? 'norm', peak: o.peak });
+    if (o.zone) S.bar(x + lw, y, bw, bh, n, frac, { zone: o.zone, level: o.level ?? 'norm', peak: o.peak });
+    else {
+      const sev = dbar(S, x + lw, y, bw, bh, n, frac, { level: o.level, notches: o.notches });
+      pip(S, x + lw - 11, y + bh / 2, 'amber', sev === 'amber', { r: 1.5 }); pip(S, x + lw - 5, y + bh / 2, 'red', sev === 'red', { r: 1.5 });
+    }
     if (o.value != null) S.dm(x + lw + bw + 6, y + bh / 2 - 5.25, o.value, { pitch: 1.5, cells: o.valueCells ?? 4, align: 'right', level: o.valueLevel ?? 'norm', ghost: false });
   }
 
@@ -440,5 +463,5 @@ const KIT = (() => {
     return cx;
   }
 
-  return { plate, knock, pip, rackShape, space, hull, plume, ringDots, velMark, reticle, cross, track, missile, arc, edge, states, rng, scene, loadImage, world, keycap, verbs, titled, slab, tile, softKeys, field, table, barRow, DEPLETE, RISING, sectorScope, shipPlan, CORVETTE, sprite, SPR, brackets, label };
+  return { plate, knock, pip, rackShape, space, hull, plume, ringDots, velMark, reticle, cross, track, missile, arc, edge, states, rng, scene, loadImage, world, keycap, verbs, titled, slab, tile, softKeys, field, table, barRow, dbar, dsev, DEPLETE, RISING, sectorScope, shipPlan, CORVETTE, sprite, SPR, brackets, label };
 })();

@@ -29,13 +29,11 @@
     win(722, 74);
     K.pip(S, 731, y + h / 2, 'red', false); S.seg7(737, y + 4, 11, '', { cells: 1 });
     K.pip(S, 760, y + h / 2, 'amber', false); S.seg7(766, y + 4, 11, '', { cells: 1 });
-    S.silk(722, 30 + 7, '', {});
     // clock and warp
     win(946, 146);
     S.legend(953, y + 13, 'DAY', { size: 8.5, level: 'dim' });
     S.seg7(973, y + 4, 11, d.day, { cells: 2, level: 'norm' });
     S.seg7(1012, y + 4, 11, d.time, { cells: 4, level: 'norm' });
-    S.legend(1062, y + 13, '', { size: 8.5 });
     win(1098, 104);
     S.seg7(1104, y + 4, 11, d.warp, { cells: 5, level: d.warp === '1' ? 'dim' : 'norm' });
     S.legend(1155, y + 13, 'X', { size: 9, level: d.warp === '1' ? 'dim' : 'norm' });
@@ -63,14 +61,18 @@
     K.slab(S, x, y, w, h, { pad: 5, title: d.title || 'Ship condition' });
     let by = y + 8;
     if (d.plan) {
-      K.shipPlan(S, x + 6, y + 6, w - 12, 104, { states: d.plan.states, crew: d.plan.crew, labels: true, blinkOn: true });
-      by = y + 128;
+      K.shipPlan(S, x + 6, y + 6, w - 12, 90, { states: d.plan.states, crew: d.plan.crew, labels: true, blinkOn: true });
+      by = y + 112;
     }
     for (const r of d.bars) {
       S.legend(x + 8, by + 8, r.label, { size: 8.5, level: 'dim' });
-      if (r.text) S.dm(x + 70, by, r.text, { pitch: 1.5, cells: 15, level: 'norm' });
-      else S.bar(x + 70, by + 1, 150, 8, 30, r.frac, { zone: K.DEPLETE, level: 'norm' });
-      if (r.value != null) S.seg7(x + 228, by - 1, 11, r.value, { cells: r.cells || 3, level: 'norm' });
+      // the row's pips: the bar's own threshold, or the light's cause when that isn't the bar (a breach);
+      // a nominal row stays at L1 so the row in trouble is the bright one
+      const sev = r.sev ?? (r.frac != null ? K.dsev(r.frac, r.notches) : null), lvl = sev ? 'norm' : 'dim';
+      if (r.text) S.dm(x + 72, by, r.text, { pitch: 1.5, cells: 15, level: lvl });
+      else K.dbar(S, x + 72, by + 1, 146, 7, 30, r.frac, { notches: r.notches, level: lvl });
+      K.pip(S, x + 58, by + 4.5, 'amber', sev === 'amber', { r: 1.5 }); K.pip(S, x + 64, by + 4.5, 'red', sev === 'red', { r: 1.5 });
+      if (r.value != null) S.seg7(x + 228, by - 1, 11, r.value, { cells: r.cells || 3, level: lvl });
       if (r.unit) S.legend(x + 272, by + 9, r.unit, { size: 7.5, level: 'dim' });
       by += 20;
     }
@@ -86,7 +88,7 @@
     S.legend(x + 172, y + 15, 'AUTO', { size: 9, lit: d.auto, level: 'dim', box: true });
     // the master alert cue: a cell built for it, in the pilot's eyeline
     S.module(x + w - 100, y + 4, 94, 17, { filaments: 0, glare: false, radius: 1.5 });
-    if (d.cue && d.cue.sev === 'warning') { S.rectLit(x + w - 98, y + 6, 90, 13, { color: 'red', level: 'norm', r: 1 }); K.knock(S, x + w - 94, y + 9, d.cue.code.padEnd(9).slice(0, 9)); }
+    if (d.cue && d.cue.sev === 'warning') { S.rectLit(x + w - 98, y + 6, 90, 13, { color: 'red', level: 'norm', r: 1 }); S.knockout(x + w - 53, y + 16.2, d.cue.code, { size: 9.5, align: 'center' }); }
     else if (d.cue) S.frameLit(x + w - 98, y + 6, 90, 13, 1, { color: 'amber', level: 'norm' });
     else S.dm(x + w - 94, y + 9, '', { pitch: 1.5, cells: 9, color: 'red' });
     // speed in the frame
@@ -97,7 +99,6 @@
     const tx = x + 262, ty = y + 44;
     S.legend(tx - 12, ty - 14, 'THRUST', { size: 7, level: 'dim' });
     S.icon('ship', tx - 2, ty - 8, 16, { level: 'dim', lit: false });
-    const lamp = (px, py, rows, on) => S.sprite(px, py, rows, { center: true, pitch: 1.4, level: on ? 'norm' : 'norm', color: 'zinc', layer: on ? 'glass' : 'ghost' });
     const tri = { r: ['#..', '##.', '###', '##.', '#..'], l: ['..#', '.##', '###', '.##', '..#'], u: ['..#..', '.###.', '#####'], d: ['#####', '.###.', '..#..'] };
     const th = d.thrust || {};
     const t = (px, py, k, on) => { if (on) S.sprite(px, py, tri[k], { center: true, pitch: 1.4, level: 'norm' }); else ghostSprite(S, px, py, tri[k], 1.4); };
@@ -108,7 +109,8 @@
     S.legend(x + 10, y + 86, 'ΔV', { size: 9, level: 'dim' });
     S.seg7(x + 26, y + 72, 15, d.dv, { cells: 4, level: 'norm' });
     S.legend(x + 80, y + 86, 'M/S', { size: 8, level: 'dim' });
-    S.bar(x + 106, y + 77, 230, 9, 40, d.prop, { zone: K.DEPLETE, level: 'dim' });
+    const ps = K.dbar(S, x + 114, y + 77, 222, 9, 40, d.prop, { level: 'dim', notches: [{ at: 0.25, color: 'amber' }, { at: 0.1, color: 'red' }] });
+    K.pip(S, x + 102, y + 81.5, 'amber', ps === 'amber', { r: 1.5 }); K.pip(S, x + 108, y + 81.5, 'red', ps === 'red', { r: 1.5 });
     S.seg7(x + 344, y + 74, 12, String(Math.round(d.prop * 100)), { cells: 3, level: 'dim' });
     S.legend(x + 382, y + 86, '%', { size: 8, level: 'dim' });
   }
@@ -120,13 +122,12 @@
   // ------------------------------------------------------------------ H5 contact scope
   // Collapsed: a key with the count of contacts beyond 50 km. Open: a pod with a graphic dot panel.
   function h5Key(S, n) {
-    const x = 1212, y = 748;
+    const x = 1200, y = 752, w = 68, h = 36;
     S.silk(x + 1, y - 3.5, 'Scope', { size: 6.5 });
-    S.module(x, y, 56, 22, { filaments: 0, glare: false, radius: 2 });
-    S.seg7(x + 6, y + 4, 14, String(n), { cells: 1, level: 'dim' });
-    S.dm(x + 24, y + 6, '>', { pitch: 1.5, level: 'dim', ghost: false });
-    S.legend(x + 38, y + 15, 'KM', { size: 7, lit: false });
-    S.key(x + 8, y + 26, 40, 11, '', {});
+    S.module(x, y, w, h, { filaments: 0, glare: false, radius: 2 });
+    S.seg7(x + 7, y + 8, 20, String(n), { cells: 1, level: 'dim' });
+    S.legend(x + 26, y + 16, 'BEYOND', { size: 7, level: 'dim' });
+    S.legend(x + 26, y + 27, '50 KM', { size: 7, level: 'dim' });
   }
   function h5Scope(S, d) {
     const cx = 1176, cy = 646, r = 86;
@@ -238,7 +239,7 @@
 
   // ------------------------------------------------------------------ H6 lock card, H7 armament
   function h6(S, d) {
-    const x = RX, y = 176, h = 100;
+    const x = RX, y = 176, h = 82;
     K.slab(S, x, y, CW, h, { pad: 5, title: 'Lock' });
     S.legend(x + 6, y + 15, 'LOCK', { size: 8.5, level: 'dim' });
     S.dm(x + 36, y + 4, d.name, { pitch: 2, cells: 10, level: 'norm' });
@@ -250,19 +251,19 @@
     S.legend(x + 160, y + 52, 'SHOT', { size: 7.5, level: 'dim' });
     S.seg7(x + 160, y + 56, 12, d.shot, { cells: 3, level: 'norm' }); S.legend(x + 191, y + 67, 'S', { size: 7.5, level: 'dim' });
     S.legend(x + 214, y + 52, 'BEST HIT', { size: 7.5, level: 'dim' });
-    K.states(S, x + 214, y + 67, [['GOOD', d.hit === 'GOOD' && 'norm'], ['FAIR', d.hit === 'FAIR' && 'norm'], ['POOR', d.hit === 'POOR' && 'norm']], { size: 8, gap: 5 });
-    S.rectLit(x + 6, y + 78, CW - 12, 0.7, { ghostOnly: true, k: 2 });
-    S.dm(x + 6, y + 84, '', { pitch: 1.5, cells: 33 });
+    S.seg7(x + 214, y + 56, 12, d.hit, { cells: 2, level: 'norm' }); S.legend(x + 238, y + 67, '%', { size: 7.5, level: 'dim' });
   }
   function h7(S, d) {
-    const x = RX, y = 290, h = 60;
+    const x = RX, y = 270, h = 60;
     K.slab(S, x, y, CW, h, { pad: 5, title: 'Armament' });
     S.legend(x + 6, y + 14, 'GUNS', { size: 8.5, level: 'dim' });
     K.states(S, x + 40, y + 14, [['READY', d.guns === 'READY' && 'norm'], ['RELOAD', d.guns === 'RELOAD' && 'norm'], ['NO PWR', false], ['ARC', false]], { size: 8.5, gap: 6 });
     K.states(S, x + 200, y + 14, [['YOU', d.who === 'YOU' && 'norm'], ['GUNNER', d.who === 'GUNNER' && 'norm'], ['PD', d.who === 'PD' && 'norm']], { size: 8.5, gap: 6 });
     S.legend(x + 6, y + 33, 'MSL', { size: 8.5, level: 'dim' }); S.seg7(x + 28, y + 23, 12, d.msl, { cells: 1, level: 'norm' });
     S.legend(x + 44, y + 33, 'RELOAD', { size: 8.5, lit: !!d.reload, level: 'dim' }); S.seg7(x + 82, y + 23, 12, d.reload || '', { cells: 2, level: 'norm' }); S.legend(x + 104, y + 33, 'S', { size: 8, level: 'dim' });
-    S.legend(x + 130, y + 33, 'DECOY', { size: 8.5, level: 'dim' }); S.seg7(x + 164, y + 23, 12, d.decoy, { cells: 1, level: 'norm' });
+    S.legend(x + 130, y + 33, 'DECOY', { size: 8.5, level: 'dim' });
+    S.legend(x + 166, y + 33, 'READY', { size: 8.5, lit: d.decoy === 'READY', level: 'norm' });
+    S.seg7(x + 200, y + 23, 12, d.decoy !== 'READY' ? d.decoy : '', { cells: 1, level: 'norm' }); S.legend(x + 212, y + 33, 'S', { size: 8, level: 'dim' });
     S.legend(x + 6, y + 52, 'SHIELDS', { size: 8.5, level: 'dim' });
     K.states(S, x + 52, y + 52, [['UP', d.shields === 'UP' && 'norm'], ['DOWN', d.shields === 'DOWN' && 'norm']], { size: 8.5, gap: 6 });
     S.legend(x + 120, y + 52, 'TRIM', { size: 8.5, level: 'dim' }); S.dm(x + 146, y + 43, d.trim, { pitch: 1.5, cells: 5, level: 'norm' });
@@ -339,18 +340,19 @@
 
     topRack(S, { seat: 'HELM', battle: true, day: '0', time: '00:41', warp: '1' });
     bottomRack(S);
-    p2(S, [{ sev: 'warning', code: 'HULL BREACH', detail: 'CARGO', crew: 1 }]);
+    p2(S, [{ sev: 'warning', code: 'HULL BREACH', detail: 'CARGO 2', crew: 1 }]);
     p3(S, { count: '2', t: '37', decoy: true, pd: true });
     p4(S, [['GUNNERY', 'PD HIT 1 MISSILE']]);
     h2(S, { next: 'BURN 1/2', nextT: '12:05', nextDv: '420', by: 'HELM' }, true);
-    h6(S, { name: 'RAIDER', hostile: true, firing: true, range: '7.7', closing: 'closing', rate: '12', shot: '1.3', hit: 'FAIR' });
-    h7(S, { guns: 'READY', who: 'YOU', msl: '3', reload: '4', decoy: '2', shields: 'UP', trim: 'BOW' });
-    h4Face(S, LX, 532, CW, 198, {
+    h6(S, { name: 'RAIDER', hostile: true, firing: true, range: '7.7', closing: 'closing', rate: '12', shot: '3.1', hit: '18' });
+    h7(S, { guns: 'READY', who: 'YOU', msl: '3', reload: '4', decoy: 'READY', shields: 'UP', trim: 'BOW' });
+    h4Face(S, LX, 540, CW, 198, {
       plan: { states: { 'CARGO 2': 'breach' }, crew: [[10, 6, true], [22, 4], [6, 3], [15, 6]] },
       bars: [
-        { label: 'HULL', frac: 0.81, value: '81', unit: '%' },
+        { label: 'HULL', frac: 0.81, value: '81', unit: '%', sev: 'red' },
         { label: 'SHIELDS', frac: 0.77, value: '230', unit: 'KG' },
-        { label: 'POWER', frac: 0.9, value: '3.0', unit: 'MW' },
+        { label: 'POWER', frac: 0.9, value: '90', unit: '%' },
+        { label: 'LIFE SUP', frac: 0.95, value: '95', unit: '%' },
       ],
     });
     h4Lights(S, 16, 752, { hull: 'warning' });
@@ -363,18 +365,20 @@
   // ================================================================== 11.7 Deck, emergency
   SCREENS['cx-deck-emergency'] = async (canvas) => {
     const S = K.scene(canvas);
-    await K.world(S, 'bg/deck-dark.jpg');
-    // D3: off-screen pointers, projected at the edges
-    K.edge(S, 1252, 452, 'r', ['FIRE', '14 TILES'], { color: 'red', level: 'norm' });
-    K.edge(S, 640, 782, 'd', ['ADA DOWN 9 TILES'], { color: 'red', level: 'norm' });
+    // the deck zoomed in on the captain (the wheel zooms the deck view), so the aft of the ship is off screen
+    const Z = 2.4, cx = 870, cy = 470;
+    await K.world(S, 'bg/deck-dark.jpg', { x: 640 - Z * cx, y: 400 - Z * cy, w: 1280 * Z, h: 800 * Z, filter: 'brightness(1.7) contrast(1.05)' });
+    // D3: off-screen pointers on the line from the captain, nearest first, projected at the edge
+    K.edge(S, 22, 300, 'l', ['ADA DOWN', '8 TILES'], { color: 'red', level: 'norm' });
+    K.edge(S, 22, 400, 'l', ['FIRE', '11 TILES'], { color: 'red', level: 'norm' });
     S.projectNow();
 
     topRack(S, { seat: 'DECK', authority: 'HELM: NOBODY, DRIFTING', authCaution: true, battle: true, day: '0', time: '01:12', warp: '1' });
     p2(S, [
-      { sev: 'warning', code: 'FIRE', detail: 'GALLEY', crew: 2 },
       { sev: 'warning', code: 'CREW CRIT', detail: 'ADA', crew: 1, timer: '3:40' },
-      { sev: 'warning', code: 'VACUUM', detail: 'CARGO', crew: 0 },
-      { sev: 'warning', code: 'NO POWER', detail: 'STUNNED', crew: 1, timer: '0:12' },
+      { sev: 'warning', code: 'FIRE', detail: 'ENGINES', crew: 2 },
+      { sev: 'warning', code: 'NO POWER', detail: 'REACTOR', crew: 1, timer: '0:12' },
+      { sev: 'warning', code: 'VACUUM', detail: 'CARGO 1', crew: 0 },
       { sev: 'caution', code: 'SMOKE', detail: 'CORRIDOR', crew: 0 },
     ]);
     x3(S, { title: 'SHIP DISABLED: NO POWER', rows: [
@@ -382,15 +386,17 @@
       { what: 'CALL A TOW', key: 'B', how: 'TWICE', cost: '3,400 CR, -3 STANDING' },
     ] });
     p4(S, [['CREW', 'BEA TO THE REACTOR']]);
-    // the context dims everything but H4 and D1 while X3 shows: on the ship's batteries, that is a brownout
-    S.dimRegion(0, 0, 1280, 140, 0.55);
+    // While X3 shows, the context dims what the choice doesn't need. On the ship's batteries that is a brownout
+    // of the strip and the feed; the caution list stays at full drive, because it is the evidence for the choice.
+    S.dimRegion(0, 0, 1280, 30, 0.45);
+    S.dimRegion(RX - 6, 30, CW + 12, 70, 0.45);
     h4Face(S, LX, 548, CW, 102, { title: 'Ship condition', bars: [
-      { label: 'HULL', frac: 0.54, value: '54', unit: '%' },
-      { label: 'POWER', text: 'NO POWER' },
-      { label: 'LIFE SUP', text: 'EMERGENCY 42 KG' },
-      { label: 'WORST', text: 'VACUUM' },
+      { label: 'HULL', frac: 0.46, value: '46', unit: '%' },
+      { label: 'SHIELDS', text: 'DOWN', sev: 'amber' },
+      { label: 'POWER', text: 'NO POWER', sev: 'red' },
+      { label: 'LIFE SUP', text: 'EMERGENCY 42 KG', sev: 'red' },
     ] });
-    h4Lights(S, 16, 664, { hull: 'warning', power: 'warning', life: 'caution' });
+    h4Lights(S, 16, 664, { hull: 'caution', shields: 'caution', power: 'warning', life: 'warning' });
     d1(S, 716, { condition: 'LIGHT WOUND', here: 'THIN AIR', air: '3:20', alert: true });
     S.finish();
   };

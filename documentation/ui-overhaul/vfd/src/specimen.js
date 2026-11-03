@@ -84,8 +84,8 @@ SCREENS.specimen = async (canvas) => {
   const legends = ['ASSIST', 'AUTO', 'ORB', 'TGT', 'PORT', 'DOCKED', 'PIN', 'EST', 'HOLD', 'M/S', 'KM', 'CR'];
   legends.forEach((l, i) => S.legend(42 + (i % 6) * 96, 500 + Math.floor(i / 6) * 20, l, { size: 10, lit: i % 3 !== 2, level: i % 3 === 0 ? 'norm' : 'dim' }));
   const icons = Object.keys(VFD.ICONS);
-  icons.forEach((n, i) => S.icon(n, 42 + (i % 13) * 44, 548 + Math.floor(i / 13) * 38, 18, { lit: i % 4 !== 3, level: i % 5 === 0 ? 'full' : 'norm' }));
-  icons.forEach((n, i) => S.silk(42 + (i % 13) * 44 + 9, 548 + Math.floor(i / 13) * 38 + 28, n, { size: 5.2, align: 'center', upper: false }));
+  icons.forEach((n, i) => S.icon(n, 42 + (i % 14) * 41, 548 + Math.floor(i / 14) * 38, 18, { lit: i % 4 !== 3, level: i % 5 === 0 ? 'full' : 'norm' }));
+  icons.forEach((n, i) => S.silk(42 + (i % 14) * 41 + 9, 548 + Math.floor(i / 14) * 38 + 28, n, { size: 5.2, align: 'center', upper: false }));
 
   // ---------------------------------------------------------------- bars and rings
   KIT.titled(S, 648, 480, 604, 150, 'Bars, rails and rings: discrete steps, colour by place');
