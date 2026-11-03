@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 6.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 7.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -641,11 +641,11 @@ every mode.
    14); today's estimate runs long while the motor burns and then falls faster than the clock.
 2. The decoy, "decoy ready (F)" or "decoy in 2 s" (decoys never run out: a 3 s cooldown,
    `PlayerGunnery.DECOY_COOLDOWN`), at any seat; on deck there is no decoy to throw, so it is left
-   out. Then "point defence engaging" while PD is firing at one.
+   out. Then "point defense engaging" while PD is firing at one.
 
 Each missile intercepted shows a brief "1 down" before the count drops. P3 is the decoy's only home: a
 decoy matters only while missiles are inbound, which is exactly when P3 shows. At fire control and
-gun seats, F4 lists every missile with its impact time, bearing and point defence, so there P3 keeps
+gun seats, F4 lists every missile with its impact time, bearing and point defense, so there P3 keeps
 only the count and the decoy.
 
 **When.** From the first inbound missile until none is inbound. On deck it is the same widget (no
@@ -676,7 +676,7 @@ inside"; "Gunnery: Raider disabled"; "Log: autosaved".
 **In combat** the feed would flood with hits and kills, so it summarises: gunnery events from the last
 5 s merge into one line ("Gunnery: 3 hits on Raider"), and routine messages from other sources wait in
 the Log until combat ends, then show as one line ("4 messages in the log"). Notable messages still
-show. Point defence's kills of inbound missiles are not posted at all while P3 is up: P3's "1 down"
+show. Point defense's kills of inbound missiles are not posted at all while P3 is up: P3's "1 down"
 and W6's kill ring already show each one (the Log still records them).
 
 **Replies to the captain's own orders** ("Shields: trim bow", "Helm: approach Highport to 1,000 m")
@@ -931,7 +931,7 @@ range rings and the range setting. North up, like the view.
 **Range.** Automatic by situation (approach 2 km; combat: the smallest step that holds the lock and
 every inbound missile; cruise: 50 km), with − and + (each at least 24 units) to set it by hand until
 the situation changes. The steps are `RadarScope.RANGES` with a 5 km step added (0.5, 2, 5, 10, 50,
-250, 1,000 km): fights sit inside 4 km (lasers 3, the heavy cannon 3.5, point defence 4), which on the
+250, 1,000 km): fights sit inside 4 km (lasers 3, the heavy cannon 3.5, point defense 4), which on the
 10 km step fill only the inner third.
 
 **When.** Approach and combat always. In cruise, only while a contact is inside 50 km; otherwise it
@@ -973,14 +973,15 @@ and while latched to the Lock for boarding (X2 names it).
 **Zone.** Right middle, under H6, 308 x 70.
 
 **Content.** Guns: ready, reloading (s), no power, out of arc; who fires them: you, the gunner, or
-point defence only. Missiles: how many are left, and ready or the second until the next can go (a
-launcher throws one a second, and only a station restocks it). Shields, on a ship with an emitter: raised or lowered,
+point defense only. Missiles: how many are left across every launcher, and ready while any launcher
+can fire, or the second until one can (a launcher throws one a second, and only a station restocks
+it); the split by launcher is F2's. Shields, on a ship with an emitter: raised or lowered,
 and the trim. At the helm this is where the shield settings live: H4's bar shows only how much cloud
 there is, and the full control is F3. The decoy is P3's, not a row here.
 
 ```
 GUNS   ready · you fire
-MSL    4 left · ready
+MSL    7 left · ready
 SHLD   raised · trim bow
 ```
 
@@ -1011,13 +1012,13 @@ LOCK  Raider
 **Zone.** Bottom centre, up to 620 x 150.
 
 **Row anatomy.** Mount · weapon · state (ready, reloading s, no power, damaged, stunned s, out of
-arc; for point defence, engaging) · hit chance on the lock · missiles left, for a launcher ·
-controller (you, crew, PD). The mounts "in hand" (all but point defence at the console, one at a gun)
-are marked. A point-defence mount picks its own targets, so it is never in hand and has no hit chance.
+arc; for point defense, engaging) · hit chance on the lock · missiles left, for a launcher ·
+controller (you, crew, PD). The mounts "in hand" (all but point defense at the console, one at a gun)
+are marked. A point-defense mount picks its own targets, so it is never in hand and has no hit chance.
 
 **Mount names** follow the game's rule by facing (`StationYard.hardpointName`): NOSE, PORT, STBD, AFT.
 Where two mounts share a facing, FWD or AFT goes before it by where they sit along the hull: the
-gunship's are NOSE, FWD PORT, FWD STBD (its point-defence autocannons), AFT PORT and AFT STBD (its
+gunship's are NOSE, FWD PORT, FWD STBD (its point-defense autocannons), AFT PORT and AFT STBD (its
 harpoon launchers).
 
 ```
@@ -1067,7 +1068,7 @@ and coverage overlay as not built.
 
 **Zone.** Left middle, 308 x up to 160.
 
-**Content.** Inbound missiles sorted by impact time: time to impact, bearing, point defence engaging
+**Content.** Inbound missiles sorted by impact time: time to impact, bearing, point defense engaging
 or not, decoy advised. Then the hostile ships in the fight other than the Lock (F1 is the Lock's):
 name, range, state. A click on one locks it.
 
@@ -1291,7 +1292,7 @@ combat with a lock. Outside combat at the helm they are hidden.
 
 ### W6 Missile tracks
 
-Predicted paths, the intercept cross and point-defence kills, as `ThreatOverlay` draws them. Their edge
+Predicted paths, the intercept cross and point-defense kills, as `ThreatOverlay` draws them. Their edge
 arrows join W1's edge markers.
 
 ### W7 Inset views
@@ -1596,7 +1597,7 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 | `ShieldStatusProvider` | New | Whether the ship has an emitter at all; stock, capacity, cloud, scattered, adrift, stowed, raised, lowered for dock, trim, sector thickness (8), emitters (holding, heat, trip) |
 | `PowerStatusProvider` | New | Per circuit: reactors, rated and actual output, store and refill; systems switched on but cut off from every reactor; shorts with their reset time (`DamageStates.AUTO_RESET`, 45 s) and stuns with theirs |
 | Room names | New, in interior-grid | Each compartment's name by section 5.5's rule, kept with the layout |
-| `WeaponStatusProvider` | New | Per mount: name, position, weapon, state, reload, power, stunned, in arc, hit chance on the lock, ammunition, controller; missiles; the decoy's cooldown; point defence active |
+| `WeaponStatusProvider` | New | Per mount: name, position, weapon, state, reload, power, stunned, in arc, hit chance on the lock, ammunition, controller; missiles; the decoy's cooldown; point defense active |
 | `CaptainStatusProvider` | New | Condition and bleed-out, suit on, suit air, local air, carried item |
 | `FlightStatus` | Extend `ShipStatusProvider` or new | Thrust per axis, rotation assist, delta-v left, acceleration, mass, frame velocities |
 | `NavigationProvider` | New, over `Navigation` | Structured readout: nav target, distance, closing, closest approach, next events (burns, apsides with times, SOI changes, impact, arrival), plan Δv |
@@ -1676,4 +1677,5 @@ largest scale, and the centre stays clear.
 | 3 | 1 (art directions' critiques) | One home per datum enforced across every widget: approach distance and closing speed are H3's alone, the lock range the lock card's, the decoy P3's, missile times P3's or F4's, Δv left H1's, plan shortfall H2's, shield settings H7's at the helm and F3's at fire control; P2 details name where, never a value another widget shows. P2 rebuilt as fixed-width rows (severity, 10-character code, detail, handling, timer) with harm and recovery timers; handling shows YOU or a dot per crew member. The captain's suit air leaves P2 for D1, then X3 when critical. Acknowledge for warnings. P3 is two lines. H6 shows the state in one word, FIRING ON YOU as its own flag and the hit chance as a percentage. The starter corvette has no shield emitter, so the shields light, bar, H7 row and F3 appear only on a ship that has one. Room names follow the rule the task design already uses (BRIDGE, HOLD, ...). D3 becomes on-screen tags plus edge pointers. C1 grows to 620 x 250 and gives each reason once. Labels may drop to 12 units. Wireframes redrawn with a check that no text runs past its box; combat and fire control show the gunship |
 | 4 | 2 (self-critique) | Latched to another ship is the Boarding situation, not Docked: the screen is the docked one with X2 in X1's place, and H6 gives way when the latched ship is the Lock. X2 gets its size, an example and a cast-off key; wireframe 13 and walkthrough 11.13 added; the provider must give the party's size and activity. X3 fits under P3: Abandoning replaces Disabled, and a second state shows as one line. P2's "+n more" row lists only the codes that fit. In full-screen modes P1's chip is the master alert cue; docked or latched, the cue stands alone at the bottom centre |
 | 5 | 2 (VFD critique) | X2 gives the state a row of its own (seven rows, 308 x up to 150), so its worst case fits 34 characters. X3 doesn't offer abandoning or a tow while power is due back by itself; P2's NO POWER row counts it down, and walkthrough 11.7 now has a damaged reactor, which is a real emergency. The master alert cue stays lit under X3. Sample data made true to the game: a delivery to the ice mine is 40 Food (it buys food, and the corvette's hold takes 40), and missile times fit what a harpoon or dart can fly (T-4 s at 7.7 km, not T-37 s) |
-| 6 | 2 (NASA-punk critique) | P2 codes use whole words where they fit (HULL DAMAGE, SHIELD DOWN, SHIELD WEAK, SYSTEM DOWN, DOCK STRAIN) and put the noun first (O2 LOW, PRESS LOW): the code field grows to 11 characters and handling shrinks to 3, which still holds YOU, three dots or ●4. The missile impact time must include the missile's closing burn (section 14). Version 5 was wrong to call T-37 s at 7.7 km impossible: it is today's estimate early in a flight that lands in about 22 s; the examples stay, now read by the new estimate. F2 names mounts by the game's facing rule, with FWD and AFT to tell two apart, shows point defence as PD and never in hand, and shows launchers as ready with missiles left (they fire a second apart and only a station restocks them). H5 gains a 5 km step. W3's burn arrow drops its countdown, which is H2's. P4 gains the Shields and Boarding sources. Sample data: the corvette carries three crew, so 11.7's fire has one on it and X2's party is two; the lock sits at 3.4 km, inside the heavy cannon's reach, for its 62%; the latched raider lies over the port side, nose aft |
+| 6 | 2 (NASA-punk critique) | P2 codes use whole words where they fit (HULL DAMAGE, SHIELD DOWN, SHIELD WEAK, SYSTEM DOWN, DOCK STRAIN) and put the noun first (O2 LOW, PRESS LOW): the code field grows to 11 characters and handling shrinks to 3, which still holds YOU, three dots or ●4. The missile impact time must include the missile's closing burn (section 14). Version 5 was wrong to call T-37 s at 7.7 km impossible: it is today's estimate early in a flight that lands in about 22 s; the examples stay, now read by the new estimate. F2 names mounts by the game's facing rule, with FWD and AFT to tell two apart, shows point defense as PD and never in hand, and shows launchers as ready with missiles left (they fire a second apart and only a station restocks them). H5 gains a 5 km step. W3's burn arrow drops its countdown, which is H2's. P4 gains the Shields and Boarding sources. Sample data: the corvette carries three crew, so 11.7's fire has one on it and X2's party is two; the lock sits at 3.4 km, inside the heavy cannon's reach, for its 62%; the latched raider lies over the port side, nose aft |
+| 7 | 3 (VFD critique) | "Point defense" spelled as the game spells it (`point_defense`), so the three designs share one string. H7's missile row is the total across launchers, ready while any can fire; F2 splits it by launcher |

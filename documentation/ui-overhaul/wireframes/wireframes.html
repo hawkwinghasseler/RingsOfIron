@@ -286,13 +286,13 @@ const layouts = {
   }],
   '04': ['Helm, combat (a gunship: it has a shield emitter)', () => {
     strip('HELM          BATTLE STATIONS', 'Day 0 · 00:41     1x');
-    box('P3', 'Threat alert', 390, 38, 500, 60, 'interrupt', ['#2 MISSILES INBOUND · T-4 s', 'decoy ready (F) · point defence engaging']);
+    box('P3', 'Threat alert', 390, 38, 500, 60, 'interrupt', ['#2 MISSILES INBOUND · T-4 s', 'decoy ready (F) · point defense engaging']);
     box('P2', 'Caution and warning', 12, 38, 308, 0, 'cond tight', ['^◆ BREACH      ENGINES    ●']);
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Gunnery: 3 hits on Raider']);
     box('H2', 'Navigation (compact)', 12, 194, 308, 0, 'compact', ['NAV    Shackleton Ice · 1,240 km']);
     stack(960, 194, [
       ['H6', 'Lock card', 'full', ['LOCK  Raider', '      HOSTILE   ◆ FIRING ON YOU', '      3.4 km · closing 12 m/s', '      shot 2.3 s · hit 62% fair'], 110],
-      ['H7', 'Armament', 'full', ['GUNS   ready · you fire', 'MSL    3 left · ready', 'SHLD   raised · trim bow'], 70],
+      ['H7', 'Armament', 'full', ['GUNS   ready · you fire', 'MSL    7 left · ready', 'SHLD   raised · trim bow'], 70],
     ]);
     const h4 = box('H4', 'Ship condition (expanded: the hull light is lit)', 12, 558, 308, 230, 'full', [],
       { h: 118, text: 'ship plan: the breach in ENGINES, the crew sealing it, hit flashes' });
