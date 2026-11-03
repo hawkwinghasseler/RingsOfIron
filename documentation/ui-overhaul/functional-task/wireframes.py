@@ -108,7 +108,7 @@ def ntf(s, rows, y=None):
 
 def ann(s, lit=(), shields=True):
     s.box(16, 72, 240, 64, "ANN", "Annunciator", [], kind="widget")
-    lamps = ["HULL", "FIRE", "AIR", "POWER", "PROP", "DRIVE", "ARMS", "CREW", "EVA", "SHLD"]
+    lamps = ["HULL", "FIRE", "AIR", "POWER", "PROP", "DRIVE", "ARMS", "CREW", "EVA", "SHIELD"]
     if not shields:
         lamps = lamps[:-1]
     for i, name in enumerate(lamps):
@@ -200,7 +200,7 @@ def gunnery_combat(out):
     s.clear_zone()
     s.ship(640, 390)
     chr_(s, "WARP 1x (held: hostiles)", "battle stations")
-    alr(s, ("MISSILE  2 inbound  impact 14 s", "bearing 080   F decoy   point defence engaging"),
+    alr(s, ("MISSILE  2 inbound  impact 14 s", "bearing 080   F decoy   point defense engaging"),
         ("FIRE Hold  Ada", "WOUNDED Cole  no medic"))
     ann(s, [("FIRE", "caut"), ("CREW", "caut")], shields=False)
     s.box(16, 610, 300, 150, "SCH", "Ship (shown: FIRE, CREW lit)", ["", "  [deck plan: fire in the Hold,", "   crew as dots, you at", "   the weapons console]"], kind="cond")
@@ -222,7 +222,7 @@ def gunnery_combat(out):
         "DECOY     READY",
         "(a ship with an emitter adds a",
         " shields row: state, %, trim, 4 sectors)"])
-    s.box(1088, 584, 176, 176, "SNS", "Scope 10 km (auto)", ["", "", "", "", "", "", "", "1 hostile"])
+    s.box(1088, 584, 176, 176, "SNS", "Scope 5 km (auto)", ["", "", "", "", "", "", "", "1 hostile"])
     s.box(400, 734, 360, 26, "HLM", "Helm: Bea   holding 2,000 m off Raider", kind="cond")
     s.box(760, 250, 110, 30, "", "[ Raider 'Vex' ]", kind="world")
     s.box(812, 300, 64, 24, "", "lead +", kind="world")
