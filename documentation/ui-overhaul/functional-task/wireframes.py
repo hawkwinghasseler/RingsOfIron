@@ -200,7 +200,7 @@ def gunnery_combat(out):
     s.clear_zone()
     s.ship(640, 390)
     chr_(s, "WARP 1x (held: hostiles)", "battle stations")
-    alr(s, ("MISSILE  2 inbound  impact 14 s", "bearing 080   F decoy   point defense engaging"),
+    alr(s, ("MISSILE  2 inbound  impact 14 s", "F decoy   point defense engaging"),
         ("FIRE Hold  Ada", "WOUNDED Cole  no medic"))
     ann(s, [("FIRE", "caut"), ("CREW", "caut")], shields=False)
     s.box(16, 610, 300, 150, "SCH", "Ship (shown: FIRE, CREW lit)", ["", "  [deck plan: fire in the Hold,", "   crew as dots, you at", "   the weapons console]"], kind="cond")

@@ -1,6 +1,6 @@
 # UI Overhaul: Task-Driven Functional Spec
 
-Functional designer 2 of 3. Round 6.
+Functional designer 2 of 3. Round 7.
 
 This spec rebuilds the game's interface from the decisions a player makes, not from the panels the game has today. It says what each widget and screen contains, where it sits, and when it is visible. It says nothing about how anything looks: three artist threads (Nasa-punk, 90s VFD, Cassette-futurism) skin it, and section 12 lists what they are free to change and what they must keep.
 
@@ -99,7 +99,7 @@ Every row is a decision the game asks of the player. "Minimum information" is wh
 | C2 | Choose a target | Which one matters most? | For the candidates: firing on me, range, closing, state (beaten, struck), a bounty on it | Tab, click | s |
 | C3 | Shoot | Will a shot hit now? | Lead point, each gun's readiness, whether the target is in its arc and effective range, time of flight | Space, pointer | s |
 | C4 | Launch a missile | Is a launch worth it now? | Launcher ready, missiles left, target in the missile's reach | R | s |
-| C5 | Survive missiles | How long till impact, from where, what can I do? | Per inbound missile: time to impact and bearing; the decoy ready, or how long until it is (decoys are unlimited, one every 3 s); point defense engaging | F, manoeuvre, shields | s |
+| C5 | Survive missiles | How long till impact, from where, what can I do? | How many, and the time to the first impact; where each comes from, drawn in the world (its path, or an edge arrow) rather than given as a bearing; the decoy ready, or how long until it is (decoys are unlimited, one every 3 s); point defense engaging | F, manoeuvre, shields | s |
 | C6 | Shields | Up or down, and which side thick? | Up, down or stowing; strength by side; trim; heat or tripped | 9, 8 | s |
 | C7 | Judge the fight | Am I winning? Is it beaten? | Target state and a coarse hull estimate; my own hull, power and guns as states, not numbers | Keep firing, cease, run, board | s |
 | C8 | Stop firing on a prize | Has it struck? Will firing again provoke it? | Struck or surrendered, and that firing lifts the surrender after the grace | Cease fire, next target | s |
@@ -336,7 +336,7 @@ Serves F7, F9.
 Serves C1, C2, F2.
 
 - **Shows:** contacts around the ship, north up like the view; shape for what it is (ship, station, missile, derelict, pod), treatment for relation (section 9.4); the locked target and the navigation target marked differently; your heading as a line; contacts beyond range on the rim; the range. Below it, the count of hostiles when there are any (missiles are counted by the alert band).
-- **Range:** automatic by default: the smallest step (0.5, 2, 5, 10, 50, 250, 1,000 km; the 5 km step is new, for the corvette's 4 km reach) that holds, with room to spare, every inbound missile and the locked target; with neither, the nearest hostile; else the nearest contact. Two harpoons at 1.4 km and a raider at 3.2 km give 5 km, where both read clear of the own-ship mark. The minus and plus buttons override it until the post changes.
+- **Range:** automatic by default: the smallest step (0.5, 2, 5, 10, 50, 250, 1,000 km; the 5 km step is new, for the corvette's 4 km reach) that holds, with room to spare, every inbound missile and the locked target; with neither, the nearest hostile; else the nearest contact. A raider at 3.2 km and the two harpoons it has just thrown (impact in about 14 s, by 9.2's formula) give 5 km, where both read well clear of the own-ship mark.
 - **Visible:** helm and gunnery, undocked, not warping. Docked, only while a hostile is within 50 km.
 - **Acts:** clicking a contact locks it (a sensor contact) or makes it the navigation target (a station or other object), as today.
 - **Replaces:** the radar panel and its title.
@@ -590,7 +590,7 @@ Every alert has a full text, which names its action, and a short form of about 2
 
 | Id | Level | When | Full text, with the action | Short form | Lamp |
 |---|---|---|---|---|---|
-| MISSILE | Warning under 20 s to impact, else caution (the time includes the missile's burn, below) | Missiles inbound (`FlightWarnings.inbound`) | `MISSILE  2 inbound  impact 14 s  bearing 080   F decoy` | `MISSILE 2  38 s` | - |
+| MISSILE | Warning under 20 s to impact, else caution (the time includes the missile's burn, below) | Missiles inbound (`FlightWarnings.inbound`) | `MISSILE  2 inbound  impact 14 s   F decoy` | `MISSILE 2  38 s` | - |
 | COLLISION | Warning | Time to contact under 10 s at more than the safe speed | `COLLISION  Highport in 6 s   brake` | `COLLISION  6 s` | - |
 | IMPACT | Warning under 10 min, else caution | Periapsis below the surface | `SURFACE IMPACT in 8:20   raise periapsis (M)` | `IMPACT 1:20:00  M` | - |
 | DISABLED | Warning | The ship is disabled | `SHIP DISABLED  no reactor running   options below` (opens CRS) | `DISABLED  no reactor` | as the cause |
@@ -825,3 +825,4 @@ Each has the default this spec assumes until he answers.
 | 4 | From the Cassette thread's round 1 notes, checked against the code: FLT has four modes and hides in rails warp, since the chronometer already carries the rate, the next stop and what holds warp. HLM never shows a countdown, and BURN names who flies only when it is you or the flight computer. The BURN and CRUISE samples lost their apoapsis and closing speed (the map's and the target card's). The crisis hint line is F1 alone. No key repeats on the hint line when a mode, an alert or the interaction prompt already shows it. Every alert has a short form of about 22 characters for the caution row, with the full text on hover, in the book and in the log. The departure check is the whole roster aboard, not berths (the corvette berths 8). Samples use the game's starter crew: Ada the engineer, Bea the helmsman, Cole the marine. Markers carry names, never numbers, so a missile's time to impact is the band's alone. From this designer's own review: the chronometer at rest no longer says `nothing planned`, and rotation assist shows only when it is off (principle 3). |
 | 5 | From the VFD thread's round 2 notes: every short form is two parts joined by a double space, which a style may break into two lines of up to 19 characters; `+n` gets a reserved narrow slot at the end of the caution row, so no caution moves when it appears; the band is 640 wide to make room for it; a screen starts below the band wherever a style puts it, not at a fixed 100 units; the interaction prompt names its object once, then each key with a verb (`Helm   V sit`). Whether caution slots are fixed or sized to their text is now the style's choice, so the VFD's fixed windows and the Cassette's sized cells both hold. |
 | 6 | From the Nasa-punk thread's round 3 notes, checked against the code: every impact countdown includes the missile's burn, since today's constant-speed estimate reads 20 s with 12 s left from 7.7 km, so the 20 s warning now means 20 s; the scope's automatic range holds every inbound missile and the locked target, with a new 5 km step for the corvette's 4 km reach; the lamp is SHIELD, as the alert and the prose are; point defense is spelled as the game spells it. |
+| 7 | From the VFD thread's round 3 notes: the gunnery samples now agree with 9.2's time-to-impact formula (harpoons just thrown from 3.2 km land in about 14 s; at 1.4 km they would be 4 s away). The missile alert no longer gives a bearing, which had no stated reference (north-up view, a ship's bow, or the console's counterclockwise convention could each be meant): direction is drawn in the world, by the missile's path or an edge arrow, and on the scope (principle 5), so the band carries the count, the time and the action. |
