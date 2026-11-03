@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 7.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 8.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -508,7 +508,8 @@ Budget: six tiles of 150 (900), the chronometer 188.
 | Helm | Yellow | SENSORS | NAV, folded |
 | Helm | Red | SENSORS | DAMAGE |
 | Helm | Docked | DOCK | CARGO, folded |
-| Weapons | Green, Yellow | SENSORS | WEAPONS |
+| Weapons | Green | SENSORS, folded | WEAPONS, folded |
+| Weapons | Yellow | SENSORS | WEAPONS, folded (the cluster already shows each gun; the page adds weapon, time of flight and crew) |
 | Weapons | Red | SENSORS | DEFENSE; DAMAGE on a hull with no shield emitter, where DEFENSE would only repeat the cluster's decoy and point defence |
 
 - **Auto-paging**: when a caution or warning is raised, the right MFD unfolds and turns to the alert's home page, unless the player pinned it; then the left MFD does, unless it is pinned too. When the alert clears, after 10 s, the MFD goes back to what it showed before, folded again if it was. With several alerts, the most severe and then the newest has the MFD; the rest wait on the annunciator.
@@ -1177,7 +1178,7 @@ For whoever builds this; nothing here is binding on the art.
 | `Visibility` | A pure function from (presence, condition, states, open panel) to the visible widgets: section 14 as code, unit-tested row by row |
 | `ShieldStatusProvider` | Shield mass, segments, trim and emitters for DEFENSE (the model has the data; the provider is new) |
 
-**New data needed.** The POWER page needs nothing new: reactor rating and output, each circuit's store, and each system's switch, circuit, short with its reclose timer, stun, health and destruction are all in interior-grid today. What is new: collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); crew assignment per station (ai-crew's `ManConsoleTask`); hours of air at the current crew.
+**New data needed.** The POWER page needs nothing new: reactor rating and output, each circuit's store, and each system's switch, circuit, short with its reclose timer, stun, health and destruction are all in interior-grid today. The tactical cluster needs nothing new either: each gun's hit chance (`HitChance`, as `FireArcOverlay` already computes it), a beam's strength (`WeaponMountComponent.beamStrength`), charging (the circuit's store against the shot's energy, `power_draw` times cooldown), firing arcs, point defence's missile targets, magazines and the salvo size are all there. What is new: collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); crew assignment per station (ai-crew's `ManConsoleTask`); hours of air at the current crew.
 
 **Order of work.** Each step leaves a playable game:
 
@@ -1206,6 +1207,13 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 8 (self-critique while the artists redraw)
+
+| Problem found | Change |
+|---|---|
+| The helm folds its MFDs in Green, but the weapons seat kept both open in Green and Yellow, and its right MFD (WEAPONS) mostly repeated the cluster's gun chips | At the weapons seat both MFDs fold in Green, and WEAPONS stays folded in Yellow until asked for, as NAV does at the helm (9.1) |
+| The implementation notes didn't say whether the tactical cluster's new chip states (hit chance, beam strength, charging, engaging) need new game data | They don't: each one's source is named (19) |
 
 ### Round 7 (self-audit: the walkthroughs' remaining numbers)
 
