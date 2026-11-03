@@ -267,6 +267,11 @@ public class PlayerGunnery {
         return true;
     }
 
+    /** Seconds until the next decoy can be thrown, 0 when it can. */
+    public float decoyCooldown() {
+        return decoyCooldown;
+    }
+
     public void update(float delta) {
         decoyCooldown = Math.max(0f, decoyCooldown - delta);
         continueSalvo();

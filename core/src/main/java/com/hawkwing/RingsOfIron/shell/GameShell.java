@@ -22,6 +22,7 @@ import com.ringsofiron.audiospatial.AudioManager;
 import com.ringsofiron.audiospatial.backend.MixLevels;
 import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.UiScale;
+import com.ringsofiron.uihud.variants.HudVariants;
 import com.ringsofiron.uihud.UiHud;
 
 import java.nio.file.Path;
@@ -97,6 +98,9 @@ public class GameShell implements ApplicationListener {
         // -Dui.scale (playtests) overrides the player's choice for the run
         String scale = System.getProperty("ui.scale");
         UiScale.setChosen(scale != null ? parseScale(scale, settings.uiScale) : settings.uiScale);
+        // -Dhud.variant (playtests, screenshots) overrides the player's HUD for the run
+        String variant = System.getProperty("hud.variant");
+        HudVariants.setChosen(variant != null ? variant : settings.hudVariant);
         bindings = settings.bindings();
         pad = new GamepadKeys();
         pad.setEnabled(settings.gamepad);
@@ -451,6 +455,7 @@ public class GameShell implements ApplicationListener {
         applyAudio();
         if (hrtfChanged && game != null) game.getWorld().audio.setHrtf(settings.hrtf);
         if (displayChanged) applyDisplay(settings);
+        HudVariants.setChosen(settings.hudVariant);
         if (UiScale.getChosen() != settings.uiScale) {
             UiScale.setChosen(settings.uiScale);
             resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());

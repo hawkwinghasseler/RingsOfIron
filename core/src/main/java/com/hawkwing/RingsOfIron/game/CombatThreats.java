@@ -8,12 +8,14 @@ import com.badlogic.gdx.math.Vector2;
 import com.ringsofiron.combatsys.ContactState;
 import com.ringsofiron.combatsys.components.MissileComponent;
 import com.ringsofiron.combatsys.components.ProjectileComponent;
+import com.ringsofiron.combatsys.fire.ImpactTime;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 
 /**
  * ui-hud's missile overlay from combat-sys: every missile in flight, whose it is, and for one with a
- * target, where and when it meets that target if both hold their course. Missiles still accelerate,
- * so the time is an upper bound that shrinks as the motor burns.
+ * target, where and when it meets that target. The path's end is the closest approach if both hold
+ * their course; the time to impact counts the missile's closing burn while its fuel lasts
+ * ({@link ImpactTime}), so it does not run long while the motor burns.
  */
 public class CombatThreats implements ThreatProvider {
     /** How far ahead to draw a missile with no target, seconds. */
@@ -49,8 +51,19 @@ public class CombatThreats implements ThreatProvider {
             float tca = ContactState.read(target, targetPos, targetVel)
                     ? closestApproach(p.pos.x - targetPos.x, p.pos.y - targetPos.y, p.vel.x - targetVel.x, p.vel.y - targetVel.y)
                     : Float.NaN;
+            if (!Float.isNaN(tca)) {
+                float rx = targetPos.x - p.pos.x, ry = targetPos.y - p.pos.y;
+                float range = (float) Math.sqrt(rx * rx + ry * ry);
+                float closing = range < 1e-3f ? 0f : ((p.vel.x - targetVel.x) * rx + (p.vel.y - targetVel.y) * ry) / range;
+                t.range = range;
+                t.closingSpeed = closing;
+                t.closestApproach = tca;
+                float impact = ImpactTime.of(m, range, closing);
+                impact = Float.isNaN(impact) ? tca : Math.min(tca, impact);
+                // Far off, as before: no countdown until it is within the lookahead
+                if (impact <= MAX_LOOKAHEAD) t.timeToImpact = impact;
+            }
             if (!Float.isNaN(tca) && tca <= MAX_LOOKAHEAD) {
-                t.timeToImpact = tca;
                 t.pathX = targetPos.x + targetVel.x * tca;
                 t.pathY = targetPos.y + targetVel.y * tca;
             } else {

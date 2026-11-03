@@ -9,6 +9,13 @@ The `ui-hud` module handles all visual rendering that isn't directly part of the
 - **`interior-grid`**: Needs access to the ship's 2D tile layout to generate the wireframe mini-map.
 - **External Libraries:** LibGDX `Scene2D.UI`.
 
+## HUD variants
+
+The HUD described below is the classic one, and the default. The nine UI overhaul HUDs (three
+functional specs by three art directions) draw in their own layer from a common data layer and hide
+the classic pieces they replace; the player picks one in Settings, Interface, HUD. The framework,
+the data layer and what a variant must implement are in [Variants.md](Variants.md).
+
 ## Implementation Guide
 To implement this module independently (mocking data providers):
 

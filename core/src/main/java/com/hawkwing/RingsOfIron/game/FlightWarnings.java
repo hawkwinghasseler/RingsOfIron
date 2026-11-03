@@ -111,6 +111,16 @@ public final class FlightWarnings {
         ctx.notices.post(said, NoticeLog.Kind.WARNING);
     }
 
+    /** Whether propellant is low now: warned of and not yet filled back past the clear mark. */
+    public boolean propellantLow() {
+        return lowWarned;
+    }
+
+    /** The last estimate of the propellant the trip home takes, kg, or NaN when there is none. */
+    public double homePropellantKg() {
+        return returnKg;
+    }
+
     /** Navigation's estimate of the trip home, kg, or NaN when there is none or it isn't finite. */
     private double returnKg() {
         double kg = returnPropellantKg == null ? Double.NaN : returnPropellantKg.getAsDouble();

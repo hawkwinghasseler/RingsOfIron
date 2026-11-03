@@ -24,8 +24,13 @@ public final class HostileLabel {
 
     /** {@code ship}'s label: silenced, struck, running or fit, or the reason it is disabled (NO_POWER, WRECKED...). */
     public static String of(GameWorld world, Entity ship) {
+        return of(world.pirateBase, ship);
+    }
+
+    /** {@link #of(GameWorld, Entity)}, with the pirates' base (null for none). */
+    public static String of(PirateBase base, Entity ship) {
         HostileComponent h = ship.getComponent(HostileComponent.class);
-        if (h != null && world.pirateBase.silenced(h.displayName)) return SILENCED;
+        if (h != null && base != null && base.silenced(h.displayName)) return SILENCED;
         DisabledComponent d = ship.getComponent(DisabledComponent.class);
         if (d != null) return d.reason == DisabledComponent.Reason.SURRENDERED ? STRUCK : d.reason.name();
         return h != null && h.brokeOff ? RUNNING : FIT;

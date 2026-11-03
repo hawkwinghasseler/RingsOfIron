@@ -53,6 +53,11 @@ import com.ringsofiron.uihud.widgets.ShipyardWindow;
 import com.ringsofiron.uihud.widgets.TradeWindow;
 import com.ringsofiron.uihud.widgets.BoardingWindow;
 import com.ringsofiron.uihud.widgets.YardWindow;
+import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.HudVariant;
+import com.ringsofiron.uihud.variants.HudVariantHost;
+import com.ringsofiron.uihud.variants.HudVariants;
 
 /**
  * Entry point to the ui-hud module: builds the Scene2D stage, the HUD widgets and the ECS
@@ -74,6 +79,10 @@ import com.ringsofiron.uihud.widgets.YardWindow;
  * crew roster, Y the station yard (while docked at one) or, away from a yard, the crew's field refit. The shipyard opens from
  * the yard window's Ships for sale (while docked where ships are sold), or from Y with a prize in tow
  * near a station.
+ *
+ * <p>The HUD is drawn by the classic panels or by one of the UI overhaul variants ({@link HudVariants},
+ * picked in Settings, Interface, HUD). A variant draws in its own layer from {@link #getData()}, the
+ * common data layer, and hides the classic panels it replaces ({@link ClassicPart}).
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -84,6 +93,15 @@ public class UiHud implements Disposable {
     private Runnable viewKey;
 
     private final Group markerLayer = new Group();
+    /** The HUD variant's layer: above the classic panels, below the windows and the map. */
+    private final Group variantLayer = new Group();
+    private final HudData data = new HudData();
+    /** The variant drawing now, or null for the classic HUD, and its id. */
+    private HudVariant variant;
+    private String variantId = HudVariants.CLASSIC;
+    /** Classic parts hidden by the variant, enforced each frame. */
+    private final java.util.EnumSet<ClassicPart> hidden = java.util.EnumSet.noneOf(ClassicPart.class);
+    private Table promptRowRef;
     private final WireframeMinimap minimap;
     private final Table minimapPanel;
     private final Table flightPanel;
@@ -223,6 +241,8 @@ public class UiHud implements Disposable {
         dockRow.top().padTop(100f);
         dockRow.add(dockHint);
         stage.addActor(dockRow);
+        variantLayer.setTouchable(Touchable.childrenOnly);
+        stage.addActor(variantLayer);
         tradeWindow = new TradeWindow(skin, dockHint);
         yardWindow = new YardWindow(skin);
         missionWindow = new MissionWindow(skin);
@@ -267,17 +287,8 @@ public class UiHud implements Disposable {
         radarSystem = new RadarSystem(radar);
         navMarkerSystem = new NavMarkerSystem(viewports, navMarkers);
 
-        viewMode.addListener((previous, current) -> {
-            boolean exterior = current == ViewMode.EXTERIOR;
-            markerLayer.setVisible(exterior);
-            // In the interior view the full deck plan is on screen, so the minimap is redundant.
-            minimapPanel.setVisible(exterior);
-            orbitPanel.setVisible(exterior);
-            threatOverlay.setVisible(exterior);
-            radarPanel.setVisible(exterior);
-            // Seated and looking outside there is no deck to walk: the console prompt only confused
-            promptRow.setVisible(!exterior);
-        });
+        promptRowRef = promptRow;
+        viewMode.addListener((previous, current) -> applyViewMode(current));
 
         stage.addListener(new InputListener() {
             @Override
@@ -298,8 +309,28 @@ public class UiHud implements Disposable {
         return interactPromptSystem;
     }
 
+    /** Shows the classic panels the view {@code mode} shows. */
+    private void applyViewMode(ViewMode mode) {
+        boolean exterior = mode == ViewMode.EXTERIOR;
+        markerLayer.setVisible(exterior);
+        // In the interior view the full deck plan is on screen, so the minimap is redundant.
+        minimapPanel.setVisible(exterior);
+        orbitPanel.setVisible(exterior);
+        threatOverlay.setVisible(exterior);
+        radarPanel.setVisible(exterior);
+        // Seated and looking outside there is no deck to walk: the console prompt only confused
+        promptRowRef.setVisible(!exterior);
+        applyHidden();
+    }
+
     /** Handles HUD keys. Public so games that route input themselves can forward keys. */
     public boolean handleKey(int keycode) {
+        if (handleClassicKey(keycode)) return true;
+        // Keys the HUD did not use go to the variant, unless a window has the keys
+        return variant != null && openWindow() == null && !isMapOpen() && variant.keyDown(keycode);
+    }
+
+    private boolean handleClassicKey(int keycode) {
         // The open window has the arrow keys and Enter, for the keyboard and the pad
         com.badlogic.gdx.scenes.scene2d.Group window = openWindow();
         if (window != focusWindow) {
@@ -452,11 +483,13 @@ public class UiHud implements Disposable {
     }
 
     public void setPhysics(PhysicsManager physics) {
+        data.physics = physics;
         flightReadoutSystem.setPhysics(physics);
         navMarkerSystem.setPhysics(physics);
     }
 
     public void setTargeting(TargetingProvider targeting) {
+        data.targeting = targeting;
         hudRenderSystem.setTargeting(targeting);
         flightReadoutSystem.setTargeting(targeting);
         radarSystem.setTargeting(targeting);
@@ -465,6 +498,7 @@ public class UiHud implements Disposable {
 
     /** Feeds the propellant, structure, power and oxygen gauges; null leaves them reading "--". */
     public void setShipStatus(ShipStatusProvider status) {
+        data.ship = status;
         gauges.setProvider(status);
     }
 
@@ -481,6 +515,7 @@ public class UiHud implements Disposable {
     }
 
     public void setOrbitInfo(OrbitInfoProvider orbitInfo) {
+        data.orbitInfo = orbitInfo;
         flightReadoutSystem.setOrbitInfo(orbitInfo);
     }
 
@@ -500,12 +535,14 @@ public class UiHud implements Disposable {
     }
 
     public void setInteractor(InteractorProvider interactor) {
+        data.interactor = interactor;
         interactPromptSystem.setInteractor(interactor);
         wireframeSyncSystem.setInteractor(interactor);
     }
 
     /** Feeds the missile overlay and warning banner; null clears them. */
     public void setThreats(ThreatProvider threats) {
+        data.threats = threats;
         threatOverlay.setProvider(threats);
     }
 
@@ -621,6 +658,12 @@ public class UiHud implements Disposable {
     public void draw(float delta) {
         viewports.applyUi();
         placeBanner();
+        syncVariant();
+        if (variant != null) {
+            data.refresh();
+            variant.update(delta);
+        }
+        applyHidden();
         stage.act(delta);
         stage.draw();
     }
@@ -629,6 +672,86 @@ public class UiHud implements Disposable {
         viewports.resize(width, height);
         // A new UI scale: the text is drawn again for it, and everything laid out around the new sizes
         if (HudSkin.rescale(skin, viewports.getUiScale())) relayout(stage.getRoot());
+        if (variant != null) variant.resize(width, height, viewports.getUiScale());
+    }
+
+    // --- HUD variants -----------------------------------------------------------------------
+
+    /** The common data layer the variants read. The game sets its providers and raises its alerts. */
+    public HudData getData() {
+        return data;
+    }
+
+    /** The id of the variant drawing now ({@link HudVariants}). */
+    public String getVariantId() {
+        return variantId;
+    }
+
+    /** The variant drawing now, or null for the classic HUD. */
+    public HudVariant getVariant() {
+        return variant;
+    }
+
+    /** Whether the classic HUD's {@code part} is up under the variant drawing now. */
+    public boolean keepsClassic(ClassicPart part) {
+        return !hidden.contains(part);
+    }
+
+    /** Switches to {@link HudVariants#getChosen()} if that is not the variant drawing now. */
+    private void syncVariant() {
+        String chosen = HudVariants.getChosen();
+        if (!chosen.equals(variantId)) setVariant(chosen);
+    }
+
+    /**
+     * Draws the HUD with the variant {@code id} ({@link HudVariants}) from now on, or the classic HUD
+     * for "classic" or an id that is unknown. The game normally sets {@link HudVariants#setChosen}
+     * and the HUD follows on its next frame.
+     */
+    public void setVariant(String id) {
+        HudVariants.Entry entry = HudVariants.find(id);
+        if (variant != null) {
+            variant.detach();
+            variantLayer.clearChildren();
+            variant = null;
+        }
+        variantId = entry.id;
+        hidden.clear();
+        HudVariant next = entry.create();
+        if (next != null) {
+            try {
+                next.attach(new HudVariantHost(this, variantLayer));
+                variant = next;
+                for (ClassicPart p : ClassicPart.values()) if (!next.keeps().contains(p)) hidden.add(p);
+                variant.resize(com.badlogic.gdx.Gdx.graphics == null ? 0 : com.badlogic.gdx.Gdx.graphics.getWidth(),
+                        com.badlogic.gdx.Gdx.graphics == null ? 0 : com.badlogic.gdx.Gdx.graphics.getHeight(), viewports.getUiScale());
+            } catch (RuntimeException e) {
+                // A variant that cannot start leaves the classic HUD up rather than none
+                variantLayer.clearChildren();
+                hidden.clear();
+                variant = null;
+                variantId = HudVariants.CLASSIC;
+                if (com.badlogic.gdx.Gdx.app != null) com.badlogic.gdx.Gdx.app.error("UiHud", "HUD variant " + entry.id + " failed to start", e);
+            }
+        }
+        // Everything the last variant hid comes back as the view shows it, then this one's hiding applies
+        flightPanel.setVisible(true);
+        gauges.setVisible(true);
+        bannerRow.setVisible(true);
+        applyViewMode(viewMode.getMode());
+    }
+
+    /** Hides the classic parts the variant does not keep. Each frame, since the view mode shows some again. */
+    private void applyHidden() {
+        if (hidden.isEmpty()) return;
+        if (hidden.contains(ClassicPart.FLIGHT_PANEL)) flightPanel.setVisible(false);
+        if (hidden.contains(ClassicPart.GAUGES)) gauges.setVisible(false);
+        if (hidden.contains(ClassicPart.RADAR)) radarPanel.setVisible(false);
+        if (hidden.contains(ClassicPart.SHIP_PANEL)) minimapPanel.setVisible(false);
+        if (hidden.contains(ClassicPart.ORBIT_PANEL)) orbitPanel.setVisible(false);
+        if (hidden.contains(ClassicPart.MISSILE_BANNER)) bannerRow.setVisible(false);
+        if (hidden.contains(ClassicPart.THREAT_OVERLAY)) threatOverlay.setVisible(false);
+        if (hidden.contains(ClassicPart.WORLD_MARKERS)) markerLayer.setVisible(false);
     }
 
     private static void relayout(com.badlogic.gdx.scenes.scene2d.Actor a) {
@@ -699,6 +822,10 @@ public class UiHud implements Disposable {
 
     @Override
     public void dispose() {
+        if (variant != null) {
+            variant.detach();
+            variant = null;
+        }
         stage.dispose();
         skin.dispose();
     }

@@ -26,8 +26,16 @@ public interface ThreatProvider {
         public float x, y;
         /** End of the predicted path: the intercept point for a missile with a target, else a few seconds ahead. */
         public float pathX, pathY;
-        /** Seconds to closest approach with its target, or NaN if it is not closing. */
+        /**
+         * Seconds until it reaches its target with its closing burn counted while it still has fuel
+         * above its terminal reserve, or NaN if it is not closing. Shorter than
+         * {@link #closestApproach} while the motor burns.
+         */
         public float timeToImpact = Float.NaN;
+        /** Seconds to closest approach at the present closing speed, or NaN if it is not closing. */
+        public float closestApproach = Float.NaN;
+        /** Distance to its target, m, and the closing speed, m/s; NaN with no target. */
+        public float range = Float.NaN, closingSpeed = Float.NaN;
         /** Motor burning (drawn brighter). */
         public boolean burning;
     }
@@ -40,6 +48,9 @@ public interface ThreatProvider {
             MissileTrack m = pool.size > 0 ? pool.pop() : new MissileTrack();
             m.side = Side.OTHER;
             m.timeToImpact = Float.NaN;
+            m.closestApproach = Float.NaN;
+            m.range = Float.NaN;
+            m.closingSpeed = Float.NaN;
             m.burning = false;
             missiles.add(m);
             return m;

@@ -121,8 +121,8 @@ public final class GameBootstrap {
 
         session.arm();
         session.docking = new PlayerDocking(world.avatar, world.docking, world.cargo, world.yard, () -> game.player, session::show);
-        pipeline.setNavigation(new NavOverlay(world.context, world.docking, world.nav, session.docking),
-                new FireArcOverlay(world.context, world.bridge, world.docking, world.sensors, world.weaponControl));
+        FireArcOverlay fireArcs = new FireArcOverlay(world.context, world.bridge, world.docking, world.sensors, world.weaponControl);
+        pipeline.setNavigation(new NavOverlay(world.context, world.docking, world.nav, session.docking), fireArcs);
         world.nav.keyNames = session::key;
         // Off-screen marker names by the right edge keep clear of the status column, which is drawn
         // outside the stage: as far down as it reached last frame
@@ -134,7 +134,17 @@ public final class GameBootstrap {
         hud.getManeuverMap().setPickListener(uuid -> world.notices.replace("Navigation target", world.nav.target.select(uuid)));
         // A click on a radar contact selects it as a click on the outside view does
         hud.getRadar().setPickListener(input::selectContact);
-        session.gameHud.yard.setLayoutEditor(refit::open);
+        // The HUD variants' weapon rows read the player's fire control, which a load or a new ship replaces
+        session.gameHud.weapons.gunnery = session::gun;
+        session.gameHud.weapons.odds = fireArcs::hitChance;
+        hud.getData().keyNames = name -> {
+            try {
+                return session.key(Action.valueOf(name));
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        };
+                session.gameHud.yard.setLayoutEditor(refit::open);
         session.gameHud.yard.setFurnisher(placing::start);
         world.combatEvents.intercepts.add((signal, hit) -> {
             if (hit.destroyed && hit.missile != null) pipeline.explode(hit.point.x, hit.point.y);

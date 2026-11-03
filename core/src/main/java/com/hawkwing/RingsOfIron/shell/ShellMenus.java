@@ -20,6 +20,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.hawkwing.RingsOfIron.BuildInfo;
 import com.ringsofiron.uihud.UiScale;
+import com.ringsofiron.uihud.variants.HudVariants;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -366,6 +367,22 @@ class ShellMenus {
         t.add(uiScale).width(160f).left();
         t.add(scaleNote).left().row();
 
+        // Which HUD draws the game: the classic one or a UI overhaul variant (HudVariants)
+        t.add(new Label("Interface", skin, "title")).left().colspan(3).padTop(10f).row();
+        SelectBox<String> hud = new SelectBox<>(skin);
+        Array<String> huds = new Array<>();
+        for (HudVariants.Entry e : HudVariants.all()) huds.add(e.label());
+        hud.setItems(huds);
+        hud.setSelected(HudVariants.find(s.hudVariant).label());
+        hud.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                s.hudVariant = HudVariants.all().get(hud.getSelectedIndex()).id;
+            }
+        });
+        t.add(new Label("HUD", skin, "dim")).left();
+        t.add(hud).width(240f).left().colspan(2).row();
+
         t.add(new Label("Controls", skin, "title")).left().colspan(3).padTop(10f).row();
         CheckBox gamepad = new CheckBox(" Gamepad", skin);
         gamepad.setChecked(s.gamepad);
@@ -525,6 +542,7 @@ class ShellMenus {
         c.windowWidth = s.windowWidth;
         c.windowHeight = s.windowHeight;
         c.uiScale = s.uiScale;
+        c.hudVariant = s.hudVariant;
         c.gamepad = s.gamepad;
         c.openingGuide = s.openingGuide;
         c.keys = new ObjectMap<>(s.keys);
