@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 4.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 5.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -84,7 +84,7 @@ A **station** is a job: a set of pages, controls, symbology and alerts. A **cons
 Borrowed from the "dark cockpit" philosophy of airliner flight decks: when every system is normal, no light is lit. A widget whose content is nominal, empty or unchanged is hidden or folded. The player learns that anything on screen means something.
 
 ### 3.5 Modes are always shown
-The exception to 3.4. A **mode** is a setting that changes how the controls or the ship respond: rotation assist, the velocity frame, a helm order or the autopilot in force, shields raised or lowered, a gun held or firing at will. Modes are not values that can be "nominal", so the active mode is always shown where it applies, compactly, the way an aircraft's flight-mode annunciator always shows what is engaged.
+The exception to 3.4. A **mode** is a setting that changes how the controls or the ship respond: rotation assist, the velocity frame, a helm order or the autopilot in force, shields raised or lowered, who fires a gun (a crew member at will, the player in hand, or only the trigger). Modes are not values that can be "nominal", so the active mode is always shown where it applies, compactly, the way an aircraft's flight-mode annunciator always shows what is engaged.
 
 ### 3.6 Alerts pull information forward
 Information moves up the disclosure tiers when its state becomes abnormal and back down when it recovers. The player should never have to go looking for something that is going wrong; they should have to go looking for things that are going right.
@@ -213,7 +213,7 @@ Fallback rules, so no hull loses a function:
 | Cluster (weapons seat) | Fire-control strip: a chip per mount, launchers, decoys, point defence, shields, target with hit chance (8.3) |
 | Cluster (gun seat) | Gunner sight (8.4) |
 | Symbology | Hostile brackets with class; lead reticle and intercept lines showing the hit chance (`FireArcOverlay`); fire arcs of guns in hand; threat tracks with impact cross (`ThreatOverlay`); point-defence kill marks; picture-in-picture optics on the target |
-| MFD pages | SENSORS (radar scope and contact list), WEAPONS (mounts: weapon, ammunition, state, who works it, at will or held), DEFENSE (shield coverage around the hull, mass, trim, emitters; decoys; point defence) |
+| MFD pages | SENSORS (radar scope and contact list), WEAPONS (mounts: weapon, ammunition where limited, state, who works it and so how it fires), DEFENSE (shield coverage around the hull, mass, trim, emitters; decoys; point defence) |
 | Console panel tab | **Tactical board**: SENSORS' contact table at full size, WEAPONS with hold and free per gun, DEFENSE |
 | Manned by crew | Gunners fire at will on hostiles in range (`GunCrews`). Callouts: hostile in range, launching, dart down, target struck, gun out of action |
 | Alerts owned | Missile inbound; fired upon; boarders latched (`PirateBoarding`); shield emitter tripped; shield cloud low; launcher empty; gun destroyed or stunned |
@@ -236,15 +236,15 @@ The DEFENSE page is the "HUD gauge and coverage overlay" that the combat design 
 
 ### 5.6 Comms & Cargo
 
-**Job:** the ship's dealings with others: clearance, hails, the beacon, the hold, and the station's services while docked.
+**Job:** the ship's dealings with others: clearance, what stations say, the beacon, the hold, and the station's services while docked.
 
 | Item | Content |
 |---|---|
 | Cluster | None; clearance shows in the helm's docking mode |
 | MFD pages | COMMS (clearance, ports and their state, beacon, standing with the nearest station's faction), CARGO (hold: volume used, each cargo and its value; the latched ship's hold when latched) |
-| Console panel tab | Comms: ports and clearance, beacon (with its fee and standing cost), hails log; Cargo: the manifest |
+| Console panel tab | Comms: ports and clearance, beacon (with its fee and standing cost), messages (what stations have said: clearance, refusals, warnings such as venting at the berth); Cargo: the manifest |
 | Station link | Docked only, anywhere aboard: Market, Yard, Shipyard, Contract board, Hiring, Infirmary as tabs of one panel (10.3) |
-| Manned by crew | No comms role today; whoever has the helm answers hails in callouts |
+| Manned by crew | No comms role today; station messages come through the ticker as COMMS lines from the station's name |
 | Alerts owned | Clearance refused; stations will refuse the ship after a hostile act; clearance granted, hold full (advisories) |
 | Data | `PlayerDocking`, `DistressBeacon`, `TradeProvider`, `YardProvider`, `ShipyardProvider`, `MissionProvider` (offers), `CrewProvider` (hires), `StationInfirmary` |
 
@@ -256,7 +256,7 @@ The DEFENSE page is the "HUD gauge and coverage overlay" that the combat design 
 |---|---|
 | MFD pages | CREW (who mans which station, the wounded with their timers, who is outside), CONTRACTS (held: what, time left, where) |
 | Slate tabs | Ship, Crew, Medical, EVA, Boarding (latched only), Prisoners (when held), Contracts, Career, Log (10.4) |
-| Orders | Crew assignments, suits at battle stations, EVA hold, boarding party, battle stations (new), helm orders while a crew member has the helm (new), abandon ship |
+| Orders | Suits at battle stations, EVA hold and orders, boarding party, let go and hire, prisoners; new: station assignments (today the crew AI chooses who mans what), battle stations, helm orders while a crew member has the helm; abandon ship |
 | Alerts owned | Crew air running out; crew critically wounded; crew adrift or left behind; crew in the engines' exhaust; promotion and payday (advisory); contract done, failed or called off (advisory) |
 | Data | `CrewProvider`, `BoardingProvider`, `MissionProvider` (held), `Spacewalks`, `CrewMedical`, `AirWatch`, `NoticeLog`, budget and standing |
 
@@ -419,7 +419,7 @@ Z3b while seated at the helm. Five fixed slots. A slot with nothing to show goes
 | **Reference** | With a locked target, else the nav target: name, range, closing speed, closest approach ("CPA 140 m in 2:10"). With neither: the orbit's Ap and Pe, live while the engine or RCS fires and for 5 s after. When space runs short, keep in this order: name, range, closing, CPA | When there is something to show |
 | **Next event** | The next thing due: "Burn 1 in 12:04  210 m/s prograde", "Autopilot: Shackleton Ice, leg 2", "SOI change in 2.4 d (Moon)". Within 60 s of a burn: alignment error and time to ignition. Priority: what, when, how much | When something is due |
 | **Velocity** | Speed in the active frame, with the frame's tag: "ORBIT 7.67 km/s", "TARGET 3.9 m/s closing", "PORT 2.4 m/s closing", "DOCKED". Rotation rate when above 0.5°/s. Mode chips (3.5): **control** (MANUAL: the player flies; BURN 1: the flight computer is flying planned burn 1 while the player's hands are off the stick; HELD APPROACH: an order waiting while the player has the helm), **ASSIST** (on, or OFF flagged), and THR and RCS lamps while they fire | Always while seated |
-| **Trigger** | The pilot's trigger: GUNS ready or reloading, MSL count and ready or seconds, DECOY count, and SHIELDS when lowered | With a target locked, or in Red |
+| **Trigger** | The pilot's trigger: GUNS ready or reloading, MSL count and ready or seconds, DECOY ready or seconds (decoys are unlimited, with a 3 s cooldown), and SHIELDS when lowered | With a target locked, or in Red |
 | **Δv** | Δv left in the tanks (m/s), with a notch at what the trip home needs (`Navigation`'s return estimate; no notch when it has none) and the planned burns' total as a bracket | Always while seated |
 
 The chronometer is not in the cluster: it sits at the right end of the station board (8.5), the same at every seat.
@@ -445,9 +445,9 @@ Z3b while seated at the weapons console. Fixed slots, as at the helm.
 
 | Slot | Content |
 |---|---|
-| **Mount chips** | One chip per gun: position (Nose, Port...), state (ready, reloading, charging: waiting on the circuit's store, no power, stunned, destroyed), who works it (you, a gunner's initials, the console), mode (AT WILL or HELD). Point-defence mounts marked PD, with AUTO or YOURS |
+| **Mount chips** | One chip per gun: position (Nose, Port...), state (ready, reloading, charging: waiting on the circuit's store, no power, stunned, destroyed), and how it fires, which follows who works it (`GunCrews`): AT WILL (a gunner at the mount, by initials, or a crew member at the weapons console), YOURS (in the player's hand), or TRIGGER (nobody works it: it aims at the locked target and fires only on the trigger). Point-defence mounts marked PD, with AUTO or YOURS |
 | **Launchers** | Each launcher: missiles left, ready or seconds to ready |
-| **Countermeasures** | Decoys left |
+| **Countermeasures** | Decoy: ready, or seconds to ready (decoys are unlimited; `DECOY_COOLDOWN` 3 s) |
 | **Shields** | Mode (RAISED, LOWERED, STOWING); cloud mass as a share of capacity; trim (EVEN, BOW, PORT, STERN, STBD) on a small rose |
 | **Target** | Locked target: name, class, range, closing, time of flight, hit chance with the guns in hand (`HitChance`), and its state where known (struck, disabled, venting) |
 
@@ -458,7 +458,7 @@ Seated at a gun. No MFDs and no station board beyond the gun's own tile: a delib
 | Field | Content |
 |---|---|
 | Sight | The gun's arc and lead reticle, in the world |
-| Gun | State, ammunition or heat, time to ready |
+| Gun | State, ammunition where limited, time to ready |
 | Target | Name, range, time of flight, hit chance |
 
 ### 8.5 Station board
@@ -518,14 +518,14 @@ Budget: six tiles of 150 (900), the chronometer 188.
 | HELM | Helm | Who has the helm, the order in force, how it is going | Orders 1 to 6, 0 | Orders 1 to 6, 0 |
 | DOCK | Helm | Ports with size and state; clearance; latched or docked; strain | Next port, arm and ask clearance, undock | None |
 | SENSORS | Tactical | Radar scope (`RadarScope`, ranges 0.5 to 1,000 km) and contact list: class, name, range, closing, CPA, hostile or not, sorted by threat | Lock target, set nav target, range | Lock target, set nav target |
-| WEAPONS | Tactical | Mounts: weapon, ammunition, state, who works it, at will or held | Hold or free each gun | Hold all, free all |
-| DEFENSE | Tactical | Shield ring (96 segments), mass, trim, emitters; decoys; point defence | Raise, lower, trim | None |
-| DAMAGE | Engineering | Ship plan: integrity, breaches, fires, smoke, venting, patches, repairs and who | Damage-control priority (new) | Damage-control priority |
+| WEAPONS | Tactical | Mounts: weapon, ammunition where limited, state, who works it and so how it fires (AT WILL, YOURS, TRIGGER) | Take a gun in hand or hand it back; hold fire (new: the game has no hold-fire order today, and a captain wanting a prize undamaged needs one) | Hold fire, all guns (new) |
+| DEFENSE | Tactical | Shield ring (96 segments), mass, trim, emitters; decoy readiness; point defence | Raise, lower, trim | None |
+| DAMAGE | Engineering | Ship plan: integrity, breaches, fires, smoke, venting, patches, repairs and who is on each (from the crew task queue, new) | Damage-control priority (new) | Damage-control priority |
 | POWER | Engineering | Each reactor's output against its rating (it falls with damage); each circuit's store, its charge and time to full. Then only the systems that are not working, each with its cause and what clears it: switched off; no power (conduit cut, or shorted, with the breaker's reclose countdown, `DamageStates.AUTO_RESET`); stunned (countdown); disabled (under 30% health); destroyed. A NEXT line names the soonest that comes back by itself | Switches | None |
 | ATMOS | Engineering | Rooms: pressure, oxygen, smoke; tanks; hours of air | None | None |
 | COMMS | Comms & Cargo | Clearance, ports, beacon, standing with the local faction | Ask clearance, beacon | None |
 | CARGO | Comms & Cargo | Hold: volume, each cargo, value | None | None |
-| CREW | Command | Who mans which station; the wounded and their timers; who is outside | Assignments, suits at battle stations | Same (Command is the captain's) |
+| CREW | Command | Who mans which station; the wounded and their timers; who is outside | Suits at battle stations; station assignments (new) | Same (Command is the captain's) |
 | CONTRACTS | Command | Held contracts: what, time left, where, range | Set as nav target | Same |
 
 Locking a target and setting the nav target count as orders to the ship's sensors, so they work from a SENSORS repeater too.
@@ -575,7 +575,7 @@ The captain's own panel, anywhere aboard. Its title bar carries the captain's ra
 | Tab | Content |
 |---|---|
 | Ship | The station board; then a **page viewer** that shows any station's page (the same pages as the MFDs, larger), read-only, with that station's orders. Clicking an annunciator tile on deck opens the slate here on the tile's home page |
-| Crew | Roster: name, role, skills, condition, morale, wage, record; station assignment; let go (docked) |
+| Crew | Roster: name, role, skills, condition, morale, wage, record; the station each mans; station assignment (new); let go (docked) |
 | Medical | The wounded: wound, bleed-out timer, who is treating them; medical stores |
 | EVA | Who is outside, tethered or adrift, their air; hold everyone in; send out, call in |
 | Boarding | When latched: the other ship's state, the boarding party (send, recall), then what can be stripped and carried over (`BoardingWindow`) |
@@ -932,7 +932,7 @@ Both MFDs are folded to their rails: in Green there is nothing on them the playe
 |                [ship]  ----- lead ---->  <Raider>                                        |
 +---------------------+---------------------------------------------+----------------------+
 | SENSORS             | NOSE you ready   PORT you 1.2   STBD Chen   | DEFENSE              |
-| MSL x2   0:37     H | PD AUTO    MSL 4 ready    DECOY 6           | (shield ring around  |
+| MSL x2   0:37     H | PD AUTO    MSL 4 ready    DECOY ready       | (shield ring around  |
 | Raider   7.7 km   H | SHIELD RAISED 82%   trim BOW                |  the hull, weak to   |
 | Dart     2.1 km   H | Raider  7.7 km  closing 2  ToF 1.3 s  64%   |  port)               |
 | [SNS] [WPN] [DEF]   |                                             | [SNS] [WPN] [DEF]    |
@@ -1044,7 +1044,7 @@ The artists change how this looks, not what it says or where it is. A style may 
 | Role | Used for |
 |---|---|
 | Nominal | Normal values (rare, since nominal is mostly hidden) |
-| Mode | Engaged modes (3.5): assist, frame, helm order, shields, gun at will |
+| Mode | Engaged modes (3.5): assist, frame, control (MANUAL, BURN n, HELD), shields, how each gun fires |
 | Advisory | Advisory callouts, informational marks |
 | Caution | Caution tiles and lamp |
 | Warning | Warning tiles and lamp, threat tracks, impact cross |
@@ -1174,10 +1174,26 @@ For whoever builds this; nothing here is binding on the art.
 4. **Dedicated consoles on bigger hulls** (nav table, comms, damage control, medbay)? Recommendation: yes, as data, after the overhaul; the hosting table already allows it.
 5. **Should battle stations also move the crew** (to their stations, into suits where that setting is on)? Recommendation: yes, but as a separate change to ai-crew; the UI only needs the condition.
 6. **Lighting toggle (O)** to Settings, freeing O for acknowledge? Recommendation: yes.
+7. **Two new captain's orders**: hold fire (the game has none, so a crewed gun keeps firing on a ship the player wants to take whole) and station assignments (today the crew AI chooses who mans what). Recommendation: yes to both; they are small, and both are orders a captain would expect to give.
 
 ---
 
 ## 21. Changelog
+
+### Round 5 (self-audit: every number checked against the game)
+
+After round 4 showed the power page was invented, every other piece of data in the spec was checked against the code.
+
+| Problem found | Change |
+|---|---|
+| Decoys were counted ("DECOY 6"), but the game's decoys are unlimited with a 3 s cooldown (`PlayerGunnery.DECOY_COOLDOWN`) | Decoys show ready or seconds to ready (8.1, 8.3, walkthrough E) |
+| Guns were AT WILL or HELD, but the game has no hold-fire order: how a gun fires follows who works it (`GunCrews`) | Mount chips show AT WILL, YOURS or TRIGGER; hold fire is proposed as a new order (8.3, 9.2, 20.7) |
+| Gun heat doesn't exist; ammunition is limited only on some mounts (`WeaponMountComponent.ammo`, -1 for none) | "Ammunition where limited", no heat (8.4, 9.2) |
+| Station assignments were listed as an existing order; the crew AI chooses today | Marked new and put to Joe (5.7, 9.2, 10.4, 20.7) |
+| A "hails log" implied a hailing system the game doesn't have | Comms keeps a log of what stations have said (5.6) |
+| "Repairs and who" needs the crew task queue | Marked as the same new data the escalation rules need (9.2) |
+
+Everything else in the spec maps to data the game has today, or is marked new in section 19.
 
 ### Round 4 (Nasa-punk artist's notes on Ship Stations x Nasa-punk)
 
