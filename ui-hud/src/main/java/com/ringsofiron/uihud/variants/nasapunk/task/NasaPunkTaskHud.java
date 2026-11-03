@@ -492,8 +492,9 @@ public class NasaPunkTaskHud implements HudVariant {
         // the readiness checks this HUD can read: delta-v, the hull and systems, the missiles
         if (flight.freeThrust) flight.checks.add(new FlightDisplay.Check("ΔV", "FREE", true));
         else if (!Double.isNaN(flight.dv)) {
+            // none left (the drive down or no propellant) is no more ready than a quarter tank
             float prop = d.shipStatus.propellant;
-            flight.checks.add(new FlightDisplay.Check("ΔV", NpFormat.mps(flight.dv), Float.isNaN(prop) || prop >= 0.25f));
+            flight.checks.add(new FlightDisplay.Check("ΔV", NpFormat.mps(flight.dv), flight.dv >= 0.5 && (Float.isNaN(prop) || prop >= 0.25f)));
         }
         float hull = d.shipStatus.structure;
         flight.checks.add(new FlightDisplay.Check("HULL", hull >= 0.999f ? "OK" : NpFormat.percent(hull), hull >= 0.999f));
