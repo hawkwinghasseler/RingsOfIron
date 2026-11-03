@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 3.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 4.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -232,9 +232,9 @@ Several can hold at once. Each has an entry and exit rule with hysteresis so pan
 | **Cruise** | No other situation holds | Any other enters | Navigation, objective |
 | **Warp** | Time warp above 1x (physics or rails) | Warp back to 1x | Upcoming events, warp limit reason |
 | **Approach** | A free compatible port within 5 km (`PlayerDocking.READOUT_RANGE`) **and** one of: the nav target is that craft, a port is armed, or the helm has a dock order | Over 5.5 km, docked, or the trigger is gone for 3 s | Docking display, scope at 2 km |
-| **Docked** | Port state DOCKED | Undocked | Station panel; flight instruments retire |
+| **Docked** | Port state DOCKED at a station | Undocked | Station panel; flight instruments retire |
 | **Combat** | Own ship at battle stations (`ShipTaskBoardComponent.battleStations`), or missiles inbound, or a hostile locked within weapons range | None of those for 10 s | Lock, armament, scope, ship condition expanded |
-| **Boarding** | The boarding window is available (latched, or a beaten ship within 300 m on EVA) | Not available | Boarding panel |
+| **Boarding** | The boarding window is available: latched to another ship (docked to it), or a beaten ship within 300 m to reach on EVA | Not available | Boarding panel. While latched the ship can't fly, so the flight instruments retire as when docked |
 | **Emergency** | Ship disabled, abandoning, or the captain's suit air under 240 s away from breathable air (`AirWatch.WARN_AT`) | Condition cleared | Emergency card; everything non-essential dims |
 | **Guided** | First Play or the opening walkthrough is running | It ends | Objective shows the step; hints on |
 
@@ -300,7 +300,7 @@ frame changes, the frame tag on H1 and on the velocity markers is highlighted fo
 | Widget | Helm cruise | Helm warp | Helm approach | Helm combat | Fire control | Gun | Deck | Deck combat or emergency | Docked | Full-screen |
 |---|---|---|---|---|---|---|---|---|---|---|
 | P1 Status strip | ● | ● | ● | ● | ● | ● | ● | ● | ● | ● |
-| P2 Caution and warning | ! | ! | ! | ! | ! | ! | ! | ● | ! | chip in P1 |
+| P2 Caution and warning | ! | ! | ! | ! | ! | ! | ! | ! | ! | chip in P1 |
 | P3 Threat alert | ! | ! | ! | ! | ! | ! | ! | ! | ! | ! |
 | P4 Message feed | ! | ! | ! | ! | ! | ! | ! | ! | ! | ! (1 line) |
 | P5 Objective | ◐ | ● | – | !¹ | !¹ | !¹ | ◐ | – | ◐ | – |
@@ -308,7 +308,7 @@ frame changes, the frame tag on H1 and on the velocity markers is highlighted fo
 | H1 Flight display | ● | ◐ | merged into H3 | ● | – | – | – | – | – | – |
 | H2 Navigation | ● | ● | – | ◐ | – | – | – | – | ! (planned departure) | – |
 | H3 Docking display | – | – | ● | ● | – | – | – | – | – | – |
-| H4 Ship condition | ◐² | ◐² | ◐² | ◐² | ◐² (with F3) | ◐² | ! | ● | ◐² | – |
+| H4 Ship condition | ◐² | ◐² | ◐² | ◐² | ◐² (with F3) | ◐² | ! | ! | ◐² | – |
 | H5 Contact scope | ! | – | ● | ● | ● | ● | – | – | – | – |
 | H6 Lock card | ! | – | ! | ● | F1 instead | F1 instead | – | – | – | – |
 | H7 Armament strip | – | – | – | ● | F2 instead | F2 (one gun) | – | – | – | – |
@@ -316,13 +316,13 @@ frame changes, the frame tag on H1 and on the velocity markers is highlighted fo
 | F2 Weapons rack | – | – | – | – | ● | ◐ | – | – | – | – |
 | F3 Shield control | – | – | – | – | ●³ | – | – | – | – | – |
 | F4 Threat list | – | – | – | – | ! | ! | – | – | – | – |
-| D1 Captain vitals | – | – | – | – | – | – | ! | ● | ! | – |
+| D1 Captain vitals | – | – | – | – | – | – | ! | ! | ! | – |
 | D2 Inspect card | – | – | – | – | – | – | on hover | on hover | on hover (deck) | – |
 | D3 Hazard markers | – | – | – | – | – | – | ! | ! | – | – |
-| X1 Station panel | – | – | – | – | – | – | – | – | ● | – |
+| X1 Station panel | – | – | – | – | – | – | – | – | ●⁴ | – |
 | C1 Orders menu | on key | on key | on key | on key | on key | on key | on key | on key | on key | – |
-| X2 Boarding panel | ! | – | – | ! | ! | – | ! | ! | – | – |
-| X3 Emergency card | ! | ! | ! | ! | ! | ! | ! | ● | ! | ! |
+| X2 Boarding panel | ! | – | – | ! | ! | – | ! | ! | !⁴ | – |
+| X3 Emergency card | ! | ! | ! | ! | ! | ! | ! | ! | ! | ! |
 | W1 to W7 world overlays | ● | ◐ (W1 only) | ● | ● | ● | ● | – | – | ◐ | – |
 
 Rows marked "!" have their trigger in their own section.
@@ -336,6 +336,9 @@ not (section 7, H4). Combat alone does not expand it: a healthy ship in a fight 
 ³ Only on a ship with a shield emitter. The starter corvette has none, so there fire control is F1, F2
 and F4, and everything about shields is left out: H4's shields light and bar, H7's shields line, and
 the SHLD conditions (which can't arise). C1 still lists the shield orders, with the reason.
+
+⁴ The Docked column also covers being latched to another ship for boarding: the screen is the same,
+with X2 in X1's place (section 8).
 
 ---
 
@@ -377,7 +380,7 @@ another. Each widget belongs to one zone and stacks inside it.
 | L-BOTTOM | 12 | 558 | 308 | 230 | H4 or F3 with H4; on deck D1, then H4 above it |
 | TOP-CENTRE | 390 | 38 | 500 | 174 | P3, X3 |
 | CENTRE (clear) | 360 | 220 | 560 | 370 | nothing fixed |
-| BOTTOM-CENTRE | 330 | 598 | 620 | 190 | H1, H3 or F2; C1 opens above it; on deck, only the master alert cue |
+| BOTTOM-CENTRE | 330 | 598 | 620 | 190 | H1, H3 or F2; C1 opens above it; on deck, docked or latched, only the master alert cue |
 | R-TOP | 960 | 38 | 308 | 150 | P4 |
 | R-MID | 960 | 194 | 308 | 358 | H6 or F1, H7, X1, X2 |
 | R-BOTTOM | 960 | 558 | 308 | 230 | H5, right-aligned |
@@ -483,7 +486,7 @@ a monospaced face (the worst case):
 | Seat | 14 | HELM · FIRE CONTROL · GUN (bow) · DECK; aboard another craft, "DECK · Highport" | Neutral |
 | Helm authority | 36 | Only when someone other than the captain flies, or nobody does: "Helm: Bea · holding heading"; "Helm order: approach Highport 500 m"; "Autopilot → Shackleton Ice"; "Autopilot held: pirates about"; "Helm: nobody". Empty (not "none") when the captain sits at the helm with no order running. When the autopilot is held because warp is held, the reason shows once, in the warp field, and this field reads "Autopilot held" | Neutral; advisory while the autopilot is held. A status, not an alarm: when nobody at the helm is a danger, P2 says so (NO HELM) |
 | Battle stations | 15 | "BATTLE STATIONS" while the crew are at them | Caution |
-| Caution and warning chip | 10 | In full-screen modes only: "◆ 1 · ▲ 2" (warnings, cautions); a click closes the mode | Severity of the worst |
+| Caution and warning chip | 10 | In full-screen modes only: "◆ 1 · ▲ 2" (warnings, cautions). It is the master alert cue while a mode is open: a new warning lights it, with the sound, and Acknowledge (`\`) puts it out. A click on it closes the mode, back to P2's rows | Severity of the worst |
 | Clock | 16 | "Day 0 · 00:33" | Neutral |
 | Warp | 34 | "1x", "10x", "1,000x rails"; with the reason when warp is held or capped: "rails held: crew outside" | Advisory when held |
 | Paused | 6 | "PAUSED" | Advisory |
@@ -500,7 +503,8 @@ a monospaced face (the worst case):
 whether it is being handled.
 
 **Zone.** Left top, 308 x 150: six rows of 24 units. Up to five conditions; when there are more, the
-sixth row is "+n more" with the hidden codes ("+ 2 more: SMOKE, SHLD DOWN"), and a click on it opens
+sixth row is "+n more" with as many of the hidden codes as fit its 34 characters ("+ 2 more: SMOKE,
+SHLD DOWN"; "+ 5 more: SMOKE, LOW O2, …"), and a click on it opens
 Ship › Systems at the damage control board. Hidden when there is nothing to show (the dark cockpit).
 In full-screen modes it collapses to the chip in P1.
 
@@ -571,7 +575,8 @@ by highlighting its D3 markers.
 **Master alert cue.** P2 sits at the edge of the screen, away from where the player looks. So a new
 warning also lights a cue on the seat's primary instrument (H1, H3 or F2), the way an airliner's master
 warning sits in the pilot's eyeline. On deck, which has no primary instrument, the cue stands alone at
-the centre of the bottom-centre zone, which is otherwise empty there. The cue has two states, master
+the centre of the bottom-centre zone, which is otherwise empty there; docked or latched, likewise. In
+a full-screen mode the cue is P1's caution and warning chip. The cue has two states, master
 warning (with the newest warning's short code) and master caution. It stays lit until the player
 **acknowledges** it: a click on the cue, or the Acknowledge action (default `\`, rebindable).
 Acknowledging stops P2's pulse and the repeating sound; it does not clear P2's rows, which stay while
@@ -685,11 +690,11 @@ widget that shows the setting is not on screen.
    bindings (`HintRegistry.withKeys`).
 2. Otherwise the tracked contract: its heading, progress ("2 of 3 beaten"), time left, and the
    distance to its waypoint with a "set as Nav" affordance when the waypoint isn't the Nav. When it
-   is the Nav, the distance is H2's and P5 leaves it out. The player picks which
-   contract is tracked in M5; by default the one with the soonest deadline.
+   is the Nav, the distance is H2's and P5 leaves it out. The player picks which contract is tracked
+   in M5; by default the one with the soonest deadline.
 
 "+2 more contracts" under it when more are held. **Compact face**, two lines: the job ("Deliver 120
-Water"), then where and how long ("→ Shackleton Ice · 1.4 d"). A contract heading is too long for one
+Water"), then where and the time left ("→ Shackleton Ice · 1.4 d left"). A contract heading is too long for one
 line of the column at the minimum text size.
 
 In combat, P5 shows only when the tracked contract is a fight (a defence, a bounty, a convoy), compact,
@@ -945,8 +950,8 @@ LOCK  Raider
       shot 1.3 s · hit 62% fair
 ```
 
-**When.** Whenever a lock is held at the helm, except under warp and during an approach without
-combat.
+**When.** Whenever a lock is held at the helm, except under warp, during an approach without combat,
+and while latched to the Lock for boarding (X2 names it).
 
 **Data.** `TargetingProvider`, `HostileLabel` states (structured), `HitChance`.
 
@@ -1149,11 +1154,35 @@ your home station. J opens its mission board".
 
 ### X2 Boarding panel (Boarding)
 
-**Zone.** Right middle, under any lock card.
+**Purpose.** How the boarding stands, and the way into it.
 
-**Content.** The other ship's name and state (disabled: why, surrendered, being boarded, taken);
-latched or by EVA; boarding party: n across, fighting, holding; salvage: parts marked and stripping,
-cargo coming across; prisoners alongside. "[K] Boarding" opens M4.
+**Zone.** Right middle, 308 x up to 140, under any lock card.
+
+**Content.** The other ship's name, latched or by EVA, and its state (disabled and why, surrendered,
+being boarded, taken); the boarding party: how many, crossing, fighting or holding, or why none can
+go; salvage: parts marked and how many are off; cargo coming across; prisoners to bring aboard.
+"[K] Boarding" opens M4, where the orders are; while latched, "[U] Cast off" undocks from it (at the
+helm, as undocking from a station is).
+
+```
+BOARD  Raider · latched · taken
+PARTY  4 aboard · holding
+SALV   3 parts marked · 1 off
+CARGO  2 lots coming across
+       prisoners to bring aboard
+[K] Boarding       [U] Cast off
+```
+
+**When.** Boarding situation. Latched, the ship is docked to the other and can't fly, so the screen is
+the docked one with X2 in X1's place; then H6 gives way too if the latched ship is the Lock (X2 names
+it, and a range of 40 m tells nothing). Reaching a beaten ship on EVA, the ship still flies, and X2
+sits under the lock card.
+
+**Data.** `BoardingProvider` (state, refusals, by EVA, salvage), `CrewProvider` (prisoners alongside),
+and the party's size and activity (needs exposing).
+
+**Replaces.** The latched key hints ("boarding", "cast off", "prisoners"), which teach the keys but
+not how the boarding stands.
 
 ### X3 Emergency card (Emergency)
 
@@ -1170,8 +1199,10 @@ cargo coming across; prisoners alongside. "[K] Boarding" opens M4.
   card shows it armed until a second press within 3 s gives it or the 3 s run out.
 - **Abandoning:** pods: crew aboard n of m; "P launches now".
 
-When two hold, they stack in that order. Lines fit the top-centre budget (58 characters; the first,
-at P3's size, 34).
+Abandoning replaces Disabled, so at most two states hold at once: the suit air and one other. When
+two hold, the first shows in full and the second as one line with its keys ("SHIP DISABLED · P twice
+· B twice"). Under P3 (60 tall) X3 has 108 units of the zone, which that fits. Lines fit the
+top-centre budget (58 characters; the first, at P3's size, 34).
 
 **When.** Emergency situation. While it shows, everything dims but X3 itself, P2, P3, H4, D1 and D3.
 P2 stays lit because it is the evidence for X3's choice (what is burning, who is down, who is on it),
@@ -1429,6 +1460,16 @@ is empty. The four orders that need the Nav in the bubble carry a mark, and the 
 reason once with their keys; the tow's refusal is given the same way. Nothing is hidden, so the player
 learns what exists.
 
+### 11.13 Boarding, latched
+
+![Boarding](wireframes/13-boarding.png)
+
+The fight is over and the ship has latched onto the beaten raider; the party has taken it. Latched,
+the ship can't fly, so the screen is the docked one: P1, P5 with the bounty's next step, H4's quiet
+lights, and X2 where the station panel would be. The raider is still the Lock, but H6 gives way: X2
+names it, and its range and closing speed say nothing at 40 m. K opens M4 to mark parts and take the
+cargo; U at the helm casts off.
+
 ---
 
 ## 12. Contract for the art directions
@@ -1528,6 +1569,7 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 | `StationProvider` | New, gathering existing | Station name, faction, standing, services available with counts, infirmary |
 | Contact state | Change `HudMarkerComponent` | Allegiance and state as a value (from `HostileLabel`), not only tint and label text |
 | Inspect | New | What is under the pointer on deck: crew, system, tile, door, bay, with their fields |
+| `BoardingProvider` | Change | The boarding party's size and what it is doing (crossing, fighting, holding), for X2 |
 
 The existing providers (`TradeProvider`, `YardProvider`, `MissionProvider`, `BoardingProvider`,
 `CrewProvider`, `ShipyardProvider`, `OrbitPathProvider`, `ManeuverPlannerProvider`,
@@ -1596,3 +1638,4 @@ largest scale, and the centre stays clear.
 | 1 | 0 | First version: inventory, context model, widget catalogue, wireframes |
 | 2 | 1 (self-critique) | H4 no longer expands just for combat, only when a light is lit (dark cockpit held in fights). Master alert cue on the primary instrument for new warnings. Objective shows in combat for fight contracts. The reference frame never switches mid-manoeuvre. Message feed summarises during combat. New C1 orders menu on O, gathering every order with why it can't be given. E is each object's main action. Inspect card: pin before acting, confirm risky switches, gamepad subject rule, EVA orders. Hover card for exterior contacts. COLLISION condition. Inset views stay world-anchored, clamped clear of widgets. Station panel no longer misassigns I and Y. Missions tab shows held contracts. Zones given exact bounds; the centre clear area moved to 220..590 so interrupts fit above it. Deck applies aboard any craft. Time format examples fixed. Wireframe 12 added |
 | 3 | 1 (art directions' critiques) | One home per datum enforced across every widget: approach distance and closing speed are H3's alone, the lock range the lock card's, the decoy P3's, missile times P3's or F4's, Δv left H1's, plan shortfall H2's, shield settings H7's at the helm and F3's at fire control; P2 details name where, never a value another widget shows. P2 rebuilt as fixed-width rows (severity, 10-character code, detail, handling, timer) with harm and recovery timers; handling shows YOU or a dot per crew member. The captain's suit air leaves P2 for D1, then X3 when critical. Acknowledge for warnings. P3 is two lines. H6 shows the state in one word, FIRING ON YOU as its own flag and the hit chance as a percentage. The starter corvette has no shield emitter, so the shields light, bar, H7 row and F3 appear only on a ship that has one. Room names follow the rule the task design already uses (BRIDGE, HOLD, ...). D3 becomes on-screen tags plus edge pointers. C1 grows to 620 x 250 and gives each reason once. Labels may drop to 12 units. Wireframes redrawn with a check that no text runs past its box; combat and fire control show the gunship |
+| 4 | 2 (self-critique) | Latched to another ship is the Boarding situation, not Docked: the screen is the docked one with X2 in X1's place, and H6 gives way when the latched ship is the Lock. X2 gets its size, an example and a cast-off key; wireframe 13 and walkthrough 11.13 added; the provider must give the party's size and activity. X3 fits under P3: Abandoning replaces Disabled, and a second state shows as one line. P2's "+n more" row lists only the codes that fit. In full-screen modes P1's chip is the master alert cue; docked or latched, the cue stands alone at the bottom centre |

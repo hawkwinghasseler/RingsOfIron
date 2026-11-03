@@ -7,7 +7,7 @@ const path = require('path');
 const names = {
   '01': 'helm-cruise', '02': 'helm-warp', '03': 'helm-approach', '04': 'helm-combat',
   '05': 'fire-control', '06': 'deck', '07': 'deck-emergency', '08': 'docked',
-  '09': 'map', '10': 'station', '11': 'ship-systems', '12': 'orders-menu',
+  '09': 'map', '10': 'station', '11': 'ship-systems', '12': 'orders-menu', '13': 'boarding',
 };
 (async () => {
   const scale = Number(process.argv[2] || 2);

@@ -229,7 +229,7 @@ const layouts = {
     strip('HELM', 'Day 0 · 00:33     1x');
     emptySlots();
     stack(12, 194, [
-      ['P5', 'Objective (compact)', 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d']],
+      ['P5', 'Objective (compact)', 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d left']],
       ['H2', 'Navigation', 'full', [
         'ORBIT  Earth · alt 400 km',
         '       Ap 403 km  T-24:10',
@@ -342,7 +342,7 @@ const layouts = {
   '06': ['Deck', () => {
     strip('DECK      Helm: Bea · holding heading', 'Day 0 · 00:58     1x');
     emptySlots();
-    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d']);
+    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d left']);
     deckPlan();
     circ(712, 372, 6, { fill: '#d8dbde' }); wtext(722, 366, 'captain');
     circ(470, 430, 5, { fill: '#9aa0a6' }); wtext(480, 424, 'Ada');
@@ -384,7 +384,7 @@ const layouts = {
     strip('HELM', 'Day 0 · 00:08     1x');
     box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Log: autosaved', 'Station: welcome to Highport']);
-    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d']);
+    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d left']);
     box('X1', 'Station panel', 960, 194, 308, 260, 'full', [
       'HIGHPORT · port 6',
       'Terran Patrol Authority',
@@ -399,6 +399,25 @@ const layouts = {
     shipLights();
     rect(560, 120, 160, 160, { fill: '#41454b' }); wtext(566, 124, 'Highport', 'tag');
     ship(640, 330);
+  }],
+  '13': ['Boarding (latched to a taken raider)', () => {
+    strip('HELM', 'Day 0 · 01:30     1x');
+    box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Boarding: the Raider is taken']);
+    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Bounty: Raider · taken', '→ turn in at Highport']);
+    box('X2', 'Boarding panel (H6 gives way: the Raider is the Lock)', 960, 194, 308, 0, 'full', [
+      'BOARD  Raider · latched · taken',
+      'PARTY  4 aboard · holding',
+      'SALV   3 parts marked · 1 off',
+      'CARGO  2 lots coming across',
+      '       prisoners to bring aboard',
+      '^[K] Boarding       [U] Cast off']);
+    shipLights();
+    ship(600, 405);
+    rect(658, 393, 92, 24, { fill: '#3a3d42', 'stroke-dasharray': '4 3' });
+    wtext(664, 374, 'Raider', 'tag'); lockMark(704, 405);
+    wtext(470, 470, 'latched: the ship is docked to the raider and can\'t fly,', '');
+    wtext(470, 486, 'so the flight instruments retire as when docked', '');
   }],
   '09': ['Map (full-screen mode)', () => {
     strip('HELM      ▲ 1', 'Day 0 · 00:12     1x');
@@ -497,7 +516,7 @@ const layouts = {
     strip('HELM', 'Day 0 · 00:33     1x');
     emptySlots();
     stack(12, 194, [
-      ['P5', 'Objective (compact)', 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d']],
+      ['P5', 'Objective (compact)', 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d left']],
       ['H2', 'Navigation', 'full', [
         'ORBIT  Earth · alt 400 km',
         '       Ap 403 km  T-24:10',
