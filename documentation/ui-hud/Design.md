@@ -154,3 +154,26 @@ The `shell` smoke test (`gradlew :lwjgl3:smokeTestShell`) drives a session throu
 The HUD and menus are set in Inter (`assets/fonts`, SIL Open Font License), rasterised by FreeType in `HudFonts`: body and panel titles at 15 units, banners and menu headings at 22, the main menu's title at 44. Every layout is written in UI units for a 1280x800 window, and `UiScale` makes one unit 1x to 3x screen pixels. Auto follows the window's height (1x at 1080 lines, 1.25x at 1440, 2x at 2160); Settings offers fixed scales too. A scale is held to what keeps 1280x800 units on screen, so the panels never crowd each other, and never goes under 1x. The fonts are drawn again for a new scale in place (`HudSkin.rescale`), so text stays sharp.
 
 The missile warning has one place on screen: the banner, set between the flight panel and the status column. Its notice is still heard and kept in the notice log (L), but the status column leaves it out. `tools/playtest/ui-tour.sh [out] [WxH] [scale]` screenshots the menus and HUD at any window size; `documentation/ui-hud/polish/` has the before and after from the change that brought this in.
+
+## Frames
+
+Panels, windows and controls are drawn as `HudFrame`s, a Scene2D drawable made of shapes from the skin's white region, so they stay sharp at every UI scale and take a widget's tint (the menus' gold focus) and fade:
+
+- **Panels** (`panel`): the fill shaded from slightly lighter at the top, a faint cyan hairline, brighter brackets on the corners and a short cyan tab on the top edge above the title. The status column top right and the map's side panel use it too.
+- **Windows** (`window-bg`): the panel's frame with the title on a band of its own across the 28 units the windows leave above their content, ruled off below. The notice log and controls panels (`HudText`) use the same frame and put their titles on the band.
+- **Buttons**: a framed plate; under the pointer or the focus its edge lights and a cyan bar runs down its left side; pressed or picked, it fills. Disabled buttons fade to a dim frame.
+- **Controls**: check boxes are outlined squares, filled with an inset when ticked; sliders have an outlined track and a lit knob; text fields, select boxes and lists are outlined.
+- **Prompts** (`prompt-bg`): a dark plate with a cyan bar down the left.
+- **Gauges** (`ShipGauges`): an outlined track, a fill with a lighter band along its top and a bright leading edge, and notches at each quarter.
+
+The frames keep the paddings the flat backgrounds had (zero, but the prompt's), so no layout moves.
+
+![Main menu, before and after](polish/frames-main-menu.jpg)
+
+![The HUD docked, before and after](polish/frames-docked.jpg)
+
+![Mission board, before and after](polish/frames-mission-board.jpg)
+
+![Yard, before and after](polish/frames-yard.jpg)
+
+![Controls, before and after](polish/frames-controls.jpg)

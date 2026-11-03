@@ -27,7 +27,8 @@ class MassBalanceTest {
 
     @Test
     void conduitAddsOnlyItsCable() {
-        ShipGridComponent grid = strip(Tile.FloorType.POWER_CONDUIT, Tile.FloorType.FLOOR);
+        ShipGridComponent grid = strip(Tile.FloorType.FLOOR, Tile.FloorType.FLOOR);
+        grid.setTileConduit(0, 0, new TileConduit());
         float tiles = 2 * ShipGridComponent.DECK_MASS + ShipGridComponent.CONDUIT_CABLE_MASS;
         assertEquals(tiles, grid.computeMassProperties(STEEL).mass, 1e-3);
         grid.setConduit(1, 0, Side.TOP, new EdgeConduit());
