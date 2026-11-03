@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 11.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 12.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -166,7 +166,7 @@ Default hosting, as data (see [19](#19-implementation-notes)) so hulls and mods 
 | `WEAPONS` | Tactical cluster + MFDs | **Tactical** (the Tactical board) | The second command seat: helm orders and shields work here, as now |
 | `TURRET_MOUNT` (gun) | Gunner sight | **Gun**: that mount in detail; sitting [V] takes it in hand | No MFDs: a gunner sees their gun |
 | `REACTOR` | None | **Engineering**, opening on Power | |
-| `LIFE_SUPPORT` | None | **Engineering**, opening on Atmosphere | |
+| `LIFE_SUPPORT` | None | **Engineering**, opening on Atmos | |
 | Captain's slate | n/a | **Command** tabs, plus a page viewer for every station | Not a tile; carried by the avatar |
 | Future: nav table, comms, damage control, medbay | Optional | Navigation, Comms & Cargo, Engineering (Damage), Command (Medical) | For larger hulls; each takes its station off the helm |
 
@@ -174,7 +174,7 @@ Fallback rules, so no hull loses a function:
 1. If no console hosts a station, the **helm console** hosts it, as an extra tab.
 2. If the hosting console is **destroyed**, the station can still be read (from repeaters and the slate) and acting falls back to the helm console, except Helm itself, which falls back to nothing: the ship drifts, as `Bridge` already rules.
 3. If the hosting console is **unpowered or stunned**, its pages read "NO POWER" everywhere, its controls do nothing, and a caution names it.
-4. In a **blackout**, with no reactor running, every console is unpowered. The clusters and MFDs go dark on their NO POWER face, so the player sees at once that the ship can neither fly nor fight. What the player needs to get out stays up, as if on the ship's emergency supply: the overlay (7), and on the slate the Engineering pages, the Command tabs and COMMS for the beacon. POWER is the first of them, since it says why the reactor is down and what brings it back (switching it on, a repair and who is on it, the seconds left on a stun). Helm, Navigation and Tactical pages read NO POWER on the slate too. The simulation has no battery, so this is a rule of the UI, not a system to model: without it, rule 3 would hide the one page that says how to get the power back.
+4. In a **blackout**, with no reactor running, every console is unpowered. The clusters and MFDs go dark on their NO POWER face, so the player sees at once that the ship can neither fly nor fight. What the player needs to get out stays up, as if on the ship's emergency supply: the overlay (7); Engineering, at its consoles and on the slate, switches included, so a reactor can always be switched back on (as in the game, where a console's switch works whatever the power, `ConsoleWindow`); and on the slate the Command tabs and COMMS for the beacon. POWER comes first, since it says why the reactor is down and what brings it back (switching it on, a repair and who is on it, the seconds left on a stun). Helm, Navigation and Tactical pages read NO POWER wherever they are viewed. The simulation has no battery, so this is a rule of the UI, not a system to model: without it, rule 3 would hide the one page that says how to get the power back.
 
 ### 5.2 Helm
 
@@ -207,16 +207,16 @@ Fallback rules, so no hull loses a function:
 
 ### 5.4 Tactical (and Gunner)
 
-**Job:** see, track and fight: contacts, guns, missiles, decoys, point defence, shields.
+**Job:** see, track and fight: contacts, guns, missiles, decoys, point defense, shields.
 
 | Item | Content |
 |---|---|
-| Cluster (weapons seat) | Fire-control strip: the guns in hand, each with its own hit chance; point defence; launchers; decoys; shields on a hull that has them; the target (8.3) |
+| Cluster (weapons seat) | Fire-control strip: the guns in hand, each with its own hit chance; point defense; launchers; decoys; shields on a hull that has them; the target (8.3) |
 | Cluster (gun seat) | Gunner sight (8.4) |
-| Symbology | Hostile brackets with class; lead reticle and intercept lines showing the hit chance (`FireArcOverlay`); fire arcs of guns in hand; threat tracks with impact cross (`ThreatOverlay`); point-defence kill marks; picture-in-picture optics on the target |
-| MFD pages | SENSORS (radar scope and contact list), WEAPONS (mounts: weapon, ammunition where limited, state, who works it and so how it fires; each gun's time of flight and hit chance on the target), DEFENSE (shield coverage around the hull, mass, trim, emitters, on a hull with an emitter; decoys; point defence) |
+| Symbology | Hostile brackets with class; lead reticle and intercept lines showing the hit chance (`FireArcOverlay`); fire arcs of guns in hand; threat tracks with impact cross (`ThreatOverlay`); point-defense kill marks; picture-in-picture optics on the target |
+| MFD pages | SENSORS (radar scope and contact list), WEAPONS (mounts: weapon, ammunition where limited, state, who works it and so how it fires; each gun's time of flight and hit chance on the target), DEFENSE (shield coverage around the hull, mass, trim, emitters, on a hull with an emitter; decoys; point defense) |
 | Console panel tab | **Tactical board**: SENSORS' contact table at full size, WEAPONS with the hold-fire switch, DEFENSE |
-| Manned by crew | Marines take the weapons console first and then the guns; crewmen take them after the helm (`CrewRole`). Gunners fire at will on hostiles in range (`GunCrews`); launchers wait for the captain's word, and point defence picks its own missiles whoever is aboard. Callouts: hostile in range, missile down, target struck, gun out of action |
+| Manned by crew | Marines take the weapons console first and then the guns; crewmen take them after the helm (`CrewRole`). Gunners fire at will on hostiles in range (`GunCrews`); launchers wait for the captain's word, and point defense picks its own missiles whoever is aboard. Callouts: hostile in range, missile down, target struck, gun out of action |
 | Alerts owned | Missile inbound; fired upon; boarders latched (`PirateBoarding`); shield emitter tripped; shield cloud low; launcher empty; gun destroyed or stunned |
 | Data | `TargetingProvider` (`CombatTargetingProvider`), `ThreatProvider`, `RadarSystem`, `PlayerGunnery`, `GunCrews`, `ShieldModel` (new provider), `HostileTargeting`, `PirateBoarding` |
 
@@ -230,7 +230,7 @@ The DEFENSE page is the "HUD gauge and coverage overlay" that the combat design 
 |---|---|
 | Cluster | None: engineering consoles have no seat |
 | MFD pages | DAMAGE (the ship plan: hull integrity, breaches, fires, smoke, venting, patches left, repairs under way and by whom; today's `WireframeMinimap`), POWER (reactor output against its rating; each circuit's store and its refill; then only the systems that are not working, each with its cause and what clears it; 9.2), ATMOS (rooms by pressure, oxygen and smoke; tank levels; hours of air) |
-| Console panel tab | **Engineering**, with sub-tabs Power, Atmosphere, Damage, Systems (every subsystem: health, state, on/off; replacing today's console window), Tanks & propulsion, Shields (emitter heat and trip state) |
+| Console panel tab | **Engineering**, with sub-tabs Power, Atmos, Damage, Systems (every subsystem: health, state, on/off; replacing today's console window), Tanks & propulsion, Shields (emitter heat and trip state) |
 | Manned by crew | Engineers patch leaks, fight fires and repair (`LeakPatches`, the crew task queue). Callouts: fire, breach, patched, out of patches, short circuit, tank burst, system back |
 | Alerts owned | Fire; breach venting; out of patches; oxygen tanks dry; systems without power, and no working reactor at all; a system stunned; short circuit; tank burst; hull integrity thresholds |
 | Data | `ShipStatusProvider` (`PlayerShipStatus`), `WireframeSyncSystem`, `DamageControl`, `AirWatch`, `PowerRoutingSystem`, `GridHazardSystem`, `IonStun` |
@@ -445,18 +445,18 @@ World symbology: the approach corridor (`NavOverlay`), marked by safety as now: 
 
 Z3b while seated at the weapons console. Fixed slots, as at the helm.
 
-At this seat the player has every gun and launcher in hand except point defence, which keeps to the missiles by itself (`PlayerGunnery.inHand`). So the seat is the mode: guns and launchers are YOURS and point defence is AUTO for as long as the player sits here, and the cluster says so once, in its slot labels, not on every chip. AT WILL, HOLD and TRIGGER belong to the guns while the player is elsewhere; they are on the WEAPONS page and in the helm's Trigger slot (8.1).
+At this seat the player has every gun and launcher in hand except point defense, which keeps to the missiles by itself (`PlayerGunnery.inHand`). So the seat is the mode: guns and launchers are YOURS and point defense is AUTO for as long as the player sits here, and the cluster says so once, in its slot labels, not on every chip. AT WILL, HOLD and TRIGGER belong to the guns while the player is elsewhere; they are on the WEAPONS page and in the helm's Trigger slot (8.1).
 
 | Slot | Content |
 |---|---|
 | **Target** | The locked target: name, class, range, closing, and its state where known (struck, disabled, venting). Hit chance and time of flight are not here: each gun has its own (its chip; the WEAPONS page) |
-| **Guns in hand** | A chip per gun the player fires, named by where it sits (13.2: NOSE, AFT STBD). Its state: ready; reloading, with seconds; charging, waiting for the circuit's store to hold a shot (a shot takes its whole energy at once); for a beam, burning, with the share of its draw the circuit gives it (a beam takes what power it can get and burns that much weaker); out of arc; out of reach (a beam past its range); no power; stunned, with seconds; destroyed. Its own chance to hit the locked target (`HitChance`, as the fire arcs reckon it): each gun has its own, since a coilgun's round flies and a beam's does not. And the name of a crew member seated at that gun, whose skill it then shoots with; with nobody there it shoots at half the player's (`GunCrews.REMOTE_SKILL`) |
-| **Point defence** | One chip for every point-defence mount: PD AUTO, and "engaging" while they fire on missiles. While a mount is not working, how many are ("PD AUTO 1 of 2") and the mount's name and state |
+| **Guns in hand** | A chip per gun the player fires, named by where it sits (13.2: NOSE, AFT STBD). Its state: ready; reloading, with seconds; charging, waiting for the circuit's store to hold a shot (a shot takes its whole energy at once); for a beam, burning, with the share of its draw the circuit gives it (a beam takes what power it can get and burns that much weaker); out of arc; out of reach (a beam past its range); no power; shorted, with the seconds until its breaker recloses (sooner if the crew reset it); stunned, with seconds; destroyed. Its own chance to hit the locked target (`HitChance`, as the fire arcs reckon it): each gun has its own, since a coilgun's round flies and a beam's does not. And the name of a crew member seated at that gun, whose skill it then shoots with; with nobody there it shoots at half the player's (`GunCrews.REMOTE_SKILL`) |
+| **Point defense** | One chip for every point-defense mount: PD AUTO, and "engaging" while they fire on missiles. While a mount is not working, how many are ("PD AUTO 1 of 2") and the mount's name and state |
 | **Launchers** | A chip per launcher, by position: missiles left of its magazine ("MSL 4 of 4"), ready or seconds, and how many one press throws ("salvo 4": up to four, `PlayerGunnery.SALVO`, which on the corvette is the whole magazine) |
 | **Countermeasures** | Decoy: ready, or seconds to ready (decoys are unlimited; `DECOY_COOLDOWN` 3 s) |
 | **Shields** | On a hull with a shield emitter (the starting corvette has none: the slot is blank, with no legend, so it can't read as shields lowered): mode (RAISED, LOWERED, STOWING); cloud mass as a share of capacity; trim (EVEN, BOW, PORT, STERN, STBD) on a small rose |
 
-**The cluster never grows with the hull.** Gun chips take a full row each for up to two guns in hand, and half a row each (two to a row, the gunner's name cut to initials) for three to six; launcher chips likewise, two to a row; point defence and the decoy share a row. That is at most seven rows in the 160 units, and it holds every ship in the game: the most guns in hand is the Reaver's five, the most launchers two (`ships.toml`). A hull with more than six guns in hand (none today) lists the rest on the WEAPONS page, the last chip reading "+n on WEAPONS".
+**The cluster never grows with the hull.** Gun chips take a full row each for up to two guns in hand, and half a row each (two to a row, the gunner's name cut to initials) for three to six; launcher chips likewise, two to a row; point defense and the decoy share a row. That is at most seven rows in the 160 units, and it holds every ship in the game: the most guns in hand is the Reaver's five, the most launchers two (`ships.toml`). A hull with more than six guns in hand (none today) lists the rest on the WEAPONS page, the last chip reading "+n on WEAPONS".
 
 ### 8.4 Gunner sight
 
@@ -503,7 +503,7 @@ Budget: six tiles of 150 (900), the chronometer 188.
 
 - Two MFDs, left and right, at each command seat (helm and weapons). None at a gun, none on deck.
 - An MFD shows one **page** of one station. Pages of the stations the seat's console hosts are **owned**, with their controls; others are **repeaters**: read-only, with the orders that station takes.
-- **Soft keys** along each MFD's bottom edge name the pages of the station on show, plus **pin** and **fold**.
+- **Soft keys** along each MFD's bottom edge name the pages of the station on show, plus **pin** and **fold**. Each key carries its page's full name as 9.2 spells it (SENSORS, never SNS), and a panel's tab carries the same name (Atmos, not Atmosphere). Pin and fold take half a key each, which leaves four key widths of the 288-unit rail for at most three pages; the longest name, CONTRACTS, has nine letters.
 - **Folded**: an MFD can fold down to its soft-key rail (288 x 24), leaving the world visible above it. Pressing a page's soft key unfolds it.
 - **Defaults**, when the player sits down, come from the seat and the condition. Once the player picks or folds an MFD, their choice holds until they stand up; a change of condition then leaves that MFD alone.
 
@@ -515,7 +515,7 @@ Budget: six tiles of 150 (900), the chronometer 188.
 | Helm | Docked | DOCK | CARGO, folded |
 | Weapons | Green | SENSORS, folded | WEAPONS, folded |
 | Weapons | Yellow | SENSORS | WEAPONS, folded (the cluster already shows each gun; the page adds weapon, time of flight and crew) |
-| Weapons | Red | SENSORS | DEFENSE; DAMAGE on a hull with no shield emitter, where DEFENSE would only repeat the cluster's decoy and point defence |
+| Weapons | Red | SENSORS | DEFENSE; DAMAGE on a hull with no shield emitter, where DEFENSE would only repeat the cluster's decoy and point defense |
 
 - **Auto-paging**: when a caution or warning is raised, the right MFD unfolds and turns to the alert's home page, unless the player pinned it; then the left MFD does, unless it is pinned too. When the alert clears, after 10 s, the MFD goes back to what it showed before, folded again if it was. With several alerts, the most severe and then the newest has the MFD; the rest wait on the annunciator.
 - A station whose console has no power shows a dead page reading "NO POWER" rather than a stale one (5.1). In a blackout the slate keeps the pages that 5.1's rule 4 lists.
@@ -528,9 +528,9 @@ Budget: six tiles of 150 (900), the chronometer 188.
 | PLAN | Navigation | Burns (number, time to, Δv), total against Δv left; transfer proposal; autopilot | Accept, discard, warp to burn | Helm: fly burns (1) |
 | HELM | Helm | Who has the helm, the order in force, how it is going | Orders 1 to 6, 0 | Orders 1 to 6, 0 |
 | DOCK | Helm | Own ports with size and state; the target station's ports of that size, which one is assigned and how many others are free (it refuses when none is); clearance; latched or docked; the collar's strain while latched. During an approach the cluster's Ports field already has the selected port and clearance, so this page is for what it can't hold | Next port [H], arm and ask clearance or disarm [G], undock [U] | None |
-| SENSORS | Tactical | Radar scope (`RadarScope`, ranges 0.5 to 1,000 km) and contact list: class, name, range, closing, CPA, hostile or not, sorted by threat | Lock target, set nav target, range | Lock target, set nav target |
-| WEAPONS | Tactical | Mounts by position (13.2): weapon, ammunition where limited, state, who works it and so how it fires (AT WILL, YOURS, TRIGGER, HOLD, PD AUTO); with a target locked, each gun's time of flight and hit chance on it | Hold fire: no gun but point defence fires at will (new as a control: the game has the switch, `GunCrews.holdFire`, but only its tests set it, and a captain wanting a prize undamaged needs it) | Hold fire (new) |
-| DEFENSE | Tactical | On a hull with a shield emitter: shield ring (96 segments), mass, trim, emitters. Decoy readiness; point defence | Raise, lower, trim | None |
+| SENSORS | Tactical | Radar scope (`RadarScope`, ranges 0.5 to 1,000 km, with a new 5 km step: a gun fight at 2 to 5 km sat in the middle fifth of the 10 km scope and past the rim of the 2 km one; in Yellow and Red it opens at the smallest step that holds the locked target and every inbound missile, until the player picks one) and contact list: class, name, range, closing, CPA, hostile or not, sorted by threat | Lock target, set nav target, range | Lock target, set nav target |
+| WEAPONS | Tactical | Mounts by position (13.2): weapon, ammunition where limited, state, who works it and so how it fires (AT WILL, YOURS, TRIGGER, HOLD, PD AUTO); with a target locked, each gun's time of flight and hit chance on it | Hold fire: no gun but point defense fires at will (new as a control: the game has the switch, `GunCrews.holdFire`, but only its tests set it, and a captain wanting a prize undamaged needs it) | Hold fire (new) |
+| DEFENSE | Tactical | On a hull with a shield emitter: shield ring (96 segments), mass, trim, emitters. Decoy readiness; point defense | Raise, lower, trim | None |
 | DAMAGE | Engineering | Ship plan: integrity, breaches, fires, smoke, venting, patches, repairs and who is on each (from the crew task queue, new) | Damage-control priority (new) | Damage-control priority |
 | POWER | Engineering | Each reactor's output against its rating (it falls with damage); each circuit's store, its charge and time to full. Then only the systems that are not working, each with its cause and what clears it: switched off; no power (conduit cut, or shorted, with the breaker's reclose countdown, `DamageStates.AUTO_RESET`); stunned (countdown); disabled (under 30% health); destroyed. A NEXT line names the soonest that comes back by itself | Switches | None |
 | ATMOS | Engineering | Rooms: pressure, oxygen, smoke; tanks; hours of air | None | None |
@@ -550,7 +550,7 @@ Locking a target and setting the nav target count as orders to the ship's sensor
 - **Side panel**: 480 wide on the right (Z4). On deck it runs the full height; seated, it stops above the band so the instruments stay visible. The world keeps running and stays visible, so a player at the reactor console can watch their crew fight the fire they are routing power around.
 - **Full screen**: the Plot, the Yard, the Shipyard and the ship editor. They hide the band and bring their own annunciator and ticker.
 - Every panel has the same parts: a **title bar** (station and console, or the slate's owner, or the station berthed at), **tabs**, a **body** of tables and controls, and a **footer** of soft keys with their key caps, with responses shown in it. The footer replaces the per-window "Close [Y]" buttons: Esc always closes.
-- Panels open on the tab that matters: an alert's link opens its tab; a shortcut key opens its tab; a console opens on the action tab of the most severe, then newest, live alert owned by a station it hosts, and with none, on its focus tab (Power at the reactor, Atmosphere at life support).
+- Panels open on the tab that matters: an alert's link opens its tab; a shortcut key opens its tab; a console opens on the action tab of the most severe, then newest, live alert owned by a station it hosts, and with none, on its focus tab (Power at the reactor, Atmos at life support).
 
 ### 10.2 The panels
 
@@ -560,7 +560,7 @@ Locking a target and setting the nav target count as orders to the ship's sensor
 | **Plot** | [M] at a console hosting Navigation; [M] elsewhere opens it read-only | Map (with traffic), Plan, Targets | `ManeuverMap` side panel, orbit minimap, navigation readout lines |
 | **Tactical board** | [E] at the weapons console | Contacts, Weapons, Defense | Status column's target and missile lines |
 | **Gun panel** | [E] at a gun | The mount: weapon, state, ammunition, who works it; take it in hand | The gun's console window and "Take the gun" button |
-| **Engineering** | [E] at the reactor (Power) or life support (Atmosphere) | Power, Atmosphere, Damage, Systems, Tanks & propulsion, Shields | `ConsoleWindow`'s default layout, ship gauges, ship minimap |
+| **Engineering** | [E] at the reactor (Power) or life support (Atmos) | Power, Atmos, Damage, Systems, Tanks & propulsion, Shields | `ConsoleWindow`'s default layout, ship gauges, ship minimap |
 | **Station link** | Docked only, anywhere aboard: [T], [Y], [J], or the berth card | Market, Yard, Shipyard, Contract board, Hiring, Infirmary | `TradeWindow`, `YardWindow`, `ShipyardWindow`, `MissionWindow`'s offers, `CrewWindow`'s hires |
 | **Slate** | Anywhere aboard: [I], [J] when not docked, [K], [L], or the CMD tile | Ship, Crew, Medical, EVA, Boarding, Prisoners, Contracts, Career, Log | `CrewWindow`, `BoardingWindow`, `MissionWindow`'s held contracts, notice log, budget line |
 
@@ -743,7 +743,7 @@ Clicking a tile or a callout shows `homePage`: on the MFD when seated, in the sl
 
 Two rooms with one name are numbered fore to aft ("HOLD 2"). The starting corvette has two rooms: the BRIDGE forward (helm, weapons console, life support, reactor, all five gun mounts, a propellant tank, two small cargo bays, the escape pod) and the HOLD aft of the wall (two cargo bays and the oxygen and nitrogen tanks). The walkthroughs use that ship.
 
-**Guns are named by where they sit**, because a gun's side decides what it can hit: NOSE or TAIL on the centreline, otherwise PORT or STBD, with FWD or AFT when that side has more than one. Launchers count. The corvette's are NOSE (coilgun), FWD PORT and FWD STBD (the point-defence autocannons), AFT PORT (harpoon launcher) and AFT STBD (laser). Spoken, they are "the nose gun", "the aft starboard gun".
+**Guns are named by where they sit**, because a gun's side decides what it can hit: NOSE or TAIL on the centreline, otherwise PORT or STBD, with FWD or AFT when that side has more than one. Launchers count. The corvette's are NOSE (coilgun), FWD PORT and FWD STBD (the point-defense autocannons), AFT PORT (harpoon launcher) and AFT STBD (laser). Spoken, they are "the nose gun", "the aft starboard gun".
 
 Names fit the tile's 8 characters. The same names are used on the tile, in the callout, in the log, on the DAMAGE and POWER pages and on the tactical cluster's chips.
 
@@ -763,7 +763,7 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 
 | Source | Today | Severity | Tile | Station | Home page |
 |---|---|---|---|---|---|
-| `FlightWarnings` missile | Red banner, notice | Warning | MISSILE / 2 0:09 (count, soonest impact: seconds, not minutes, for the game's missiles) | Tactical | DEFENSE |
+| `FlightWarnings` missile | Red banner, notice | Warning | MISSILE / 2 0:09 (count, soonest impact in seconds, reckoned with the missile's burn: 19) | Tactical | DEFENSE |
 | `PirateBoarding` latched on | None | Warning | BOARDERS / 1:20 | Tactical | SENSORS |
 | Impact trajectory (`OrbitInfoProvider`) | Orbit panel text | Warning | IMPACT / 12:40 | Navigation | NAV |
 | Collision risk (new) | None | Caution, Warning under 20 s | COLLIDE / 0:42 | Helm | SENSORS |
@@ -772,7 +772,7 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 | Fire (`GridHazardSystem`) | Minimap alert list | Escalating | FIRE / BRIDGE | Engineering | DAMAGE |
 | Breach venting (`DamageControl`) | Notice, minimap | Escalating | BREACH / HOLD | Engineering | DAMAGE |
 | Out of patches (`DamageControl`) | Notice | Caution | PATCHES / NONE | Engineering | DAMAGE |
-| Short circuit (`DamageStates`) | Notice | Caution, as POWER: a short that cuts a system off is counted in the POWER tile, not given a tile of its own; one that cuts nothing off is an advisory. The callout says where and what it cut off: "SHIP: aft starboard gun shorted, back in 31 s" | POWER / n SYS | Engineering | POWER |
+| Short circuit (`DamageStates`) | Notice | Caution, as POWER: a short that cuts a system off is counted in the POWER tile, not given a tile of its own; one that cuts nothing off is an advisory. The callout says what it cut off and that it comes back by itself, with no countdown (13.5): "SHIP: aft starboard gun shorted, resets itself" | POWER / n SYS | Engineering | POWER |
 | Tank burst (`DamageStates`) | Notice | Caution | TANK / BURST | Engineering | DAMAGE |
 | Hull integrity (`ShipDisablement.hullIntegrity`, the mean of the hull tiles) | Minimap alert list under 75% (`ShipAlerts.HULL_DAMAGED`) | Caution under 75%; Warning under 55%, ten points before the ship is disabled at 45% (`ShipDisablement.DISABLED_HULL`) | HULL / 52% | Engineering | DAMAGE |
 | Oxygen tanks dry (`AirWatch`) | Warning notice | Warning | O2 TANKS / DRY | Engineering | ATMOS |
@@ -811,6 +811,7 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 - **Safety never depends on manning.** Every warning and caution is raised whether anyone is at the station or not: the ship's own sensors raise them. Manning changes the words and, through 13.1's escalation, says whether the player must act; it never hides a problem.
 - An advisory whose home is already on screen is logged but not called out (the helm cluster already shows "Burn 1 in 0:58" to a player at the helm).
 - Every callout fits 50 characters after the station tag, the speaker's name included (7.2).
+- A callout carries no countdown. Spoken once, a number is stale a second later and would disagree with the tile or page beside it, where the countdown ticks.
 - Callouts are limited to one per station every 3 s; the rest go to the log only.
 
 ### 13.6 Responses
@@ -853,14 +854,14 @@ A response shows where the player is looking: on the prompt line (Z7), or in the
 | Warp above 1x | Warp strip. The cluster's slots go dark except Next event, and the MFDs fold (nothing on them changes fast enough to read); any caution or warning restores them |
 | Yellow, Red | Symbology and MFD defaults as in 11.1 and 9.1 |
 | Emergency | The status strip's emergency text |
-| Blackout (no reactor running) | Clusters, MFDs and console panels on their NO POWER face; the overlay stays up; the slate keeps Engineering's pages, Command's tabs and COMMS, and tile clicks open there (5.1) |
+| Blackout (no reactor running) | Clusters and MFDs on their NO POWER face; the overlay stays up; Engineering stays readable and switchable at its consoles and on the slate; the slate keeps Command's tabs and COMMS, and tile clicks open there (5.1) |
 | A side panel open while seated | The band stays; the panel stops above it; the top-centre column recentres left of it |
 
 ---
 
 ## 15. Context walkthroughs
 
-Wireframes on the 1280 x 800 grid, not to scale. Shapes and styles are the artists'.
+Wireframes on the 1280 x 800 grid, not to scale. Shapes and styles are the artists'. A character here is about twice as wide as body text on screen, so the MFDs' soft keys are drawn short (SNS, WPN, DEF, DMG, PWR, ATM): on screen each carries its page's full name (9.1).
 
 ### A. On deck, nothing wrong
 
@@ -957,15 +958,15 @@ The approach has taken over the Reference and Next event slots (8.2). The player
 +------------------------------------------------------------------------------------------+
 |          RED                                                                             |
 |          (W) [MISSILE ] [HOSTILE ]                                         (C)           |
-|              [2  0:03 ] [ FIRING ]                                                       |
+|              [2  0:08 ] [ FIRING ]                                                       |
 |          TAC    Cole: harpoons from port. PD has them.                                   |
 |          HELM   Bea: holding position.                                                   |
 |                           .  .  .  .  . (threat tracks; one impact mark, "2", port side) |
 |                [ship]  ----- lead ---->  <Raider>                                        |
 +---------------------+---------------------------------------------+----------------------+
 | SENSORS             | Raider  Pirate Corvette  2.8 km  closing 40 | DAMAGE               |
-| Harpoon 2.2 km 0:03 | NOSE       Cole  charging        hit 81%    | (ship plan: bridge   |
-| Harpoon 2.6 km 0:04 | AFT STBD         burning 60%     hit 58%    |  and hold, no hits)  |
+| Harpoon 2.4 km 0:08 | NOSE       Cole  charging        hit 81%    | (ship plan: bridge   |
+| Harpoon 2.5 km 0:09 | AFT STBD         burning 60%     hit 58%    |  and hold, no hits)  |
 | Raider  2.8 km    H | PD AUTO  engaging           DECOY ready     |                      |
 |                     | AFT PORT   MSL 4 of 4  ready  salvo 4       |                      |
 |                     |            (Shields slot blank: no emitter) |                      |
@@ -975,11 +976,11 @@ The approach has taken over the Reference and Next event slots (8.2). The player
 +------------------------------------------------------------------------------------------+
 ```
 
-This is the First Play fight: the starting corvette against the pirates' corvette, labelled Raider, which fires harpoons. At the weapons console every gun but point defence is the player's (`PlayerGunnery.inHand`), so the cluster lists the two guns in hand, NOSE (the coilgun) and AFT STBD (the laser), each with its own chance to hit the Raider. The autocannons forward on either side are point defence; they share one PD AUTO chip and are engaging the harpoons. Cole has taken the nose gun's seat, so it shoots with Cole's skill rather than half the player's, and its chance is the better of the two.
+This is the First Play fight: the starting corvette against the pirates' corvette, labelled Raider, which fires harpoons. At the weapons console every gun but point defense is the player's (`PlayerGunnery.inHand`), so the cluster lists the two guns in hand, NOSE (the coilgun) and AFT STBD (the laser), each with its own chance to hit the Raider. The autocannons forward on either side are point defense; they share one PD AUTO chip and are engaging the harpoons. Cole has taken the nose gun's seat, so it shoots with Cole's skill rather than half the player's, and its chance is the better of the two.
 
 The laser's pulse has drawn the circuit's store dry: it burns at 60%, which is what the 3 MW reactor gives a 5 MW beam, and the coilgun is charging until the store holds a shot. Both clear when the pulse ends. The launcher's chip warns that one press throws all four harpoons. The corvette has no shield emitter, so the Shields slot is blank and the right MFD starts on DAMAGE rather than DEFENSE (9.1); a hull hit focuses it on the room struck.
 
-The Raider is labelled with its name only; its range and closing are in the Target slot, and each gun's time of flight is on the WEAPONS page. The missiles' countdown is on the tile and, per missile, in the SENSORS list. The board names Bea at NAV as well as HELM, since the helmsman flies the plan; nobody works Comms, and nobody is needed at Engineering.
+The Raider is labelled with its name only; its range and closing are in the Target slot, and each gun's time of flight is on the WEAPONS page. The missiles' countdown is on the tile and, per missile, in the SENSORS list. It has the harpoon's burn in it (19). The first harpoon was thrown 5 s ago and the second a second later; they close at 190 and 160 m/s, gaining 30 m/s every second, so they land in 8 and 9 s, where the game's figure today would read 13 and 16. The board names Bea at NAV as well as HELM, since the helmsman flies the plan; nobody works Comms, and nobody is needed at Engineering.
 
 ### F. At the reactor console
 
@@ -989,18 +990,18 @@ The Raider is labelled with its name only; its range and closing are in the Targ
 |      [ BRIDGE ] [ 1 SYS  ]                    |  [Power] [Atmos] [Damage] [Systems] ...  |
 |  ENG   Ada: fire in the bridge, I'm on it.    |                                          |
 |  ENG   SHIP: aft starboard gun shorted,       |  Reactor   2.6 of 3.0 MW (damaged)       |
-|        back in 31 s.                          |  Store     62%   full in 0.8 s           |
+|        resets itself.                         |  Store     full                          |
 |                                               |  --------------------------------------- |
 |      (deck view stays live:                   |  Not working                             |
-|       crew fighting the fire)                 |  AFT STBD gun  NO POWER  short, 31 s     |
+|       crew fighting the fire)                 |  AFT STBD gun  NO POWER  short, 37 s     |
 |                                               |  NOSE gun      DISABLED  24%, repair     |
-|              [avatar]                         |  NEXT  AFT STBD gun back in 31 s         |
+|              [avatar]                         |  NEXT  AFT STBD gun back in 37 s         |
 |                                               |                                          |
 |                                               |  [Enter] Switch   [Esc] Close            |
 +------------------------------------------------------------------------------------------+
 ```
 
-Both alerts are cautions: the crew are on the fire, and the short's breaker recloses by itself in 31 s. The power page lists only what is not working, with the cause and what clears it; working systems are not listed. The corvette has two rooms, the bridge forward and the hold aft of the wall (13.2), so this fire is in the room the player is standing in. The world shifts 240 left so the deck stays centred in what the panel leaves (6.2).
+Both alerts are cautions: the crew are on the fire, and the short's breaker recloses by itself in 37 s. This is 8 s after the short: its callout holds for 10 s, so it is still up, and the store, which the short emptied, refilled within 2 s with nothing drawing on it. The power page lists only what is not working, with the cause and what clears it; working systems are not listed. The corvette has two rooms, the bridge forward and the hold aft of the wall (13.2), so this fire is in the room the player is standing in. The world shifts 240 left so the deck stays centred in what the panel leaves (6.2).
 
 ### G. Docked: Station link
 
@@ -1103,7 +1104,7 @@ The artists change how this looks, not what it says or where it is. A style may 
 4. **Motion is limited**: flashing at 2 Hz or slower, only the master lamps and newly raised tiles; a "reduce motion" setting turns flashing into a steady lit state.
 5. **Elements to design**, the full kit:
    - Overlay: annunciator tile (raised, acknowledged, clearing, "+n MORE"); master lamps; status strip (condition, state, emergency text); warp strip; ticker line with station tag and speaker; prompt line; response; suit readout; guide card; berth card.
-   - Seats: cluster slots, lit and dark (reference, next event, velocity with mode chips, trigger, Δv bar with home notch and plan bracket); docking approach (closing-speed bar with its limit, alignment); gun chip (state, hit chance, gunner); point-defence chip; launcher chip; shield rose; gunner sight readout; a blacked-out seat, its cluster and MFDs on their NO POWER face (5.1).
+   - Seats: cluster slots, lit and dark (reference, next event, velocity with mode chips, trigger, Δv bar with home notch and plan bracket); docking approach (closing-speed bar with its limit, alignment); gun chip (state, hit chance, gunner); point-defense chip; launcher chip; shield rose; gunner sight readout; a blacked-out seat, its cluster and MFDs on their NO POWER face (5.1).
    - MFDs: frame with title and soft keys; folded rail; pin; dead screen; radar scope; contact list; ship plan; shield ring; small orbit drawing.
    - Station board tile in five states; the whole board dim (Green) and lit; its right end, the chronometer. (The condition and the ship's state are in the status strip.)
    - Panels: side and full frames with title bar, tabs and footer; table rows; quantity control.
@@ -1191,7 +1192,7 @@ For whoever builds this; nothing here is binding on the art.
 | `Visibility` | A pure function from (presence, condition, states, open panel) to the visible widgets: section 14 as code, unit-tested row by row |
 | `ShieldStatusProvider` | Shield mass, segments, trim and emitters for DEFENSE (the model has the data; the provider is new) |
 
-**New data needed.** The POWER page needs nothing new: reactor rating and output, each circuit's store, and each system's switch, circuit, short with its reclose timer, stun, health and destruction are all in interior-grid today. The tactical cluster needs nothing new either: each gun's hit chance (`HitChance`, as `FireArcOverlay` already computes it), a beam's strength (`WeaponMountComponent.beamStrength`), charging (the circuit's store against the shot's energy, `power_draw` times cooldown), firing arcs, point defence's missile targets, magazines and the salvo size are all there. What is new: collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); crew assignment per station (ai-crew's `ManConsoleTask`); hours of air at the current crew.
+**New data needed.** The POWER page needs nothing new: reactor rating and output, each circuit's store, and each system's switch, circuit, short with its reclose timer, stun, health and destruction are all in interior-grid today. The tactical cluster needs nothing new either: each gun's hit chance (`HitChance`, as `FireArcOverlay` already computes it), a beam's strength (`WeaponMountComponent.beamStrength`), charging (the circuit's store against the shot's energy, `power_draw` times cooldown), firing arcs, point defense's missile targets, magazines and the salvo size are all there. What is new: an impact time with the missile's burn in it, t = (−v + √(v² + 2ad)) / a, with v its closing speed, d its range and a its closing burn (`MissileDef.closingBurn`, 30 m/s² for a harpoon), since `CombatThreats` gives the closest approach at the present speed, which runs long while a missile accelerates: 47 s at launch for a harpoon from 2.8 km that lands in about 12, and a countdown from it falls faster than the clock; a 5 km step in `RadarScope.RANGES`; collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); crew assignment per station (ai-crew's `ManConsoleTask`); hours of air at the current crew.
 
 **Order of work.** Each step leaves a playable game:
 
@@ -1220,6 +1221,20 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 12 (Nasa-punk artist's round 3 notes, checked against the data, and one of my own)
+
+| Problem found | Change |
+|---|---|
+| Round 6's changelog credited the Nasa-punk artist with "missiles arrive in seconds, not in 37 s". That was my own reading, and too strong: 37 s is what the game shows | Credit corrected (round 6) |
+| E's harpoons were 0:03 and 0:04 out at 2.2 and 2.6 km. A harpoon closes at 30 m/s² (`MissileDef.closingBurn`) and lands about 12 s after launch from 2.8 km, while the game's figure, closest approach at the present speed (`CombatThreats`), reads 47 s at launch and falls faster than the clock | An impact time with the burn in it (new data, 19); E's harpoons at 2.4 and 2.5 km, landing in 8 and 9 s (13.4, E) |
+| Pages had two names: the drawings key SNS, WPN, DEF, DMG, PWR, ATM, and the Engineering tab was Atmosphere where its page is ATMOS | Soft keys and tabs carry the page's full name; the drawings say they are short only for width (9.1, 15, 5.1, 10) |
+| F's numbers didn't agree: "back in 31 s" on a 45 s breaker (`DamageStates.AUTO_RESET`) puts the short 14 s back, past the 10 s its line holds, and the store it emptied would be full again, not 62% | F is 8 s after the short: 37 s left, the line still up, the store full (F) |
+| A countdown in a spoken line goes stale while the line holds, and would disagree with the page beside it | Callouts carry no countdown: "SHIP: aft starboard gun shorted, resets itself" (13.4, 13.5, F) |
+| At the weapons seat a shorted gun read "no power", with no word of when it comes back | Its chip reads shorted, with the seconds to its breaker (8.3) |
+| "Point defence" in the text against DEFENSE on the page and `point_defense` in the data | One spelling: point defense |
+| The scope's steps jump from 2 to 10 km, and the corvette's guns reach 3 to 5 km, so a gun fight sat in the middle fifth of the scope | A 5 km step (new data), and in Yellow and Red the scope opens on the smallest step that holds the target and every inbound missile (9.2, 19) |
+| My own: round 11's blackout rule darkened the console panels too, so the reactor couldn't be switched back on at its console, which the game allows (`ConsoleWindow` switches whatever the power) | Engineering keeps working at its consoles and on the slate, switches included (5.1, 14.2) |
 
 ### Round 11 (my own critique: a disabled ship, from the strip to a blackout)
 
@@ -1280,12 +1295,12 @@ Checked and kept: Highport's 400 km orbit (7.67 km/s), the 5,000 starting credit
 
 | Problem found | Change |
 |---|---|
-| Walkthrough E showed guns the corvette doesn't carry. It has a coilgun in the nose, an autocannon forward on each side (both point defence), a harpoon launcher aft to port and a laser aft to starboard (`ships.toml`) | E redrawn with the real mounts: NOSE and AFT STBD in hand, the autocannons as PD AUTO, the launcher's four harpoons (Nasa-punk) |
-| E's numbers were the old railgun's. The coilgun's round flies at 3 km/s and the laser reaches 3 km; missiles arrive in seconds, not in 37 s | The Raider at 2.8 km; missile countdowns in seconds in B, E and the catalogue (Nasa-punk; `weapons.toml`) |
+| Walkthrough E showed guns the corvette doesn't carry. It has a coilgun in the nose, an autocannon forward on each side (both point defense), a harpoon launcher aft to port and a laser aft to starboard (`ships.toml`) | E redrawn with the real mounts: NOSE and AFT STBD in hand, the autocannons as PD AUTO, the launcher's four harpoons (Nasa-punk) |
+| E's numbers were the old railgun's. The coilgun's round flies at 3 km/s and the laser reaches 3 km | The Raider at 2.8 km (Nasa-punk; `weapons.toml`). Missile countdowns were cut to seconds in B, E and the catalogue on my own reading, which round 12 corrects |
 | E's Raider fired darts, which only pirate gunships carry. The First Play raider is a pirate corvette with a harpoon launcher | E's missiles are harpoons |
 | The corvette has no shield emitter, no airlock and two rooms (bridge and hold), so E's shields, F's emitter and airlock and the "cargo 1" room could not happen on it | E's Shields slot is dark and the right MFD starts on DAMAGE on a hull with no emitter (8.3, 9.1); F's systems are the corvette's; the walkthroughs use its rooms (Nasa-punk) |
 | The room rule named the corvette's bridge REACTOR, and differed from the other designs' | The task-based design's rule: BRIDGE for the room with the helm, then the system that fills the most tiles (13.2; Nasa-punk) |
-| At the weapons console every gun but point defence is the player's (`PlayerGunnery.inHand`), so AT WILL and TRIGGER never appear on the tactical cluster | The cluster's chips are the guns in hand, and the seat is the mode, said once; point defence shares one PD AUTO chip; AT WILL, HOLD and TRIGGER stay on the WEAPONS page and the helm's Trigger slot, where they apply (8.1, 8.3) |
+| At the weapons console every gun but point defense is the player's (`PlayerGunnery.inHand`), so AT WILL and TRIGGER never appear on the tactical cluster | The cluster's chips are the guns in hand, and the seat is the mode, said once; point defense shares one PD AUTO chip; AT WILL, HOLD and TRIGGER stay on the WEAPONS page and the helm's Trigger slot, where they apply (8.1, 8.3) |
 | One hit chance "with the guns in hand" means nothing when two guns with different rounds are in hand | Each gun's chip carries its own hit chance; time of flight moves to the WEAPONS page (8.3, 9.2) |
 | The laser draws 5 MW from a 3 MW reactor: it burns weaker as the store runs dry, and starves the other guns of shots | A beam's chip shows the share of power it is getting, and a gun waiting for the store shows charging (8.3, E) |
 | One press of the missile key throws up to four (`PlayerGunnery.SALVO`): the corvette's whole magazine | The launcher chip shows the salvo size (8.3) |
