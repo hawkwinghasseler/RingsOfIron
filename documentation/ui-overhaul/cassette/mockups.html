@@ -1,0 +1,632 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Yard Standard mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow+Semi+Condensed:wght@600&family=Big+Shoulders+Stencil+Display:wght@800&family=IBM+Plex+Mono:wght@400;500&family=Special+Elite&family=VT323&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #0a0b0c; }
+  svg { display: block; }
+  .legend { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .crt { font-family: 'IBM Plex Mono', monospace; }
+  .vt { font-family: 'VT323', monospace; }
+  .drum { font-family: 'Barlow Condensed', sans-serif; font-weight: 500; }
+  .dymo { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: 0.08em; }
+  .paper { font-family: 'Special Elite', monospace; }
+  .stencil { font-family: 'Big Shoulders Stencil Display', sans-serif; font-weight: 800; }
+</style>
+</head>
+<body>
+<svg id="flight" width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="components" width="1920" height="1200" viewBox="0 0 1920 1200" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+// ---------- palette ----------
+const C = {
+  enamel:'#D9CFB4', enamelShade:'#B8AD92', enamelLight:'#ECE4CE', chassis:'#4A3F36', chassisDeep:'#2B241F',
+  bakelite:'#1E1A17', alu:'#A9A69E', rubber:'#3A3734', ink:'#2A2420', inkLight:'#EFE8D6',
+  orange:'#D9602B', red:'#B8352B', mustard:'#D9A637', avocado:'#6E7846',
+  amber:'#FFB23F', amberDim:'#9A6420', amberGhost:'#4A300F', green:'#7CFF6A', greenDim:'#2F8A35',
+  crtBlack:'#0E100C', crtOff:'#22251F',
+  lampRed:'#FF4A35', lampRedOff:'#5A1E18', lampAmber:'#FFA733', lampAmberOff:'#5A3B16',
+  lampGreen:'#8CFF5A', lampGreenOff:'#24401C', lampWhite:'#FFF3D6', lampWhiteOff:'#4A4740',
+  paper:'#EEE6D2'
+};
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+const DEFS = `
+<defs>
+  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="lampglow" x="-60%" y="-60%" width="220%" height="220%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.07 0" result="g"/>
+    <feComposite in="g" in2="SourceGraphic" operator="in" result="gi"/>
+    <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="gi"/></feMerge>
+  </filter>
+  <filter id="shadow" x="-10%" y="-10%" width="130%" height="140%">
+    <feDropShadow dx="1.5" dy="2.5" stdDeviation="1.6" flood-color="#000" flood-opacity="0.55"/>
+  </filter>
+  <filter id="deckshadow" x="-5%" y="-40%" width="110%" height="180%">
+    <feDropShadow dx="0" dy="-8" stdDeviation="14" flood-color="#000" flood-opacity="0.9"/>
+  </filter>
+  <linearGradient id="enamelG" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#E3DAC1"/><stop offset="1" stop-color="#CFC4A8"/>
+  </linearGradient>
+  <linearGradient id="avoG" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#7A8450"/><stop offset="1" stop-color="#646D3F"/>
+  </linearGradient>
+  <linearGradient id="chassisG" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#52463C"/><stop offset="1" stop-color="#3C332B"/>
+  </linearGradient>
+  <linearGradient id="lipG" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#F4EEDD"/><stop offset="0.35" stop-color="#D9CFB4"/><stop offset="1" stop-color="#9F957C"/>
+  </linearGradient>
+  <radialGradient id="knobG" cx="0.35" cy="0.3" r="0.8">
+    <stop offset="0" stop-color="#4a423c"/><stop offset="0.5" stop-color="#221d1a"/><stop offset="1" stop-color="#110e0c"/>
+  </radialGradient>
+  <radialGradient id="screwG" cx="0.35" cy="0.3" r="0.8">
+    <stop offset="0" stop-color="#d8d5cc"/><stop offset="1" stop-color="#7d7a72"/>
+  </radialGradient>
+  <linearGradient id="glassG" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#fff" stop-opacity="0.10"/><stop offset="0.35" stop-color="#fff" stop-opacity="0.02"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+  <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.72">
+    <stop offset="0.65" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.55"/>
+  </radialGradient>
+  <linearGradient id="drumG" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#050505"/><stop offset="0.25" stop-color="#2a2725"/><stop offset="0.5" stop-color="#34302d"/><stop offset="0.75" stop-color="#2a2725"/><stop offset="1" stop-color="#050505"/>
+  </linearGradient>
+  <pattern id="scan" width="4" height="3" patternUnits="userSpaceOnUse">
+    <rect width="4" height="1" y="2" fill="#000" opacity="0.35"/>
+  </pattern>
+  <pattern id="hazard" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="8" height="16" fill="${'#D9A637'}"/><rect x="8" width="8" height="16" fill="#1E1A17"/>
+  </pattern>
+  <pattern id="barber" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="5" height="10" fill="#e8e2d0"/><rect x="5" width="5" height="10" fill="#B8352B"/>
+  </pattern>
+  <pattern id="greenbar" width="10" height="44" patternUnits="userSpaceOnUse">
+    <rect width="10" height="22" fill="#d6e6cc" opacity="0.55"/>
+  </pattern>
+</defs>`;
+
+// ---------- primitives ----------
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function screw(x,y){
+  const a = rnd()*180;
+  return `<g transform="translate(${x},${y}) rotate(${a})"><circle r="5" fill="url(#screwG)" stroke="#5d5a53" stroke-width="0.8"/>
+  <path d="M-3 0H3M0 -3V3" stroke="#4b4842" stroke-width="1.4"/></g>`;
+}
+function plate(x,y,w,h,{fill='url(#enamelG)', title=null, titleColor=C.ink, screws=true, r=3}={}){
+  let s = `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}" filter="url(#grain)"/></g>
+  <path d="M${x+r} ${y+0.8}H${x+w-r}" stroke="${C.enamelLight}" stroke-width="1.6" opacity="0.9"/>
+  <path d="M${x+0.8} ${y+r}V${y+h-r}" stroke="${C.enamelLight}" stroke-width="1.2" opacity="0.6"/>
+  <path d="M${x+r} ${y+h-0.8}H${x+w-r}M${x+w-0.8} ${y+r}V${y+h-r}" stroke="#7d735e" stroke-width="1.4" opacity="0.8"/>`;
+  if (screws) s += screw(x+8,y+8)+screw(x+w-8,y+8)+screw(x+8,y+h-8)+screw(x+w-8,y+h-8);
+  if (title) s += `<text x="${x+20}" y="${y+22}" class="legend" font-size="13" fill="${titleColor}">${esc(title)}</text>`;
+  return s;
+}
+function legend(x,y,t,{size=11,anchor='middle',fill=C.ink}={}){
+  return `<text x="${x}" y="${y}" class="legend" font-size="${size}" text-anchor="${anchor}" fill="${fill}">${esc(t)}</text>`;
+}
+function keycap(x,y,k){
+  const w = Math.max(16, 8 + k.length*7);
+  return `<g transform="translate(${x-w/2},${y})"><rect width="${w}" height="15" rx="3" fill="${C.rubber}"/>
+  <rect x="1.5" y="1" width="${w-3}" height="11" rx="2" fill="#4a4642"/>
+  <text x="${w/2}" y="10.5" text-anchor="middle" class="drum" font-size="10" fill="${C.inkLight}">${esc(k)}</text></g>`;
+}
+function dymo(x,y,t,{color='#9E2A23', rot=-1, size=14}={}){
+  const w = t.length*size*0.62 + 18;
+  return `<g transform="translate(${x},${y}) rotate(${rot})" filter="url(#shadow)">
+    <rect x="0" y="0" width="${w}" height="${size+10}" rx="2" fill="${color}"/>
+    <rect x="0" y="0" width="${w}" height="${size+10}" rx="2" fill="url(#glassG)"/>
+    <text x="${w/2}" y="${size+3}" text-anchor="middle" class="dymo" font-size="${size}" fill="#000" opacity="0.35" transform="translate(0.8,1)">${esc(t)}</text>
+    <text x="${w/2}" y="${size+3}" text-anchor="middle" class="dymo" font-size="${size}" fill="#f4efe6">${esc(t)}</text></g>`;
+}
+
+// round needle gauge, 270 deg sweep
+function needle(cx,cy,r,{min=0,max=100,value=50,major=5,minor=4,zones=[],label='',unit='',fmt=v=>v,park=false,outside=false}={}){
+  const a0 = 150, a1 = 390;
+  const ang = v => a0 + (Math.max(min,Math.min(max,v))-min)/(max-min)*(a1-a0);
+  const pt = (a,rr) => [cx + rr*Math.cos(a*Math.PI/180), cy + rr*Math.sin(a*Math.PI/180)];
+  let s = `<circle cx="${cx}" cy="${cy}" r="${r+9}" fill="${C.bakelite}"/><circle cx="${cx}" cy="${cy}" r="${r+9}" fill="url(#glassG)"/>
+  <circle cx="${cx}" cy="${cy}" r="${r+2}" fill="#F2ECDC"/>`;
+  for (const z of zones){
+    const [x0,y0]=pt(ang(z.from),r-6),[x1,y1]=pt(ang(z.to),r-6);
+    const large = (ang(z.to)-ang(z.from))>180?1:0;
+    s += `<path d="M${x0} ${y0}A${r-6} ${r-6} 0 ${large} 1 ${x1} ${y1}" stroke="${z.color}" stroke-width="7" fill="none"/>`;
+  }
+  const steps = major*minor;
+  for (let i=0;i<=steps;i++){
+    const v = min + (max-min)*i/steps, a = ang(v), big = i%minor===0;
+    const [x0,y0]=pt(a,r-1),[x1,y1]=pt(a,r-(big?13:7));
+    s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${C.ink}" stroke-width="${big?2:1}"/>`;
+    if (big){ const [tx,ty]=pt(a,r-(r>50?24:20)); s += `<text x="${tx}" y="${ty+3.5}" text-anchor="middle" class="legend" font-size="${r>50?11:8.5}" fill="${C.ink}">${fmt(v)}</text>`; }
+  }
+  if (outside){ s += legend(cx,cy+r+24,label + (unit?'  '+unit:''),{size:10}); }
+  else { s += legend(cx,cy+r*0.6,label,{size:12}); if (unit) s += legend(cx,cy+r*0.6+12,unit,{size:9,fill:'#6b6254'}); }
+  const va = park ? a0-8 : ang(value);
+  const [nx,ny]=pt(va,r-8),[bx,by]=pt(va+180,14);
+  s += `<g filter="url(#shadow)"><line x1="${bx}" y1="${by}" x2="${nx}" y2="${ny}" stroke="#1a1614" stroke-width="2.6" stroke-linecap="round"/>
+  <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${C.orange}" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="${cx}" cy="${cy}" r="6" fill="url(#knobG)"/></g>`;
+  s += `<path d="M${cx-r} ${cy-r*0.2}A${r} ${r} 0 0 1 ${cx+r*0.3} ${cy-r}" stroke="#fff" stroke-opacity="0.25" stroke-width="5" fill="none"/>`;
+  return s;
+}
+
+// vertical edgewise meter
+function edgewise(x,y,{h=110,value=0.5,label='',key=null,unitText='',warn=0.5,crit=0.25,park=false}={}){
+  const w = 34;
+  let s = `<rect x="${x-3}" y="${y-3}" width="${w+6}" height="${h+6}" rx="3" fill="${C.bakelite}"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#F2ECDC"/>
+  <rect x="${x+w-10}" y="${y+h*(1-warn)}" width="7" height="${h*(warn-crit)}" fill="${C.mustard}"/>
+  <rect x="${x+w-10}" y="${y+h*(1-crit)}" width="7" height="${h*crit}" fill="${C.red}"/>`;
+  for (let i=0;i<=10;i++){
+    const yy = y + h*i/10; const big = i%5===0;
+    s += `<line x1="${x+w-10}" y1="${yy}" x2="${x+w-(big?22:16)}" y2="${yy}" stroke="${C.ink}" stroke-width="${big?1.6:0.8}"/>`;
+    if (big) s += `<text x="${x+3}" y="${Math.min(Math.max(yy+3,y+8),y+h-1)}" class="legend" font-size="8" fill="${C.ink}">${(10-i)*10}</text>`;
+  }
+  const py = park ? y+h+2 : y + h*(1-value);
+  s += `<g filter="url(#shadow)"><path d="M${x+w-2} ${py}l-14 -5v10z" fill="${C.orange}" stroke="#1a1614" stroke-width="0.8"/><line x1="${x+2}" y1="${py}" x2="${x+w-14}" y2="${py}" stroke="#1a1614" stroke-width="1.2"/></g>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#glassG)"/>`;
+  s += legend(x+w/2,y+h+20,label,{size:11});
+  if (unitText) s += legend(x+w/2,y+h+33,unitText,{size:9,fill:'#6b6254'});
+  return s;
+}
+
+// drum counter
+function drums(x,y,str,{unit='',label='',dimLead=true,cw=20,ch=32,flag=false,size=24,roll=0}={}){
+  const n = str.length;
+  const W = [...str].reduce((a,c)=>a+(c==='.'?6:cw),0);
+  let off = 0;
+  let s = `<rect x="${x-5}" y="${y-5}" width="${W+10}" height="${ch+10}" rx="3" fill="${C.bakelite}"/>`;
+  let lead = true;
+  for (let i=0;i<n;i++){
+    const c = str[i]; const xx = x + off;
+    if (c==='.' ){ s += `<circle cx="${xx+3}" cy="${y+ch-6}" r="2" fill="${C.inkLight}"/>`; off += 6; continue; }
+    off += cw;
+    if (c!=='0' && c!==' ') lead = false;
+    if (i===n-1 || str[i+1]==='.') lead = false;
+    s += `<rect x="${xx+1}" y="${y}" width="${cw-2}" height="${ch}" fill="url(#drumG)"/>`;
+    // last digit rolling: show partial next digit
+    const isLast = (i===n-1) && roll>0;
+    const col = (dimLead && lead) ? '#77716a' : '#F3EEE2';
+    if (isLast){
+      const b = ch/2+size*0.36 - roll*ch;
+      s += `<svg x="${xx+1}" y="${y}" width="${cw-2}" height="${ch}"><text x="${(cw-2)/2}" y="${b}" text-anchor="middle" class="drum" font-size="${size}" fill="${col}">${c}</text>
+      <text x="${(cw-2)/2}" y="${b+ch}" text-anchor="middle" class="drum" font-size="${size}" fill="${col}">${(+c+1)%10}</text></svg>`;
+    } else {
+      s += `<text x="${xx+cw/2}" y="${y+ch/2+size*0.36}" text-anchor="middle" class="drum" font-size="${size}" fill="${col}">${c===' '?'':c}</text>`;
+    }
+    s += `<rect x="${xx+1}" y="${y}" width="${cw-2}" height="${ch}" fill="url(#drumG)" opacity="0.35"/>`;
+  }
+  if (flag) s += `<rect x="${x}" y="${y+ch*0.3}" width="${W}" height="${ch*0.4}" fill="url(#barber)" stroke="#111" stroke-width="1"/>
+    <rect x="${x+W/2-18}" y="${y+ch*0.3+1}" width="36" height="${ch*0.4-2}" fill="#e8e2d0"/>${legend(x+W/2,y+ch*0.5+4,'OFF',{size:11})}`;
+  s += `<rect x="${x-5}" y="${y-5}" width="${W+10}" height="${ch+10}" rx="3" fill="url(#glassG)"/>`;
+  if (unit) s += legend(x+W+10,y+ch/2+5,unit,{size:12,anchor:'start'});
+  if (label) s += legend(x-5,y-11,label,{size:11,anchor:'start'});
+  return s;
+}
+
+// annunciator tile
+function tile(x,y,w,h,lines,{color='amber',lit=false}={}){
+  const on = {red:C.lampRed,amber:C.lampAmber,green:C.lampGreen,white:C.lampWhite}[color];
+  const off = {red:C.lampRedOff,amber:C.lampAmberOff,green:C.lampGreenOff,white:C.lampWhiteOff}[color];
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#0c0a09"/>`;
+  if (lit) s += `<rect x="${x+2}" y="${y+2}" width="${w-4}" height="${h-4}" fill="${on}" filter="url(#lampglow)" opacity="0.9"/>`;
+  s += `<rect x="${x+2}" y="${y+2}" width="${w-4}" height="${h-4}" fill="${lit?on:off}"/>
+  <rect x="${x+2}" y="${y+2}" width="${w-4}" height="${h-4}" fill="url(#glassG)"/>`;
+  const tc = lit ? '#2a1606' : 'rgba(240,230,210,0.42)';
+  lines.forEach((t,i)=>{ s += `<text x="${x+w/2}" y="${y+h/2 + (i-(lines.length-1)/2)*12 + 4}" text-anchor="middle" class="legend" font-size="10.5" fill="${tc}">${esc(t)}</text>`; });
+  return s;
+}
+function pushLight(x,y,w,h,lines,opts={}){
+  return `<rect x="${x-4}" y="${y-4}" width="${w+8}" height="${h+8}" rx="3" fill="${C.alu}"/><rect x="${x-2}" y="${y-2}" width="${w+4}" height="${h+4}" rx="2" fill="#5a5750"/>` + tile(x,y,w,h,lines,opts);
+}
+
+// toggle switch
+function toggle(x,y,{up=true,label='',key=null,guard=false,guardOpen=false,dark=false,pos=['ON','OFF']}={}){
+  let s = '';
+  if (guard){
+    s += `<rect x="${x-17}" y="${y-30}" width="34" height="60" rx="3" fill="${C.alu}" stroke="#6d6a63"/>`;
+  }
+  s += `<circle cx="${x}" cy="${y}" r="13" fill="${C.alu}" stroke="#77736b"/><circle cx="${x}" cy="${y}" r="8" fill="#5c5852"/>
+  <circle cx="${x}" cy="${y}" r="5" fill="#2a2725"/>`;
+  const dy = up ? -1 : 1;
+  s += `<g filter="url(#shadow)"><path d="M${x-3.2} ${y}L${x-5} ${y+dy*24}A5 5 0 0 0 ${x+5} ${y+dy*24}L${x+3.2} ${y}Z" fill="url(#knobG)"/>
+  <ellipse cx="${x}" cy="${y+dy*24}" rx="5" ry="3.4" fill="#3a3430"/></g>`;
+  if (guard){
+    if (guardOpen) s += `<g filter="url(#shadow)"><rect x="${x-16}" y="${y-66}" width="32" height="36" rx="4" fill="${C.red}" opacity="0.95"/>
+      <rect x="${x-16}" y="${y-66}" width="32" height="36" rx="4" fill="url(#glassG)"/><rect x="${x-16}" y="${y-34}" width="32" height="5" fill="#7a221b"/></g>`;
+    else s += `<g filter="url(#shadow)"><rect x="${x-16}" y="${y-29}" width="32" height="58" rx="4" fill="${C.red}" opacity="0.93"/>
+      <rect x="${x-16}" y="${y-29}" width="32" height="58" rx="4" fill="url(#glassG)"/>
+      <path d="M${x-10} ${y-20}H${x+10}" stroke="#7a221b" stroke-width="2"/></g>`;
+  }
+  if (pos && !guard){ s += legend(x+22,y-14,pos[0],{size:9,anchor:'start',fill:'#6b6254'}) + legend(x+22,y+20,pos[1],{size:9,anchor:'start',fill:'#6b6254'}); }
+  s += legend(x,y+ (guard?48:46),label,{size:11,fill: dark ? '#8f8775' : C.ink});
+  if (key) s += keycap(x,y+(guard?54:52),key);
+  return s;
+}
+
+// rotary selector
+function rotary(cx,cy,r,positions,sel,{label='',arc=[-135,135],key=null,size=10,escut=null}={}){
+  let s = '';
+  if (escut) s += `<circle cx="${cx}" cy="${cy}" r="${r+30}" fill="${escut}" opacity="0.9"/>`;
+  const n = positions.length;
+  positions.forEach((p,i)=>{
+    const a = (arc[0] + (arc[1]-arc[0])*(n===1?0:i/(n-1)) - 90)*Math.PI/180;
+    const x0 = cx + (r+4)*Math.cos(a), y0 = cy + (r+4)*Math.sin(a);
+    const x1 = cx + (r+10)*Math.cos(a), y1 = cy + (r+10)*Math.sin(a);
+    const tx = cx + (r+20)*Math.cos(a), ty = cy + (r+20)*Math.sin(a);
+    s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${C.ink}" stroke-width="1.6"/>
+    <text x="${tx}" y="${ty+3.5}" text-anchor="middle" class="legend" font-size="${size}" fill="${i===sel?C.ink:'#6b6254'}">${esc(p)}</text>`;
+  });
+  const a = (arc[0] + (arc[1]-arc[0])*(n===1?0:sel/(n-1)));
+  s += `<g filter="url(#shadow)"><circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#knobG)"/>`;
+  for (let k=0;k<24;k++){ const aa=k*15*Math.PI/180; s+=`<line x1="${cx+(r-1)*Math.cos(aa)}" y1="${cy+(r-1)*Math.sin(aa)}" x2="${cx+(r-4)*Math.cos(aa)}" y2="${cy+(r-4)*Math.sin(aa)}" stroke="#000" stroke-width="1"/>`; }
+  s += `<circle cx="${cx}" cy="${cy}" r="${r*0.68}" fill="#2a2420"/>
+  <g transform="rotate(${a} ${cx} ${cy})"><rect x="${cx-r*0.17}" y="${cy-r*0.95}" width="${r*0.34}" height="${r*1.9}" rx="${r*0.15}" fill="#14110f"/>
+  <line x1="${cx}" y1="${cy-r*0.9}" x2="${cx}" y2="${cy-r*0.45}" stroke="${C.inkLight}" stroke-width="2.2"/></g></g>`;
+  if (label) s += legend(cx,cy+r+(positions.length>2?36:22),label,{size:11});
+  if (key) s += keycap(cx,cy+r+(positions.length>2?42:28),key);
+  return s;
+}
+
+// CRT bezel + face
+function crtFrame(x,y,w,h,{round=false,lit=true}={}){
+  let s='';
+  if (round){
+    const cx=x+w/2, cy=y+h/2, r=w/2;
+    s += `<circle cx="${cx}" cy="${cy}" r="${r+14}" fill="${C.bakelite}"/><circle cx="${cx}" cy="${cy}" r="${r+14}" fill="url(#glassG)"/>
+    <circle cx="${cx}" cy="${cy}" r="${r+3}" fill="#090a08"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="${lit?C.crtBlack:C.crtOff}"/>`;
+  } else {
+    s += `<rect x="${x-14}" y="${y-14}" width="${w+28}" height="${h+28}" rx="10" fill="${C.bakelite}"/>
+    <rect x="${x-14}" y="${y-14}" width="${w+28}" height="${h+28}" rx="10" fill="url(#glassG)"/>
+    <rect x="${x-3}" y="${y-3}" width="${w+6}" height="${h+6}" rx="16" fill="#090a08"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${lit?C.crtBlack:C.crtOff}"/>`;
+  }
+  return s;
+}
+function crtGlass(x,y,w,h,{round=false}={}){
+  if (round){ const cx=x+w/2, cy=y+h/2, r=w/2;
+    return `<clipPath id="cp${Math.round(x)}${Math.round(y)}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>
+    <g clip-path="url(#cp${Math.round(x)}${Math.round(y)})"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#scan)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#vignette)"/></g>
+    <ellipse cx="${cx-r*0.35}" cy="${cy-r*0.45}" rx="${r*0.45}" ry="${r*0.22}" transform="rotate(-30 ${cx-r*0.35} ${cy-r*0.45})" fill="#fff" opacity="0.06"/>`; }
+  return `<clipPath id="cr${Math.round(x)}${Math.round(y)}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14"/></clipPath>
+  <g clip-path="url(#cr${Math.round(x)}${Math.round(y)})"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#scan)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#vignette)"/>
+  <path d="M${x} ${y}h${w*0.55}l-${w*0.25} ${h*0.5}h-${w*0.3}z" fill="#fff" opacity="0.035"/></g>`;
+}
+
+// raster page text (amber)
+function crtText(x,y,rows,{size=15,lh=19,cw=9.0}={}){
+  let s = `<g filter="url(#glow)">`;
+  rows.forEach((row,i)=>{
+    const yy = y + i*lh;
+    if (row.rev){ s += `<rect x="${x-3}" y="${yy-size+2}" width="${row.w||row.t.length*cw+6}" height="${lh}" fill="${C.amber}" opacity="0.95"/>
+      <text x="${x}" y="${yy}" class="crt" font-size="${size}" fill="${C.crtBlack}" font-weight="500" xml:space="preserve">${esc(row.t)}</text>`; }
+    else s += `<text x="${x}" y="${yy}" class="${row.vt?'vt':'crt'}" font-size="${row.size||size}" fill="${row.dim?C.amberDim:C.amber}" xml:space="preserve">${esc(row.t)}</text>`;
+  });
+  return s + `</g>`;
+}
+
+// ---------- shapes on tubes ----------
+function sym(kind,x,y,s,col,{fill=false,w=1.6}={}){
+  const f = fill?col:'none';
+  switch(kind){
+    case 'station': return `<rect x="${x-s}" y="${y-s}" width="${2*s}" height="${2*s}" stroke="${col}" stroke-width="${w}" fill="${f}"/>`;
+    case 'neutral': return `<path d="M${x} ${y-s*1.2}L${x+s} ${y+s*0.8}H${x-s}Z" stroke="${col}" stroke-width="${w}" fill="${f}"/>`;
+    case 'hostile': return `<path d="M${x} ${y-s*1.25}L${x+s*1.1} ${y}L${x} ${y+s*1.25}L${x-s*1.1} ${y}Z" stroke="${col}" stroke-width="${w}" fill="${f}"/>`;
+    case 'unknown': return `<circle cx="${x}" cy="${y}" r="${s}" stroke="${col}" stroke-width="${w}" fill="none"/>`;
+    case 'own': return `<path d="M${x-s} ${y}H${x+s}M${x} ${y-s}V${y+s}M${x} ${y-s}l0 -${s}" stroke="${col}" stroke-width="${w}"/>`;
+    case 'bracket': { const k=s*0.45; return `<path d="M${x-s} ${y-s+k}V${y-s}H${x-s+k}M${x+s-k} ${y-s}H${x+s}V${y-s+k}M${x+s} ${y+s-k}V${y+s}H${x+s-k}M${x-s+k} ${y+s}H${x-s}V${y+s-k}" stroke="${col}" stroke-width="${w}" fill="none"/>`; }
+    case 'waypoint': return `<circle cx="${x}" cy="${y}" r="${s}" stroke="${col}" stroke-width="${w}" fill="none"/><path d="M${x-s*0.6} ${y}H${x+s*0.6}M${x} ${y-s*0.6}V${y+s*0.6}" stroke="${col}" stroke-width="${w}"/>`;
+    case 'burn': return `<path d="M${x} ${y-s}L${x+s} ${y+s*0.8}H${x-s}Z" stroke="${col}" stroke-width="${w}" fill="none"/>`;
+  }
+}
+
+// =====================================================================
+// FLIGHT MOCKUP
+// =====================================================================
+function flight(){
+  seed = 11;
+  let s = DEFS;
+  // space
+  s += `<rect width="1920" height="1080" fill="#05060a"/>`;
+  s += `<radialGradient id="nebula" cx="0.75" cy="0.25" r="0.6"><stop offset="0" stop-color="#1c1712" stop-opacity="0.8"/><stop offset="1" stop-color="#05060a" stop-opacity="0"/></radialGradient><rect width="1920" height="1080" fill="url(#nebula)"/>`;
+  for (let i=0;i<520;i++){ const x=rnd()*1920, y=rnd()*860, r=rnd()<0.92?rnd()*0.9+0.3:rnd()*1.5+0.8, o=0.25+rnd()*0.7; s+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#f4ecdc" opacity="${o}"/>`; }
+  // planet limb (bottom-left, behind deck)
+  s += `<radialGradient id="planet" cx="0.55" cy="0.35" r="0.7"><stop offset="0" stop-color="#3b5a6e"/><stop offset="0.7" stop-color="#1d3140"/><stop offset="1" stop-color="#0b141c"/></radialGradient>
+  <circle cx="230" cy="1650" r="1050" fill="url(#planet)"/><circle cx="230" cy="1650" r="1052" fill="none" stroke="#8fb3c9" stroke-opacity="0.35" stroke-width="6" filter="url(#glow)"/>`;
+  // own ship (top-down hull)
+  const sx=960, sy=520;
+  s += `<g transform="translate(${sx},${sy}) rotate(-12)">
+    <path d="M0 -70 L14 -52 L16 20 L22 34 L22 58 L-22 58 L-22 34 L-16 20 L-14 -52 Z" fill="#5f625f" stroke="#2b2d2c" stroke-width="2"/>
+    <rect x="-10" y="-40" width="20" height="18" fill="#474a48"/><rect x="-12" y="-10" width="24" height="26" fill="#4d504e"/>
+    <rect x="-18" y="38" width="12" height="16" fill="#3a3c3b"/><rect x="6" y="38" width="12" height="16" fill="#3a3c3b"/>
+    <path d="M-14 58 L-10 70 L-6 58 M6 58 L10 70 L14 58" fill="#d9a637" opacity="0.6"/>
+    <path d="M-14 -52 L0 -70 L14 -52" fill="none" stroke="#8a8d8a" stroke-width="1.2"/>
+  </g>`;
+  // gunsight projection (amber, on glass)
+  const gx = sx + 70*Math.sin(12*Math.PI/180)*-1 - 40, gy = sy - 150;
+  s += `<g filter="url(#glow)" stroke="${C.amber}" fill="none" stroke-width="1.6" opacity="0.92">
+    <circle cx="${gx}" cy="${gy}" r="22"/><circle cx="${gx}" cy="${gy}" r="2" fill="${C.amber}"/>
+    <path d="M${gx-38} ${gy}H${gx-26}M${gx+26} ${gy}H${gx+38}M${gx} ${gy-38}V${gy-26}M${gx} ${gy+26}V${gy+38}"/>
+  </g>`;
+  s += `<text x="${gx+30}" y="${gy-28}" class="crt" font-size="12" fill="${C.amber}" filter="url(#glow)" opacity="0.85">PROGRADE</text>`;
+  // velocity vector line
+  s += `<path d="M${sx} ${sy}L${gx} ${gy}" stroke="${C.amberDim}" stroke-width="1" stroke-dasharray="4 6" filter="url(#glow)"/>`;
+  // retrograde marker
+  s += `<g filter="url(#glow)" stroke="${C.amberDim}" fill="none" stroke-width="1.4"><circle cx="${sx+44}" cy="${sy+150}" r="14"/><path d="M${sx+34} ${sy+140}l20 20M${sx+54} ${sy+140}l-20 20"/></g>`;
+  // locked target (hostile) at right
+  const tx=1500, ty=330;
+  s += `<g filter="url(#glow)">${sym('hostile',tx,ty,10,C.amber,{w:1.8})}${sym('bracket',tx,ty,28,C.amber,{w:2})}</g>`;
+  s += crtText(tx+40,ty-8,[{t:'RAIDER  KTR-4'},{t:'1.30 km   -12 m/s',dim:true}],{size:14,lh:18});
+  // lead reticle
+  s += `<g filter="url(#glow)" stroke="${C.amber}" stroke-width="1.4" fill="none"><circle cx="${tx-46}" cy="${ty+22}" r="7"/><path d="M${tx-46} ${ty+12}V${ty+6}M${tx-46} ${ty+32}V${ty+38}M${tx-56} ${ty+22}H${tx-62}M${tx-36} ${ty+22}H${tx-30}"/></g>
+  <path d="M${tx} ${ty}L${tx-46} ${ty+22}" stroke="${C.amberDim}" stroke-width="1" stroke-dasharray="2 4" filter="url(#glow)"/>`;
+  // hostile missile track (dual-phosphor red, dashed with chevrons)
+  s += `<g filter="url(#glow)" opacity="0.9"><path d="M1340 180 Q1180 330 1010 470" stroke="${C.lampRed}" stroke-width="1.6" fill="none" stroke-dasharray="10 8"/>
+    <path d="M1335 190 l-14 4 l10 10" stroke="${C.lampRed}" stroke-width="1.6" fill="none"/></g>`;
+  s += crtText(1352,176,[{t:'MSL  14 s'}],{size:13});
+  // neutral freighter top
+  s += `<g filter="url(#glow)" opacity="0.7">${sym('neutral',820,120,8,C.amber)}</g>` + crtText(836,124,[{t:'FREIGHTER  8.0 km',dim:true}],{size:12});
+  // station far left
+  s += `<g filter="url(#glow)" opacity="0.7">${sym('station',380,250,8,C.amber)}</g>` + crtText(396,254,[{t:'KESTREL YARD  42 km',dim:true}],{size:12});
+
+  // --- header brackets ---
+  // chronometer top-left
+  s += `<path d="M40 0V18M300 0V18" stroke="${C.chassis}" stroke-width="10"/>`;
+  s += plate(24,14,300,66,{screws:false});
+  s += screw(36,47) + screw(312,47);
+  s += legend(54,38,'CHRONO',{size:10,anchor:'start'});
+  s += drums(56,44,'012',{cw:16,ch:26,size:19}) + legend(112,63,'D',{size:10,anchor:'start'});
+  s += drums(128,44,'07',{cw:16,ch:26,size:19,dimLead:false}) + drums(170,44,'44',{cw:16,ch:26,size:19,dimLead:false}) + drums(212,44,'10',{cw:16,ch:26,size:19,dimLead:false});
+  s += `<text x="164" y="63" class="drum" font-size="18" fill="${C.ink}">:</text><text x="206" y="63" class="drum" font-size="18" fill="${C.ink}">:</text>`;
+  s += `<rect x="262" y="40" width="40" height="30" rx="3" fill="${C.bakelite}"/>` + legend(282,60,'UTC',{size:10,fill:C.inkLight});
+  // warp top-right
+  s += `<path d="M1630 0V18M1880 0V18" stroke="${C.chassis}" stroke-width="10"/>`;
+  s += plate(1610,14,290,104,{screws:false}) + screw(1622,60) + screw(1888,60);
+  s += legend(1640,38,'TIME WARP',{size:10,anchor:'start'});
+  s += rotary(1770,72,20,['1','2','5','10','50','100'],0,{arc:[-110,110],size:10});
+  s += legend(1660,96,'' ,{});
+  s += keycap(1660,62,',') + keycap(1686,62,'.') ;
+  s += `<circle cx="1846" cy="70" r="8" fill="${C.lampGreenOff}"/>` + legend(1846,96,'WARP',{size:9});
+
+  // --- deck ---
+  const DY = 812;
+  s += `<g filter="url(#deckshadow)"><rect x="0" y="${DY}" width="1920" height="${1080-DY}" fill="url(#chassisG)"/></g>`;
+  s += `<rect x="0" y="${DY}" width="1920" height="14" fill="url(#lipG)"/>`;
+  s += `<rect x="0" y="${DY+14}" width="1920" height="6" fill="${C.orange}"/><rect x="0" y="${DY+20}" width="1920" height="2" fill="#000" opacity="0.4"/>`;
+  const by = DY+30, bh = 1080-by-10;
+
+  // BAY 1: SCOPE
+  s += plate(12,by,318,bh,{title:'SCOPE'});
+  const scx = 140, scy = by+122, sr = 92;
+  s += crtFrame(scx-sr,scy-sr,2*sr,2*sr,{round:true});
+  s += `<g filter="url(#glow)">`;
+  [1,2,3].forEach(k=> s += `<circle cx="${scx}" cy="${scy}" r="${sr*k/3}" fill="none" stroke="${C.greenDim}" stroke-width="1" opacity="0.8"/>`);
+  s += `<path d="M${scx-sr} ${scy}H${scx+sr}M${scx} ${scy-sr}V${scy+sr}" stroke="${C.greenDim}" stroke-width="0.8" opacity="0.6"/>`;
+  // sweep with afterglow wedge
+  for (let i=0;i<24;i++){ const a0=(-40 - i*2.2)*Math.PI/180, a1=(-40-(i+1)*2.2)*Math.PI/180;
+    s += `<path d="M${scx} ${scy}L${scx+sr*Math.cos(a0)} ${scy+sr*Math.sin(a0)}A${sr} ${sr} 0 0 0 ${scx+sr*Math.cos(a1)} ${scy+sr*Math.sin(a1)}Z" fill="${C.green}" opacity="${0.22*(1-i/24)}"/>`; }
+  s += `<line x1="${scx}" y1="${scy}" x2="${scx+sr*Math.cos(-40*Math.PI/180)}" y2="${scy+sr*Math.sin(-40*Math.PI/180)}" stroke="${C.green}" stroke-width="1.8"/>`;
+  s += sym('own',scx,scy,5,C.green,{w:1.4});
+  s += sym('hostile',scx+52,scy-30,5,C.green,{fill:true}) + sym('bracket',scx+52,scy-30,11,C.green,{w:1.4});
+  s += sym('neutral',scx-14,scy-80,4,C.green,{w:1.2});
+  s += sym('station',scx-88,scy-50,3.5,C.greenDim,{w:1.2});
+  s += `<path d="M${scx+38} ${scy-46}l-3 3" stroke="${C.lampRed}" stroke-width="2"/><circle cx="${scx+36}" cy="${scy-44}" r="1.6" fill="${C.lampRed}"/>`;
+  s += `</g>` + crtGlass(scx-sr,scy-sr,2*sr,2*sr,{round:true});
+  s += rotary(282,by+92,17,['0.5','2','10','50','250','1K'],2,{arc:[-150,150],label:'RANGE KM',size:9});
+  s += keycap(270,by+152,'-') + keycap(294,by+152,'+');
+  s += legend(282,by+186,'GAIN',{size:9});
+  s += rotary(282,by+212,10,[''],0,{arc:[0,0]});
+
+  // BAY 2: FLIGHT
+  const fx = 340;
+  s += plate(fx,by,452,bh,{title:'FLIGHT'});
+  s += drums(fx+24,by+52,'07672.6',{unit:'M/S',label:'VELOCITY',roll:0.35});
+  s += drums(fx+24,by+116,'0001.30',{unit:'KM',label:'TGT RANGE'});
+  s += drums(fx+24,by+180,'0218.0',{unit:'M/S',label:'DELTA-V REM'});
+  // compass card
+  const ccx = fx+282, ccy = by+108, cr = 56;
+  s += `<circle cx="${ccx}" cy="${ccy}" r="${cr+10}" fill="${C.bakelite}"/><circle cx="${ccx}" cy="${ccy}" r="${cr}" fill="#16130f"/>`;
+  s += `<g transform="rotate(-78 ${ccx} ${ccy})">`;
+  for (let d=0; d<360; d+=10){ const a=(d-90)*Math.PI/180, big=d%30===0;
+    s += `<line x1="${ccx+cr*Math.cos(a)}" y1="${ccy+cr*Math.sin(a)}" x2="${ccx+(cr-(big?10:5))*Math.cos(a)}" y2="${ccy+(cr-(big?10:5))*Math.sin(a)}" stroke="${C.inkLight}" stroke-width="${big?1.6:0.8}"/>`;
+    if (big){ const tx2=ccx+(cr-20)*Math.cos(a), ty2=ccy+(cr-20)*Math.sin(a); s+=`<text x="${tx2}" y="${ty2+3.5}" text-anchor="middle" class="legend" font-size="10" fill="${C.inkLight}" transform="rotate(${d} ${tx2} ${ty2})">${d===0?'N':d/10}</text>`; } }
+  s += `</g>`;
+  s += `<path d="M${ccx} ${ccy-cr-8}l-6 -8h12z" fill="${C.orange}"/>`;
+  s += `<g transform="rotate(-12 ${ccx} ${ccy})"><path d="M${ccx} ${ccy-30}L${ccx+8} ${ccy+16}L${ccx} ${ccy+8}L${ccx-8} ${ccy+16}Z" fill="${C.orange}" stroke="#111" stroke-width="0.8"/></g>`;
+  s += `<path d="M${ccx-cr*0.5} ${ccy-cr*0.7}A${cr} ${cr} 0 0 1 ${ccx+cr*0.5} ${ccy-cr*0.75}" stroke="#fff" stroke-opacity="0.12" stroke-width="5" fill="none"/>`;
+  s += legend(ccx,ccy+cr+22,'HEADING  078',{size:11});
+  // closing needle
+  s += needle(fx+396,by+104,40,{min:-200,max:200,value:-12,major:2,minor:4,zones:[{from:120,to:200,color:C.red}],label:'CLOSING',unit:'M/S',outside:true,fmt:v=>Math.abs(v)});
+
+  // BAY 3: SYSTEMS (edgewise)
+  const ex = 802;
+  s += plate(ex,by,262,bh,{title:'SHIP'});
+  s += edgewise(ex+22,by+42,{h:112,value:0.38,label:'PROPLNT',unitText:'760 KG'});
+  s += edgewise(ex+80,by+42,{h:112,value:0.96,label:'STRUCT'});
+  s += edgewise(ex+138,by+42,{h:112,value:0.81,label:'CHARGE'});
+  s += edgewise(ex+196,by+42,{h:112,value:1.0,label:'O2'});
+  s += legend(ex+131,by+222,'',{});
+  // bus lamps
+  ['BUS A','BUS B','BATT'].forEach((t,i)=>{ const lx=ex+40+i*90; s+=`<circle cx="${lx}" cy="${by+206}" r="6" fill="${C.lampGreen}" filter="url(#lampglow)"/><circle cx="${lx}" cy="${by+206}" r="6" fill="${C.lampGreen}"/><circle cx="${lx}" cy="${by+206}" r="7.5" fill="none" stroke="${C.alu}" stroke-width="2"/>` + legend(lx+12,by+210,t,{size:9,anchor:'start'}); });
+
+  // BAY 4: ANNUNCIATOR
+  const ax = 1074;
+  s += plate(ax,by,330,bh,{title:'CAUTION / WARNING'});
+  s += pushLight(ax+22,by+40,128,40,['MASTER','WARNING'],{color:'red',lit:false});
+  s += pushLight(ax+180,by+40,128,40,['MASTER','CAUTION'],{color:'amber',lit:true});
+  s += keycap(ax+86,by+88,'BKSP') + keycap(ax+244,by+88,'BKSP');
+  const T = [
+    [['HULL','BREACH'],'red',false],[['FIRE'],'red',false],[['MSL','INBOUND'],'red',false],[['DECOMP'],'red',false],
+    [['LOW','PROPLNT'],'amber',true],[['PWR','DEFICIT'],'amber',false],[['CREW','INJ'],'amber',false],[['SMOKE'],'amber',false],
+    [['TGT','LOCK'],'green',true],[['DOCK','CLR'],'green',false],[['AUTO','PILOT'],'green',false],[['XPDR','ON'],'white',true]
+  ];
+  T.forEach(([l,c,lit],i)=>{ const col=i%4,row=i/4|0; s+=tile(ax+22+col*73,by+112+row*36,72,35,l,{color:c,lit}); });
+  s += `<rect x="${ax+21}" y="${by+111}" width="${4*73+1}" height="${3*36+1}" fill="none" stroke="${C.bakelite}" stroke-width="2"/>`;
+
+  // BAY 5: MAIN CRT
+  const mx = 1414, mw = 494;
+  s += plate(mx,by,mw,bh,{title:'MAIN'});
+  const cx0 = mx+36, cy0 = by+38, cw0 = 336, ch0 = 142;
+  s += crtFrame(cx0,cy0,cw0,ch0);
+  s += crtText(cx0+16,cy0+26,[
+    {t:' TGT  RAIDER  KTR-4          ', rev:true, w:298},
+    {t:'CLASS   Cutter, light'},
+    {t:'FACTION Ashen Wake      HOSTILE'},
+    {t:'RANGE   1.30 km  BRG 046'},
+    {t:'HULL    ■■■■■■■□□□  71%'},
+    {t:'ARMS    2× MASS DRIVER, 1 MSL', dim:true},
+    {t:' LOCK   NEXT   HAIL   SCAN'}
+  ],{size:13,lh:16.6});
+  s += crtGlass(cx0,cy0,cw0,ch0);
+  // soft keys under crt
+  for (let i=0;i<4;i++){ const kx=cx0+8+i*64; s += `<g filter="url(#shadow)"><rect x="${kx}" y="${by+198}" width="50" height="20" rx="3" fill="${C.bakelite}"/><rect x="${kx+2}" y="${by+199}" width="46" height="14" rx="2" fill="#3a3430"/></g><text x="${kx+25}" y="${by+210}" text-anchor="middle" class="drum" font-size="11" fill="${C.inkLight}">${i+1}</text>`; }
+  // page selector
+  s += rotary(mx+mw-60,by+66,20,['NAV','TGT','SHIP','CREW','COMMS'],1,{arc:[-120,120],size:9.5});
+  s += legend(mx+mw-60,by+112,'PAGE',{size:10}) + keycap(mx+mw-74,by+118,'[') + keycap(mx+mw-46,by+118,']');
+  // switch row
+  s += toggle(mx+mw-86,by+178,{up:false,label:'',guard:true});
+  s += legend(mx+mw-86,by+220,'MSTR ARM',{size:9.5});
+  s += toggle(mx+mw-32,by+182,{up:true,label:'',pos:null});
+  s += legend(mx+mw-32,by+220,'AUTO',{size:9.5});
+
+  // Dymo label with ship name
+  s += dymo(fx+110,by+8,'MV PERSISTENT TROUT',{color:'#1C1B1A',rot:-1.2,size:11});
+
+  // paper printout tab sticking out at deck right edge? skip; add pinned contract clip at right edge above deck
+  s += `<g transform="translate(1786,${DY-112}) rotate(3)" filter="url(#shadow)">
+    <rect width="118" height="128" fill="${C.paper}"/><rect width="118" height="128" fill="url(#greenbar)"/>
+    ${[0,1,2,3,4,5,6,7].map(i=>`<circle cx="6" cy="${8+i*16}" r="2.5" fill="#05060a"/><circle cx="112" cy="${8+i*16}" r="2.5" fill="#05060a"/>`).join('')}
+    <text x="14" y="22" class="paper" font-size="11" fill="#2b2a3a">CONTRACT 0417</text>
+    <text x="14" y="38" class="paper" font-size="9.5" fill="#2b2a3a">Haul 12 t ore</text>
+    <text x="14" y="51" class="paper" font-size="9.5" fill="#2b2a3a">to Kestrel Yd</text>
+    <text x="14" y="64" class="paper" font-size="9.5" fill="#2b2a3a">Pay  4,800 cr</text>
+    <text x="14" y="77" class="paper" font-size="9.5" fill="#2b2a3a">Due  D014 12:00</text>
+  </g>
+  <rect x="1822" y="${DY-120}" width="44" height="16" rx="3" fill="${C.alu}" stroke="#6d6a63" filter="url(#shadow)"/>`;
+  return s;
+}
+
+// =====================================================================
+// COMPONENT SHEET
+// =====================================================================
+function components(){
+  seed = 23;
+  let s = DEFS + `<rect width="1920" height="1200" fill="url(#chassisG)"/>`;
+  s += `<text x="40" y="74" class="stencil" font-size="56" fill="${C.enamel}">YARD STANDARD</text>`;
+  s += `<text x="440" y="72" class="legend" font-size="18" fill="${C.enamelShade}">CASSETTE-FUTURISM CONSOLE LANGUAGE · COMPONENT SHEET</text>`;
+  s += `<rect x="40" y="90" width="1840" height="6" fill="${C.orange}"/>`;
+
+  // palette plate
+  s += plate(40,120,600,500,{title:'PALETTE'});
+  const sw = (x,y,col,name,hex,glow=false)=> `${glow?`<rect x="${x}" y="${y}" width="56" height="40" fill="${col}" filter="url(#lampglow)"/>`:''}<rect x="${x}" y="${y}" width="56" height="40" rx="2" fill="${col}" stroke="#00000033"/>`+legend(x+64,y+16,name,{size:11,anchor:'start'})+`<text x="${x+64}" y="${y+32}" class="crt" font-size="11" fill="#6b6254">${hex}</text>`;
+  const rows = [
+    ['HARDWARE',[[C.enamel,'ENAMEL','#D9CFB4'],[C.chassis,'CHASSIS','#4A3F36'],[C.bakelite,'BAKELITE','#1E1A17'],[C.alu,'ALU','#A9A69E']]],
+    ['MARKINGS',[[C.orange,'SAFETY ORG','#D9602B'],[C.red,'SIGNAL RED','#B8352B'],[C.mustard,'MUSTARD','#D9A637'],[C.avocado,'AVOCADO','#6E7846']]],
+    ['PHOSPHOR',[[C.amber,'P3 AMBER','#FFB23F',1],[C.amberDim,'AMBER DIM','#9A6420'],[C.green,'P1 GREEN','#7CFF6A',1],[C.greenDim,'GREEN DIM','#2F8A35']]],
+    ['LAMPS',[[C.lampRed,'RED','#FF4A35',1],[C.lampAmber,'AMBER','#FFA733',1],[C.lampGreen,'GREEN','#8CFF5A',1],[C.lampWhite,'WHITE','#FFF3D6',1]]]
+  ];
+  rows.forEach(([name,list],r)=>{
+    s += legend(64,170+r*110,name,{size:12,anchor:'start'});
+    list.forEach(([col,n,h,g],i)=>{ s += sw(64+i*142,182+r*110,col,n,h,g); });
+  });
+
+  // type plate
+  s += plate(660,120,600,500,{title:'TYPE'});
+  s += `<text x="684" y="178" class="legend" font-size="22" fill="${C.ink}">ENGRAVED LEGEND · PROPLNT · XPDR</text>`;
+  s += `<text x="684" y="198" class="crt" font-size="11" fill="#6b6254">Barlow Semi Condensed SemiBold, caps, +6%</text>`;
+  s += crtFrame(690,222,540,120);
+  s += crtText(706,254,[{t:'CRT DISPLAY 28',vt:true,size:30},{t:'Crt body 15 · IBM Plex Mono'},{t:'Secondary text, dimmed',dim:true}],{size:15,lh:24});
+  s += crtGlass(690,222,540,120);
+  s += drums(690,376,'04800',{unit:'CR',label:'DRUM COUNTER · BARLOW CONDENSED'});
+  s += `<g transform="translate(990,360) rotate(1.5)"><rect width="250" height="80" fill="${C.paper}" filter="url(#shadow)"/><rect width="250" height="80" fill="url(#greenbar)"/>
+     <text x="14" y="30" class="paper" font-size="15" fill="#2b2a3a">Printout · Special Elite</text><text x="14" y="54" class="paper" font-size="12" fill="#2b2a3a">RECEIPT  12 t ore   -1,440 cr</text></g>`;
+  s += dymo(690,452,'DYMO · YOUR LABELS',{color:'#9E2A23',rot:-1.5,size:16});
+  s += dymo(960,456,'MV PERSISTENT TROUT',{color:'#2F4A7A',rot:1,size:16});
+  s += `<text x="690" y="560" class="stencil" font-size="58" fill="${C.ink}">BAY 04</text>`;
+  s += `<text x="900" y="556" class="crt" font-size="11" fill="#6b6254">Big Shoulders Stencil · bay numbers, title</text>`;
+
+  // symbology plate (on a vector CRT)
+  s += plate(1280,120,600,500,{title:'SYMBOLS ON TUBES'});
+  s += crtFrame(1310,160,540,300);
+  const syms = [['own','OWN SHIP'],['station','STATION'],['neutral','NEUTRAL'],['hostile','HOSTILE'],['unknown','UNKNOWN'],['waypoint','WAYPOINT'],['burn','PLANNED BURN']];
+  s += `<g filter="url(#glow)">`;
+  syms.forEach(([k,n],i)=>{ const col=i%4,row=i/4|0, x=1360+col*130, y=210+row*100;
+    s += sym(k,x,y,9,C.green,{fill:k==='hostile'}) + `<text x="${x}" y="${y+34}" text-anchor="middle" class="crt" font-size="12" fill="${C.green}">${n}</text>`; });
+  s += sym('hostile',1750,310,9,C.green,{fill:true}) + sym('bracket',1750,310,22,C.green,{w:1.6});
+  s += `<text x="1750" y="344" text-anchor="middle" class="crt" font-size="12" fill="${C.green}">LOCKED</text>`;
+  s += `<path d="M1350 420 Q1500 360 1640 410" stroke="${C.greenDim}" stroke-width="1.4" fill="none" stroke-dasharray="6 6"/><path d="M1640 410 Q1720 438 1800 420" stroke="${C.green}" stroke-width="1.8" fill="none"/>`;
+  s += `<text x="1350" y="445" class="crt" font-size="11" fill="${C.greenDim}">predicted (dim, dashed)</text><text x="1660" y="445" class="crt" font-size="11" fill="${C.green}">actual track</text>`;
+  s += `</g>` + crtGlass(1310,160,540,300);
+  s += legend(1580,500,'SHAPE = IDENTITY · FILLED = REAL/CURRENT · OPEN = PREDICTED',{size:11});
+  s += legend(1580,520,'BRIGHTNESS = IMPORTANCE · GREEN = SPACE · AMBER = WORDS',{size:11});
+  s += `<g transform="translate(1380,548)">${['','','',''].map((_,i)=>'').join('')}</g>`;
+  s += `<g filter="url(#glow)"><path d="M1390 580 L1560 580" stroke="${C.lampRed}" stroke-width="1.8" stroke-dasharray="10 8"/><path d="M1400 572 l-10 8 l10 8" stroke="${C.lampRed}" stroke-width="1.8" fill="none"/></g>`;
+  s += legend(1580,584,'HOSTILE MISSILE: DUAL-PHOSPHOR RED, BROKEN + CHEVRON',{size:10,anchor:'start'});
+
+  // controls plate
+  s += plate(40,640,920,520,{title:'CONTROLS AND STATES'});
+  s += toggle(110,740,{up:true,label:'TOGGLE',key:'L'});
+  s += toggle(200,740,{up:false,label:'DOWN',key:'L'});
+  s += toggle(290,740,{up:true,label:'UNPOWERED',dark:true});
+  s += toggle(400,740,{guard:true,up:false,label:'GUARDED'});
+  s += toggle(490,740,{guard:true,guardOpen:true,up:false,label:'GUARD OPEN'});
+  s += toggle(580,740,{guard:true,guardOpen:true,up:true,label:'THROWN',key:'U'});
+  s += pushLight(660,712,90,36,['LOCK'],{color:'green',lit:false}) + legend(705,772,'PUSH-LIGHT',{size:10}) + keycap(705,778,'TAB');
+  s += pushLight(780,712,90,36,['LOCK'],{color:'green',lit:true}) + legend(825,772,'ENGAGED',{size:10});
+  s += rotary(130,940,26,['0.5','2','10','50','250','1K'],2,{arc:[-150,150],label:'ROTARY SELECTOR',key:'- +'});
+  s += rotary(330,940,26,['NAV','TGT','SHIP','CREW','COMMS'],3,{arc:[-120,120],label:'PAGE + STATION RING',escut:'#E6E3DA'});
+  // thumbwheel
+  s += `<g>${[0,1,2].map(i=>`<rect x="${470+i*34}" y="892" width="30" height="62" rx="3" fill="${C.bakelite}"/><rect x="${474+i*34}" y="896" width="22" height="54" fill="url(#drumG)"/><text x="${485+i*34}" y="931" text-anchor="middle" class="drum" font-size="24" fill="#F3EEE2">${'010'[i]}</text><path d="M${498+i*34} 896v54" stroke="#777" stroke-width="3" stroke-dasharray="2 2"/>`).join('')}</g>`;
+  s += legend(520,980,'THUMBWHEEL · QTY',{size:11});
+  // slide pot
+  s += `<rect x="640" y="900" width="8" height="90" rx="3" fill="#0c0a09"/>${[0,1,2,3,4,5,6,7,8,9,10].map(i=>`<line x1="654" y1="${900+i*9}" x2="${i%5?662:668}" y2="${900+i*9}" stroke="${C.ink}" stroke-width="1"/>`).join('')}
+    <g filter="url(#shadow)"><rect x="626" y="930" width="36" height="18" rx="3" fill="url(#knobG)"/><line x1="628" y1="939" x2="660" y2="939" stroke="${C.inkLight}" stroke-width="2"/></g>`;
+  s += legend(646,1012,'SLIDE POT',{size:11});
+  // keycap + interlock + focus
+  s += `<circle cx="780" cy="912" r="8" fill="${C.lampAmber}" filter="url(#lampglow)"/><circle cx="780" cy="912" r="8" fill="${C.lampAmber}"/><circle cx="780" cy="912" r="9.5" fill="none" stroke="${C.alu}" stroke-width="2"/>` + legend(796,916,'INTLK',{size:10,anchor:'start'});
+  s += `<path d="M752 960l14 -7v14z" fill="${C.orange}"/>` + legend(776,964,'FOCUS TAB',{size:10,anchor:'start'});
+  s += keycap(780,990,'E') + legend(800,1001,'KEYCAP LEGEND',{size:10,anchor:'start'});
+  s += `<rect x="64" y="1056" width="872" height="10" fill="url(#hazard)"/>`;
+  s += `<text x="64" y="1096" class="crt" font-size="13" fill="#4a4238">Hover lifts the highlight; press moves 1 unit in; disabled = unpowered (dark legends) or INTLK (reason on the CRT).</text>`;
+  s += `<text x="64" y="1116" class="crt" font-size="13" fill="#4a4238">Guarded switches: first press opens the red guard, second throws it. Every control shows its key.</text>`;
+
+  // instruments plate
+  s += plate(980,640,900,520,{title:'INSTRUMENTS'});
+  s += needle(1080,760,62,{min:-200,max:200,value:84,major:4,minor:4,zones:[{from:120,to:200,color:C.red}],label:'CLOSING',unit:'M/S RATE',fmt:v=>Math.abs(v)});
+  s += needle(1240,760,62,{min:0,max:5,value:0,major:5,minor:2,label:'POWER',unit:'MW · NO DATA',park:true});
+  s += edgewise(1340,700,{h:120,value:0.38,label:'LEVEL',unitText:'EDGEWISE'});
+  s += edgewise(1400,700,{h:120,value:0.2,label:'CRIT'});
+  s += drums(1480,712,'07672.6',{unit:'M/S',label:'EXACT VALUE'});
+  s += drums(1480,790,'0000',{unit:'KM',label:'NO DATA',flag:true});
+  s += legend(1060,880,'ANNUNCIATOR · UNLIT TILES STAY READABLE',{size:11,anchor:'start'});
+  const T2 = [[['HULL','BREACH'],'red',true],[['FIRE'],'red',false],[['LOW','PROPLNT'],'amber',true],[['PWR','DEFICIT'],'amber',false],[['TGT','LOCK'],'green',true],[['XPDR','ON'],'white',true],[['DOCK','CLR'],'green',false],[['SMOKE'],'amber',false]];
+  T2.forEach(([l,c,lit],i)=>{ const col=i%4,row=i/4|0; s+=tile(1060+col*82,894+row*42,80,40,l,{color:c,lit}); });
+  s += pushLight(1420,896,120,40,['MASTER','WARNING'],{color:'red',lit:true}) + pushLight(1420,950,120,40,['MASTER','CAUTION'],{color:'amber',lit:false});
+  // strip chart
+  s += `<rect x="1580" y="880" width="270" height="118" rx="4" fill="${C.bakelite}"/><rect x="1590" y="890" width="250" height="98" fill="${C.paper}"/>`;
+  for (let i=0;i<=10;i++) s += `<line x1="${1590+i*25}" y1="890" x2="${1590+i*25}" y2="988" stroke="#c7b9a0" stroke-width="0.6"/>`;
+  for (let i=0;i<=4;i++) s += `<line x1="1590" y1="${890+i*24.5}" x2="1840" y2="${890+i*24.5}" stroke="#c7b9a0" stroke-width="0.6"/>`;
+  let pth = 'M1590 950'; let v=950; seed=5; for (let x=1594;x<=1800;x+=4){ v += (rnd()-0.5)*9; v=Math.max(900,Math.min(980,v)); pth+=`L${x} ${v.toFixed(1)}`; }
+  s += `<path d="${pth}" stroke="#2f4a7a" stroke-width="1.4" fill="none"/><path d="M1800 ${v} l14 -3" stroke="#555" stroke-width="2"/><rect x="1800" y="${v-5}" width="40" height="5" fill="#666"/>`;
+  s += `<rect x="1590" y="890" width="250" height="98" fill="url(#glassG)"/>` + legend(1715,1018,'STRIP CHART · ORE PRICE 7 D',{size:11});
+  s += `<text x="1004" y="1096" class="crt" font-size="13" fill="#4a4238">Needle = rate · edgewise = level · drums = exact · lamps = state · CRT = space and words.</text>`;
+  s += `<text x="1004" y="1116" class="crt" font-size="13" fill="#4a4238">No data is mechanical: needle on its pin, barber-pole OFF flag, tube dark.</text>`;
+  return s;
+}
+
+document.getElementById('flight').innerHTML = flight();
+document.getElementById('components').innerHTML = components();
+</script>
+</body>
+</html>
