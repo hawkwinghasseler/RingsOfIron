@@ -58,9 +58,9 @@ A variant that throws from `attach` leaves the classic HUD up rather than none, 
 
 `keeps()` returns the classic pieces that stay up under the variant (`ClassicPart`): the flight
 panel, the gauges, the radar, the ship panel, the orbit panel, the missile banner, the threat
-overlay, the world markers, the game's status column and the key hint line. Everything not in the
-set is hidden for you, each frame. Windows (market, yard, missions, crew, boarding, the console
-window and the map), the console prompt and the world overlays the game draws under the HUD (burn
+overlay, the world markers, the game's status column, the key hint line, the docked banner and the
+E prompt. Everything not in the set is hidden for you, each frame. Windows (market, yard, missions,
+crew, boarding, the console window and the map) and the world overlays the game draws under the HUD (burn
 arrows, fire arcs, picture-in-picture) stay until a variant replaces them in its own PR.
 
 ## The common data layer
@@ -83,6 +83,8 @@ their contents.
 | `messages` | `MessageFeed`: what the game has told the player lately |
 | `roomAt(x, y)`, `roomNames()` | the player's rooms' names (`RoomNames`) |
 | `key("FIRE")` | the key bound to an action, for a prompt |
+| `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
+| `dockHint` | the docked banner's text, or "" when not docked |
 
 `targeting`, `orbitInfo`, `interactor` and `physics` are the classic providers, set on `UiHud` as
 before and mirrored here.

@@ -76,6 +76,13 @@ public final class HudData {
     public final ThreatFrame threatFrame = new ThreatFrame();
     /** Whether {@link #shipStatus} holds a ship this frame. */
     public boolean hasShipStatus;
+    /**
+     * What the interact key does here, as the classic prompt words it after "Press [E] " ("to put on a
+     * pressure suit", "for the Helm panel"), or "" with nothing in reach; and that key's name.
+     */
+    public String promptAction = "", promptKey = "E";
+    /** The docked banner's text ("Docked at Highport   [T] Trade   [Y] Yard"), or "" when not docked. */
+    public String dockHint = "";
 
     private RoomNames roomNames = new RoomNames();
     private Entity roomShip;
