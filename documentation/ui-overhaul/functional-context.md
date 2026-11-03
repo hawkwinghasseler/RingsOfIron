@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 8.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 9.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -957,8 +957,8 @@ chance as a percentage (`HitChance` gives a probability) with its word.
 ```
 LOCK  Raider
       HOSTILE   ◆ FIRING ON YOU
-      3.4 km · closing 85 m/s
-      shot 2.1 s · hit 62% fair
+      3.4 km · closing 12 m/s
+      shot 2.2 s · hit 62% fair
 ```
 
 **When.** Whenever a lock is held at the helm, except under warp, during an approach without combat,
@@ -1692,3 +1692,4 @@ largest scale, and the centre stays clear.
 | 6 | 2 (NASA-punk critique) | P2 codes use whole words where they fit (HULL DAMAGE, SHIELD DOWN, SHIELD WEAK, SYSTEM DOWN, DOCK STRAIN) and put the noun first (O2 LOW, PRESS LOW): the code field grows to 11 characters and handling shrinks to 3, which still holds YOU, three dots or ●4. The missile impact time must include the missile's closing burn (section 14). Version 5 was wrong to call T-37 s at 7.7 km impossible: it is today's estimate early in a flight that lands in about 22 s; the examples stay, now read by the new estimate. F2 names mounts by the game's facing rule, with FWD and AFT to tell two apart, shows point defense as PD and never in hand, and shows launchers as ready with missiles left (they fire a second apart and only a station restocks them). H5 gains a 5 km step. W3's burn arrow drops its countdown, which is H2's. P4 gains the Shields and Boarding sources. Sample data: the corvette carries three crew, so 11.7's fire has one on it and X2's party is two; the lock sits at 3.4 km, inside the heavy cannon's reach, for its 62%; the latched raider lies over the port side, nose aft |
 | 7 | 3 (VFD critique) | "Point defense" spelled as the game spells it (`point_defense`), so the three designs share one string. H7's missile row is the total across launchers, ready while any can fire; F2 splits it by launcher |
 | 8 | 2 and 4 (cassette and NASA-punk critiques) | Sample data true to the game: the corvette's S port is cleared to Highport's port 2, coming in at 120 m too fast for the 4.9 m/s safe speed there; Highport sells no ships, so X1 lists hiring on its own line, and M3 shows Shipyard and Hire only where they are offered; F1's kiter moves along the line of sight. F4 names each missile's shooter instead of a bearing with no reference. Section 12.4 says which numbers are values drawn at 15. H4's power line shows the output and adds the rating only when damage holds the output under it. At fire control the master alert cue sits above the rack. H5's 5 km step is justified by fights that reach 5 km. W5 notes that the lead reticle sits inside the lock mark at fight zooms |
+| 9 | 3 (VFD critique) | H6's example closes at 12 m/s (pilots close at 80 m/s at most), and wireframe 04's H1 reads the kiter's 12 m/s in the LOCK frame, matching F1 |
