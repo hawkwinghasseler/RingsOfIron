@@ -151,3 +151,24 @@ function hazardTag(ax, ay, x, y, sev, what, o = {}) {
   else s += rect(x + 12, y + 21, w - 22, 4, { fill: '#2A333D' }) + rect(x + 12, y + 21, (w - 22) * (o.progress || 0), 4, { fill: C.white });
   return s;
 }
+
+// SNS: the scope DU in Z7's corner. The range is automatic (spec round 6), and the − and + caps
+// either side of its figure override it until the post changes, as RadarScope's buttons sit either
+// side of the range today (− steps out, + in). The count of hostiles, when there are any, sits
+// under the scope on a row of its own, so nothing moves when one appears. Contacts sit at their
+// world offsets as fractions of the range; past 1 they are ticks on the rim.
+function scopeDU(contacts, o = {}) {
+  return du(ZT.sns.x, ZT.sns.y, ZT.sns.s, ZT.sns.s, {
+    id: 'sns', b: 8, title: 'SCOPE',
+    content: (gx, gy, gw, gh) => {
+      const cx = gx + gw / 2, cy = gy + 60, r = 54, ky = gy + gh - 24;
+      let c = I.scope(cx, cy, r, contacts, { heading: o.heading });
+      if (o.hostiles) c += text(gx + 6, gy + 129, o.hostiles, { size: 12, bold: true, fill: C.red, track: 0.3 });
+      [['−', gx + 4], ['+', gx + gw - 26]].forEach(([k, bx]) => {
+        c += rect(bx, ky, 22, 22, { fill: '#0E141A', stroke: '#3A434D', sw: 1 }) + text(bx + 11, ky + 16.5, k, { size: TV, bold: true, fill: C.white, anchor: 'middle' });
+      });
+      c += text(cx, ky + 16, o.range, { size: 12, fill: C.dim, anchor: 'middle', track: 0.3 });
+      return c;
+    },
+  }).svg;
+}

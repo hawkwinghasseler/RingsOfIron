@@ -21,21 +21,28 @@ s += hullArt('gunship', SX, SY, HDG, K);
 // W6: the missile, its predicted track to the hull and where it would strike; point defense's
 // stream from the forward port autocannon reaching for it. It is 1.3 km from where it would strike:
 // a harpoon closes at 30 m/s² (MissileDef.closingBurn), so from the Lock's 3.4 km it lands about
-// 15 s after launch, and the game's estimate (closest approach at the present speed) reads 4 s here.
+// 15 s after launch. Version 6 counts that burn in the impact time (section 14), so F4 reads the
+// true 3 s (the game's coasting figure would read 4).
 const [MX, MY] = [742, 318], [IX, IY] = onShip(560, -250), [PX, PY] = onShip(500, -230);
 s += W.track(`M${MX} ${MY} Q${708} ${352} ${IX} ${IY}`);
 s += W.impact(IX, IY, 7);
 s += haloed((c, w) => line(PX, PY, MX - 6, MY + 6, c, w, { dash: '2 5' }), C.white, 1.6);
 s += W.missile(MX, MY, 232);
-// W5: the nose cannon's hit lane and lead reticle on the Lock (its hit chance is F2's)
-const [NX, NY] = onShip(844.8, 0), [RX, RY] = [842, 262], [LX, LY] = [822, 286];
+// W5: the nose cannon's hit lane and lead reticle on the Lock (its hit chance is F2's). A kiting
+// ship doesn't circle (NpcCombatComponent.Stance.KITE), so it moves along the line of sight: here
+// it eases in at 12 m/s, and the 2.2 s shot (3.4 km at 1 500 m/s plus that closing) leads it by
+// 27 m, 2 units at this zoom. The reticle sits on the target, inside the lock brackets, as it does
+// in nearly every fight in this game: NPC pilots match your velocity and close at 80 m/s at most
+// (140 backing off when kiting), with 25 m/s of drift. LeadReticle's line back to the target is
+// 2 units long here, so it doesn't show.
+const [NX, NY] = onShip(844.8, 0), [RX, RY] = [842, 262];
+const LX = RX - 1.97 * 0.816, LY = RY + 1.97 * 0.578;   // 27 m toward the ship
 s += W.hitLane(NX, NY, LX, LY);
-s += haloed((c, w) => line(LX + 6, LY - 6, RX - 7, RY + 7, c, w), 'rgba(60,203,230,0.6)', 1);   // the reticle's line back to the target, as LeadReticle draws it
-s += haloed((c, w) => `<circle cx="${LX}" cy="${LY}" r="8" fill="none" stroke="${c}" stroke-width="${w}"/>` + line(LX - 13, LY, LX - 8, LY, c, w) + line(LX + 8, LY, LX + 13, LY, c, w) + line(LX, LY - 13, LX, LY - 8, c, w) + line(LX, LY + 8, LX, LY + 13, c, w), C.cyan);
 // W1: the Lock, named only (its range is F1's). Raider 2 is 14 km off at bearing 117, off screen
 // at this zoom (72.8 a km), so it gets one edge marker where its bearing leaves the clear world, at
 // the scope's bezel; no range on it, since F4 has it (W1's off-screen rule)
 s += W.contact('hostile', RX, RY, { locked: true, label: ['RAIDER'], lx: 26, ly: -10 });
+s += W.reticle(LX, LY);
 {
   const b = 117 * Math.PI / 180, ux = Math.sin(b), uy = -Math.cos(b), EX = 1056, EY = SY + (EX - SX) / ux * uy;
   const arm = (sgn) => { const r = Math.PI + sgn * 0.6, ax = ux * Math.cos(r) - uy * Math.sin(r), ay = ux * Math.sin(r) + uy * Math.cos(r); return [EX + 12 * ax, EY + 12 * ay]; };
@@ -45,8 +52,9 @@ s += W.contact('hostile', RX, RY, { locked: true, label: ['RAIDER'], lx: 26, ly:
 }
 
 s += statusStrip({ seat: 'FIRE CONTROL', authority: 'HELM: BEA · HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:44:05', warp: '1×' });
-// P3: at fire control F4 has each missile's impact time, so P3 keeps the count and the decoy
-s += threatAlert('1 MISSILE INBOUND', ['DECOY READY', { key: 'F' }, '·  PD ENGAGING']);
+// P3: at fire control F4 has each missile's impact time, bearing and point defense, so P3 keeps
+// the count and the decoy (P3 in version 6), and PD ON is F4's alone
+s += threatAlert('1 MISSILE INBOUND', ['DECOY READY', { key: 'F' }]);
 // P4: gunnery's events of the last 5 s merge into one line
 s += feed([['GUNNERY', '2 hits on Raider']]);
 
@@ -59,7 +67,7 @@ s += du(12, ZC.lmid.y, 308, 12 + 2 * 24, {
     const R = gx + gw - 6, T = gx + 150, D = gx + 162;
     let yy = gy + 16.7;
     c += sym.chevron(gx + 11, yy - 5, 0, C.red, 1.5, 5.5) + text(gx + 24, yy, 'MSL', { size: B, bold: true, fill: C.red, track: 0.4 });
-    c += val(T, yy, 'T−0:04', null, { anchor: 'end' }) + lab(D, yy, 'BRG') + text(D + 30, yy, '050', { size: B, bold: true });
+    c += val(T, yy, 'T−0:03', null, { anchor: 'end' }) + lab(D, yy, 'BRG') + text(D + 30, yy, '050', { size: B, bold: true });
     c += I.box(R - 56, yy - 14, 56, 18, 'PD ON', 'engaged', { size: LB });
     c += line(gx + 4, gy + 24, gx + gw - 4, gy + 24, C.graticule, 1);
     yy += 24;
@@ -77,13 +85,15 @@ s += du(960, ZC.rmid.y, 308, 148, {
     const L = gx + 8, R = gx + gw - 8, M = gx + 154;
     c += sym.diamond(L + 6, gy + 14, 5, C.red, 1.4, C.red) + path(`M${L - 2} ${gy + 9} v-4 h4 M${L + 10} ${gy + 5} h4 v4 M${L + 14} ${gy + 19} v4 h-4 M${L + 2} ${gy + 23} h-4 v-4`, C.red, 1.2);
     c += text(L + 22, gy + 20, 'RAIDER', { size: V, bold: true, fill: C.red, track: 0.5 });
-    c += lab(R - valW('1.3', 'S') - 6, gy + 20, 'SHOT', { anchor: 'end' }) + val(R, gy + 20, '1.3', 'S', { anchor: 'end' });
+    c += lab(R - valW('2.2', 'S') - 6, gy + 20, 'SHOT', { anchor: 'end' }) + val(R, gy + 20, '2.2', 'S', { anchor: 'end' });   // 3.4 km at the heavy shell's 1 500 m/s, closing 12: 3 400 / 1 512
     c += I.box(L, gy + 30, 78, 20, 'HOSTILE', 'warning', { size: B });
     c += rect(L + 86, gy + 30, R - L - 86, 20, { fill: C.red, r: 1.5 }) + text((L + 86 + R) / 2, gy + 44.7, '◆ FIRING ON YOU', { size: B, bold: true, fill: '#0A0A0A', anchor: 'middle', track: 0.6 });
     c += line(gx + 4, gy + 58, gx + gw - 4, gy + 58, C.graticule, 1);
     let yy = gy + 77;
     c += lab(L, yy, 'RNG') + val(L + 44, yy, '3.4', 'KM') + lab(M, yy, 'CLOSING') + val(R, yy, '12', 'M/S', { anchor: 'end' }); yy += 19;
-    c += lab(L, yy, 'REL') + val(L + 44, yy, '38', 'M/S') + lab(M, yy, 'COURSE') + val(R, yy, '220°', null, { anchor: 'end' }); yy += 19;
+    // a kiter's motion relative to you runs along the line of sight: REL is its closing speed, and its
+    // course points at you (the Raider sits at bearing 055)
+    c += lab(L, yy, 'REL') + val(L + 44, yy, '12', 'M/S') + lab(M, yy, 'COURSE') + val(R, yy, '235°', null, { anchor: 'end' }); yy += 19;
     c += lab(L, yy, 'DOING') + text(L + 60, yy, 'KITING AT GUN RANGE', { size: B, fill: C.white, track: 0.3 }); yy += 19;
     c += lab(L, yy, 'KNOWN') + text(L + 60, yy, 'ENGINE DAMAGED', { size: B, fill: C.white, track: 0.3 });
     return c;
@@ -128,12 +138,15 @@ s += du(330, 638, 620, 150, {
   content: (gx, gy, gw) => {
     let c = '';
     const R = gx + gw - 10;
+    // Version 6's sample: an idle point-defense mount reads READY (the state list has no IDLE), the
+    // engaging one says what it engages, and the launchers are ready with what they hold. A
+    // launcher reloads in 1 s, and one that had just fired would have its harpoon on screen
     const rows = [
       ['NOSE', 'HEAVY CANNON', ['READY'], [2, '62%', 'FAIR'], '', 'YOU'],
-      ['FWD PORT', 'AUTOCANNON', ['ENGAGING', C.green], null, '', 'PD'],
-      ['FWD STBD', 'AUTOCANNON', ['IDLE', C.dim], null, '', 'PD'],
+      ['FWD PORT', 'AUTOCANNON', ['ENGAGING MSL', C.green], null, '', 'PD'],
+      ['FWD STBD', 'AUTOCANNON', ['READY'], null, '', 'PD'],
       ['AFT PORT', 'HARPOON', ['READY'], null, '3 LEFT', 'YOU'],
-      ['AFT STBD', 'HARPOON', ['RELOADING', C.white, '0.6 S'], null, '2 LEFT', 'YOU'],
+      ['AFT STBD', 'HARPOON', ['READY'], null, '4 LEFT', 'YOU'],
     ];
     rows.forEach(([mount, weapon, [st, stc, stv], hit, ammo, who], i) => {
       const top = gy + 7 + i * 24, yy = top + 16.7;
@@ -154,12 +167,13 @@ s += du(330, 638, 620, 150, {
   },
 }).svg;
 
-// H5 contact scope at 10 km, the smallest step holding the Lock and the missile; Raider 2 at 14 km
+// H5 contact scope at 5 km (version 6's new step), the smallest holding the Lock and every inbound
+// missile, as combat sets it; Raider 2 at 14 km
 // is past the rim, a tick at its bearing
 s += contactScope([
-  { kind: 'hostile', x: 0.277, y: -0.196, locked: true },
-  { kind: 'missile', x: 0.140, y: -0.120, a: 232 },
-], { heading: 55, range: '10', rim: [[117, 'hostile']] });
+  { kind: 'hostile', x: 0.554, y: -0.392, locked: true },
+  { kind: 'missile', x: 0.280, y: -0.240, a: 232 },
+], { heading: 55, range: '5', rim: [[117, 'hostile']] });
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>

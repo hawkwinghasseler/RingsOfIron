@@ -11,7 +11,8 @@
 // Walkthrough F (round 7): on deck at the reactor console, the Engineering panel open on its Power
 // tab. Eight seconds ago a hit shorted the AFT STBD gun (the laser); its sparks lit the carpet
 // beside it, and Ada is on the fire. The hit also left the reactor at 2.6 of 3.0 MW and the NOSE
-// gun disabled. The raider has broken off but is still inside 50 km: condition YELLOW.
+// gun disabled. The raider has broken off but is still inside 50 km: condition YELLOW. Ada called
+// the fire 2 s ago, so she has a speaking mark (spec round 10).
 // Timings from the game: a short empties its circuit's store, which refills in 2 s
 // (PowerCircuit.recharge, STORE_SECONDS), so 8 s on the store is full again; the breaker recloses
 // 45 s after the short (DamageStates.AUTO_RESET), so 37 s remain; a caution line holds 10 s.
@@ -30,6 +31,7 @@ s += corvetteDeck(OX, OY, K, {
   // the door's light on the Hold side warns of the fire beyond it
   glow: { reactor: 'caution', life: 'caution' }, door: 'bad',
   crew: [[13.5, 2.55], [10.25, 4.55], [10.3, 3.45]],   // Ada on the fire, Bea at the helm, Cole at the weapons console
+  speaking: [[13.5, 2.55]],   // Ada called the fire 2 s ago: the mark shows who said the ticker's newest line
   avatar: [14.45, 3.5],
   labels: true, labelAt: { bridge: [14.5, 2.2] },
 });
@@ -38,9 +40,11 @@ s += corvetteDeck(OX, OY, K, {
 const CX = 392;
 s += statusStrip({ condition: 'YELLOW', cx: CX });
 s += annunciator(CX, 44, [['FIRE', 'BRIDGE', 'caution'], ['POWER', '1 SYS', 'caution']], { caution: true });
+// Newest at the bottom (7.2): the short came first, then the fire its sparks lit, which Ada called.
+// A callout carries no countdown (13.5, spec round 12): a spoken number goes stale while it holds.
 s += ticker(CX - 360, 108, [
+  ['ENG', 'SHIP:', 'aft starboard gun shorted, resets itself.', 'caution'],
   ['ENG', 'Ada:', "fire in the bridge, I'm on it.", 'caution'],
-  ['ENG', 'SHIP:', 'aft starboard gun shorted, back in 37 s.', 'caution'],
 ]);
 
 // Suit readout (Z6, deck only): the room is on fire and its oxygen is falling (7.4)

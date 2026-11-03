@@ -24,11 +24,11 @@ s += W.contact('neutral', 300, 470, {});
 const at = (deg, r) => [SX + r * Math.sin(deg * Math.PI / 180), SY - r * Math.cos(deg * Math.PI / 180)];
 const [px, py] = at(HDG, 70), [rx, ry] = at(HDG + 180, 70);
 s += W.pro(px, py) + W.retro(rx, ry);
-// Burn 1 cue along prograde: its number and countdown, the label off to the side
+// Burn 1 cue along prograde: its number only (spec round 10); the time is the Next slot's
 const [bax, bay] = at(HDG, 16);
 s += haloed((c, w) => line(bax, bay, ...at(HDG, 50), c, w), C.magenta, 2.5);
 { const [ex, ey] = at(HDG, 52), r = HDG * Math.PI / 180, ax = ex - 10 * Math.sin(r + 0.45), ay = ey + 10 * Math.cos(r + 0.45), cx2 = ex - 10 * Math.sin(r - 0.45), cy2 = ey + 10 * Math.cos(r - 0.45); s += haloed((c, w) => path(`M${ax} ${ay} L${ex} ${ey} L${cx2} ${cy2}`, c, w), C.magenta, 2.5); }
-s += text(...at(HDG + 34, 56), '1  T−12:04', { size: 12, bold: true, fill: C.magenta });
+s += text(...at(HDG + 34, 56), '1', { size: 12, bold: true, fill: C.magenta });
 
 // Highport: the nav target, labelled with its name only (its numbers are in the Reference slot)
 const HX = 930, HY = 250;
@@ -65,17 +65,21 @@ const cl = du(Z.cluster.x, Z.cluster.y, 480, 160, {
     // which thrusters fire: MAIN and RCS, the task variation's names for them (both dark: coasting)
     c += lens(R - 36, row(0) + 6, 36, 16, 'RCS', null) + lens(R - 78, row(0) + 6, 40, 16, 'MAIN', null);
     c += I.box(R - 86 - bw('ASSIST'), row(0) + 5, bw('ASSIST'), 18, 'ASSIST', 'engaged', { size: 12 }) + I.box(R - 92 - bw('ASSIST') - bw('MANUAL'), row(0) + 5, bw('MANUAL'), 18, 'MANUAL', 'normal', { size: 12 });
-    // 2 Reference: the nav target; name, range, closing, CPA (it truncates from the right)
+    // 2 Reference: the nav target; name, range, closing, CPA (it truncates from the right). The
+    // spec's A has the closest approach in 2:10; at 1.2 km closing 3.9 m/s, 140 m at closest is
+    // 5:03 away at constant velocity (t = closing × range / speed², speed 3.93 m/s)
     let x = L;
     c += `<circle cx="${x + 6}" cy="${row(1) + 14}" r="5.5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/><circle cx="${x + 6}" cy="${row(1) + 14}" r="1.4" fill="${C.magenta}"/>`;
     x += 18; c += val(x, row(1) + 19, 'HIGHPORT', { fill: C.magenta, track: 0.4 }); x += tw('HIGHPORT', SB, true, 0.4) + 14;
-    [['RNG', '1.2 KM'], ['CLOSING', '3.9 M/S'], ['CPA', '140 M  T−2:10']].forEach(([l, v]) => { c += lab(x, row(1) + 19, l); x += tw(l, 12, true, 0.4) + 5; c += val(x, row(1) + 19, v); x += tw(v, SB, true) + 14; });
+    [['RNG', '1.2 KM'], ['CLOSING', '3.9 M/S'], ['CPA', '140 M  T−5:03']].forEach(([l, v]) => { c += lab(x, row(1) + 19, l); x += tw(l, 12, true, 0.4) + 5; c += val(x, row(1) + 19, v); x += tw(v, SB, true) + 14; });
     // 3 Next event: what, when, how much
     c += lab(L, row(2) + 19, 'NEXT');
     c += path(`M${L + 50} ${row(2) + 8} l6 6 l-6 6 l-6 -6 z`, C.magenta, 1.5, { fill: C.glass });
     c += val(L + 64, row(2) + 19, 'BURN 1', { fill: C.magenta, track: 0.4 }) + val(L + 64 + tw('BURN 1', SB, true, 0.4) + 10, row(2) + 19, 'T−12:04');
     c += val(R, row(2) + 19, '210 M/S  PROGRADE', { anchor: 'end', fill: C.white });
-    // 4 Trigger: dark in Green with no target locked (the slot holds its place)
+    // 4 Trigger: dark in Green with no target locked. Dark is not absent: its three lenses sit unlit,
+    // legends dim, as MAIN and RCS do (a slot for a system the hull lacks is a blank instead)
+    { const lw = 64; [['GUNS', 0], ['MSL', 1], ['DECOY', 2]].forEach(([t, i]) => { c += lens(L + i * (lw + 8), row(3) + 6, lw, 16, t, null); }); }
     // 5 Delta-v: pointer, the plan's bracket (magenta, like the burn), the notch at what home takes
     c += lab(L, row(4) + 19, 'ΔV');
     c += text(L + 120, row(4) + 19.5, '1\u2009840', { size: 15, bold: true, fill: C.white, anchor: 'end' }) + text(L + 124, row(4) + 19, 'M/S', { size: 12, fill: C.dim });
@@ -87,7 +91,7 @@ const cl = du(Z.cluster.x, Z.cluster.y, 480, 160, {
 });
 s += cl.svg;
 
-s += stationBoard([[1, 'HELM', '', 'you'], [2, 'NAV', '', 'you'], [3, 'TAC', 'COLE', 'crew'], [4, 'ENG', '--', 'empty'], [5, 'COMMS', '', 'you'], [6, 'CMD', '', 'crew']], { dim: true, day: 'DAY 3', time: '14:22:05' });
+s += stationBoard([[1, 'HELM', '', 'you'], [2, 'NAV', '', 'you'], [3, 'TAC', 'COLE', 'crew'], [4, 'ENG', '--', 'empty'], [5, 'COMMS', '', 'you'], [6, 'CMD', '', 'none']], { dim: true, day: 'DAY 3', time: '14:22:05' });
 
 document.getElementById('out').innerHTML = svgPage(`<defs><filter id="mono"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="1.5"/><feFuncG type="linear" slope="1.5"/><feFuncB type="linear" slope="1.5"/></feComponentTransfer></filter></defs>` + s);
 </script>

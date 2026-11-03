@@ -10,9 +10,9 @@ at 1280 x 800.
 
 | Variation | Folder | Spec version drawn |
 |---|---|---|
-| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 9 |
-| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 5 |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 5 |
+| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 13 |
+| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 7 |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 7 |
 
 ## Round 1 (3 November 2026)
 
@@ -146,10 +146,69 @@ drawn on screen at 3.5 km against F4's 14 km, is an edge marker.
 game's clock; the layout diagram's master lenses are MASTER WARN and MASTER CAUT; DU-2's pages
 are in whole words.
 
-## Round 4 (next)
+## Round 4 (3 November 2026)
 
-- Apply each designer's answers to round 3's notes, and the stations spec's round 10 (which landed
-  after round 3 was drawn): S1's burn cue keeps only its number, the CMD tile shows no occupancy,
-  and a speaking mark replaces speech on deck.
-- Fix the five carried items that are the HUD's (all but C3's floor path), then critique again.
+**Drawn:**
+
+- Stations, to rounds 10 to 13: S1's burn arrow carries only its number and the CMD tile names
+  nobody; S2's harpoons are 2.4 and 2.5 km out, landing in 8 and 9 s with their burn counted, and
+  SENSORS opens at the new 5 km step; S3's SHIP callout has no countdown, and Ada has a speaking
+  mark instead of a bubble.
+- Context, to versions 6 and 7: W3 without its countdown, P2's whole-word codes in an 11-character
+  field, F2's mounts and launchers as the sample has them, H5 at 5 km.
+- Task, to rounds 6 and 7: both scopes at 5 km, the alert band without a bearing, SHIELD.
+
+**The designers' answers.** Every round 3 note was taken: 5 by the stations spec (its round 12),
+10 by the context spec (version 6) and 4 by the task spec (round 6). All three now count the
+missile's burn in the impact time, and all three added a 5 km scope step.
+
+**Found in my own screens and fixed**, on a fresh pass over all ten:
+
+- **Every lead reticle was hundreds of metres off its target**, drawn as a textbook lead rather
+  than worked out. In S2, T2 and C2 the offsets (430 to 505 m) needed targets moving at 190 to
+  550 m/s, against closing speeds of 12 to 41 m/s on the same screens. The game's pilots match the
+  ship's velocity and close at 80 m/s at most (140 backing off when kiting), with up to 25 m/s of
+  drift (`NpcCombatComponent`), and the shots take 1 to 2.2 s, so the lead is 27 to 44 m: 2 to 4
+  units at fight zooms. Each reticle now rings its target inside the lock brackets, and the kit has
+  one reticle for all three.
+- **Numbers that disagreed with each other:** C2's lock card (REL 38 at a course nearly straight at
+  the ship, against CLOSING 12); T2's helm holding a position off a target the card shows closing,
+  and its closest approach (1:15, not 1:12); S1's closest approach, from the spec (5:03, not 2:10);
+  C1's periapsis (half an orbit after the apoapsis, T−1:10:22).
+- **Controls the specs ask for and the screens lacked:** the scope's − and + on T1, T2 and S2's
+  SENSORS page, placed either side of the range as the game's scope has them.
+- **One datum, two homes:** C2's P3 said PD ENGAGING, which is F4's at fire control.
+- **Smaller:** SVG folded double spaces in values (`2  0:08` read as `20:08`), so `text()` keeps
+  them; S1's trigger slot shows its lenses unlit, so it reads as reserved; T2's DECOY is the
+  table's last row; T3's payday is a SPONSOR slip in sentence case; S3's ticker has the newest line
+  at its foot; T2's range lost its AUTO word, which T1's, also automatic, never had.
+
+**Resolved without a change:** S2's impact stays at the tile's size, since the tile grid is fixed
+hardware and the kept double space makes it read; T2's caution cells stay sized to their text,
+since the band is a message list and the ten-lens panel is the fixed hardware.
+
+**Findings sent to the designers:**
+
+| Spec | Notes |
+|---|---|
+| Ship Stations (round 13) | 4: F's NEXT line repeats its row's 37 s; a shorted gun is "shorted" on its chip and "no power" on POWER; A's closest approach (140 m from 1.2 km at 3.9 m/s is 5:03 away, not 2:10); F's ticker order, if the short's sparks lit the fire |
+| Context-driven (version 7) | 2: F1's sample can't be a kiter (120 m/s relative at 85 closing is 85 m/s across, and a kiter doesn't circle); "fights sit inside 4 km" (the coilgun reaches 5, a kiter holds out to 4.5) |
+| Task-driven (round 7) | 3: round 7 dropped the scope's − and +; "the corvette's 4 km reach", from my own wrong round 3 note; two lead reticles (one per muzzle speed) would sit on top of each other and the target |
+
+All three also heard the reticle finding, since each spec keeps the game's lead reticle: in these
+fights it sits on the target, inside the lock brackets.
+
+**Style guide changes this round:** the lead reticle has its size and its rule (section 7): it
+rings the target inside the lock brackets, since that is where the lead puts it in these fights.
+The word list notes that version 6 of the context spec took its P2 spellings, and that callouts
+carry no countdown.
+
+**State of the variations.** Each now has nothing left that the HUD can answer, pending the
+designers' answers to the notes above. Two notes stay open in the context variation, neither a
+fault in what is drawn: the trim selector is never live on the corvette, and C3's floor path is
+world art.
+
+## Round 5 (next)
+
+- Apply each designer's answers to round 4's notes, then critique all ten screens again.
 - A variation is done when a round finds nothing meaningful left in it.

@@ -8,11 +8,12 @@
 <script src="../../nasapunk/mockups/kit.js"></script>
 <script src="task.js"></script>
 <script>
-// Seated at the weapons console in a fight with the raider 'Vex'. Bea, the helmsman, holds the
-// ship 3.2 km off it. Two harpoons inbound, a second apart, the first in 3 s (the one warning). A
+// Seated at the weapons console in a fight with the raider 'Vex', 3.2 km off and passing. Bea, the
+// helmsman, holds the heading. Two harpoons inbound, a second apart, the first in 3 s (the one warning). A
 // harpoon closes at 30 m/s² (MissileDef.closingBurn; weapons.toml leaves the harpoon's at that), so
-// from 3.2 km it lands about 13 s after launch and reads 3 s about 1.1 km out; the second, a second
-// behind, is 1.4 km out and reads 4 s. An earlier hit lit
+// from 3.2 km it lands about 13 s after launch; 3 s out it is 1.1 km away, and the second, a second
+// behind, 1.4 km. The spec's round 6 counts the burn in every impact time, so 0:03 is the true
+// time, not the game's coasting estimate. An earlier hit lit
 // the Hold, where Ada fights the fire, and wounded Cole, whom nobody is treating (two cautions).
 // FLT gives way to HLM; SCH shows because FIRE and CREW are lit (section 8). The crew are the
 // game's starting crew (GameScenario: Ada, engineer; Bea, crewman and helmsman; Cole, marine).
@@ -30,12 +31,14 @@ s += hull(SX, SY, HDG, 0.9);
 // the raider, locked: name in the world, everything else on the target card
 const TX = 826, TY = 262;
 s += raiderHull(TX, TY, 240, 0.42) + W.contact('hostile', TX, TY, { locked: true, label: ["RAIDER 'VEX'"], lx: 26, ly: 4 });
-// one lead reticle: the coilgun is the only gun in hand that needs lead (the laser is a beam)
-const RX = 798, RY = 242;
-s += W.hitLane(SX + 18, SY - 18, RX, RY);
-s += haloed((c, w) => `<circle cx="${RX}" cy="${RY}" r="8" fill="none" stroke="${c}" stroke-width="${w}"/>` + line(RX - 12, RY, RX - 8, RY, c, w) + line(RX + 8, RY, RX + 12, RY, c, w) + line(RX, RY - 12, RX, RY - 8, c, w) + line(RX, RY + 8, RX, RY + 12, c, w), C.cyan);
-// two harpoons inbound from bearing 080, each on its predicted path to the hull, as the game draws
-// it (missile to impact). Markers carry no numbers (round 4): the time to impact is the band's alone
+// one lead reticle: the coilgun is the only gun in hand that needs lead (the laser is a beam). Vex
+// closes at 41 m/s and passes 0.6 km off (7.6 m/s across), and the round takes 1.05 s, so the lead
+// is 44 m, 3 units at this zoom (70.6 a km): the reticle rings the target inside its brackets
+const RX = TX - 3.04 * 0.824 + 0.56 * 0.567, RY = TY + 3.04 * 0.567 + 0.56 * 0.824;
+s += W.hitLane(SX + 18, SY - 18, RX, RY) + W.reticle(RX, RY);
+// two harpoons inbound from the east (bearing 080 in this north-up view), each on its predicted path
+// to the hull, as the game draws it (missile to impact): the world is where their direction is read
+// (spec round 7). Markers carry no numbers (round 4): the time to impact is the band's alone
 s += W.track(`M 715 377 Q 687 392 ${SX + 16} ${SY + 10}`) + W.missile(715, 377, 241, C.red);
 s += W.track(`M 740 387 Q 700 399 ${SX + 18} ${SY + 14}`) + W.missile(740, 387, 253, C.red);
 // the hit already taken: an impact mark on the port side aft
@@ -45,9 +48,10 @@ s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×', note: 'HELD: HOS
 s += annunciatorPanel({ FIRE: 'caution', CREW: 'caution' });
 
 // ALR: the warning row with its one number and its action; the caution row under it, each caution
-// naming who handles it. Point defense engaging is the warning's own second line.
+// naming who handles it. Point defense engaging is the warning's own second line. No bearing
+// (spec round 7): where the harpoons come from is drawn in the world, by their paths, and on SNS.
 s += alertBand({
-  warning: { tag: 'MISSILE\n2 IN', big: 'IMPACT 0:03', big2: 'BEARING 080', line2: 'POINT DEFENSE ENGAGING', actions: [['F', 'DECOY']] },
+  warning: { tag: 'MISSILE\n2 IN', big: 'IMPACT 0:03', line2: 'POINT DEFENSE ENGAGING', actions: [['F', 'DECOY']] },
   cautions: [['FIRE', 'HOLD', 'ADA ON IT'], ['WOUNDED', 'COLE', 'NO MEDIC FREE']],
 });
 
@@ -72,7 +76,8 @@ s += du(1024, 328, 240, 200, {
     // range and closing side by side, labels over values, both at body size
     c += text(L, gy + 107, 'RNG', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(L + 112, gy + 107, 'CLOSING', { size: 12, bold: true, fill: C.dim, track: 0.4 });
     c += text(L, gy + 125, '3.2 KM', { size: TV, bold: true, fill: C.white }) + text(L + 112, gy + 125, '41 M/S', { size: TV, bold: true, fill: C.white });
-    c += text(L, gy + 147, 'CPA', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(L + 38, gy + 147, '0.6 KM  T−1:12', { size: TB, bold: true, fill: C.white });
+    // at constant velocity: 3.2 km closing 41 m/s with 0.6 km at closest is 41.7 m/s, 75 s out
+    c += text(L, gy + 147, 'CPA', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(L + 38, gy + 147, '0.6 KM  T−1:15', { size: TB, bold: true, fill: C.white });
     c += line(gx + 4, gy + 156, gx + gw - 4, gy + 156, C.graticule, 1);
     c += text(L, gy + 174, 'BOUNTY CONTRACT', { size: 12, bold: true, fill: C.magenta, track: 0.4 });
     return c;
@@ -105,22 +110,22 @@ s += du(ZT.arms.x, ZT.arms.y, ZT.arms.w, ZT.arms.h, {
     const ly = row(4, 'AFT PORT', 'HARPOON', 'HAND');
     // state, rounds left, then the seeker's lock: green, a good lock (style 3), as a word for want of room
     c += text(X.st, ly, 'READY', { size: 12, bold: true, fill: C.white, track: 0.2 }) + text(X.st + tw('READY', 12, true, 0.2) + 8, ly + 0.5, '3/4', { size: TV, bold: true, fill: C.white }) + text(R, ly, 'LOCK', { size: 12, bold: true, fill: C.green, anchor: 'end', track: 0.4 });
-    c += line(gx + 4, gy + 131, gx + gw - 4, gy + 131, C.graticule, 1);
-    // the decoy: ready, or seconds until it is (unlimited, one every 3 s: no count)
-    c += text(L, gy + 148, 'DECOY', { size: 12, bold: true, fill: C.dim, track: 0.4 }) + text(X.w, gy + 148, 'READY', { size: 12, bold: true, fill: C.white, track: 0.2 });
+    // the decoy, a row of the table under the launcher: the other thing the captain throws, in hand
+    // (F), ready or seconds until it is (unlimited, one every 3 s: no count)
+    const dy = row(5, 'DECOY', '', 'HAND');
+    c += text(X.st, dy, 'READY', { size: 12, bold: true, fill: C.white, track: 0.2 });
     return c;
   },
 }).svg;
 
-// SNS: the scope on the threats (10 km to the rim, so each contact sits at its world offset over
-// 10 km), the count of hostiles under it
-s += du(ZT.sns.x, ZT.sns.y, ZT.sns.s, ZT.sns.s, {
-  id: 'sns', b: 8, title: 'SCOPE',
-  content: (gx, gy, gw, gh) => I.scope(gx + gw / 2, gy + gh / 2 - 8, gw / 2 - 16, [
-    { kind: 'hostile', x: 0.264, y: -0.182, locked: true }, { kind: 'missile', x: 0.106, y: -0.019, a: 241 }, { kind: 'missile', x: 0.142, y: -0.005, a: 253 },
-    { kind: 'neutral', x: -0.6, y: 0.4 },
-  ], { heading: HDG }) + text(gx + 8, gy + gh - 6, '1 HOSTILE', { size: 12, bold: true, fill: C.red, track: 0.3 }) + text(gx + gw - 8, gy + gh - 6, '10 KM AUTO', { size: 12, fill: C.dim, anchor: 'end' }),
-}).svg;
+// SNS: the scope on the threats, the count of hostiles under it. Range automatic (spec round 6): the
+// smallest step holding every inbound missile and the Lock with room to spare, 5 km (a new step), so
+// the harpoons read clear of the own-ship mark; each contact sits at its world offset over 5 km, and
+// the freighter at 7 km is a tick on the rim
+s += scopeDU([
+  { kind: 'hostile', x: 0.528, y: -0.364, locked: true }, { kind: 'missile', x: 0.212, y: -0.038, a: 241 }, { kind: 'missile', x: 0.284, y: -0.01, a: 253 },
+  { kind: 'neutral', x: -1.2, y: 0.8 },
+], { heading: HDG, range: '5 KM', hostiles: '1 HOSTILE' });
 
 // SCH: the deck plan with what is wrong in its room and no text (room names on hover only): the
 // Hold hatched for the fire; crew as dots (Cole amber, hurt), the captain ringed at the weapons
@@ -136,8 +141,11 @@ s += du(ZT.sch.x, ZT.sch.y, ZT.sch.w, ZT.sch.h, {
   },
 }).svg;
 
-// HLM: at gunnery FLT is hidden; who flies and the order take its place
-s += helmStatus(376, 736, 320, 'BEA', 'HOLDING 3\u2009200 M OFF RAIDER');
+// HLM: at gunnery FLT is hidden; who flies and the order take its place. No order stands, so Bea
+// holds the heading, as on T3 (HelmOrderComponent.Mode.NONE). A held position off Vex
+// (HOLD_POSITION) would keep the range, which the target card shows closing at 41 m/s for a pass
+// at 0.6 km
+s += helmStatus(376, 736, 320, 'BEA', 'HOLDING HEADING', 'normal', 'NO ORDER');
 
 // F is the warning's own action, so it doesn't repeat here (round 4)
 s += hintLine([['SPACE', 'FIRE'], ['R', 'MISSILE'], ['TAB', 'NEXT TARGET'], ['F1', 'CONTROLS']]);

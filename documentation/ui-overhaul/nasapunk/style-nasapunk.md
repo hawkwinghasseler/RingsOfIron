@@ -225,6 +225,13 @@ scale, so relative motion reads without numbers. The locked target's symbol fill
 4-corner bracket; the navigation target gets a magenta ring. A data block beside a contact has at
 most three lines: name, `RNG`, `CLOSING`. Never more on the world view; the rest is on a page.
 
+The **lead reticle** is a `cyan` ring with four ticks, 23 u across, where the gun's solution puts
+the shot. In this game's fights the lead is tens of metres (pilots match the ship's velocity and
+close at 80 m/s at most), so at fight zooms the reticle sits a few units off the target: it is
+drawn to ring the target's 7 u shape with glass between, and its ticks pass between the lock
+bracket's arms. A reticle far from its target means a target moving fast across the line of
+sight, and is worth working out before drawing.
+
 ### Interface icons
 
 There are almost none. A soft key is labelled with a word, not a pictogram. The only pictograms

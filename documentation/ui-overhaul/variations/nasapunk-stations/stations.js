@@ -64,6 +64,8 @@ function statusStrip(o = {}) {
 // tiles: [num, name, who, state, alert]; state 'you' | 'crew' | 'empty' | 'struck';
 // alert 'caution' | 'warning' lights the lens in that role (a tile can be yours and alerting at once).
 // o.dim: Green with nothing alerting, the whole board unlit, "you" included, legends low.
+// A tile's state is its occupancy: you, crew, empty or struck; 'none' for CMD, which has no
+// occupancy part (the captain's slate is always with the player) and carries only alerts and LATCHED.
 function stationBoard(tiles, o) {
   const { x, y, w, h } = Z.board;
   let s = bezelBody(x, y, w, h, 3);
@@ -119,6 +121,14 @@ function pageHead(gx, gy, gw, name, status, statusColor = C.dim) {
   return text(gx + 6, gy + 13, name, { size: 12, bold: true, fill: C.white, track: 0.8 })
     + (status ? text(gx + gw - 6, gy + 13, status, { size: 12, bold: true, fill: statusColor, anchor: 'end', track: 0.4 }) : '')
     + line(gx + 4, gy + 18, gx + gw - 4, gy + 18, C.graticule, 1);
+}
+
+// SENSORS' range, an owned control (9.2): the step with a − and a + cap either side of it, at the
+// header's right, as RadarScope's buttons sit either side of the range today (− steps out, + in).
+function rangeKeys(gx, gy, gw, label) {
+  const R = gx + gw - 4, kw = 18, kh = 15, lw = tw(label, 12, true, 0.4);
+  const cap = (x, k) => rect(x, gy + 1.5, kw, kh, { fill: '#0E141A', stroke: '#3A434D', sw: 1 }) + text(x + kw / 2, gy + 13.5, k, { size: 13, bold: true, fill: C.white, anchor: 'middle' });
+  return cap(R - kw, '+') + text(R - kw - 6, gy + 13, label, { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.4 }) + cap(R - kw - 12 - lw - kw, '−');
 }
 
 // Learning hints on the prompt line (7.3): at most three key caps with verbs, quiet.

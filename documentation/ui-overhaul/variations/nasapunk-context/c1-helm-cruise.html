@@ -15,10 +15,10 @@
 let s = space({ px: 260, py: 1700, pr: 1250, seed: 5 }) + controlDefs();
 const SX = 640, SY = 318;
 s += hullArt('corvette', SX, SY, 0, 0.075);
-// W2 velocity markers, orbit frame, 70 from the ship. W3: the next burn's arrow, with its countdown.
+// W2 velocity markers, orbit frame, 70 from the ship. W3: the next burn's arrow, with no number
+// (version 6): its countdown is H2's NEXT line, on screen with it.
 s += W.pro(SX + 70, SY) + W.retro(SX - 70, SY);
 s += haloed((c, w) => line(SX - 20, SY + 30, SX + 34, SY + 30, c, w) + path(`M${SX + 26} ${SY + 24} L${SX + 35} ${SY + 30} L${SX + 26} ${SY + 36}`, c, w), C.magenta, 2.5);
-s += text(SX + 44, SY + 35, 'BURN 1  T−12:05', { size: B, bold: true, fill: C.magenta, halo: true });
 // W1: the Nav is off screen to the right. Its edge marker carries no range: H2 has it.
 s += haloed((c, w) => path(`M1238 236 L1250 244 L1238 252`, c, w), C.magenta, 2.5);
 s += text(1230, 249, 'SHACKLETON ICE', { size: LB, bold: true, fill: C.magenta, anchor: 'end', track: 0.6, halo: true });
@@ -39,7 +39,9 @@ s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
     // ORBIT: the body and height, then each apsis with the time to it
     c += lab(L, yy, 'ORBIT') + text(M, yy, 'EARTH', { size: B, bold: true }) + lab(R - valW('400', 'KM') - 6, yy, 'ALT', { anchor: 'end' }) + right('400', 'KM'); yy += P;
     c += lab(M, yy, 'AP') + val(M + 26, yy, '403', 'KM') + right('T−24:10'); yy += P;
-    c += lab(M, yy, 'PE') + val(M + 26, yy, '397', 'KM') + right('T−1:10:00'); yy += P + 1;
+    // half an orbit after the apoapsis: a 400 km orbit of Earth takes 92:24 (it flies at 7 672 m/s),
+    // so the periapsis is 46:12 after the T−24:10 apoapsis (the spec rounds it to "1 h 10 m")
+    c += lab(M, yy, 'PE') + val(M + 26, yy, '397', 'KM') + right('T−1:10:22'); yy += P + 1;
     rule();
     // NAV: the Nav's name in the nav colour, its range, rate and closest approach
     c += lab(L, yy, 'NAV') + `<circle cx="${M + 5}" cy="${yy - 4.5}" r="5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/>` + text(M + 16, yy, 'SHACKLETON ICE', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right(num(1240), 'KM'); yy += P;

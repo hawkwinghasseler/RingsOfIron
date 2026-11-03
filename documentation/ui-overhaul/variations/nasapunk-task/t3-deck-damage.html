@@ -44,7 +44,9 @@ s += alertBand({
 
 // OBJ and NTF: the slow loop, top right
 const ob = objectives([{ t: 'DELIVERY: ICE TO FREEHOLD', left: '1D 4H' }]);
-s += ob.svg + news(ob.y, [['PAYDAY', '2\u2009000 CR PAID']]);
+// NTF: a notice is prose in sentence case under its source's tag, as P4 and the ticker are (the
+// word list's feed tags: the sponsor pays)
+s += ob.svg + news(ob.y, [['SPONSOR', 'Payday: 2\u2009000 CR paid']]);
 
 // HLM: who holds the ship while the captain is on foot
 s += helmStatus(420, 736, 440, 'BEA', 'HOLDING HEADING', 'normal', 'NO ORDER');

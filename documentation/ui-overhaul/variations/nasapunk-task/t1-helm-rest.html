@@ -51,14 +51,13 @@ s += du(ZT.flt.x, ZT.flt.y, ZT.flt.w, ZT.flt.h, {
 }).svg;
 
 // SNS: the scope, range automatic (nothing hostile, nothing locked: the nearest contact)
-s += du(ZT.sns.x, ZT.sns.y, ZT.sns.s, ZT.sns.s, {
-  id: 'sns', b: 8, title: 'SCOPE',
-  // contacts at their world offsets over the 10 km rim (the world here is 55.5 a km: Highport's
-  // 3.0 km is 166 units), the third contact off the world view at 9 km
-  content: (gx, gy, gw, gh) => I.scope(gx + gw / 2, gy + gh / 2, gw / 2 - 8, [
-    { kind: 'station', x: -0.252, y: -0.162 }, { kind: 'neutral', x: 0.184, y: 0.173 }, { kind: 'neutral', x: 0.72, y: -0.55 },
-  ], { heading: 90, range: '10 KM' }),
-}).svg;
+// Range automatic (spec round 6): no missile, no lock and no hostile, so the step that holds the
+// nearest contact with room to spare, 5 km for the freighter at 2.5 km. Contacts sit at their world
+// offsets over the rim (the world here is 55.5 a km: Highport's 3.0 km is 166 units); the third,
+// at 9 km, is a tick on the rim
+s += scopeDU([
+  { kind: 'station', x: -0.504, y: -0.324 }, { kind: 'neutral', x: 0.368, y: 0.346 }, { kind: 'neutral', x: 1.44, y: -1.1 },
+], { heading: 90, range: '5 KM' });
 
 // four keys, then F1 (section 6, HNT)
 s += hintLine([['W/S', 'THRUST'], ['A/D', 'TURN'], ['M', 'MAP'], ['Q', 'DESTINATION'], ['F1', 'CONTROLS']]);

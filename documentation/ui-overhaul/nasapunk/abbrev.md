@@ -6,7 +6,8 @@ instruments: labels, codes, lenses, keys, tabs, tags and states. Prose (callouts
 log, hovers, briefings) is sentence case and spells words in full; only its units after a number
 follow this table ("aft starboard gun shorted, back in 37 s").
 
-Written from the nine variations' screens in round 2 and checked against all of them in round 3.
+Written from the variations' screens in round 2, checked against all of them in round 3, and kept
+in step with the specs since.
 
 ## Rules
 
@@ -54,6 +55,10 @@ Written from the nine variations' screens in round 2 and checked against all of 
 
 Every countdown is M:SS or H:MM:SS, so a column of them scans: never `21 S` beside `3:40`.
 Durations (a shot's flight, a cooldown) are seconds with `S`.
+A callout carries no countdown (`aft starboard gun shorted, resets itself.`): a number spoken once
+goes stale while the line holds, so the time stays on the instrument that counts it.
+An impact time counts the missile's burn, so it runs at the clock's speed (the specs ask for it as
+new data; the game's own figure, a coasting estimate, runs fast).
 
 ## Flight
 
@@ -95,7 +100,7 @@ Durations (a shot's flight, a cooldown) are seconds with `S`.
 | O2, N2 | oxygen, nitrogen | |
 | EMERG | emergency: `EMERG O2` | EMERGENCY on an instrument |
 | CRIT | critical: `CREW CRIT` | |
-| SYS | system, in a count or a code: `1 SYS`, `SYS DOWN` (the page is SYSTEMS) | |
+| SYS | system, in a count: `1 SYS` (the page is SYSTEMS; P2's code is `SYSTEM DOWN`) | |
 | PRESS | pressure, in a code | |
 | APPR | approach, in a code: `FAST APPR` (the helm order is APPROACH) | |
 | SALV | salvage | |
@@ -111,7 +116,7 @@ Durations (a shot's flight, a cooldown) are seconds with `S`.
 |---|---|
 | Pages (on keys, tabs and heads alike) | NAV, PLAN, HELM, DOCK, SENSORS, WEAPONS, DEFENSE, DAMAGE, POWER, ATMOS, SYSTEMS, TANKS, SHIELDS, COMMS, CARGO, CREW, CONTRACTS, FLIGHT |
 | Stations (board slots, ticker tags, console plates) | HELM, NAV, TAC, ENG, COMMS, CMD |
-| Message sources (feed tags) | HELM, GUNNERY, ENG, MEDICAL, CREW, STATION, SPONSOR, COMMS, LOG, BOARDING |
+| Message sources (feed tags) | HELM, GUNNERY, ENG, MEDICAL, CREW, STATION, SPONSOR, COMMS, LOG, BOARDING, SHIELDS |
 | Mounts | NOSE, FWD PORT, FWD STBD, AFT PORT, AFT STBD |
 | MFD function keys | PIN, FOLD, RTN (return), DCLTR (declutter), TFC (traffic), XFR (transfer), CTR (centre), BRT (brightness), XTIE (crosstie), RNG+ and RNG− (scope range) |
 | Cameras | OPT n (an optical camera), then what it shows: `OPT 1  TARGET` |
@@ -121,16 +126,16 @@ take 0.55 of a page key's room each, which gives SENSORS, WEAPONS and DEFENSE 66
 
 ## P2 codes in this style
 
-The context spec's codes, written to these rules. Each fits P2's code column (96 units at 13 bold):
+The context spec's codes, written to these rules. Each fits P2's code column, which version 6 sets at
+11 characters (104 units at 13 bold; SYSTEM DOWN, the longest, is 98):
 
 `FIRE`, `BREACH`, `VACUUM`, `CREW CRIT`, `CREW AIR`, `BOARDERS`, `LATCHED ON`, `NO POWER`,
-`EMERG O2`, `SYS DOWN`, `PRESS LOW`, `SMOKE`, `HULL DAMAGE`, `POWER LOW`, `SHIELD DOWN`,
+`EMERG O2`, `SYSTEM DOWN`, `PRESS LOW`, `SMOKE`, `HULL DAMAGE`, `POWER LOW`, `SHIELD DOWN`,
 `SHIELD WEAK`, `O2 LOW`, `PROP LOW`, `PLAN SHORT`, `CREW OUT`, `NO HELM`, `FAST APPR`,
 `DOCK STRAIN`.
 
-Against the spec's spellings: DMG, SHLD and STRN become whole words, and the four "low" codes take
-one order, the thing first (PROP LOW, POWER LOW, O2 LOW, PRESS LOW), where the spec has LOW O2 and
-LOW PRESS beside PROP LOW and POWER LOW.
+Version 6 of the context spec took these spellings: DMG, SHLD, STRN and SYS became whole words, and
+the four "low" codes take one order, the thing first (PROP LOW, POWER LOW, O2 LOW, PRESS LOW).
 
 ## Words in these documents, not on screen
 

@@ -61,7 +61,8 @@ function cwPanel(rows, o = {}) {
         const col = sev === 'warning' ? C.red : C.amber;
         c += sev === 'warning' ? sym.diamond(gx + 11, yy - 4.7, 4.6, col, 1.2, col) : path(`M${gx + 11} ${yy - 10.5} L${gx + 16.6} ${yy} L${gx + 5.4} ${yy} Z`, col, 1.2, { fill: col });
         c += text(gx + 22, yy, code, { size: B, bold: true, fill: col, track: 0.3 });
-        if (detail) c += text(gx + 118, yy, detail, { size: B, fill: C.white, track: 0.2 });
+        // the code field holds 11 characters (version 6: SYSTEM DOWN, HULL DAMAGE), the detail 80 units
+        if (detail) c += text(gx + 126, yy, detail, { size: B, fill: C.white, track: 0.2 });
         const hx = gx + 206;
         if (hand === 'you') c += rect(hx, top + 4, 38, 16, { stroke: C.cyan, sw: 1.2 }) + text(hx + 19, yy - 0.5, 'YOU', { size: LB, bold: true, fill: C.cyan, anchor: 'middle', track: 0.4 });
         else if (hand === 'back') c += text(hx, yy, 'BACK', { size: LB, bold: true, fill: C.dim, track: 0.6 });

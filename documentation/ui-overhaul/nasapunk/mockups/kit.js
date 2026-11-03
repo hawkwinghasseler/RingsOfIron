@@ -63,6 +63,10 @@ const W = {
     s += text(x + 18, y + 4, `${pct}%`, { size: 11, bold: true, fill: C.cyan });
     return s;
   },
+  // The lead reticle alone, where the gun's solution puts the shot. In this game's fights it sits
+  // a few units off the target, so it rings the target's 7-unit shape with glass to spare, and its
+  // ticks pass between the lock brackets' arms (at 17).
+  reticle: (x, y) => haloed((c, w) => `<circle cx="${x}" cy="${y}" r="11.5" fill="none" stroke="${c}" stroke-width="${w}"/>` + line(x - 15, y, x - 11.5, y, c, w) + line(x + 11.5, y, x + 15, y, c, w) + line(x, y - 15, x, y - 11.5, c, w) + line(x, y + 11.5, x, y + 15, c, w), C.cyan),
   hitLane: (x1, y1, x2, y2) => haloed((c, w) => line(x1, y1, x2, y2, c, w, { dash: '1 4' }), C.cyan, 1.5),
   fireArc: (x, y, a0, a1, r) => {
     const p = (a, rr) => [x + rr * Math.sin(a * Math.PI / 180), y - rr * Math.cos(a * Math.PI / 180)];
@@ -195,7 +199,8 @@ const O = {
 // ---------- instruments ----------
 
 const I = {
-  // Plan-view scope. contacts: [{kind, x, y (in -1..1 of range), locked, nav, label}]
+  // Plan-view scope. contacts: [{kind, x, y (in -1..1 of range), locked, nav, label}]; a contact past
+  // the rim is a tick on the rim at its bearing, as RadarScope puts it
   scope: (cx, cy, r, contacts, o = {}) => {
     let s = '';
     [r * 0.5, r].forEach(rr => s += `<circle cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="${C.graticule}" stroke-width="1"/>`);
@@ -203,8 +208,9 @@ const I = {
     if (o.heading != null) { const a = o.heading * Math.PI / 180; s += line(cx, cy, cx + r * 0.42 * Math.sin(a), cy - r * 0.42 * Math.cos(a), C.cyan, 1); }
     s += sym.chevron(cx, cy, o.heading || 0, C.cyan, 1.5, 4.5);
     contacts.forEach(k => {
-      const x = cx + k.x * r, y = cy + k.y * r;
+      const x = cx + k.x * r, y = cy + k.y * r, d = Math.hypot(k.x, k.y);
       const col = { hostile: C.red, friendly: C.cyan, neutral: C.white, unknown: C.amber, station: C.white, derelict: C.dim, missile: C.red, ownmissile: C.cyan }[k.kind];
+      if (d > 1) { const ux = k.x / d, uy = k.y / d; s += line(cx + (r - 2) * ux, cy + (r - 2) * uy, cx + (r + 6) * ux, cy + (r + 6) * uy, col, 2.5); return; }
       if (k.kind === 'missile' || k.kind === 'ownmissile') s += sym.chevron(x, y, k.a || 0, col, 1.5, 3.5);
       else if (k.kind === 'station') s += sym.station(x, y, 3.5, col, 1.2);
       else if (k.kind === 'derelict') s += rect(x - 3, y - 3, 6, 6, { stroke: col, sw: 1.2, dash: '2 1.5' });
@@ -458,7 +464,7 @@ const CORVETTE = {
 // chassis x 0 at ox. o: { fire:[[tx,ty,r]], fireRoom, smoke:[[tx,ty,r]], breach:[tx,ty] (a hull
 // tile blown out), short:[tx,ty], thin:[room], vacuum:[room], battle (Red battle lighting),
 // alarm:[[tx,ty,angle]], glow:{helm|weapons|life|reactor: 'caution'|'warning'}, door:'ok'|'bad'|'shut',
-// crew:[[tx,ty,name,bubble]], down:[[tx,ty,angle]] (casualties), avatar:[tx,ty], labels, dark, unpowered }. Points are chassis
+// crew:[[tx,ty,name,bubble]], speaking:[[tx,ty]], down:[[tx,ty,angle]] (casualties), avatar:[tx,ty], labels, dark, unpowered }. Points are chassis
 // corner coordinates (a tile's centre is x + 0.5, y + 0.5).
 function corvetteDeck(ox, oy, k, o = {}) {
   const X = tx => ox + tx * k, Y = ty => oy + (6 - ty) * k;
@@ -566,6 +572,12 @@ function corvetteDeck(ox, oy, k, o = {}) {
   // people: crew in orange suits; the captain blue-grey with a cyan ring
   const person = (tx, ty, suit, helmet) => `<ellipse cx="${X(tx)}" cy="${Y(ty)}" rx="${k * 0.36}" ry="${k * 0.26}" fill="${suit}" stroke="#1A1A1A" stroke-width="1"/><circle cx="${X(tx)}" cy="${Y(ty)}" r="${k * 0.17}" fill="${helmet ? '#DDE3E8' : '#C99A78'}" stroke="#1A1A1A" stroke-width="0.8"/>`;
   (o.crew || []).forEach(([tx, ty]) => s += person(tx, ty, '#E06A2C'));
+  // a speaking mark over a crew member for the first 3 s of a callout (o.speaking: [[tx, ty]]): the
+  // comm loop's transmit arcs, no words, since the words are in the ticker
+  (o.speaking || []).forEach(([tx, ty]) => {
+    const x = X(tx) + k * 0.18, y = Y(ty) - k * 0.36;
+    s += haloed((c, w) => [4, 8, 12].map(r => `<path d="M${x} ${y - r} A${r} ${r} 0 0 1 ${x + r} ${y}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`).join(''), C.white, 1.8);
+  });
   // a casualty lying on the deck (o.down: [[tx, ty, angle]]): full length, the head at one end
   (o.down || []).forEach(([tx, ty, a = 0]) => s += `<g transform="rotate(${a} ${X(tx)} ${Y(ty)})"><ellipse cx="${X(tx)}" cy="${Y(ty)}" rx="${k * 0.44}" ry="${k * 0.2}" fill="#E06A2C" stroke="#1A1A1A" stroke-width="1"/><circle cx="${X(tx) + k * 0.4}" cy="${Y(ty)}" r="${k * 0.16}" fill="#C99A78" stroke="#1A1A1A" stroke-width="0.8"/></g>`);
   if (o.avatar) { const [tx, ty] = o.avatar; s += `<circle cx="${X(tx)}" cy="${Y(ty)}" r="${k * 0.55}" fill="none" stroke="${C.cyan}" stroke-width="1.5"/>` + person(tx, ty, '#5D7086', true); }

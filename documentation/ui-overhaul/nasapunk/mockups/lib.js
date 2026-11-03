@@ -32,7 +32,9 @@ function text(x, y, s, o = {}) {
   const family = o.mono ? MONO : SANS, weight = o.bold ? 700 : 400;
   const ls = o.track ? `letter-spacing="${o.track}"` : '';
   const lg = o.legend ? ' data-legend="1"' : '';
-  const t = (paint) => `<text x="${x}" y="${y}" font-family="${family}" font-weight="${weight}" font-size="${size}" ${paint} text-anchor="${anchor}" ${ls}${lg}>${esc(s)}</text>`;
+  // white-space: pre keeps a double space (the gap between two parts of a value, `CPA 140 M  T−2:10`),
+  // which SVG would otherwise collapse to one
+  const t = (paint) => `<text x="${x}" y="${y}" font-family="${family}" font-weight="${weight}" font-size="${size}" ${paint} text-anchor="${anchor}" ${ls}${lg} style="white-space:pre">${esc(s)}</text>`;
   // o.halo: a dark outline under the text, for text laid over a picture
   return (o.halo ? t('fill="none" stroke="rgba(0,0,0,0.8)" stroke-width="3" stroke-linejoin="round"') : '') + t(`fill="${fill}"`);
 }
