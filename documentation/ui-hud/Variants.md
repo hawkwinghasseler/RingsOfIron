@@ -97,6 +97,7 @@ their contents.
 | `key("FIRE")` | the key bound to an action, for a prompt |
 | `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
 | `dockHint` | the docked banner's text, or "" when not docked |
+| `guideTitle`, `guideText`, `guideDone` | the tutorial running now, for a guide card of a variant's own: its heading ("FIRST PLAY · 2 OF 9", "GETTING STARTED") and the objective with the player's keys, both "" with none; and whether that is a finished guide's last word. Set by the game screen (`GameSession`) |
 
 `targeting`, `orbitInfo`, `interactor` and `physics` are the classic providers, set on `UiHud` as
 before and mirrored here.
