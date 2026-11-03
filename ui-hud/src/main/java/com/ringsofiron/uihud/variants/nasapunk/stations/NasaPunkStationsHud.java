@@ -527,7 +527,11 @@ public class NasaPunkStationsHud implements HudVariant {
                 v = k.closing;
             } else {
                 switch (f.frame) {
-                    case TARGET: h.frame = "TARGET"; break;
+                    case TARGET:
+                        // the target frame reads its closing speed, as the port frame does (section 8.1)
+                        h.frame = "TARGET";
+                        if (t.present && !Float.isNaN(t.closing)) v = t.closing;
+                        break;
                     case NAV: h.frame = "NAV"; break;
                     case STATION: h.frame = "STN"; break;
                     case ORBIT: h.frame = "ORBIT"; break;
@@ -578,7 +582,7 @@ public class NasaPunkStationsHud implements HudVariant {
         } else if (t.present) {
             h.ref = HelmCluster.Ref.LOCK;
             h.refKind = kindOf(t.relation);
-            h.refName = up(t.label);
+            h.refName = up(StDraw.bare(t.label));
             h.rng = Float.isNaN(t.range) ? "" : StDraw.range(t.range);
             h.closing = Float.isNaN(t.closing) ? "" : StDraw.speed(t.closing);
             h.cpa = Float.isNaN(t.cpaDistance) || Float.isNaN(t.cpaTime) ? "" : StDraw.range(t.cpaDistance) + "  " + NpFormat.tMinus(t.cpaTime);
@@ -729,7 +733,7 @@ public class NasaPunkStationsHud implements HudVariant {
         TargetStatus t = d.targetStatus;
         WeaponStatusProvider.WeaponFrame wf = d.weaponFrame;
         c.locked = t.present;
-        c.target = up(t.label);
+        c.target = up(StDraw.bare(t.label));
         c.targetKind = kindOf(t.relation);
         c.targetClass = t.relation == Relation.UNKNOWN ? "" : t.relation.name();
         c.targetHull = Float.isNaN(t.hull) ? "" : "HULL " + NpFormat.percent(t.hull);
@@ -828,7 +832,7 @@ public class NasaPunkStationsHud implements HudVariant {
             g.ready = "";
         }
         g.locked = t.present;
-        g.target = up(t.label);
+        g.target = up(StDraw.bare(t.label));
         g.targetKind = kindOf(t.relation);
         g.rng = Float.isNaN(t.range) ? "--" : StDraw.range(t.range);
         float tof = d.targeting == null ? Float.NaN : d.targeting.getTimeToImpact();

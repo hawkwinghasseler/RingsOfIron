@@ -28,6 +28,7 @@ import com.ringsofiron.uihud.providers.ShieldStatusProvider.ShieldStatus;
 import com.ringsofiron.uihud.providers.ShipStatusProvider.ShipStatus;
 import com.ringsofiron.uihud.providers.StationBoardProvider;
 import com.ringsofiron.uihud.providers.TargetStatusProvider.Relation;
+import com.ringsofiron.uihud.providers.TargetStatusProvider.TargetStatus;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider.MissileTrack;
 import com.ringsofiron.uihud.providers.UiContextProvider.UiContext;
@@ -143,8 +144,11 @@ final class Pages {
         float x = L;
         if (!Float.isNaN(n.closing)) x += StDraw.pair(cv, x, row(gy, 4), "CLOSING", mps(n.closing), NpColors.WHITE) + 12f;
         if (!Double.isNaN(n.cpaDistance)) {
+            // short of room the CPA loses its time, then itself (section 8.1: name, range, closing, CPA)
+            float room = R - x - StDraw.labW(cv, "CPA") - 5f;
             String cpa = km(n.cpaDistance) + (Float.isNaN(n.cpaIn) ? "" : "  " + NpFormat.tMinus(n.cpaIn));
-            StDraw.pair(cv, x, row(gy, 4), "CPA", StDraw.fit(cv, cpa, R - x - 30f, StDraw.B, true, 0.3f), NpColors.WHITE);
+            if (StDraw.bodyW(cv, cpa) > room) cpa = km(n.cpaDistance);
+            if (StDraw.bodyW(cv, cpa) <= room) StDraw.pair(cv, x, row(gy, 4), "CPA", cpa, NpColors.WHITE);
         }
     }
 
@@ -385,7 +389,8 @@ final class Pages {
         // north up; the bubble's heading is counter-clockwise from +x, the scope's clockwise from north
         NpInstruments.scope(cv, gx + 50f, gy + 66f, 40f, ((90f - hdg) % 360f + 360f) % 360f, blips, null);
 
-        // the contacts by threat: inbound missiles soonest first, the hostiles nearest first, then the rest
+        // the contacts by threat: inbound missiles soonest first, the hostiles still fighting nearest
+        // first, then the rest
         listed.clear();
         inbound.clear();
         ThreatProvider.ThreatFrame tf = d.threatFrame;
@@ -397,7 +402,7 @@ final class Pages {
             listed.add(c);
         }
         listed.sort((a, b) -> {
-            int ta = a.relation == Relation.HOSTILE ? 0 : 1, tb = b.relation == Relation.HOSTILE ? 0 : 1;
+            int ta = fights(a) ? 0 : 1, tb = fights(b) ? 0 : 1;
             return ta != tb ? ta - tb : Float.compare(a.range, b.range);
         });
         // the columns: CONTACT, then KM and CLOSING (IMPACT with missiles in) right-aligned, a label's gap apart
@@ -416,21 +421,37 @@ final class Pages {
             cv.text(kmX, y, km, StDraw.B, true, NpColors.WHITE, 0f, NpCanvas.END);
             cv.text(tR, y, Float.isNaN(mt.timeToImpact) ? "--" : NpFormat.clock(mt.timeToImpact), StDraw.B, true, NpColors.RED, 0f, NpCanvas.END);
         }
+        TargetStatus lock = d.targetStatus;
         for (int i = 0; i < listed.size() && n < 4; i++, n++) {
             Contact c = listed.get(i);
             float y = gy + 52f + n * 18f;
             NpSymbols.Kind k = kindOf(c);
-            Color col = NpSymbols.colorOf(k);
+            // a ship out of the fight (struck, silenced, disabled) is dim, as the game's own markers grey it
+            boolean out = c.state == ContactProvider.State.STRUCK || c.state == ContactProvider.State.SILENCED
+                    || c.state == ContactProvider.State.DISABLED;
+            Color col = out ? NpColors.DIM : NpSymbols.colorOf(k);
             NpSymbols.shape(cv, k, tx + 4f, y - 4.5f, 3.5f, col, 1.2f, c.locked, 0f);
             if (c.locked) cv.stroke(tx - 3f, y - 12f, tR - tx + 6f, 16f, 1.2f, NpColors.CYAN);
-            String km = NpFormat.tenths(c.range / 1000f);
+            // the lock reads its sensor track's figures, as the helm and the tactical cluster do, so the
+            // three never disagree (the other rows read the contacts, which can differ from a track)
+            float rng = c.range, closing = c.closing;
+            if (c.locked && lock.present) {
+                if (!Float.isNaN(lock.range)) rng = lock.range;
+                if (!Float.isNaN(lock.closing)) closing = lock.closing;
+            }
+            String km = NpFormat.tenths(rng / 1000f);
             float room = kmX - cv.width(km, StDraw.B, true, 0f) - 4f - (tx + 12f);
-            cv.text(tx + 12f, y, StDraw.fitName(cv, up(c.label), room, StDraw.LB, true, 0.3f), StDraw.LB, true, col, 0.3f, NpCanvas.START);
+            cv.text(tx + 12f, y, StDraw.fitName(cv, up(StDraw.bare(c.label)), room, StDraw.LB, true, 0.3f), StDraw.LB, true, col, 0.3f, NpCanvas.START);
             cv.text(kmX, y, km, StDraw.B, true, NpColors.WHITE, 0f, NpCanvas.END);
-            String cl = Float.isNaN(c.closing) ? "" : (c.closing >= 0 ? "+" : NpFormat.MINUS) + NpFormat.tenths(Math.abs(c.closing));
+            String cl = Float.isNaN(closing) ? "" : (closing >= 0 ? "+" : NpFormat.MINUS) + NpFormat.tenths(Math.abs(closing));
             cv.text(tR, y, cl, StDraw.B, true, NpColors.WHITE, 0f, NpCanvas.END);
         }
         if (n == 0) StDraw.lab(cv, tx, gy + 52f, "NO CONTACTS");
+    }
+
+    /** A hostile still in the fight, fit or running, which SENSORS lists first. */
+    private static boolean fights(Contact c) {
+        return c.relation == Relation.HOSTILE && (c.state == ContactProvider.State.FIT || c.state == ContactProvider.State.RUNNING);
     }
 
     private static float nanLast(float v) {
@@ -456,31 +477,64 @@ final class Pages {
     }
 
     private void weapons(NpCanvas cv, float gx, float gy, float gw) {
-        float L = gx + 8f, R = gx + gw - 8f;
+        float L = gx + 6f, R = gx + gw - 6f;
         WeaponStatusProvider.WeaponFrame wf = d.weaponFrame;
         boolean hold = wf.holdFire || d.ctx.holdFire;
         StDraw.head(cv, gx, gy, gw, "WEAPONS", hold ? "HOLD FIRE" : "", NpColors.AMBER);
         if (wf.mounts.size == 0) {
-            StDraw.lab(cv, L, row(gy, 0), "NO WEAPONS FITTED");
+            StDraw.lab(cv, gx + 8f, row(gy, 0), "NO WEAPONS FITTED");
             return;
         }
         boolean locked = d.targetStatus.present;
-        float cWeapon = L + 56f, cState = L + 124f, cHow = R - 40f;
-        for (int i = 0; i < wf.mounts.size && i < 5; i++) {
+        // Five rows at the pages' pitch; a sixth mount (the Frigate, the Reaver) closes them up, and
+        // past six the last row counts the rest
+        int total = wf.mounts.size, n = total <= 6 ? total : 5;
+        boolean tight = total > 5;
+        // The columns, from the right: the hit chance or the magazine at the edge, how it fires ending
+        // before it, then the state, each as wide as its widest entry here; the place whole at the left
+        // and the weapon dim after it in the room left, whole or not at all
+        float lastW = 0f, howW = 0f, placeW = 0f;
+        for (int i = 0; i < n; i++) {
             Mount m = wf.mounts.get(i);
-            float y = row(gy, i);
-            cv.text(L, y, StDraw.fitName(cv, StDraw.place(m.name), 52f, StDraw.LB, true, 0.3f), StDraw.LB, true, NpColors.WHITE, 0.3f, NpCanvas.START);
-            cv.text(cWeapon, y, StDraw.fitHead(cv, StDraw.weaponName(m.weapon), 64f, StDraw.LB, true, 0.3f), StDraw.LB, true, NpColors.DIM, 0.3f, NpCanvas.START);
-            cv.text(cState, y, StDraw.fit(cv, Tactics.word(m, locked), cHow - cState - 48f, StDraw.LB, true, 0.3f), StDraw.LB, true, Tactics.stateColor(m, locked), 0.3f, NpCanvas.START);
-            String how = Tactics.how(m, hold);
-            cv.text(cHow, y, how, StDraw.LB, true, m.controller == WeaponStatusProvider.Controller.PLAYER ? NpColors.CYAN : NpColors.WHITE, 0.3f, NpCanvas.END);
-            String last;
-            if (m.kind == WeaponStatusProvider.Kind.LAUNCHER && m.ammo >= 0) last = m.ammo + "/" + Math.max(m.ammo, m.magazine);
-            else if (locked && m.kind != WeaponStatusProvider.Kind.POINT_DEFENSE && m.working() && !Float.isNaN(m.hitChance)) last = NpFormat.percent(m.hitChance);
-            else last = "";
-            cv.text(R, y, last, StDraw.B, true, NpColors.CYAN, 0f, NpCanvas.END);
+            lastW = Math.max(lastW, cv.width(last(m, locked), StDraw.B, true, 0f));
+            howW = Math.max(howW, cv.width(Tactics.how(m, hold), StDraw.LB, true, 0.2f));
+            placeW = Math.max(placeW, cv.width(StDraw.place(m.name), StDraw.LB, true, 0.2f));
         }
-        if (wf.mounts.size > 5) StDraw.labEnd(cv, R, row(gy, 4) + 14f, "+" + (wf.mounts.size - 5) + " MORE");
+        float cHow = lastW > 0f ? R - lastW - 5f : R, stateEnd = cHow - howW - 5f;
+        // The state column is never narrower than CHARGING, so the weapons keep their room as guns
+        // charge; a state's seconds go first where they would crowd the places
+        float room = Math.max(40f, stateEnd - L - Math.min(placeW, 80f) - 5f);
+        float stateW = cv.width("CHARGING", StDraw.LB, true, 0.2f);
+        String[] words = new String[n];
+        for (int i = 0; i < n; i++) {
+            Mount m = wf.mounts.get(i);
+            String w = Tactics.word(m, locked);
+            if (cv.width(w, StDraw.LB, true, 0.2f) > room) w = Tactics.state(m, locked)[0];
+            words[i] = w;
+            stateW = Math.max(stateW, cv.width(w, StDraw.LB, true, 0.2f));
+        }
+        stateW = Math.min(stateW, room);
+        float cState = stateEnd - stateW;
+        for (int i = 0; i < n; i++) {
+            Mount m = wf.mounts.get(i);
+            float y = tight ? gy + 31f + i * 15.4f : row(gy, i);
+            String place = StDraw.fitName(cv, StDraw.place(m.name), cState - 5f - L, StDraw.LB, true, 0.2f);
+            float pw = cv.text(L, y, place, StDraw.LB, true, NpColors.WHITE, 0.2f, NpCanvas.START);
+            String weapon = StDraw.fitWeapon(cv, StDraw.weaponName(m.weapon), cState - 5f - (L + pw + 5f), StDraw.LB, true, 0.2f);
+            cv.text(L + pw + 5f, y, weapon, StDraw.LB, true, NpColors.DIM, 0.2f, NpCanvas.START);
+            cv.text(cState, y, StDraw.fit(cv, words[i], stateW, StDraw.LB, true, 0.2f), StDraw.LB, true, Tactics.stateColor(m, locked), 0.2f, NpCanvas.START);
+            Color howC = m.controller == WeaponStatusProvider.Controller.PLAYER ? NpColors.CYAN : NpColors.WHITE;
+            cv.text(cHow, y, Tactics.how(m, hold), StDraw.LB, true, howC, 0.2f, NpCanvas.END);
+            cv.text(R, y, last(m, locked), StDraw.B, true, NpColors.CYAN, 0f, NpCanvas.END);
+        }
+        if (total > n) StDraw.labEnd(cv, R, gy + 31f + 5 * 15.4f, "+" + (total - n) + " MORE");
+    }
+
+    /** WEAPONS' last column: a launcher's magazine, a gun's chance to hit the lock, or "". */
+    private static String last(Mount m, boolean locked) {
+        if (m.kind == WeaponStatusProvider.Kind.LAUNCHER && m.ammo >= 0) return m.ammo + "/" + Math.max(m.ammo, m.magazine);
+        if (locked && m.kind != WeaponStatusProvider.Kind.POINT_DEFENSE && m.working() && !Float.isNaN(m.hitChance)) return NpFormat.percent(m.hitChance);
+        return "";
     }
 
     private void defense(NpCanvas cv, float gx, float gy, float gw) {
@@ -523,7 +577,7 @@ final class Pages {
             if (m.working()) pdWorking++;
         }
         if (pd > 0) {
-            String v = wf.pointDefenseActive ? "ENGAGING" : pdWorking < pd ? pdWorking + " OF " + pd : "AUTO";
+            String v = wf.pointDefenseActive ? "ENGAGING" : pdWorking < pd ? pdWorking + " OF " + pd : "READY";
             row2(cv, colX, R, gy, line, "PD", v, wf.pointDefenseActive ? NpColors.GREEN : pdWorking < pd ? NpColors.AMBER : NpColors.WHITE);
         }
     }
@@ -698,11 +752,9 @@ final class Pages {
             tow(cv, L, R, gy, 2);
             return;
         }
-        StDraw.body(cv, L, row(gy, 0), StDraw.fitName(cv, name, R - L, StDraw.B, true, 0.3f), NpColors.WHITE);
-        if (!s.owner.isEmpty()) {
-            String owner = up(s.owner) + (s.sponsor ? " · YOUR SPONSOR" : "");
-            StDraw.lab(cv, L, row(gy, 1), StDraw.fit(cv, owner, R - L, StDraw.LB, true, 0.4f));
-        }
+        float sw = s.sponsor && !s.owner.isEmpty() ? cv.text(R, row(gy, 0), "YOUR SPONSOR", StDraw.LB, true, NpColors.CYAN, 0.4f, NpCanvas.END) + 10f : 0f;
+        StDraw.body(cv, L, row(gy, 0), StDraw.fitName(cv, name, R - L - sw, StDraw.B, true, 0.3f), NpColors.WHITE);
+        if (!s.owner.isEmpty()) StDraw.lab(cv, L, row(gy, 1), StDraw.fitHead(cv, up(s.owner), R - L, StDraw.LB, true, 0.4f));
         if (!s.standingName.isEmpty()) {
             String st = up(s.standingName) + (Float.isNaN(s.standing) ? "" : " (" + (s.standing >= 0 ? "+" : NpFormat.MINUS) + Math.round(Math.abs(s.standing)) + ")");
             row2(cv, L, R, gy, 2, "STANDING", st, s.standing < -20 ? NpColors.AMBER : NpColors.WHITE);
@@ -749,10 +801,10 @@ final class Pages {
             StationBoardProvider.Seat s = b.seats.get(i);
             float x = cell % 2 == 0 ? L : M, w = (cell % 2 == 0 ? M - 10f : R) - x;
             float y = row(gy, cell / 2);
-            float lw = StDraw.lab(cv, x, y, StDraw.fitName(cv, up(s.name), w * 0.55f, StDraw.LB, true, 0.4f));
             String who = s.hand == StationBoardProvider.Hand.PLAYER ? "YOU" : s.hand == StationBoardProvider.Hand.NOBODY ? "--" : up(s.who) + (s.hand == StationBoardProvider.Hand.COMING ? " …" : "");
             Color c = s.hand == StationBoardProvider.Hand.PLAYER ? NpColors.CYAN : s.hand == StationBoardProvider.Hand.NOBODY ? NpColors.DIM : NpColors.WHITE;
-            cv.text(x + w, y, StDraw.fitName(cv, who, w - lw - 6f, StDraw.LB, true, 0.3f), StDraw.LB, true, c, 0.3f, NpCanvas.END);
+            float ww = cv.text(x + w, y, StDraw.fitName(cv, who, w * 0.45f, StDraw.LB, true, 0.3f), StDraw.LB, true, c, 0.3f, NpCanvas.END);
+            StDraw.lab(cv, x, y, StDraw.fitName(cv, up(s.name), w - ww - 6f, StDraw.LB, true, 0.4f));
         }
         int line = (cell + 1) / 2;
         Array<Alert> all = d.alerts.all();

@@ -11,8 +11,8 @@ import com.ringsofiron.uihud.variants.nasapunk.NpHardware.BoxState;
  * A mount's state in the words the gun chips use (section 8.3), shared by the tactical cluster, the
  * gunner sight and the WEAPONS page so all three say it alike: READY, RELOAD and its seconds,
  * CHARGING, BURNING for a beam on its target, OUT OF ARC, NO POWER, SHORTED, STUNNED and its
- * seconds, DESTROYED; point defense ENGAGING or AUTO. And how it fires (AT WILL, YOURS, TRIGGER,
- * HOLD, AUTO).
+ * seconds, DESTROYED; point defense ENGAGING or READY. And how it fires (AT WILL, YOURS, TRIGGER,
+ * HOLD, PD AUTO).
  */
 final class Tactics {
     private Tactics() {}
@@ -30,7 +30,8 @@ final class Tactics {
             case CHARGING: return new String[] {"CHARGING", ""};
             default: break;
         }
-        if (m.kind == WeaponStatusProvider.Kind.POINT_DEFENSE) return new String[] {m.defending || m.engaging ? "ENGAGING" : "AUTO", ""};
+        // point defense reads READY as its chip does (it fires AUTO, which is how, not state)
+        if (m.kind == WeaponStatusProvider.Kind.POINT_DEFENSE) return new String[] {m.defending || m.engaging ? "ENGAGING" : "READY", ""};
         if (m.kind == WeaponStatusProvider.Kind.BEAM && m.engaging) return new String[] {"BURNING", ""};
         if (locked && !m.inArc && m.kind != WeaponStatusProvider.Kind.LAUNCHER) return new String[] {"OUT OF ARC", ""};
         return new String[] {"READY", ""};
@@ -74,13 +75,18 @@ final class Tactics {
         return BoxState.NORMAL;
     }
 
-    /** How the mount fires while the player is elsewhere, or YOURS in hand. */
+    /**
+     * How the mount fires while the player is elsewhere, or YOURS in hand (section 9.2's words). A
+     * launcher waits for the player's word whoever works the console (GunCrews), so out of hand it is
+     * TRIGGER, never AT WILL.
+     */
     static String how(Mount m, boolean hold) {
+        if (m.controller == WeaponStatusProvider.Controller.PLAYER) return "YOURS";
+        if (m.kind == WeaponStatusProvider.Kind.LAUNCHER) return "TRIGGER";
         switch (m.controller) {
-            case PLAYER: return "YOURS";
             case CREW:
             case CONSOLE: return hold ? "HOLD" : "AT WILL";
-            case AUTO: return "AUTO";
+            case AUTO: return "PD AUTO";
             default: return "TRIGGER";
         }
     }

@@ -139,6 +139,30 @@ final class StDraw {
         return fit(cv, t, w, size, bold, track);
     }
 
+    /**
+     * A marker's label without the state the game puts after it in brackets ("Pirate raider 6
+     * (surrendered)" is the raider), since the HUD says a ship's state its own way.
+     */
+    static String bare(String label) {
+        if (label == null) return "";
+        String t = label.trim();
+        int open = t.lastIndexOf(" (");
+        return open > 0 && t.endsWith(")") ? t.substring(0, open).trim() : t;
+    }
+
+    /**
+     * A weapon's name to fit {@code w}: whole, then without its LAUNCHER, RACK or TUBE (HARPOON), then
+     * cut to four letters or more; "" when not even that fits, as a stub ("A…") names no weapon.
+     */
+    static String fitWeapon(NpCanvas cv, String s, float w, float size, boolean bold, float track) {
+        if (s == null) return "";
+        if (cv.width(s, size, bold, track) <= w) return s;
+        String t = s.replaceFirst("\\s+(LAUNCHER|RACK|TUBE)$", "");
+        if (cv.width(t, size, bold, track) <= w) return t;
+        String cut = fit(cv, t, w, size, bold, track);
+        return cut.length() > 4 ? cut : "";
+    }
+
     /** {@code s} to fit {@code w}, losing its trailing words before its letters (HARPOON LAUNCHER to HARPOON). */
     static String fitHead(NpCanvas cv, String s, float w, float size, boolean bold, float track) {
         if (s == null) return "";
