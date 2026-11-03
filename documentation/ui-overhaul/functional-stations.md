@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 6.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 7.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -928,7 +928,7 @@ Both MFDs are folded to their rails: in Green there is nothing on them the playe
 |                                                                                          |
 +---------------------+---------------------------------------------+----------------------+
 | DOCK                | Port 1/1 S armed > Highport 2 (S)  GRANTED  | (folded)             |
-| Port 1/1  S  armed  | 312 m  closing |=====|== safe 3.1           |                      |
+| Port 1/1  S  armed  | 312 m  closing [===      |   ]  safe 7.9    |                      |
 | Highport 2 (S)      | offset +0.8 m   angle -1.5 deg              |                      |
 | Clearance granted   | PORT 2.4 m/s closing     MANUAL  ASSIST     |                      |
 |                     |                (Trigger: dark)              |                      |
@@ -938,7 +938,7 @@ Both MFDs are folded to their rails: in Green there is nothing on them the playe
 +------------------------------------------------------------------------------------------+
 ```
 
-The approach has taken over the Reference and Next event slots (8.2); the Velocity slot reads the closing speed in the port's frame.
+The approach has taken over the Reference and Next event slots (8.2). The bar shows the closing speed against the safe closing speed for 312 m (7.9 m/s, `PlayerDocking.safeSpeed`); the number itself is in the Velocity slot, in the port's frame.
 
 ### E. Seated at the weapons console, in a fight (Red)
 
@@ -1000,10 +1000,10 @@ Both alerts are cautions: the crew are on the fire, and the short's breaker recl
 |      (world: the ship at its berth)           |  [Market] [Yard] [Shipyard] [Board] ...  |
 |                                               |                                          |
 |                                               |  Commodity  Stock  Buy  Sell  Held       |
-|                                               |  Ice          420   12    10     0       |
-|                                               |  Alloys        80   85    80     4       |
+|                                               |  Food         420   38    36     0       |
+|                                               |  Water         80   15    14     4       |
 |                                               |  ...                                     |
-|                                               |  Qty [1] [10] [All]  Buy 120 cr [Enter]  |
+|                                               |  Qty [1] [10] [All]  Buy 38 cr [Enter]   |
 |                                               |                             [Esc] Close  |
 +------------------------------------------------------------------------------------------+
 ```
@@ -1206,6 +1206,17 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 7 (self-audit: the walkthroughs' remaining numbers)
+
+Round 6 showed the walkthroughs still held data the game doesn't have, so every remaining figure in them was checked.
+
+| Problem found | Change |
+|---|---|
+| D's safe closing speed was 3.1 m/s at 312 m, and its bar drew 2.4 m/s as over the limit. The game's rule (braking at 0.1 m/s², `PlayerDocking.safeSpeed`) gives 7.9 m/s there | Corrected (walkthrough D) |
+| G's market sold Ice and Alloys, which the economy doesn't have. Highport is an agricultural dome trading in Food and Water | Food and Water at prices near their base (walkthrough G) |
+
+Checked and kept: Highport's 400 km orbit (7.67 km/s), the 5,000 starting credits, the corvette's 40 m3 hold, the pressure suit's 10 minutes of air (B's 4:10 is above `AirWatch`'s 4-minute warning), rails warp at 100x and 1,000x, and Highport as the Terran Patrol Authority's home.
 
 ### Round 6 (Nasa-punk artist's second and third notes, VFD artist's first notes, and a check of the weapons and the corvette against the data)
 
