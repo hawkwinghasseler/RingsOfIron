@@ -6,7 +6,7 @@ Each functional design (Ship Stations, Context-driven, Task-driven) is combined 
 |---|---|---|---|---|
 | [Ship Stations × Cassette](stations-cassette/README.md) | Stations round 9 | 2 | C helm, D approach, E weapons, B deck, G docked; kit sheets K, K2, K3 | 1 style, 9 functional |
 | [Context-driven × Cassette](context-cassette/README.md) | Context v7 | 2 | 01 cruise, 03 approach, 04 combat, 05 fire control, 07 deck emergency, 08 docked, 12 orders menu, 13 boarding | 3 style, 6 functional |
-| [Task-driven × Cassette](task-cassette/README.md) | Task round 3 | 1 | 01 helm at rest, 02 gunnery, 03 deck, 04 terminal, 05 map, 06 crisis, 07 FLT modes and lamp states | 5 style, 9 functional |
+| [Task-driven × Cassette](task-cassette/README.md) | Task round 9 | 2 | 01 helm at rest, 02 gunnery, 03 deck, 04 terminal, 05 map, 06 crisis, 07 FLT modes and lamp states, 08 ship's book, 09 relations and states | None in the stills (3 for the in-game build), 3 functional |
 
 ## Round 0: the style guide itself
 
@@ -116,3 +116,26 @@ Notes sent to the context designer:
 4. Does 12.4's 15-unit value size apply to numbers inside sentences?
 5. H4's POWER line doesn't fit at 15 units beside a bar; the capacity could move to the hover.
 6. F2 has no room for the master cue; the 40 units above the rack would hold it.
+
+## Round 2: Task-driven
+
+Task spec round 9 (drawn against round 8, with round 9's changes taken in). Nine sheets: the seven of round 1 redrawn, and the ship's book (08) and the relation set (09) drawn for the first time. Critique and changes are in the [variation's README](task-cassette/README.md#round-2-critique).
+
+All of round 1's style points are fixed:
+
+- Orders print their legends bright, and an unavailable order takes the barber strip and its reason.
+- Burns are chevrons.
+- The brown-out lights a BATT lamp.
+- Every flap is checked against the game's longest names.
+
+The render found more, fixed in the round. The biggest were the words still printed on legends though they change: the target plate's relation, FLT's frame kind, DOCK's clearance, the departure checks, MAP.2's plan kind, the crisis WAIT text and the sill's verbs. Each moved to flaps, drums, a tube or a fixed-legend lens. MAP.1's services became a gang of lenses. A struck ship's reason, `FIRING ON IT`, read as if the ship were firing, and now reads `HOLD YOUR FIRE`.
+
+One fix to the shared kit came out of this round, and applies to the other two variations: **lit white lamps barely read on the cream face**, so every small lamp now has a dark inner bezel ring.
+
+Nothing is left to fix in the stills. Three things are for the in-game build to settle, because a still can't show them: motion (flap and drum travel, the 3 s blink), the four faces as bitmap fonts at UI scale 1, and the cost of the tube's glow.
+
+Notes sent to the task designer:
+
+1. TRM's wireframe still shows a SHIPYARD tab at Highport, which sells no ships.
+2. The DOCK sample's Highport port 6 is an M port; the corvette's port is S, and Highport's S ports are 1 and 2.
+3. MAP.1's services for Shackleton Ice leave out its shipyard and hiring.

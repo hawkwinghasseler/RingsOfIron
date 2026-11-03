@@ -351,7 +351,7 @@ function keyG(x, y, k, { anchor = 'middle' } = {}) {
 function lampG(cx, cy, r, color, lit) {
   const [on, off] = LAMP[color];
   return `${lit ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${on}" filter="url(#lampglow)"/>` : ''}
-  <circle cx="${cx}" cy="${cy}" r="${r + 1.6}" fill="${C.alu}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="${lit ? on : off}"/>
+  <circle cx="${cx}" cy="${cy}" r="${r + 1.6}" fill="${C.alu}"/><circle cx="${cx}" cy="${cy}" r="${r + 0.9}" fill="#211d1a"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="${lit ? on : off}"/>
   <circle cx="${cx - r * 0.3}" cy="${cy - r * 0.35}" r="${r * 0.35}" fill="#fff" opacity="${lit ? 0.5 : 0.12}"/>`;
 }
 let TUBE_N = 0;
