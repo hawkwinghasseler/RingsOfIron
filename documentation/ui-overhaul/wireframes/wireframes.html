@@ -229,7 +229,7 @@ const layouts = {
     strip('HELM', 'Day 0 · 00:33     1x');
     emptySlots();
     stack(12, 194, [
-      ['P5', 'Objective (compact)', 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d left']],
+      ['P5', 'Objective (compact)', 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 1.4 d left']],
       ['H2', 'Navigation', 'full', [
         'ORBIT  Earth · alt 400 km',
         '       Ap 403 km  T-24:10',
@@ -254,7 +254,7 @@ const layouts = {
     strip('HELM', 'Day 3 · 14:05     1,000x rails');
     emptySlots();
     stack(12, 194, [
-      ['P5', 'Objective', 'full', ['Deliver 120 Water', '→ Shackleton Ice', '1.4 d left']],
+      ['P5', 'Objective', 'full', ['Deliver 40 Food', '→ Shackleton Ice', '1.4 d left']],
       ['H2', 'Navigation (warp face)', 'full', [
         'ORBIT  Earth · alt 400 km',
         'NAV    Shackleton Ice · 1,240 km',
@@ -286,7 +286,7 @@ const layouts = {
   }],
   '04': ['Helm, combat (a gunship: it has a shield emitter)', () => {
     strip('HELM          BATTLE STATIONS', 'Day 0 · 00:41     1x');
-    box('P3', 'Threat alert', 390, 38, 500, 60, 'interrupt', ['#2 MISSILES INBOUND · T-37 s', 'decoy ready (F) · point defence engaging']);
+    box('P3', 'Threat alert', 390, 38, 500, 60, 'interrupt', ['#2 MISSILES INBOUND · T-4 s', 'decoy ready (F) · point defence engaging']);
     box('P2', 'Caution and warning', 12, 38, 308, 0, 'cond tight', ['^◆ BREACH     ENGINES    ●']);
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Gunnery: 3 hits on Raider']);
     box('H2', 'Navigation (compact)', 12, 194, 308, 0, 'compact', ['NAV    Shackleton Ice · 1,240 km']);
@@ -313,7 +313,7 @@ const layouts = {
     box('P3', 'Threat alert (fire control: count and decoy only)', 390, 38, 500, 60, 'interrupt', ['#1 MISSILE INBOUND', 'decoy ready (F)']);
     box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Gunnery: 2 hits on Raider']);
-    box('F4', 'Threat list', 12, 194, 308, 0, 'cond', ['MSL   T-21 s   brg 040   PD on', 'SHIP  Raider 2   14 km   closing']);
+    box('F4', 'Threat list', 12, 194, 308, 0, 'cond', ['MSL   T-9 s    brg 040   PD on', 'SHIP  Raider 2   14 km   closing']);
     box('F1', 'Lock card, full', 960, 194, 308, 140, 'full', [
       'LOCK  Raider',
       '      HOSTILE   ◆ FIRING ON YOU',
@@ -342,7 +342,7 @@ const layouts = {
   '06': ['Deck', () => {
     strip('DECK      Helm: Bea · holding heading', 'Day 0 · 00:58     1x');
     emptySlots();
-    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d left']);
+    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 1.4 d left']);
     deckPlan();
     circ(712, 372, 6, { fill: '#d8dbde' }); wtext(722, 366, 'captain');
     circ(470, 430, 5, { fill: '#9aa0a6' }); wtext(480, 424, 'Ada');
@@ -360,9 +360,9 @@ const layouts = {
     box('P2', 'Caution and warning (stays lit under X3)', 12, 38, 308, 150, 'cond tight', [
       '^◆ EMERG O2              YOU',
       '^◆ VACUUM     HOLD       YOU',
+      '^◆ NO POWER   damaged    YOU',
       '^◆ CREW CRIT  Ada        ●     3:40',
       '^◆ FIRE       BRIDGE     ●●',
-      '^◆ NO POWER   stunned    back 0:12',
       '^+ 1 more: SMOKE']);
     box('P4', 'Message feed (routine messages wait in combat)', 960, 38, 308, 40, 'slot');
     deckPlan();
@@ -384,7 +384,7 @@ const layouts = {
     strip('HELM', 'Day 0 · 00:08     1x');
     box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Log: autosaved', 'Station: welcome to Highport']);
-    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d left']);
+    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 1.4 d left']);
     box('X1', 'Station panel', 960, 194, 308, 260, 'full', [
       'HIGHPORT · port 6',
       'Terran Patrol Authority',
@@ -406,7 +406,8 @@ const layouts = {
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Boarding: the Raider is taken']);
     box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Bounty: Raider · taken', '→ turn in at Highport']);
     box('X2', 'Boarding panel (H6 gives way: the Raider is the Lock)', 960, 194, 308, 0, 'full', [
-      'BOARD  Raider · latched · taken',
+      'BOARD  Raider · latched',
+      '       taken: crew surrendered',
       'PARTY  4 aboard · holding',
       'SALV   3 parts marked · 1 off',
       'CARGO  2 lots coming across',
@@ -516,7 +517,7 @@ const layouts = {
     strip('HELM', 'Day 0 · 00:33     1x');
     emptySlots();
     stack(12, 194, [
-      ['P5', 'Objective (compact)', 'compact', ['Deliver 120 Water', '→ Shackleton Ice · 1.4 d left']],
+      ['P5', 'Objective (compact)', 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 1.4 d left']],
       ['H2', 'Navigation', 'full', [
         'ORBIT  Earth · alt 400 km',
         '       Ap 403 km  T-24:10',

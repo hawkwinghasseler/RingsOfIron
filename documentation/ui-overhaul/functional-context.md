@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 4.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 5.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -235,7 +235,7 @@ Several can hold at once. Each has an entry and exit rule with hysteresis so pan
 | **Docked** | Port state DOCKED at a station | Undocked | Station panel; flight instruments retire |
 | **Combat** | Own ship at battle stations (`ShipTaskBoardComponent.battleStations`), or missiles inbound, or a hostile locked within weapons range | None of those for 10 s | Lock, armament, scope, ship condition expanded |
 | **Boarding** | The boarding window is available: latched to another ship (docked to it), or a beaten ship within 300 m to reach on EVA | Not available | Boarding panel. While latched the ship can't fly, so the flight instruments retire as when docked |
-| **Emergency** | Ship disabled, abandoning, or the captain's suit air under 240 s away from breathable air (`AirWatch.WARN_AT`) | Condition cleared | Emergency card; everything non-essential dims |
+| **Emergency** | Ship disabled (unless power is due back by itself: X3), abandoning, or the captain's suit air under 240 s away from breathable air (`AirWatch.WARN_AT`) | Condition cleared | Emergency card; everything non-essential dims |
 | **Guided** | First Play or the opening walkthrough is running | It ends | Objective shows the step; hints on |
 
 Precedence, when two want the same slot: Emergency > Combat > Approach > Boarding > Docked > Warp >
@@ -523,13 +523,16 @@ A condition that clears by itself has no harm timer: its handling and timer fiel
 the time until it recovers, "back 0:12".
 
 ```
- ◆ EMERG O2              YOU
  ◆ VACUUM     HOLD       YOU
  ◆ CREW CRIT  Ada        ●     3:40
  ◆ FIRE       BRIDGE     ●●
  ◆ NO POWER   stunned    back 0:12
- + 1 more: SMOKE
+ ▲ SMOKE      BRIDGE
+ + 1 more: LOW O2
 ```
+
+Here the ship is dead for 12 s, but its power is due back by itself, so X3 doesn't offer a way out
+(section 8). Walkthrough 11.7 shows the case where it does.
 
 **Handling** has three states. The art directions draw them as they like (a figure and a count, a
 dot per crew member, a flag for nobody); the text forms above are the budget they must fit.
@@ -632,7 +635,7 @@ every mode.
 
 **Content.** Two lines:
 
-1. "2 MISSILES INBOUND · T-37 s": the count and the soonest impact, at P3's size (34 characters).
+1. "2 MISSILES INBOUND · T-4 s": the count and the soonest impact, at P3's size (34 characters).
 2. The decoy, "decoy ready (F)" or "decoy in 2 s" (decoys never run out: a 3 s cooldown,
    `PlayerGunnery.DECOY_COOLDOWN`), at any seat; on deck there is no decoy to throw, so it is left
    out. Then "point defence engaging" while PD is firing at one.
@@ -693,8 +696,8 @@ widget that shows the setting is not on screen.
    is the Nav, the distance is H2's and P5 leaves it out. The player picks which contract is tracked
    in M5; by default the one with the soonest deadline.
 
-"+2 more contracts" under it when more are held. **Compact face**, two lines: the job ("Deliver 120
-Water"), then where and the time left ("→ Shackleton Ice · 1.4 d left"). A contract heading is too long for one
+"+2 more contracts" under it when more are held. **Compact face**, two lines: the job ("Deliver 40
+Food"), then where and the time left ("→ Shackleton Ice · 1.4 d left"). A contract heading is too long for one
 line of the column at the minimum text size.
 
 In combat, P5 shows only when the tracked contract is a fight (a defence, a bounty, a convoy), compact,
@@ -1048,8 +1051,8 @@ or not, decoy advised. Then the hostile ships in the fight other than the Lock (
 name, range, state. A click on one locks it.
 
 ```
-MSL   T-12 s   brg 040   PD on
-MSL   T-19 s   brg 055   decoy
+MSL   T-3 s    brg 040   PD on
+MSL   T-9 s    brg 055   decoy
 SHIP  Cutter    9.8 km   closing
 SHIP  Raider 2   14 km   firing
 ```
@@ -1156,7 +1159,7 @@ your home station. J opens its mission board".
 
 **Purpose.** How the boarding stands, and the way into it.
 
-**Zone.** Right middle, 308 x up to 140, under any lock card.
+**Zone.** Right middle, 308 x up to 150, under any lock card.
 
 **Content.** The other ship's name, latched or by EVA, and its state (disabled and why, surrendered,
 being boarded, taken); the boarding party: how many, crossing, fighting or holding, or why none can
@@ -1165,13 +1168,17 @@ go; salvage: parts marked and how many are off; cargo coming across; prisoners t
 helm, as undocking from a station is).
 
 ```
-BOARD  Raider · latched · taken
+BOARD  Raider · latched
+       taken: crew surrendered
 PARTY  4 aboard · holding
 SALV   3 parts marked · 1 off
 CARGO  2 lots coming across
        prisoners to bring aboard
 [K] Boarding       [U] Cast off
 ```
+
+Seven rows at most, each in the 34-character budget: the name (cut to 16) and "latched" or "by EVA"
+share the first, so the state ("disabled: reactor out", "being boarded") has a row of its own.
 
 **When.** Boarding situation. Latched, the ship is docked to the other and can't fly, so the screen is
 the docked one with X2 in X1's place; then H6 gives way too if the latched ship is the Lock (X2 names
@@ -1196,7 +1203,11 @@ not how the boarding stands.
 - **Disabled:** "SHIP DISABLED: no power". The ways out with their keys and what they cost:
   "Abandon ship: P twice"; "Call a tow: B twice · 3,400 cr, 3 standing" (only when the beacon allows
   it, `DistressBeacon.refusal`). They are guarded orders, as in C1: the first press arms one, and the
-  card shows it armed until a second press within 3 s gives it or the 3 s run out.
+  card shows it armed until a second press within 3 s gives it or the 3 s run out. While the only
+  reason is power that is due back by itself (a stun, or a short's automatic reset), this waits:
+  P2's NO POWER row counts it down ("back 0:12"), and Disabled shows only if the time runs out with
+  the ship still dead, so the card never offers a costly way out of something that ends in seconds.
+  The keys work meanwhile, and C1 lists them.
 - **Abandoning:** pods: crew aboard n of m; "P launches now".
 
 Abandoning replaces Disabled, so at most two states hold at once: the suit air and one other. When
@@ -1204,7 +1215,8 @@ two hold, the first shows in full and the second as one line with its keys ("SHI
 · B twice"). Under P3 (60 tall) X3 has 108 units of the zone, which that fits. Lines fit the
 top-centre budget (58 characters; the first, at P3's size, 34).
 
-**When.** Emergency situation. While it shows, everything dims but X3 itself, P2, P3, H4, D1 and D3.
+**When.** Emergency situation. While it shows, everything dims but X3 itself, P2, P3, H4, D1, D3 and
+the master alert cue (on deck it stands alone, and it is where a warning is acknowledged).
 P2 stays lit because it is the evidence for X3's choice (what is burning, who is down, who is on it),
 and D3's markers lead to the fire, the casualty and the way to air.
 
@@ -1425,9 +1437,10 @@ appears at the helm console as the captain walks up; D2 appears over whatever th
 
 ![Deck, emergency](wireframes/07-deck-emergency.png)
 
-The ship is disabled, its reactor stunned, and its hold has lost its air. X3 offers abandon ship and the tow with their
-costs. P2 lists, in its order: EMERG O2 and VACUUM, which nobody is handling; CREW CRIT and FIRE, with
-the crew on them; NO POWER, back in 12 s; and SMOKE under "+1 more". D1 shows the captain's suit and
+The ship is disabled, its reactor damaged, and its hold has lost its air. X3 offers abandon ship and the tow with their
+costs. P2 lists, in its order: EMERG O2, VACUUM and NO POWER, which nobody is free to handle (of the
+four crew, Ada is down, one tends her and two fight the fire); CREW CRIT and FIRE, with the crew on
+them; and SMOKE under "+1 more". D1 shows the captain's suit and
 its air, not yet critical. The whole corvette is in view, so D3 tags the fire, the vacuum and Ada where
 they are; on a bigger ship the far ones would be pointers at the edge. The master alert cue
 stands alone at the bottom centre.
@@ -1639,3 +1652,4 @@ largest scale, and the centre stays clear.
 | 2 | 1 (self-critique) | H4 no longer expands just for combat, only when a light is lit (dark cockpit held in fights). Master alert cue on the primary instrument for new warnings. Objective shows in combat for fight contracts. The reference frame never switches mid-manoeuvre. Message feed summarises during combat. New C1 orders menu on O, gathering every order with why it can't be given. E is each object's main action. Inspect card: pin before acting, confirm risky switches, gamepad subject rule, EVA orders. Hover card for exterior contacts. COLLISION condition. Inset views stay world-anchored, clamped clear of widgets. Station panel no longer misassigns I and Y. Missions tab shows held contracts. Zones given exact bounds; the centre clear area moved to 220..590 so interrupts fit above it. Deck applies aboard any craft. Time format examples fixed. Wireframe 12 added |
 | 3 | 1 (art directions' critiques) | One home per datum enforced across every widget: approach distance and closing speed are H3's alone, the lock range the lock card's, the decoy P3's, missile times P3's or F4's, Δv left H1's, plan shortfall H2's, shield settings H7's at the helm and F3's at fire control; P2 details name where, never a value another widget shows. P2 rebuilt as fixed-width rows (severity, 10-character code, detail, handling, timer) with harm and recovery timers; handling shows YOU or a dot per crew member. The captain's suit air leaves P2 for D1, then X3 when critical. Acknowledge for warnings. P3 is two lines. H6 shows the state in one word, FIRING ON YOU as its own flag and the hit chance as a percentage. The starter corvette has no shield emitter, so the shields light, bar, H7 row and F3 appear only on a ship that has one. Room names follow the rule the task design already uses (BRIDGE, HOLD, ...). D3 becomes on-screen tags plus edge pointers. C1 grows to 620 x 250 and gives each reason once. Labels may drop to 12 units. Wireframes redrawn with a check that no text runs past its box; combat and fire control show the gunship |
 | 4 | 2 (self-critique) | Latched to another ship is the Boarding situation, not Docked: the screen is the docked one with X2 in X1's place, and H6 gives way when the latched ship is the Lock. X2 gets its size, an example and a cast-off key; wireframe 13 and walkthrough 11.13 added; the provider must give the party's size and activity. X3 fits under P3: Abandoning replaces Disabled, and a second state shows as one line. P2's "+n more" row lists only the codes that fit. In full-screen modes P1's chip is the master alert cue; docked or latched, the cue stands alone at the bottom centre |
+| 5 | 2 (VFD critique) | X2 gives the state a row of its own (seven rows, 308 x up to 150), so its worst case fits 34 characters. X3 doesn't offer abandoning or a tow while power is due back by itself; P2's NO POWER row counts it down, and walkthrough 11.7 now has a damaged reactor, which is a real emergency. The master alert cue stays lit under X3. Sample data made true to the game: a delivery to the ice mine is 40 Food (it buys food, and the corvette's hold takes 40), and missile times fit what a harpoon or dart can fly (T-4 s at 7.7 km, not T-37 s) |
