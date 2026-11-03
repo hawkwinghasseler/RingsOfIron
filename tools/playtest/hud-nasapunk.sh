@@ -52,6 +52,7 @@ pause 30; shot n-05-missiles
 pause 10; shot n-06-missiles-later
 key v; pause 3; shot n-07-deck
 to_weapons && { pause 3; shot n-08-gunnery; }
-# Damage for the alert band and the lamps: a holed tile, the hull beaten to 60%, the reactor out
-cmd damage; cmd hull 0.6; cmd disable player; pause 8; shot n-09-damage
+# Damage for the alert band and the lamps: a holed tile, the hull beaten to 60%, the reactor out.
+# Shot soon after, since the crew have the reactor back within seconds
+cmd damage; cmd hull 0.6; cmd disable player; pause 2; shot n-09-damage
 finish
