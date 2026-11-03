@@ -1,0 +1,61 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Task: helm at rest</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="task.js"></script>
+<script>
+// The at-rest test (section 8): near Highport, nothing targeted, planned or wrong. CHR, ten dark
+// lamps, FLT in CRUISE, the scope, and the hint line. About ten lines of text.
+let s = space({ px: 1400, py: 1650, pr: 1100, seed: 21 });
+const SX = 640, SY = 390;
+s += hull(SX, SY, 90, 0.9);
+// OVL: prograde in the orbit frame (frame told apart by shape); contacts as glyphs only, since
+// nothing is targeted and the pointer rests on nothing
+s += W.pro(SX + 70, SY - 2) + W.retro(SX - 70, SY + 2);
+s += stationHull(530, 300, 0.22) + W.contact('station', 530, 300, {});
+s += W.contact('neutral', 742, 486, { leader: [-18, 14] });
+
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1X' });
+s += annunciatorPanel({});
+
+// FLT in CRUISE: the mode named FMA-style, the frame and speed in it, delta-v against home,
+// rotation assist, the main engine and RCS lamps (dark: idle)
+s += du(ZT.flt.x, ZT.flt.y - 8, ZT.flt.w, 108, {
+  id: 'flt', b: 8, title: 'FLIGHT',
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 10, R = gx + gw - 10;
+    c += I.box(L, gy + 7, 70, 19, 'CRUISE', 'engaged', { size: 11 });
+    c += text(L + 82, gy + 22, 'ORBIT', { size: 10.5, bold: true, fill: C.dim, track: 0.6 }) + text(L + 128, gy + 22, 'EARTH', { size: TB, bold: true, fill: C.white, track: 0.4 });
+    c += text(R - 34, gy + 23, '7,672', { size: 19, bold: true, fill: C.white, anchor: 'end' }) + text(R, gy + 23, 'M/S', { size: 10.5, fill: C.dim, anchor: 'end' });
+    c += line(gx + 4, gy + 33, gx + gw - 4, gy + 33, C.graticule, 1);
+    // delta-v left, with the notch at what the trip home takes
+    const max = 8000, bx = L + 150, bw = gw - 190;
+    c += text(L, gy + 58, 'ΔV', { size: 10.5, bold: true, fill: C.dim, track: 0.6 }) + text(L + 100, gy + 59, '7,007', { size: TV, bold: true, fill: C.white, anchor: 'end' }) + text(L + 104, gy + 59, 'M/S', { size: 10, fill: C.dim });
+    c += I.hbar(bx, gy + 60, bw, 7007 / max, { notch: 410 / max });
+    c += text(bx + bw * 410 / max + 6, gy + 49, 'HOME 410', { size: 9.5, bold: true, fill: C.dim, track: 0.4 });
+    c += line(gx + 4, gy + 70, gx + gw - 4, gy + 70, C.graticule, 1);
+    c += I.box(L, gy + 75, 64, 16, 'ASSIST', 'engaged', { size: 10 });
+    c += lens(R - 86, gy + 75, 40, 16, 'MAIN', null) + lens(R - 40, gy + 75, 40, 16, 'RCS', null);
+    return c;
+  },
+}).svg;
+
+// SNS: the scope, range automatic (nothing hostile: the nearest contact)
+s += du(ZT.sns.x, ZT.sns.y, ZT.sns.s, ZT.sns.s, {
+  id: 'sns', b: 8, title: 'SCOPE',
+  content: (gx, gy, gw, gh) => I.scope(gx + gw / 2, gy + gh / 2, gw / 2 - 8, [
+    { kind: 'station', x: -0.35, y: -0.3 }, { kind: 'neutral', x: 0.3, y: 0.32 }, { kind: 'neutral', x: 0.72, y: -0.55 },
+  ], { heading: 90, range: '10 KM' }),
+}).svg;
+
+// up to four keys (section 8's at-rest test; the wireframe shows five)
+s += hintLine([['W/S', 'THRUST'], ['A/D', 'TURN'], ['M', 'MAP'], ['F1', 'CONTROLS']]);
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

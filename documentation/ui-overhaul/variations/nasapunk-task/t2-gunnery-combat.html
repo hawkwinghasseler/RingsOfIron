@@ -1,0 +1,150 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Task: gunnery in combat</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="task.js"></script>
+<script>
+// Seated at the weapons console in a fight with the raider 'Vex'. Ada holds the helm 2 km off it.
+// Two missiles inbound, the first in 14 s (the one warning); one hit to starboard has damaged the
+// starboard autocannon, lit the galley and wounded Ivo. FLT gives way to HLM; SCH shows because
+// FIRE and CREW are lit (section 8's rule).
+//
+// Loadout as the game's Patrol Corvette (ships.toml): coilgun in the nose, an autocannon each side
+// (point defence: it keeps shooting missiles by itself, so it is never in hand at the weapons
+// console, PlayerGunnery.inHand), the harpoon launcher aft to port (magazine 4) and the laser aft to
+// starboard (3 km reach). Decoys have no count, only a 3 s cooldown.
+let s = space({ px: -300, py: 1500, pr: 1000, seed: 17 });
+const SX = 640, SY = 390, HDG = 60;
+// the point-defence kill ring: the autocannons' 4 km reach (about 282 px at this zoom)
+s += `<circle cx="${SX}" cy="${SY}" r="282" fill="none" stroke="${C.cyan}" stroke-width="1" stroke-dasharray="2 7" opacity="0.55"/>`;
+s += text(SX - 200, SY + 205, 'PD 4 KM', { size: 9.5, bold: true, fill: C.cyan, track: 0.6, opacity: 0.8 });
+s += hull(SX, SY, HDG, 0.9);
+// the raider, locked: name in the world, everything else on the target card
+const TX = 826, TY = 262;
+s += raiderHull(TX, TY, 240, 0.42) + W.contact('hostile', TX, TY, { locked: true, label: ["RAIDER 'VEX'"], lx: 26, ly: 4 });
+// one lead reticle: the coilgun is the only gun in hand with a muzzle speed (the laser is a beam)
+const RX = 798, RY = 242;
+s += W.hitLane(SX + 18, SY - 18, RX, RY);
+s += haloed((c, w) => `<circle cx="${RX}" cy="${RY}" r="8" fill="none" stroke="${c}" stroke-width="${w}"/>` + line(RX - 12, RY, RX - 8, RY, c, w) + line(RX + 8, RY, RX + 12, RY, c, w) + line(RX, RY - 12, RX, RY - 8, c, w) + line(RX, RY + 8, RX, RY + 12, c, w), C.cyan);
+// two missiles inbound from bearing 080 on their paths, seconds to impact on each
+s += W.track(`M 1010 300 Q 830 360 ${SX + 16} ${SY + 10}`) + W.missile(880, 335, 252, C.red);
+s += W.track(`M 1040 380 Q 860 410 ${SX + 18} ${SY + 14}`) + W.missile(900, 400, 258, C.red);
+[[880, 335, '14 S'], [900, 400, '17 S']].forEach(([x, y, t]) => s += text(x, y - 13, t, { size: 10.5, bold: true, fill: C.red, anchor: 'middle', track: 0.4 }));
+// the hit already taken, one mark on the starboard side with its count
+s += W.impact(SX + 18, SY + 12) + text(SX + 30, SY + 30, '×1', { size: 11, bold: true, fill: C.red });
+
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1X', note: 'HELD: HOSTILES NEAR' });
+s += annunciatorPanel({ FIRE: 'caution', ARMS: 'caution', CREW: 'caution' });
+
+// ALR: the warning with its one number and its action, then the cautions, each naming theirs. The
+// damaged autocannon takes no caution slot: WPN shows its row in full here (section 9.1).
+s += alertBand({
+  warning: { tag: 'MISSILE\n2 IN', line1: 'IMPACT 14 S   BEARING 080', line2: 'POINT DEFENCE ENGAGING', actions: [['F', 'DECOY']] },
+  cautions: [['FIRE', 'GALLEY', 'BO ON IT'], ['CREW', 'IVO WOUNDED', 'NO MEDIC FREE']],
+});
+
+// OBJ: the bounty, which is the navigation target here
+s += objectives([{ t: "BOUNTY: RAIDER 'VEX'", left: '2D 21H', sub: 'TARGET IS HERE', nav: true }]).svg;
+
+// TGT: what the world can't show about the raider
+s += du(1024, 376, 240, 176, {
+  id: 'tgt', b: 8, title: 'TARGET',
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 8, R = gx + gw - 8;
+    c += sym.diamond(L + 6, gy + 14, 6, C.red, 1.5, C.red) + text(L + 18, gy + 19, "RAIDER 'VEX'", { size: 13.5, bold: true, fill: C.red, track: 0.4 });
+    c += text(L + 18, gy + 35, 'CORVETTE  ·  PIRATE', { size: 11, bold: true, fill: C.dim, track: 0.5 });
+    c += I.box(L, gy + 42, 108, 17, 'FIRING ON YOU', 'warning', { size: 10, fill: true });
+    c += text(R, gy + 55, 'FIGHTING', { size: 12, bold: true, fill: C.white, anchor: 'end', track: 0.5 });
+    // hull as a sensor estimate in four bands: four cells, as many lit as the band leaves, and the
+    // band in words (no number: the sensors don't know one)
+    c += text(L, gy + 80, 'HULL', { size: 10.5, bold: true, fill: C.dim, track: 0.6 });
+    for (let i = 0; i < 4; i++) c += rect(L + 42 + i * 25, gy + 70, 22, 11, i < 3 ? { fill: C.white } : { stroke: '#4C5864', sw: 1 });
+    c += text(L + 148, gy + 80.5, 'DAMAGED', { size: TB, bold: true, fill: C.white, track: 0.4 });
+    // range and closing side by side, labels over values, both at body size
+    c += text(L, gy + 98, 'RANGE', { size: 10, bold: true, fill: C.dim, track: 0.6 }) + text(L + 112, gy + 98, 'CLOSING', { size: 10, bold: true, fill: C.dim, track: 0.6 });
+    c += text(L, gy + 116, '3.2 KM', { size: TV, bold: true, fill: C.white }) + text(L + 112, gy + 116, '41 M/S', { size: TV, bold: true, fill: C.white });
+    c += text(L, gy + 136, 'CPA', { size: 10, bold: true, fill: C.dim, track: 0.6 }) + text(L + 34, gy + 136, '0.6 KM  IN 1:12', { size: TB, bold: true, fill: C.white });
+    c += line(gx + 4, gy + 144, gx + gw - 4, gy + 144, C.graticule, 1);
+    c += text(L, gy + 156, 'BOUNTY CONTRACT', { size: 10.5, bold: true, fill: C.magenta, track: 0.6 });
+    return c;
+  },
+}).svg;
+
+// WPN, expanded: a row per mount, then launcher, decoys and shields
+s += du(780, 560, 304, 200, {
+  id: 'wpn', b: 8, title: 'WEAPONS',
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 6, R = gx + gw - 6;
+    const rows = [
+      ['NOSE', 'COILGUN', 'HAND', 'READY', 'normal', 'TOF 1.1 S'],
+      ['AFT S', 'LASER', 'HAND', 'OUT OF RANGE', 'off', ''],
+      ['PORT', 'AUTOCANNON', 'AUTO', 'ENGAGING', 'engaged', ''],
+      ['STBD', 'AUTOCANNON', 'AUTO', 'DAMAGED', 'caution', ''],
+    ];
+    rows.forEach(([m, w, who, st, stS, right], i) => {
+      const yy = gy + 16 + i * 18;
+      c += text(L, yy, m, { size: 11, bold: true, fill: C.white, track: 0.3 }) + text(L + 40, yy, w, { size: 11, fill: C.white });
+      c += text(L + 128, yy, who, { size: 10.5, bold: true, fill: who === 'HAND' ? C.cyan : C.dim, track: 0.4 });
+      if (stS === 'normal') c += text(L + 170, yy, st, { size: 11.5, bold: true, fill: C.white });
+      else c += I.box(L + 168, yy - 12, st.length * 6.6 + 10, 15, st, stS, { size: 9.5 });
+      if (right) c += text(R, yy, right, { size: 10.5, bold: true, fill: C.dim, anchor: 'end' });
+    });
+    c += line(gx + 4, gy + 80, gx + gw - 4, gy + 80, C.graticule, 1);
+    // the launcher: left of its magazine of 4, ready, seeker lock
+    c += text(L, gy + 97, 'MSL', { size: 10.5, bold: true, fill: C.dim, track: 0.6 }) + text(L + 40, gy + 97, 'HARPOON', { size: 11, fill: C.white }) + text(L + 100, gy + 97, '3/4', { size: TB, bold: true, fill: C.white }) + text(L + 128, gy + 97, 'READY', { size: 11, bold: true, fill: C.white }) + I.box(L + 172, gy + 85, 40, 15, 'LOCK', 'engaged', { size: 9.5 });
+    // decoys are unlimited in the game, on a 3 s cooldown: ready or seconds, no count
+    c += text(L, gy + 115, 'DCY', { size: 10.5, bold: true, fill: C.dim, track: 0.6 }) + text(L + 40, gy + 115, 'READY', { size: 11, bold: true, fill: C.white });
+    c += line(gx + 4, gy + 124, gx + gw - 82, gy + 124, C.graticule, 1);
+    // shields: up, the cloud against capacity, trim, heat; four sectors by thickness on the ring
+    c += text(L, gy + 141, 'SHLD', { size: 10.5, bold: true, fill: C.dim, track: 0.6 }) + I.box(L + 40, gy + 129, 30, 15, 'UP', 'engaged', { size: 9.5 }) + text(L + 78, gy + 141, '62%', { size: TB, bold: true, fill: C.white }) + text(L + 112, gy + 141, 'TRIM', { size: 10.5, bold: true, fill: C.dim, track: 0.6 }) + I.box(L + 146, gy + 129, 36, 15, 'BOW', 'engaged', { size: 9.5 });
+    c += text(L, gy + 162, 'HEAT', { size: 10.5, bold: true, fill: C.dim, track: 0.6 }) + I.hbar(L + 40, gy + 162, 100, 0.4, { color: C.white }) + text(L + 148, gy + 162, '40%', { size: 11, bold: true, fill: C.white });
+    // bow, starboard, stern, port: 80, 70, 40, 55 (eight arcs, two per sector, bow at the top)
+    c += I.shieldRing(R - 36, gy + 140, 19, [0.8, 0.7, 0.7, 0.4, 0.4, 0.55, 0.55, 0.8], { trim: 0 });
+    return c;
+  },
+}).svg;
+
+// SNS: the scope on the threats, the count of hostiles under it
+s += du(ZT.sns.x, ZT.sns.y, ZT.sns.s, ZT.sns.s, {
+  id: 'sns', b: 8, title: 'SCOPE',
+  content: (gx, gy, gw, gh) => I.scope(gx + gw / 2, gy + gh / 2 - 6, gw / 2 - 14, [
+    { kind: 'hostile', x: 0.42, y: -0.29, locked: true }, { kind: 'missile', x: 0.5, y: 0.0, a: 252 }, { kind: 'missile', x: 0.56, y: 0.05, a: 258 },
+    { kind: 'neutral', x: -0.6, y: 0.4 },
+  ], { heading: HDG }) + text(gx + 8, gy + gh - 6, '1 HOSTILE', { size: 10.5, bold: true, fill: C.red, track: 0.5 }) + text(gx + gw - 8, gy + gh - 6, '10 KM AUTO', { size: 9.5, fill: C.dim, anchor: 'end' }),
+}).svg;
+
+// SCH: the deck plan with what is wrong in its room and no text (room names on hover only); crew
+// as dots, the wounded one amber, the captain ringed; the hit flashes on the starboard hull
+s += du(16, 638, 300, 146, {
+  id: 'sch', b: 8, title: 'SHIP',
+  content: (gx, gy, gw) => {
+    const k = 8.9, X0 = gx + 6, Y0 = gy + 10;
+    let c = `<path d="M${X0} ${Y0} H${X0 + 28 * k} L${X0 + 31 * k} ${Y0 + 6 * k} L${X0 + 28 * k} ${Y0 + 12 * k} H${X0} Z" fill="none" stroke="#5B636D" stroke-width="1.2"/>`;
+    c += I.plan(X0, Y0, k, [
+      { x: 0, y: 2, w: 3, h: 8 }, { x: 3, y: 0, w: 6, h: 5 }, { x: 3, y: 7, w: 6, h: 5 }, { x: 9, y: 0, w: 5, h: 5 }, { x: 9, y: 7, w: 5, h: 5 },
+      { x: 14, y: 0, w: 5, h: 5 }, { x: 14, y: 7, w: 5, h: 5, state: 'fire', sev: 'caution', crew: [[2.4, 2.8]] }, { x: 19, y: 0, w: 4, h: 5 },
+      { x: 19, y: 7, w: 4, h: 5, crew: [[2, 2.6, C.amber]] },
+      { x: 23, y: 0, w: 5, h: 12, crew: [[3.3, 6]] },
+    ], { id: 't2' });
+    // the captain at the weapons console, ringed
+    c += `<circle cx="${X0 + 25.5 * k}" cy="${Y0 + 2 * k}" r="2.6" fill="${C.white}"/><circle cx="${X0 + 25.5 * k}" cy="${Y0 + 2 * k}" r="5.5" fill="none" stroke="${C.cyan}" stroke-width="1.2"/>`;
+    // the hit's flash on the starboard hull by the gun deck
+    c += haloed((cc, w) => line(X0 + 19.6 * k, Y0 + 12 * k + 4, X0 + 22.4 * k, Y0 + 12 * k + 4, cc, w), C.red, 2.4);
+    return c;
+  },
+}).svg;
+
+// HLM: at gunnery FLT is hidden; who flies and the order take its place
+s += helmStatus(420, 734, 350, 'ADA', 'HOLDING 2,000 M OFF RAIDER');
+
+s += hintLine([['SPACE', 'FIRE'], ['R', 'MISSILE'], ['F', 'DECOY'], ['9', 'SHIELDS'], ['TAB', 'NEXT TARGET'], ['V', 'STAND']]);
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

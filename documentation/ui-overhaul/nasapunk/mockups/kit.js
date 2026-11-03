@@ -284,11 +284,13 @@ const I = {
     rooms.forEach(rm => {
       const rx = x + rm.x * k, ry = y + rm.y * k, rw = rm.w * k, rh = rm.h * k;
       const st = rm.state || 'ok';
-      const col = { ok: C.dim, fire: C.red, breach: C.red, vacuum: C.red, smoke: C.amber, low: C.amber }[st];
-      if (st !== 'ok') s += rect(rx, ry, rw, rh, { fill: `url(#${['fire', 'breach', 'vacuum'].includes(st) ? 'hw' : 'hc'}${o.id})` });
+      // rm.sev overrides the state's own severity (a fire with crew on it is a caution)
+      const warn = rm.sev ? rm.sev === 'warning' : ['fire', 'breach', 'vacuum'].includes(st);
+      const col = st === 'ok' ? C.dim : warn ? C.red : C.amber;
+      if (st !== 'ok') s += rect(rx, ry, rw, rh, { fill: `url(#${warn ? 'hw' : 'hc'}${o.id})` });
       s += rect(rx, ry, rw, rh, { stroke: st === 'ok' ? '#5B636D' : col, sw: st === 'ok' ? 1 : 1.5 });
       if (rm.name && rw > 30) s += text(rx + rw / 2, ry + rh / 2 + 3.5, rm.name, { size: o.fs || 8.5, bold: true, fill: st === 'ok' ? C.dim : col, anchor: 'middle', track: 0.4 });
-      (rm.crew || []).forEach(([dx, dy]) => s += `<circle cx="${rx + dx * k}" cy="${ry + dy * k}" r="2.4" fill="${C.white}"/>`);
+      (rm.crew || []).forEach(([dx, dy, cc]) => s += `<circle cx="${rx + dx * k}" cy="${ry + dy * k}" r="2.4" fill="${cc || C.white}"/>`);
       if (rm.breach) { const [bx, by] = rm.breach; s += path(`M${x + bx * k - 4} ${y + by * k - 4} l8 8 M${x + bx * k + 4} ${y + by * k - 4} l-8 8`, C.red, 1.8); }
     });
     return `<defs>${defs}</defs>` + s;
@@ -345,8 +347,11 @@ function deckView(x0, y0, k, o = {}) {
     life: [9, 7, 5, 5, 'LIFE SUPPORT'], quarters: [14, 0, 5, 5, 'QUARTERS'], galley: [14, 7, 5, 5, 'GALLEY'], medbay: [19, 0, 4, 5, 'MEDBAY'],
     gun: [19, 7, 4, 5, 'GUN DECK'], bridge: [23, 0, 5, 12, 'BRIDGE'],
   };
-  // room tints for hazards
-  if (o.breach) s += rect(T(3), U(0), 6 * k, 5 * k, { fill: 'rgba(10,20,40,0.55)' });
+  // room tints for hazards. o.breach: true (cargo 2, hole in the top wall) or 'cargo1' (hole in the
+  // bottom wall at o.breachAt); o.thin: rooms with thin air, a fainter tint
+  const BR = o.breach === 'cargo1' ? 'cargo1' : o.breach ? 'cargo2' : null;
+  if (BR) { const r = rooms[BR]; s += rect(T(r[0]), U(r[1]), r[2] * k, r[3] * k, { fill: 'rgba(10,20,40,0.55)' }); }
+  (o.thin || []).forEach(n => { const r = rooms[n]; s += rect(T(r[0]), U(r[1]), r[2] * k, r[3] * k, { fill: 'rgba(70,100,140,0.14)' }); });
   if (o.fire) s += rect(T(14), U(7), 5 * k, 5 * k, { fill: 'rgba(255,60,20,0.16)' });
   // crates in the holds
   [[4, 1], [5.2, 1], [4, 2.4], [7, 3.2], [4.2, 8.4], [5.6, 8.4], [7.2, 9.8], [4.2, 9.8]].forEach(([tx, ty]) => s += rect(T(tx), U(ty), k * 1.1, k * 1.1, { fill: '#4B4436', stroke: '#2E2A22', sw: 1 }));
@@ -370,8 +375,8 @@ function deckView(x0, y0, k, o = {}) {
   [5, 7].forEach(yy => { let xs = [3, ...doors.filter(d => d[1] === yy).flatMap(d => [d[0] - 0.5, d[0] + 0.5]), 23]; for (let i = 0; i < xs.length; i += 2) s += wall(xs[i], yy, xs[i + 1], yy); });
   s += wall(0, 2, 3, 2) + wall(0, 10, 3, 10);
   doors.forEach(([tx, ty, room]) => {
-    const bad = (room === 'cargo2' && o.breach) || (room === 'galley' && o.fire);
-    const shut = room === 'cargo2' && o.breach && o.breachDoor !== 'open';
+    const bad = (room === BR) || (room === 'galley' && o.fire);
+    const shut = room === BR && o.breachDoor !== 'open';
     if (shut) s += line(T(tx - 0.5), U(ty), T(tx + 0.5), U(ty), '#8A6A2A', 4);
     s += `<circle cx="${T(tx + 0.75)}" cy="${U(ty) + (ty === 5 ? 5 : -5)}" r="2.6" fill="${bad ? '#FF3B30' : '#3DDC7A'}"/>`;
     if (bad) s += `<circle cx="${T(tx + 0.75)}" cy="${U(ty) + (ty === 5 ? 5 : -5)}" r="7" fill="#FF3B30" opacity="0.25"/>`;
@@ -381,9 +386,20 @@ function deckView(x0, y0, k, o = {}) {
   // unpowered: the deck lights are out; only fire, beacons and the people's suit lamps read
   if (o.dark) s += `<path d="M${T(-0.4)} ${U(-0.4)} H${T(28)} L${T(31.4)} ${U(6)} L${T(28)} ${U(12.4)} H${T(-0.4)} Z" fill="rgba(0,0,0,${o.dark})"/>`;
   // breach: a hole in the outer wall, venting streaks
-  if (o.breach) {
+  if (BR === 'cargo2') {
     s += rect(T(5.6), U(-0.3), k * 0.9, 9, { fill: '#000' });
     for (let i = 0; i < 6; i++) s += line(T(5.2 + i * 0.3), U(1.6 - (i % 2) * 0.4), T(5.8 + i * 0.08), U(-0.9 - (i % 3) * 0.5), 'rgba(220,230,240,0.55)', 1.2);
+  } else if (BR === 'cargo1') {
+    const bx = o.breachAt || 5.6;
+    s += rect(T(bx), U(12) - 4, k * 0.9, 9, { fill: '#000' });
+    for (let i = 0; i < 6; i++) s += line(T(bx - 0.4 + i * 0.3), U(10.4 + (i % 2) * 0.4), T(bx + 0.2 + i * 0.08), U(12.9 + (i % 3) * 0.5), 'rgba(220,230,240,0.55)', 1.2);
+  }
+  // a short: sparks at the faulted part (o.short = [tx, ty])
+  if (o.short) {
+    const [sx, sy] = [T(o.short[0]), U(o.short[1])];
+    s += `<circle cx="${sx}" cy="${sy}" r="${k * 0.45}" fill="#FFC84A" opacity="0.16"/>`;
+    s += path(`M${sx - 6} ${sy - 9} L${sx + 1} ${sy - 1} L${sx - 3} ${sy + 1} L${sx + 6} ${sy + 9}`, '#FFE08A', 2.2);
+    [[-9, -2], [8, -5], [-4, 9], [10, 6]].forEach(([dx, dy]) => s += `<circle cx="${sx + dx}" cy="${sy + dy}" r="1.4" fill="#FFE08A"/>`);
   }
   // fire and smoke
   if (o.fire) {

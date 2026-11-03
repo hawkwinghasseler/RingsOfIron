@@ -156,8 +156,10 @@ edge, as small rectangular caps in `key`. A key has no text on it. Its **legend 
 glass** directly next to it, so the same key can mean different things on different pages. A
 legend in `dim` is available; `white` is the current page or state; boxed `green` is an engaged
 mode; a legend in `dim` with no box and a hollow key means not available here. Keys answer to
-the mouse (click the cap or the legend) and to the keyboard (each slot has a fixed key, shown on
-the cap in the key-hint overlay only).
+the mouse (click the cap or the legend) and to the keyboard: each slot has a fixed key, shown on
+the cap in the key-hint overlay. Where a functional spec wants bindings in view all the time (a
+hint line, an alert that names its key), the slot's fixed key may be printed on its cap in
+`stencil`, as on a keyboard; the legend stays on the glass.
 
 **Page layout inside the glass:** page title top centre in `white` caps; page menu (sibling
 pages) along the bottom keys; actions along the side keys; a 1-line **status strip** under the
@@ -166,14 +168,17 @@ title for the page's one most important state; content in between on the 8 u gri
 ### Other containers, all built from the DU
 
 - **Glareshield:** a 40 u hardware strip along the top edge of the screen, holding the
-  annunciators (section 8), the flight mode annunciator (FMA) and the MET clock. It is the only
-  element that is always visible.
+  annunciators (section 8), the flight mode annunciator (FMA) and the MET clock. In the default
+  layout it is the only element that is always visible; a spec that puts the clock and the lamps
+  in a corner block gets them in the same hardware there.
 - **Annunciator lens:** a 48 x 24 u push-button lens set in the glareshield or a console. Unlit:
   `lens-off` with a dim legend. Lit: the lens fills with its colour at 85% and the legend turns
   black. MASTER CAUTION (amber) and MASTER WARNING (red) are larger (64 x 32 u).
-- **Console:** an interior station (helm, weapons, engineering) is a full-screen **console
-  face**: 2 to 4 DUs laid side by side in one bezel body, with a stencilled console name across
-  the top ("ENGINEERING  STA 3"). This replaces today's console windows.
+- **Console:** an interior station (helm, weapons, engineering) is a **console face**: 2 to 4
+  DUs laid side by side in one bezel body, with a stencilled console name across the top
+  ("ENGINEERING  STA 3"). This replaces today's console windows. It is full screen by default;
+  where a functional spec keeps the deck or the world live beside it, the face stands as a side
+  panel of the same hardware (the Ship Stations variation's reactor console).
 - **Ops wall (docked services):** trade, yard, missions, shipyard and boarding are not windows
   but pages of a station **ops wall**, a row of 3 DUs styled like a mission-control row: each DU
   topped by a stencilled position name (TRADE / YARD / FLIGHT DIR / CREW). The variations under
@@ -252,7 +257,12 @@ glass and nothing else; its pages can be moved to another DU with the bezel's `X
 
 ## 9. Layout grammar
 
-The style gives the screen fixed **slots**. The functional specs assign pages to slots; the style
+The style's default layout is a set of fixed **slots**, below. A functional spec that defines its
+own zones keeps them: the style then maps its containers onto those zones (a band of DUs along
+the bottom, side columns, a clock block and a lens panel top left) and keeps what makes it
+Nasa-punk: everything screen-fixed is a DU, a lens panel or a slip in a bezel; the HUD layer is
+unboxed symbology; the master lenses sit at the top. The variations under
+`documentation/ui-overhaul/variations/` show the mapping for each spec. In either case the style
 guarantees each slot's size, position and behaviour at every UI scale.
 
 ```
@@ -276,7 +286,10 @@ guarantees each slot's size, position and behaviour at every UI scale.
 - **DU-3** (optional, bottom-centre, 400 x 160 u, folded down out of sight by default): a
   secondary MFD the player can raise with a key for a second page.
 - **HUD layer:** the only thing drawn over the world. Symbology from section 7 with halos,
-  nothing boxed, no panels, no text longer than a data block.
+  nothing boxed, no panels, no text longer than a data block. The deck view is the exception: it
+  is a picture of the ship rather than a flight display, so a hazard there carries a glass slip on
+  a leader (what it is, who is working it, the job's progress), like the comm-loop slips, and a
+  console's prompt is a bezel plate.
 - **Console face / ops wall:** full-screen, replaces the flight deck while a console or docked
   services are open. The glareshield stays above them.
 
