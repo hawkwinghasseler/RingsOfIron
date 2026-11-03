@@ -4,11 +4,15 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
-| Ship stations | `functional-stations.md` round 9 | Converged in round 3: the spec took the last note, nothing left to criticise |
+| Ship stations | `functional-stations.md` round 10 | Converged again in round 4, after the spec's round 10 changed four things on screen |
 | Context-driven | `functional-context.md` version 5 | Converged in round 3: the spec took all four notes, nothing left to criticise |
 | Task-driven | `functional-task.md` round 5 | Converged in round 3: the spec took all four notes, nothing left to criticise |
 
 A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 4
+
+**Stations** (spec round 10, from the Cassette artist's notes). Four changes reach FILAMENT's screens: the burn arrow carries only its number; the emergency text has a 44-character short form, which needed one more cell than the status strip's field held, so the strip's legend cells were tightened and each named key is one inverse cell (guide 7.7); Command's board tile carries only the printed `LATCHED` badge; on deck a speaking mark replaces the bubble (guide section 8). Re-rendered; converged again. Context and task specs have not changed since round 3.
 
 ## Round 3
 

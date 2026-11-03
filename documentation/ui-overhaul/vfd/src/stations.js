@@ -64,14 +64,16 @@
   // tiles: [{n, t, who, you, alert: 'caution'|'warning'}]. In Yellow and Red the player's tile lights its
   // zinc lamp cap; in Green (o.green) the whole board is dim, "you" included. A crew member's name sits at
   // L1 (crewed is normal); a vacant station is ghost; an alert lights the tile's own red or amber pip, in
-  // any condition, and raises the name to L2.
+  // any condition, and raises the name to L2. Command has no occupancy (it is the captain's slate, always
+  // with the player): its window holds only the printed LATCHED badge, lit while latched (8.5, 14.2).
   function board(S, tiles, clock, o = {}) {
     const y = BAND.boardY, h = 18;
     tiles.forEach((tl, i) => {
       const x = BAND.x + i * 150;
       S.lampKey(x + 1, y, 60, h, tl.n + ' ' + tl.t, null, 'zinc', !!tl.you && !o.green);
       S.module(x + 66, y, 74, h, { filaments: 0, glare: false, radius: 1.5 });
-      S.dm(x + 67.75, y + 3.75, tl.who || '', { pitch: 1.5, cells: 8, level: tl.alert ? 'norm' : 'dim' });
+      if (tl.t === 'CMD') S.legend(x + 66 + 37, y + 13.5, 'LATCHED', { size: 12, align: 'center', lit: !!tl.latched, level: 'norm' });
+      else S.dm(x + 67.75, y + 3.75, tl.who || '', { pitch: 1.5, cells: 8, level: tl.alert ? 'norm' : 'dim' });
       K.pip(S, x + 145, y + 5, 'red', tl.alert === 'warning');
       K.pip(S, x + 145, y + 13, 'amber', tl.alert === 'caution');
     });
@@ -137,7 +139,7 @@
     K.plate(S, x, y, TOP.w, h, { pad: 4 });
     let cx = x;
     const cell = (word, col, on) => {
-      const w = S.legendWidth(word) + 18;
+      const w = S.legendWidth(word) + 14;
       S.module(cx, y, w, h, { filaments: 0, glare: false, radius: 2 });
       if (on) { S.rectLit(cx + 2, y + 2, w - 4, h - 4, { color: col, level: 'norm', r: 1.2 }); S.knockout(cx + w / 2, y + 16.7, word, { align: 'center' }); }
       else S.legend(cx + w / 2, y + 16.7, word, { align: 'center', color: col, lit: false });
@@ -145,17 +147,29 @@
     };
     cell('YELLOW', 'amber', o.condition === 'YELLOW');
     cell('RED', 'red', o.condition === 'RED');
-    const bw = S.legendWidth('BATTLE STATIONS') + 18;
+    const bw = S.legendWidth('BATTLE STATIONS') + 14;
     S.module(cx, y, bw, h, { filaments: 0, glare: false, radius: 2 });
     S.legend(cx + bw / 2, y + 16.7, 'BATTLE STATIONS', { align: 'center', color: 'red', lit: !!o.battle, level: 'norm' });
     cx += bw + 4;
-    const sw = S.legendWidth('DOCKED') + S.legendWidth('LATCHED') + 26;
+    const sw = S.legendWidth('DOCKED') + S.legendWidth('LATCHED') + 20;
     S.module(cx, y, sw, h, { filaments: 0, glare: false, radius: 2 });
-    K.states(S, cx + 9, y + 16.7, [['DOCKED', o.state === 'DOCKED' && 'norm'], ['LATCHED', o.state === 'LATCHED' && 'norm']], { size: 13, gap: 8 });
+    K.states(S, cx + 6, y + 16.7, [['DOCKED', o.state === 'DOCKED' && 'norm'], ['LATCHED', o.state === 'LATCHED' && 'norm']], { size: 13, gap: 8 });
     cx += sw + 4;
     const ew = x + TOP.w - cx, cells = Math.floor((ew - 10) / 9);
     S.module(cx, y, ew, h, { filaments: 1, glare: false, radius: 2 });
-    S.dm(cx + 6, y + 6.75, o.emerg || '', { pitch: 1.5, cells, color: 'zinc', level: 'norm' });
+    // The emergency text's short form (at most 44 characters, keys first). A key it names is one inverse
+    // cell, the display's own key cap, so the field stays on its cell grid: 'DISABLED: NO POWER {P} {P} ...'.
+    const em = [];
+    for (const m of String(o.emerg || '').matchAll(/\{(.)\}|([^{]+)/g)) {
+      if (m[1]) em.push([m[1], true]); else for (const ch of m[2]) em.push([ch, false]);
+    }
+    S.dm(cx + 6, y + 6.75, '', { pitch: 1.5, cells, color: 'zinc' });
+    K.fits(em.length, cells, 'emergency text cells');
+    for (let i = 0; i < em.length;) {
+      let j = i; while (j < em.length && em[j][1] === em[i][1] && !em[i][1]) j++;
+      if (em[i][1]) { S.dm(cx + 6 + i * 9, y + 6.75, em[i][0], { pitch: 1.5, inverse: [0, 1], level: 'norm', ghost: false }); i++; }
+      else { S.dm(cx + 6 + i * 9, y + 6.75, em.slice(i, j).map(c => c[0]).join(''), { pitch: 1.5, level: 'norm', ghost: false }); i = j; }
+    }
   }
   // The callout ticker: three fixed lines at body pitch 2, newest at the bottom. lines: [{sev, tag, text}]
   // (null = empty). Text is zinc; severity lights the line's fixed red or amber pip.
@@ -440,7 +454,7 @@
     const a = -140 * R;
     K.velMark(S, 'pro', 640 + Math.cos(a) * 70, 308 + Math.sin(a) * 70, { level: 'norm' });
     K.velMark(S, 'retro', 640 - Math.cos(a) * 70, 308 - Math.sin(a) * 70, { level: 'dim' });
-    burnCue(S, 640, 308, -158, 104, 156, ['1  12:04']);
+    burnCue(S, 640, 308, -158, 104, 156, ['1']);
     S.projectNow();
 
     // the band: both MFDs folded (Green), the cluster, the board
@@ -458,7 +472,7 @@
     board(S, [
       { n: 1, t: 'HELM', who: 'YOU', you: true }, { n: 2, t: 'NAV', who: 'YOU', you: true },
       { n: 3, t: 'TAC', who: 'COLE' }, { n: 4, t: 'ENG', who: '' },
-      { n: 5, t: 'COMMS', who: 'YOU', you: true }, { n: 6, t: 'CMD', who: '' },
+      { n: 5, t: 'COMMS', who: 'YOU', you: true }, { n: 6, t: 'CMD' },
     ], ['3', '14:22:05'], { green: true });
     hints(S, 580, [['N', 'PLAN A BURN'], ['M', 'PLOT'], ['TAB', 'LOCK']]);
     S.finish();
@@ -523,7 +537,7 @@
     board(S, [
       { n: 1, t: 'HELM', who: 'BEA' }, { n: 2, t: 'NAV', who: 'BEA' },
       { n: 3, t: 'TAC', who: 'YOU', you: true, alert: 'warning' }, { n: 4, t: 'ENG', who: '' },
-      { n: 5, t: 'COMMS', who: '' }, { n: 6, t: 'CMD', who: '' },
+      { n: 5, t: 'COMMS', who: '' }, { n: 6, t: 'CMD' },
     ], ['3', '15:02:44']);
     S.finish();
   };

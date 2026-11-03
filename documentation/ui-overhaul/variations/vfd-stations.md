@@ -1,12 +1,12 @@
 # FILAMENT × Ship stations
 
-The ship-stations functional design (`functional-stations.md`, round 9) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The ship-stations functional design (`functional-stations.md`, round 10) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/stations.js`](../vfd/src/stations.js) over real game captures and the game's own hull art; `vfd/src/export.sh` re-renders them.
 
 ## Screens
 
-**C. Seated at the helm, cruising (Green).** The ship is well, so the console is dark: the cluster shows the reference, the next burn and Δv against the trip home; both MFDs are folded to their soft-key rails; the station board is dim, `YOU` included, with Cole named at TAC; the prompt line offers three keys.
+**C. Seated at the helm, cruising (Green).** The ship is well, so the console is dark: the cluster shows the reference, the next burn and Δv against the trip home, and the burn's arrow in the world carries only its number; both MFDs are folded to their soft-key rails; the station board is dim, `YOU` included, with Cole named at TAC; the prompt line offers three keys.
 
 ![Helm, cruising](vfd/stations-helm.jpg)
 
@@ -22,14 +22,14 @@ Mockups are drawn by [`vfd/src/stations.js`](../vfd/src/stations.js) over real g
 
 | Spec widget | FILAMENT part |
 |---|---|
-| Z1s status strip | A rack module of fixed legends: `YELLOW`, `RED`, `BATTLE STATIONS`, `DOCKED`, `LATCHED`, then a dot-matrix field for the emergency text. Dark in Green |
+| Z1s status strip | A rack module of fixed legends: `YELLOW`, `RED`, `BATTLE STATIONS`, `DOCKED`, `LATCHED`, then a 39-cell dot-matrix field for the emergency text, each key it names drawn as one inverse cell (the 44-character short form takes 38). Dark in Green |
 | Z1 annunciator | One row: `MASTER WARN` and `MASTER CAUT` lamp keys at the ends, six dual-filtered tiles between. Warnings fill inward from WARN as red inverse blocks, cautions inward from CAUT as amber outlines; past six, the tile where they meet reads `+n MORE` |
 | Z1w warp strip | A single dot-matrix line with the rate in seven segments |
 | Z2 callout ticker | Three dot-matrix lines at pitch 2 behind one glass, each led by a severity pip pair and the station tag; 54 cells for the speaker and the text |
 | Z3b helm cluster | One module, five fixed slots: velocity (frame legends, seven segments autoranging `M/S` to `KM/S`, control chip, `ASSIST`, thrust lamps), reference, next event, trigger, Δv. Δv is a two-rail bar: the fill, the home notch, the plan bracket |
 | Z3b tactical cluster | The target block on top; a chip per gun in hand (state, its own hit chance in seven segments, the crew member seated at it); one `PD AUTO` chip; the launcher (`MSL 4 OF 4`, ready or seconds, `SALVO` behind amber when one press empties it), the decoy, the shields (blank glass on a hull with no emitter) |
 | Z3a, Z3c MFDs | Modules with soft keys. A page not needed folds: the glass sinks into the rack, the rail stays at L1 |
-| Z3d station board | Six cells: the station's number and name on a key, the holder in dot matrix. Dim in Green; `YOU` lit in Yellow and Red; an alert lights the cell's own pip in any condition |
+| Z3d station board | Six cells: the station's number and name on a key, the holder in dot matrix. Dim in Green; `YOU` lit in Yellow and Red; an alert lights the cell's own pip in any condition. Command has no holder: its window carries the printed `LATCHED` badge, lit while latched |
 | Z7 prompt line | Learning hints on a small plate over the cluster: key caps and words |
 | Z6 suit readout | Reflective LCD, backlit only while it warns |
 | World symbology | The projected HUD: dot sprites, zinc and red channels, drawn under the band |
@@ -66,6 +66,17 @@ No meaningful criticism of the visual build remains open. The note below is func
 Spec round 9 took the round-2 note: a callout is at most 50 characters after the station tag, the speaker's name included, and a longer one is the style's to wrap or scroll, never to cut. E's line is now "Cole: harpoons from port. PD has them." (38), and the mockup carries it. The spec also adopted FILAMENT's two choices: a slot for a system the hull lacks is blank with no legend, and `+n MORE` goes on the last tile to fill, so warnings and cautions may fill from opposite lamps.
 
 Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
+## Round 4
+
+Spec round 10 (from the Cassette artist's notes) changed four things a FILAMENT stations screen shows:
+
+1. **Burn arrows carry their number only;** the time is in the Next event slot. C's arrow now reads `1`.
+2. **The emergency text has a 44-character short form,** keys first: "DISABLED: NO POWER [P][P] ABANDON [B][B] TOW". No mocked screen is in an emergency, so it was checked by rendering the strip with it: at first it needed 38 cells where the field held 37. The strip's legend cells lost a little padding, so the field holds 39, and each key is one inverse cell, the display's own key cap (guide 7.7).
+3. **Command's board tile has no occupancy.** Its window now holds only the printed `LATCHED` badge, dark until the ship latches.
+4. **On deck, a crew member who speaks shows a speaking mark** for 3 s instead of a bubble. B's crew line is the ticker's oldest, so no mark is lit there; the guide's marker table now defines it (three dots that light in turn).
+
+The DOCK page (D), the station terminal (G) and the two-to-a-row gun chips for bigger hulls aren't on a mocked screen; the corvette's screens are unchanged by them. Nothing meaningful remains to criticise: converged again.
 
 ## Functional notes sent to the stations designer
 

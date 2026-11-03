@@ -248,7 +248,7 @@ A label (phosphor legend at L1, or silk), a seven-segment value (L2) and a unit 
 - A module may have a row of up to six rubber keys under it. The module's bottom row of cells draws each key's label (up to 6 cells) above it, and each key cap prints its keyboard shortcut in silk.
 - The active page or mode's label is inverse. A key that toggles something has an LED above it: green when on. A key waiting for a second press (abandon ship, call a tow) has its LED blinking amber.
 - Keys are at least 24 units square, the smallest thing a pointer is asked to hit. A folded module's rail idles at L1; only the active page's label is L2, so a quiet console's brightest words are never its menu.
-- **Keys are keys.** Wherever the UI names a key, it draws a small key cap with the key's legend, never `[E]` in brackets.
+- **Keys are keys.** Wherever the UI names a key, it draws a small key cap with the key's legend, never `[E]` in brackets. Inside a dot-matrix field the cap is one inverse cell, the display's own key cap, so the line stays on its cell grid and a key costs one cell: the stations status strip's 44-character emergency text (`DISABLED: NO POWER`, P twice, `ABANDON`, B twice, `TOW`) fills 38 of its 39 cells.
 
 ### 7.8 Annunciator cells
 
@@ -309,15 +309,16 @@ The symbology over the outside view is written by a dot-matrix projector, the de
 | Locked target | Full corner brackets at L3 with four ticks; blinks three times on lock |
 | Navigation target | Diamond brackets (corners turned 45 degrees) |
 | Contract waypoint | A hollow diamond with a dotted tail |
-| Burn arrow | A dot chain with an arrowhead sprite and a 5x7 countdown |
+| Burn arrow | A dot chain with an arrowhead sprite and a 5x7 label: the burn's number, and its countdown only where the spec puts the time on the arrow |
 | Threat track | A red dot chain, dots every 6 units, ending in an impact cross |
 | Point-defence kill | A ring of eight dots that steps out three times (16 ms each) and fades |
 | Lead reticle | Four dots in a diamond with a centre dot |
 | Fire arc | Dot chains along the arc's edges, sparse dots along its rim |
 | Docking corridor | Two dotted rails: zinc while safe, amber when closing too fast |
 | Collision cue | An amber cross of dots at the closest approach, with a dot chain to it |
-| Edge marker | A dot chevron at the edge of the view with a 5x7 label; missiles carry seconds to impact |
+| Edge marker | A dot chevron at the edge of the view with a 5x7 label; a missile's seconds to impact only where the spec puts them on the marker |
 | Picture-in-picture ring | A circle of dots every 4 units with a 5x7 caption |
+| Speaking mark (deck) | Three dots over a crew member's head that light in turn, 250 ms each, for the 3 s after they speak. No words: the ticker has them |
 
 - Labels are 5x7 at pitch 2, at most 12 cells a line: the name at L2, and under it at L1 a number where the spec allows markers one (the task spec gives markers names only).
 - Sprites snap to the 2-unit grid as they move, so they step rather than slide.
