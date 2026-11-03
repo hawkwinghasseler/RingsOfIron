@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Screens of a Nasa-punk HUD in the running game, for review against its mockups
 # (documentation/ui-overhaul/variations/nasapunk-<spec>): the docked start, cruising near Highport,
-# a raider locked, its missiles inbound, the deck, the weapons console, and damage. Needs Xvfb, xdotool and
+# a raider locked, its missiles inbound, the deck, the weapons console, and damage; for stations
+# also the helm's docking approach and the warp strip. Needs Xvfb, xdotool and
 # ImageMagick's import. Waits on the game rather than the clock where it can, since a software-
 # rendered game under Xvfb runs its sim well below real time.
 #   tools/playtest/hud-nasapunk.sh <stations|context|task> [out-dir] [WxH] [ui-scale]
@@ -45,7 +46,11 @@ key 2 0 2 6; key Down Down; key Return
 key Up; key Return; key Down Down; key Return
 until_docked 180; pause 3; shot n-01-docked
 key u; pause 8; shot n-02-undocked
+# Stations: Highport as the nav target, close by, brings up the helm's docking approach
+[ "$SPEC" = stations ] && { cmd target highport; pause 3; shot n-02b-approach; }
 cmd away 3000; await 30 "PLAYTEST away"; pause 5; shot n-03-cruise
+# Stations: the warp strip, while warp lasts
+[ "$SPEC" = stations ] && { key period period; pause 2; shot n-03b-warp; key comma comma comma; pause 2; }
 # A raider with dart racks 2 km out, hunting us; locked
 cmd raider 2 raider_darts; await 30 "PLAYTEST raider"; pause 3; key Tab; pause 2; shot n-04-raider
 pause 30; shot n-05-missiles
