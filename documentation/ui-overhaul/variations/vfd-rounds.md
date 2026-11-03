@@ -4,11 +4,23 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
-| Ship stations | `functional-stations.md` round 12 | Rebuilt in round 5, with a fourth screen for the blacked-out seat; no visual criticism open, two functional notes with the designer |
-| Context-driven | `functional-context.md` version 6 | Rebuilt in round 5; no visual criticism open, two functional notes with the designer |
-| Task-driven | `functional-task.md` round 6 | Rebuilt in round 5; no visual criticism open, two functional notes with the designer |
+| Ship stations | `functional-stations.md` round 13 | Converged in round 6: the spec took both notes, each as FILAMENT had drawn it |
+| Context-driven | `functional-context.md` version 7 | Converged in round 6: the spec took both notes; H7 totals its missiles |
+| Task-driven | `functional-task.md` round 7 | Converged in round 6: the spec took both notes; the missile warning gives no bearing |
 
 A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 6
+
+All three designers took both of round 5's notes.
+
+**Stations** (spec round 13). The seat's station board and its world symbology go dark with the seat, and the prompt line shows neither the tow nor abandoning while the strip carries them: both as FILAMENT drew them, so no screen changed. The spec adds the deck's side of a blackout (the suit's marks stay; emergency lighting, door lights and alarm beacons lit), which the guide's emergency bus now gives (7.11).
+
+**Context** (version 7). Point defense has one spelling across the three specs. H7's missile row is the total across launchers, ready while any can fire: 11.4 reads `MSL 7 LEFT READY`. The count now has two seven-segment cells, since a total can pass 9.
+
+**Task** (round 7). The missile alert carries the count and the time, and no bearing: direction is drawn in the world and on the scope. The spec moved its sample harpoons to 3.2 km, just thrown, for its 14 s; FILAMENT keeps them 1.4 km out at 4 s, which the designer confirms fits the same formula.
+
+No notes went out this round. All three FILAMENT variations have converged: each spec has taken every note, and no meaningful criticism remains.
 
 ## Round 5
 

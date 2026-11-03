@@ -1,4 +1,4 @@
-// FILAMENT x Task-driven design (functional-task.md, round 6): the HUD as a late-90s digital dash. No racks
+// FILAMENT x Task-driven design (functional-task.md, round 7): the HUD as a late-90s digital dash. No racks
 // span the view; each corner carries its own moulded pod, like a car's instrument cluster, trip computer and
 // message centre. The annunciator is a cluster of tell-tales; the alert band is a message centre, a red
 // window for the one warning with an amber row hung under it for the cautions; the hint line is a strip of
@@ -424,9 +424,9 @@
     K.brackets(S, 842, 268, 40, 'square', { pitch: 2, len: 6, level: 'full', ticks: true });
     K.label(S, 892, 214, ["RAIDER 'VEX'"], { pitch: 2, level: 'norm' });
     K.reticle(S, 862, 300, { r: 8, level: 'norm' });
-    // two harpoons 1.4 km out on bearing 080, nearly dead ahead (the corvette heads 078), their tracks and the
-    // impact mark; the seconds are the band's alone. Thrown from the raider 3.2 km off, under a harpoon's 30 m/s²
-    // closing burn they are about 4 s from impact
+    // two harpoons 1.4 km out, nearly dead ahead, their tracks and the impact mark: where they come from is drawn
+    // here and on the scope, never given as a bearing, and the seconds are the band's alone. Thrown from the
+    // raider 3.2 km off, under a harpoon's 30 m/s² closing burn they are about 4 s from impact
     K.missile(S, 742, 375); K.missile(S, 752, 396);
     K.track(S, [[742, 375], [681, 386]], { step: 7 }); K.track(S, [[752, 396], [682, 391]], { step: 7 });
     K.cross(S, 678, 388);
@@ -435,7 +435,7 @@
     cluster(S, { chr: { day: '3', time: '14:22:05', warp: '1', held: 'HOSTILES NEAR' }, ann: { FIRE: 'caution', CREW: 'caution' } });
     sch(S, { states: { HOLD: 'fire' }, crew: [[9, 2, false, true], [9, 1], [6, 2, true], [13, 3]] });
     band(S, {
-      warning: { title: 'MISSILE', detail: '2 INBOUND  BRG 080', label: 'IMPACT', number: '4', unit: 'S', key: 'F', action: 'DECOY', note: 'POINT DEFENSE ENGAGING' },
+      warning: { title: 'MISSILE', detail: '2 INBOUND', label: 'IMPACT', number: '4', unit: 'S', key: 'F', action: 'DECOY', note: 'POINT DEFENSE ENGAGING' },
       cautions: [
         { full: ['FIRE  HOLD', 'ADA ON IT'], short: ['FIRE HOLD', 'ADA'] },
         { full: ['WOUNDED', 'COLE, NO MEDIC FREE'], short: ['WOUNDED COLE', 'NO MEDIC'] },

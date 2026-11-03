@@ -1,6 +1,6 @@
 # FILAMENT × Context-driven
 
-The context-driven functional design (`functional-context.md`, version 6) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The context-driven functional design (`functional-context.md`, version 7) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -36,7 +36,7 @@ Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game
 | H2 navigation | A slab of labelled rows: labels legends at L1, words dot matrix, numbers seven segments with legend units; `SHORT` behind amber |
 | H4 ship condition | Compact face: a lamp cell per light on the rack's left wing (hardware, always there; three on a hull with no shield emitter). Expanded face: a slab above them with the ship's own plan on a graphic dot panel and a row per light, pips leading |
 | H5 contact scope | Collapsed: a key on the right wing with the count beyond 50 km. Open: a round pod with a plotting scope and its zoom keys |
-| H6, H7 lock and armament | Slabs in R-MID. H6: the state in one word (`HOSTILE` behind red), `FIRING ON YOU` as its own red flag, range with closing or opening, time of flight and hit chance with its word. H7: guns, missiles (left, and ready or the second until the next) and shields as rows of fixed state words |
+| H6, H7 lock and armament | Slabs in R-MID. H6: the state in one word (`HOSTILE` behind red), `FIRING ON YOU` as its own red flag, range with closing or opening, time of flight and hit chance with its word. H7: guns, missiles (left across every launcher, in two seven-segment cells, and ready while any launcher can fire or the second until one can) and shields as rows of fixed state words |
 | X2 boarding | A slab where the station panel would be: six rows of glass (the target with `LATCHED` or `EVA`, its state, the party, salvage, cargo, prisoners), then two keys under the glass printed with their key and action, `K  BOARDING` and `U  CAST OFF`, as the station board's keys are |
 | X3 emergency | A slab under P3 headed by a red bar with the state cut out of it; each way out on its own row with its cost, its key on the bezel beside it with an LED that blinks while the first press holds |
 | D1 captain vitals | Reflective LCD, backlit while it warns |
@@ -86,6 +86,12 @@ Version 6 (the NASA-punk direction's round-2 notes) changes five things on FILAM
 
 No meaningful criticism of the visual build remains; the notes below are functional.
 
+## Round 5
+
+Version 7 took both round-3 notes. Point defense is spelled the game's way, as FILAMENT already printed it. H7's missile row is the total across every launcher, ready while any can fire, so 11.4's gunship reads `MSL 7 LEFT READY` (F2 keeps the split, 3 and 4). Checking the row as a total found its count one seven-segment cell wide; a total can pass 9 (a dart rack alone holds 6), so it now has two, the tens a ghost until needed.
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
 ## Functional notes sent to the context designer
 
 Round 1 (all answered by version 3): keep P2 lit under X3, decoys have no stock, shields as a share, on-screen hazard tags for D3, states as one word.
@@ -97,7 +103,7 @@ Round 2 (all taken in version 5):
 3. **Keep the master cue lit under X3.** The dim list doesn't name it, and on deck it stands alone and is the acknowledge control.
 4. **Sample data.** "Deliver 120 Water → Shackleton Ice": an ice mine sells water and buys food and machinery, and a delivery posted to the corvette is at most 40 units (`ContractPostings` caps it by the hold). P3's "T-37 s" at 7.7 km: harpoons and darts arrive in under 10 s (`weapons.toml`); the stations design corrected the same number in its round 6.
 
-Round 3 (after version 6):
+Round 3 (after version 6; both taken in version 7):
 
 1. **Point defense, as the game spells it.** The game writes `point_defense`, and the stations and task specs now spell it that way; version 6 still has "point defence" (P3's line, F2, H7). FILAMENT prints `POINT DEFENSE ENGAGING`. Suggest the spec follow the game, so the three designs share one string.
 2. **H7's missile row on a hull with two launchers.** The gunship has two (AFT PORT and AFT STBD), and F2's sample has them at 3 and 4 left, while 11.4's H7 reads "4 left · ready". Suggest H7 say whether its row is the total across launchers (7) and ready when any launcher is, or one row per launcher.

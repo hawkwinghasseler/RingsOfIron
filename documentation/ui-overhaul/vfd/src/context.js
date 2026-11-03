@@ -1,4 +1,4 @@
-// FILAMENT x Context-driven design (functional-context.md, version 6): two racks frame the view (the
+// FILAMENT x Context-driven design (functional-context.md, version 7): two racks frame the view (the
 // status strip on top, the seat's instruments along the bottom) and everything that comes and goes is a
 // slab that powers up in a fixed slot of its zone. Laid at the minimum sizes (guide section 15, spec 12.4):
 // column text is 5x7 at pitch 1.5, so a column's 34 characters are 34 cells of 9 units.
@@ -327,9 +327,11 @@
     cx = K.states(S, x + 52 + 8 * CELL + 8, B(ry), [['YOU', d.who === 'YOU' && 'norm'], ['GUNNER', d.who === 'GUNNER' && 'norm'], ['PD', d.who === 'PD' && 'norm']], { size: 13, gap: 7 });
     K.fits(cx - 7, x + CW - 4, 'H7 guns');
     ry += ROW;
+    // missiles left across every launcher, ready while any can fire (version 7): two cells, since a total can
+    // pass 9 (two dart racks hold 12)
     S.legend(x + 6, B(ry), 'MSL', { level: 'dim' });
     cx = x + 52;
-    cx += S.seg7(cx, B(ry) - 12, 12, d.msl, { cells: 1, level: 'norm' }) + 6;
+    cx += S.seg7(cx, B(ry) - 12, 12, d.msl, { cells: 2, level: 'norm' }) + 6;
     cx += S.legend(cx, B(ry), 'LEFT', { level: 'dim' }) + 12;
     cx = K.states(S, cx, B(ry), [['READY', !d.reload && 'norm'], ['RELOAD', !!d.reload && 'norm']], { size: 13, gap: 6 });
     cx += S.seg7(cx, B(ry) - 12, 12, d.reload || '', { cells: 2, level: 'norm' }) + 5;
@@ -466,7 +468,7 @@
     p4(S, [['GUNNERY', '3 HITS ON RAIDER']]);
     h2(S, 194, 'compact', { nav: 'SHACKLETON ICE', navRange: '1240' });
     const h7y = h6(S, 194, { name: 'RAIDER', state: 'HOSTILE', firing: true, range: '3.4', unit: 'KM', closing: 'closing', rate: '85', shot: '2.1', hit: '62', word: 'FAIR' });
-    h7(S, h7y + 12, { guns: 'READY', who: 'YOU', msl: '4', reload: null, shields: 'RAISED', trim: 'BOW' });
+    h7(S, h7y + 12, { guns: 'READY', who: 'YOU', msl: '7', reload: null, shields: 'RAISED', trim: 'BOW' });
     // H4 rose by itself: the breach lit the hull light. The plan is the gunship's own deck.
     h4Face(S, LX, 556, { plan: { plan: K.GUNSHIP, states: { ENGINES: 'breach' }, crew: [[6, 4, true], [19, 3, false, true], [18, 5, true], [13, 4]], marks: [[8, 5, 'x']] }, planH: 88,
       rows: [

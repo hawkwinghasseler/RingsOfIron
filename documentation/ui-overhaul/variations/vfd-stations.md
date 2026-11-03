@@ -1,6 +1,6 @@
 # FILAMENT × Ship stations
 
-The ship-stations functional design (`functional-stations.md`, round 12) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The ship-stations functional design (`functional-stations.md`, round 13) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/stations.js`](../vfd/src/stations.js) over real game captures and the game's own hull art; `vfd/src/export.sh` re-renders them.
 
@@ -18,7 +18,7 @@ Mockups are drawn by [`vfd/src/stations.js`](../vfd/src/stations.js) over real g
 
 ![On deck, fire and missiles inbound](vfd/stations-deck.jpg)
 
-**Blackout at the helm (Yellow, in Emergency).** The kit's blacked-out seat (spec 5.1, rule 4). After the First Play fight a harpoon got through: the reactor is damaged, no reactor runs, and the ship is disabled. The status strip names the state and the two ways out, each key one inverse cell: `DISABLED`, P twice, `ABANDON`, B twice, `TOW` (nothing is inbound, so the beacon would answer). The causes are on their own tiles, POWER / NONE and HULL / 52%, both warnings, and the SHIP line says "disabled, reactor down" in the game's words. Every instrument of the seat is dark with its ghosts still showing, and its NO POWER face is lit behind the glass; the overlay stays up on the emergency bus. The projected HUD is the seat's, so the world is bare.
+**Blackout at the helm (Yellow, in Emergency).** The kit's blacked-out seat (spec 5.1, rule 4). After the First Play fight a harpoon got through: the reactor is damaged, no reactor runs, and the ship is disabled. The status strip names the state and the two ways out, each key one inverse cell: `DISABLED`, P twice, `ABANDON`, B twice, `TOW` (nothing is inbound, so the beacon would answer); the prompt line shows neither key, since the strip carries them. The causes are on their own tiles, POWER / NONE and HULL / 52%, both warnings, and the SHIP line says "disabled, reactor down" in the game's words. Every instrument of the seat is dark with its ghosts still showing, and its NO POWER face is lit behind the glass; the overlay stays up on the emergency bus. The projected HUD is the seat's, so the world is bare.
 
 ![Blackout at the helm](vfd/stations-blackout.jpg)
 
@@ -96,6 +96,12 @@ Spec rounds 11 and 12 (a disabled ship, then the Nasa-punk artist's round-3 note
 
 Callouts now carry no countdown; FILAMENT's already didn't. Nothing else on C, E or B moves. No meaningful criticism of the visual build remains; the notes below are functional.
 
+## Round 6
+
+Spec round 13 took both round-3 notes, and each matches what FILAMENT already drew: the seat's station board and its world symbology go dark with the seat, and while the ship is disabled the prompt line shows neither the tow nor abandoning, which the strip carries. It also gives the deck's side of a blackout, which no FILAMENT screen shows: the deck's marks stay, being the suit's own, and the deck goes to emergency lighting with its door lights and alarm beacons lit. The guide's emergency bus now says so (7.11). No screen changed.
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
 ## Functional notes sent to the stations designer
 
 Round 1 (all taken in round 6): one annunciator row with `+n MORE`, SHIP callouts that don't restate tiles, the station board dim in Green.
@@ -104,7 +110,7 @@ Round 2 (taken in round 9):
 
 1. **Callouts need a length.** FILAMENT's ticker holds 54 characters after the station tag at pitch 2; E's line "Cole: harpoons off the Raider, port side. PD has them." is exactly 54. Suggest 13.5 cap a callout at about 50 characters with the speaker's name counted, and say what happens past it (FILAMENT marquees it, one cell at a time with a hold at each end).
 
-Round 3 (after spec round 12):
+Round 3 (after spec round 12; both taken in round 13):
 
 1. **What else goes dark in a blackout.** Rule 4 names the clusters and MFDs (dark) and the overlay (up), but not the station board (8.5) or the world symbology (11). FILAMENT darkens both with the seat, since the board sits in the seat's rack and the projected HUD is the seat's. If either should stay up (the ENG tile's pip points at the reactor; a hostile still near would be worth its bracket), suggest 5.1 say so.
 2. **The tow's hint while disabled.** 7.3 keeps "[B][B] Call a tow" on the prompt line "while a tow is on offer", which includes a disabled ship, whose status strip already shows B twice; 13.4 keeps it "then", in the stranded case only. Suggest 7.3 say the stranded case, so the keys aren't on screen twice.

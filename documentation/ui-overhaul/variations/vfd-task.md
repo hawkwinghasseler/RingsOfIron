@@ -1,6 +1,6 @@
 # FILAMENT × Task-driven
 
-The task-driven functional design (`functional-task.md`, round 6) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The task-driven functional design (`functional-task.md`, round 7) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/task.js`](../vfd/src/task.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -20,7 +20,7 @@ The other two FILAMENT variations are built like consoles: racks along the edges
 
 ![Helm at rest](vfd/task-helm-quiet.jpg)
 
-**Gunnery in combat.** Two harpoons inbound, 1.4 km out on bearing 080 and 4 s from impact under their burn: the red window carries the warning with the action that fits the post (`F DECOY`) and point defense's state; the fire in the hold and Cole's wound are the cautions, and the FIRE and CREW tell-tales are lit. The target card, the weapons table and the scope fill the right, the scope at its 5 km step; Bea's standing order sits where the flight instrument would be; the schematic shows the fire and the crew.
+**Gunnery in combat.** Two harpoons inbound, 1.4 km out nearly dead ahead and 4 s from impact under their burn: the red window carries the warning (the count and the time, no bearing: their tracks and the scope show where they come from) with the action that fits the post (`F DECOY`) and point defense's state; the fire in the hold and Cole's wound are the cautions, and the FIRE and CREW tell-tales are lit. The target card, the weapons table and the scope fill the right, the scope at its 5 km step; Bea's standing order sits where the flight instrument would be; the schematic shows the fire and the crew.
 
 ![Gunnery in combat](vfd/task-gunnery-combat.jpg)
 
@@ -91,6 +91,12 @@ Spec round 6 (the Nasa-punk thread's round-3 notes) changes four things on FILAM
 
 No meaningful criticism of the visual build remains; the notes below are functional.
 
+## Round 5
+
+Spec round 7 took both round-3 notes. It keeps `impact 14 s` and moves its harpoons instead, just thrown from the raider at 3.2 km; FILAMENT keeps its harpoons 1.4 km out at `IMPACT 4 S`, which the designer confirms fits 9.2's formula as well. The missile alert no longer gives a bearing, so the warning reads `2 INBOUND`; where the harpoons come from is drawn by their tracks in the world and their marks on the scope (principle 5).
+
+Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
 ## Functional notes sent to the task designer
 
 Round 1 (all answered by spec rounds 2 and 3): SCH at gunnery, WPN under the key strip, speed at rest in the orbit frame, decoys have no stock, cautions keep their row, room names from the chassis.
@@ -102,7 +108,7 @@ Round 2 (all taken in round 5):
 3. **INT: name the object once.** The samples mix the object as the action (`E  Reactor console`) with verb phrases (`V  sit at the helm`); with two actions per object the second repeats the name. Suggest the object's name, then each key with a verb: `Helm: V sit, E panel`.
 4. **Z2 at the minimum sizes.** Built at the style guide's minimum type, the band needs about 600 × 96, so "a screen starts below the band's second row (100 units down)" holds only if the band starts at y 4. Suggest section 5 let the band's second row end by y 110.
 
-Round 3 (after round 6):
+Round 3 (after round 6; both taken in round 7):
 
 1. **The gunnery sample's impact time.** Under 9.2's own formula, `impact 14 s` can't go with SNS's two harpoons at 1.4 km: from rest a harpoon covers 1.4 km in under 10 s, and one thrown from the raider at 3.2 km closes at about 330 m/s by then and lands in about 4 s. 14 s fits harpoons about 3 km out, just thrown. Suggest `impact 4 s` (as FILAMENT draws it), or the harpoons at 3 km.
 2. **Say what a bearing is measured from.** `bearing 080` has no reference. The view and the scope are north up, so FILAMENT reads it as clockwise from that north, which puts the harpoons nearly dead ahead of a corvette heading 078. A player used to ships reads 080 as off the starboard bow, and the game's only bearing today (the dev console's `shoot`) counts off the bow counterclockwise. Suggest ALR give the reference.
