@@ -287,12 +287,12 @@ const layouts = {
   '04': ['Helm, combat (a gunship: it has a shield emitter)', () => {
     strip('HELM          BATTLE STATIONS', 'Day 0 · 00:41     1x');
     box('P3', 'Threat alert', 390, 38, 500, 60, 'interrupt', ['#2 MISSILES INBOUND · T-4 s', 'decoy ready (F) · point defence engaging']);
-    box('P2', 'Caution and warning', 12, 38, 308, 0, 'cond tight', ['^◆ BREACH     ENGINES    ●']);
+    box('P2', 'Caution and warning', 12, 38, 308, 0, 'cond tight', ['^◆ BREACH      ENGINES    ●']);
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Gunnery: 3 hits on Raider']);
     box('H2', 'Navigation (compact)', 12, 194, 308, 0, 'compact', ['NAV    Shackleton Ice · 1,240 km']);
     stack(960, 194, [
-      ['H6', 'Lock card', 'full', ['LOCK  Raider', '      HOSTILE   ◆ FIRING ON YOU', '      7.7 km · closing 12 m/s', '      shot 1.3 s · hit 62% fair'], 110],
-      ['H7', 'Armament', 'full', ['GUNS   ready · you fire', 'MSL    3 left · reload 4 s', 'SHLD   raised · trim bow'], 70],
+      ['H6', 'Lock card', 'full', ['LOCK  Raider', '      HOSTILE   ◆ FIRING ON YOU', '      3.4 km · closing 12 m/s', '      shot 2.3 s · hit 62% fair'], 110],
+      ['H7', 'Armament', 'full', ['GUNS   ready · you fire', 'MSL    3 left · ready', 'SHLD   raised · trim bow'], 70],
     ]);
     const h4 = box('H4', 'Ship condition (expanded: the hull light is lit)', 12, 558, 308, 230, 'full', [],
       { h: 118, text: 'ship plan: the breach in ENGINES, the crew sealing it, hit flashes' });
@@ -302,7 +302,7 @@ const layouts = {
       '▣main ▢turn ▣strafe          assist ON',
       'Δv 1,240 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
     chip(682, 760, 154, 'MASTER WARN BREACH');
-    box('H5', 'Contact scope · 10 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope: the raider and 2 missiles' });
+    box('H5', 'Contact scope · 5 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope: the raider and 2 missiles' });
     centreClear(); ship(640, 400); velocity(640, 400);
     contact(870, 300, 'diamond', 'Raider'); lockMark(870, 300);
     line(860, 306, 690, 392, '5 5', 1.2, '#e0e3e6'); line(880, 320, 700, 405, '5 5', 1.2, '#e0e3e6');
@@ -317,9 +317,9 @@ const layouts = {
     box('F1', 'Lock card, full', 960, 194, 308, 140, 'full', [
       'LOCK  Raider',
       '      HOSTILE   ◆ FIRING ON YOU',
-      '      7.7 km · closing 12 m/s',
+      '      3.4 km · closing 12 m/s',
       '      38 m/s rel · course 220°',
-      '      shot 1.3 s',
+      '      shot 2.3 s',
       '      kiting at gun range',
       '      engine damaged']);
     const f3 = box('F3', 'Shield control', 12, 558, 308, 186, 'full', ['230 of 300 kg · raised · trim bow'],
@@ -327,12 +327,12 @@ const layouts = {
     addLines(f3, ['emitter (S)  holding · heat 40%']);
     box('H4', 'Ship condition (no plan, no shields)', 12, 748, 308, 40, 'compact', ['○ HULL     ○ POWER     ○ LIFE SUP']);
     box('F2', 'Weapons rack', 330, 676, 620, 112, 'full', [
-      '▶ NOSE  Heavy cannon     ready             62% fair   you',
-      '▶ PORT  Autocannon Mk1   reloading 0.4 s   48% fair   you',
-      '▶ STBD  Autocannon Mk1   out of arc                   you',
-      '▶ PORT  Harpoon (MSL)    ready · 3 left               you',
-      '▶ STBD  Harpoon (MSL)    reloading 4 s · 2 left       you']);
-    box('H5', 'Contact scope · 20 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope: the raiders and the missile' });
+      '▶ NOSE      Heavy cannon  ready            62% fair  you',
+      '  FWD PORT  Autocannon    engaging MSL               PD',
+      '  FWD STBD  Autocannon    ready                      PD',
+      '▶ AFT PORT  Harpoon       ready · 3 left             you',
+      '▶ AFT STBD  Harpoon       ready · 4 left             you']);
+    box('H5', 'Contact scope · 5 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope: the raider and the missile; Raider 2 is beyond 5 km' });
     centreClear(); ship(640, 400);
     contact(870, 300, 'diamond', 'Raider'); lockMark(870, 300);
     contact(905, 470, 'diamond', 'Raider 2');
@@ -358,19 +358,19 @@ const layouts = {
       '^Abandon ship · [P] twice',
       '^Call a tow · [B] twice · 3,400 cr, 3 standing']);
     box('P2', 'Caution and warning (stays lit under X3)', 12, 38, 308, 150, 'cond tight', [
-      '^◆ EMERG O2              YOU',
-      '^◆ VACUUM     HOLD       YOU',
-      '^◆ NO POWER   damaged    YOU',
-      '^◆ CREW CRIT  Ada        ●     3:40',
-      '^◆ FIRE       BRIDGE     ●●',
+      '^◆ EMERG O2               YOU',
+      '^◆ VACUUM      HOLD       YOU',
+      '^◆ NO POWER    damaged    YOU',
+      '^◆ CREW CRIT   Ada        ●   3:40',
+      '^◆ FIRE        BRIDGE     ●',
       '^+ 1 more: SMOKE']);
     box('P4', 'Message feed (routine messages wait in combat)', 960, 38, 308, 40, 'slot');
     deckPlan();
     hatch(770, 301, 129, 193);                                       // fire, bridge forward
     rect(381, 301, 258, 193, { stroke: '#c9ccd0', 'stroke-dasharray': '2 3' }); // vacuum: the hold
     circ(712, 372, 6, { fill: '#d8dbde' }); wtext(722, 366, 'captain');
-    circ(800, 360, 5, { fill: '#9aa0a6' }); circ(820, 380, 5, { fill: '#9aa0a6' });   // crew at the fire
-    circ(560, 440, 6, { fill: '#9aa0a6' }); circ(582, 440, 5, { fill: '#9aa0a6' });   // Ada down, the medic
+    circ(810, 370, 5, { fill: '#9aa0a6' });   // Bea at the fire
+    circ(560, 440, 6, { fill: '#9aa0a6' }); circ(582, 440, 5, { fill: '#9aa0a6' });   // Ada down, Cole tending her
     tag(800, 314, 'FIRE'); tag(800, 446, 'SMOKE'); tag(400, 330, 'VACUUM'); tag(548, 456, 'Ada');
     wtext(380, 552, 'D3 hazard tags: the whole corvette is in view, so nothing needs an edge pointer');
     chip(560, 681, 160, 'MASTER WARN VACUUM');
@@ -408,17 +408,18 @@ const layouts = {
     box('X2', 'Boarding panel (H6 gives way: the Raider is the Lock)', 960, 194, 308, 0, 'full', [
       'BOARD  Raider · latched',
       '       taken: crew surrendered',
-      'PARTY  4 aboard · holding',
+      'PARTY  2 aboard · holding',
       'SALV   3 parts marked · 1 off',
       'CARGO  2 lots coming across',
       '       prisoners to bring aboard',
       '^[K] Boarding       [U] Cast off']);
     shipLights();
     ship(600, 405);
-    rect(658, 393, 92, 24, { fill: '#3a3d42', 'stroke-dasharray': '4 3' });
-    wtext(664, 374, 'Raider', 'tag'); lockMark(704, 405);
-    wtext(470, 470, 'latched: the ship is docked to the raider and can\'t fly,', '');
-    wtext(470, 486, 'so the flight instruments retire as when docked', '');
+    rect(558, 364, 84, 26, { fill: '#3a3d42', 'stroke-dasharray': '4 3' });
+    el('polygon', { points: `558,364 544,377 558,390`, fill: '#3a3d42', stroke: 'var(--world-line)', 'stroke-dasharray': '4 3' });
+    wtext(560, 344, 'Raider', 'tag'); lockMark(600, 377);
+    wtext(470, 470, 'latched port to port: the raider lies over the port side, nose aft;', '');
+    wtext(470, 486, 'the ship can\'t fly, so the flight instruments retire as when docked', '');
   }],
   '09': ['Map (full-screen mode)', () => {
     strip('HELM      ▲ 1', 'Day 0 · 00:12     1x');

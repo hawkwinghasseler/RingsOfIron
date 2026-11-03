@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 5.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 6.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -335,7 +335,7 @@ not (section 7, H4). Combat alone does not expand it: a healthy ship in a fight 
 
 ³ Only on a ship with a shield emitter. The starter corvette has none, so there fire control is F1, F2
 and F4, and everything about shields is left out: H4's shields light and bar, H7's shields line, and
-the SHLD conditions (which can't arise). C1 still lists the shield orders, with the reason.
+the SHIELD conditions (which can't arise). C1 still lists the shield orders, with the reason.
 
 ⁴ The Docked column also covers being latched to another ship for boarding: the screen is the same,
 with X2 in X1's place (section 8).
@@ -504,7 +504,7 @@ whether it is being handled.
 
 **Zone.** Left top, 308 x 150: six rows of 24 units. Up to five conditions; when there are more, the
 sixth row is "+n more" with as many of the hidden codes as fit its 34 characters ("+ 2 more: SMOKE,
-SHLD DOWN"; "+ 5 more: SMOKE, LOW O2, …"), and a click on it opens
+SHIELD DOWN"; "+ 5 more: SMOKE, O2 LOW, …"), and a click on it opens
 Ship › Systems at the damage control board. Hidden when there is nothing to show (the dark cockpit).
 In full-screen modes it collapses to the chip in P1.
 
@@ -514,25 +514,26 @@ In full-screen modes it collapses to the chip in P1.
 | Field | Chars | Content |
 |---|---|---|
 | Severity | 1 | ◆ warning, ▲ caution. The styles draw them; the shape is the colour-free channel |
-| Code | 10 | The catalogue's short form. The long form is the hover text and the Log's wording |
+| Code | 11 | The catalogue's short form, in whole words where they fit. The long form is the hover text and the Log's wording |
 | Detail | 10 | Where, who or why: a room (section 5.5), with more rooms as "+n" ("REACTOR +1"); a name, cut to 10; a cause ("stunned"); an amount only when nothing else on screen shows it ("3 aboard") |
-| Handling | 4 | YOU when it needs the captain; a dot per crew member on it ("●●"; four or more "●4"); blank when the code has no handling |
+| Handling | 3 | YOU when it needs the captain; a dot per crew member on it, up to three ("●●"), and from four "●4"; blank when the code has no handling |
 | Timer | 5 | The time to harm, when the condition has one: "3:20", "12:05"; from an hour, "2 h" |
 
 A condition that clears by itself has no harm timer: its handling and timer fields read together as
 the time until it recovers, "back 0:12".
 
 ```
- ◆ VACUUM     HOLD       YOU
- ◆ CREW CRIT  Ada        ●     3:40
- ◆ FIRE       BRIDGE     ●●
- ◆ NO POWER   stunned    back 0:12
- ▲ SMOKE      BRIDGE
- + 1 more: LOW O2
+◆ VACUUM      ENGINES    YOU
+◆ CREW CRIT   Ada        ●   3:40
+◆ FIRE        BRIDGE     ●●
+◆ NO POWER    stunned    back 0:12
+▲ SMOKE       BRIDGE
++ 1 more: O2 LOW
 ```
 
-Here the ship is dead for 12 s, but its power is due back by itself, so X3 doesn't offer a way out
-(section 8). Walkthrough 11.7 shows the case where it does.
+This is the gunship (five crew; its rooms are ENGINES, REACTOR and BRIDGE). It is dead for 12 s, but
+its power is due back by itself, so X3 doesn't offer a way out (section 8). Walkthrough 11.7 shows
+the case where it does.
 
 **Handling** has three states. The art directions draw them as they like (a figure and a count, a
 dot per crew member, a flag for nobody); the text forms above are the budget they must fit.
@@ -564,11 +565,11 @@ leaves the row out. Each still lights the master alert cue.
 | CAPT WOUND | D1 | On deck |
 | FAST APPR | H3's closing gauge | H3 is on screen (the helm in an approach) |
 | PLAN SHORT | H2's PLAN line | H2 shows it (the helm in cruise or warp) |
-| SHLD DOWN, SHLD WEAK | F3 | At fire control |
+| SHIELD DOWN, SHIELD WEAK | F3 | At fire control |
 
 **Details never repeat a value.** The detail field says where, who or why. It carries an amount only
 when no instrument on screen shows it: the hull, oxygen and power figures are on H4's bars, so HULL
-DMG, LOW O2 and EMERG O2 have no amount in P2.
+DAMAGE, O2 LOW and EMERG O2 have no amount in P2.
 
 **Behaviour.** A new warning row arrives at once and pulses for 2 s; the game's existing UI warning
 sound plays with it (`NoticeAudio`). A row stays while its condition holds and leaves when it clears.
@@ -604,20 +605,20 @@ here.
 | LATCHED ON | Pirate latched on | Warning | A pirate latched on for its boarding (`PirateBoarding`) | The pirate's name; the hover says "fire on it to break it off" | Needs you | Harm: time until it casts off with the take (`BOARD_SECONDS`) | `PirateBoarding` |
 | NO POWER | No power | Warning | No working reactor feeds the ship | Why: "stunned", "shorted", "damaged", "off" | Clears by itself (stun, short reset), crew on it (repair), or needs you (switched off) | Back: the stun or the reset | Power routing, `DamageStates.AUTO_RESET` |
 | EMERG O2 | Emergency oxygen | Warning | Oxygen tanks dry, life support on its reserve | – (the kilograms are H4's) | Needs you (refill at a station) | – | `ShipStatusProvider.emergencyOxygenKg` |
-| SYS DOWN | System down | Caution; Warning for the engines or helm in flight | A switched-on vital system is not working: an engine, the helm, the weapons console, a gun, a shield emitter, life support | The system: "ENGINE", "HELM", "GUN NOSE", "SHIELD 2", "LIFE SUP"; why (damaged, shorted, stunned, cut off from every reactor) in the hover | Crew on it, or clears by itself | Back: the reset or the stun | Subsystems, power routing |
-| LOW PRESS | Low pressure | Caution | A room under 70% pressure | Room, "+n" | Crew on it (sealing) | – | `ShipAlerts` |
+| SYSTEM DOWN | System down | Caution; Warning for the engines or helm in flight | A switched-on vital system is not working: an engine, the helm, the weapons console, a gun, a shield emitter, life support | The system: "ENGINE", "HELM", "LIFE SUP", "SHIELD 2", or a weapon's mount by F2's rule ("NOSE", "FWD PORT"); the weapon and why (damaged, shorted, stunned, cut off from every reactor) in the hover | Crew on it, or clears by itself | Back: the reset or the stun | Subsystems, power routing |
+| PRESS LOW | Low pressure | Caution | A room under 70% pressure | Room, "+n" | Crew on it (sealing) | – | `ShipAlerts` |
 | SMOKE | Smoke | Caution | Thick smoke in a room | Room, "+n" | – | – | `ShipAlerts` |
-| HULL DMG | Hull damaged | Caution | Mean hull integrity under the damaged threshold | The worst room: "HOLD" (the percent is H4's) | Crew on it (repairing) | – | `ShipAlerts` |
+| HULL DAMAGE | Hull damaged | Caution | Mean hull integrity under the damaged threshold | The worst room: "HOLD" (the percent is H4's) | Crew on it (repairing) | – | `ShipAlerts` |
 | POWER LOW | Power low | Caution | Reactor output under 60% of its rating (a damaged reactor gives less), or the store under 25% for 3 s (weapons draining it) | Why: "damaged" or "weapons" (the figures are H4's) | – | – | Power circuits |
-| SHLD DOWN | Shields down | Caution | In combat with shields lowered, or every emitter out | "lowered", "emitters" | Needs you (raise them), or crew on it (repairing emitters) | – | Shield cloud |
-| SHLD WEAK | Shield weak | Caution | Cloud under 25% of capacity, or an emitter tripped | The thin side ("stern") or the emitter ("SHIELD 2") | Clears by itself | Back: the trip's recovery, when an emitter tripped | Shield cloud |
-| LOW O2 | Low oxygen | Caution | Oxygen tanks under 25% | – (the percent is H4's) | – | – | Ship status |
+| SHIELD DOWN | Shields down | Caution | In combat with shields lowered, or every emitter out | "lowered", "emitters" | Needs you (raise them), or crew on it (repairing emitters) | – | Shield cloud |
+| SHIELD WEAK | Shield weak | Caution | Cloud under 25% of capacity, or an emitter tripped | The thin side ("stern") or the emitter ("SHIELD 2") | Clears by itself | Back: the trip's recovery, when an emitter tripped | Shield cloud |
+| O2 LOW | Low oxygen | Caution | Oxygen tanks under 25% | – (the percent is H4's) | – | – | Ship status |
 | PROP LOW | Propellant low | Caution | `FlightWarnings` low-propellant rule (return trip × 1.25, or 20%) | What the trip home needs: "home 1,240" (what is left is H1's) | Needs you | – | `FlightWarnings` |
 | PLAN SHORT | Plan short of Δv | Caution | Planned delta-v exceeds what is left | What the plan needs: "need 1,240" | Needs you | – | `Navigation.deltaVNeeded/Left` |
 | CREW OUT | Crew outside | Caution | Crew on EVA while thrusting, or a burn due within 60 s | Name, "+n": "Ada +1" | Needs you | Harm: time to the burn | `Spacewalks` |
 | NO HELM | Nobody at the helm | Caution | Nobody at the helm (no captain, no helmsman) while a planned burn is due within 60 s or the ship is turning | – | Needs you | Harm: time to the burn | `Bridge`, `HelmOrders` |
 | FAST APPR | Approach too fast | Caution; Warning at twice the safe speed | Closing faster than the safe speed for the distance, while H3 is not on screen (when it is, H3's closing gauge shows it, with the time to contact) | "4 m/s over" | Needs you, or crew on it when the helm flies a dock order | Harm: time to contact | `PlayerDocking.safeSpeed` |
-| DOCK STRN | Docking strain | Caution | Docking strain over 50% | "64%" | – | – | `DockingSystem.strain` |
+| DOCK STRAIN | Docking strain | Caution | Docking strain over 50% | "64%" | – | – | `DockingSystem.strain` |
 
 The autopilot's hold is not a condition: nothing is wrong while it waits for the captain's word. It
 shows in P1's helm authority field.
@@ -636,6 +637,8 @@ every mode.
 **Content.** Two lines:
 
 1. "2 MISSILES INBOUND · T-4 s": the count and the soonest impact, at P3's size (34 characters).
+   The impact time must count down with the clock, so it includes the missile's own burn (section
+   14); today's estimate runs long while the motor burns and then falls faster than the clock.
 2. The decoy, "decoy ready (F)" or "decoy in 2 s" (decoys never run out: a 3 s cooldown,
    `PlayerGunnery.DECOY_COOLDOWN`), at any seat; on deck there is no decoy to throw, so it is left
    out. Then "point defence engaging" while PD is firing at one.
@@ -648,7 +651,8 @@ only the count and the decoy.
 **When.** From the first inbound missile until none is inbound. On deck it is the same widget (no
 separate deck line).
 
-**Data.** `ThreatProvider`, `UiHud.flashIntercept`, the decoy cooldown.
+**Data.** `ThreatProvider` (with the impact time changed, section 14), `UiHud.flashIntercept`, the
+decoy cooldown.
 
 **Replaces.** `ThreatOverlay` banner, the on-deck missile line, the "MISSILE WARNING" notices.
 
@@ -659,8 +663,8 @@ separate deck line).
 **Zone.** Right top. At most 3 messages, newest on top. In full-screen modes, one line at the foot of
 the mode.
 
-**Message anatomy.** Source tag · text. Sources: Helm, Gunnery, Engineering, Medical, Crew, Station,
-Sponsor, Comms, Log.
+**Message anatomy.** Source tag · text. Sources: Helm, Gunnery, Shields, Engineering, Medical, Crew,
+Boarding, Station, Sponsor, Comms, Log.
 
 **Behaviour.** Routine messages hold 5 s, notable ones 8 s (today's INFO and IMPORTANT). A repeat
 within the hold counts ("×3") instead of stacking (as `NoticeLog` already does). Every message goes to
@@ -926,7 +930,9 @@ range rings and the range setting. North up, like the view.
 
 **Range.** Automatic by situation (approach 2 km; combat: the smallest step that holds the lock and
 every inbound missile; cruise: 50 km), with − and + (each at least 24 units) to set it by hand until
-the situation changes. The steps stay `RadarScope.RANGES`.
+the situation changes. The steps are `RadarScope.RANGES` with a 5 km step added (0.5, 2, 5, 10, 50,
+250, 1,000 km): fights sit inside 4 km (lasers 3, the heavy cannon 3.5, point defence 4), which on the
+10 km step fill only the inner third.
 
 **When.** Approach and combat always. In cruise, only while a contact is inside 50 km; otherwise it
 collapses to a 48 x 48 button showing the count of contacts beyond.
@@ -949,8 +955,8 @@ chance as a percentage (`HitChance` gives a probability) with its word.
 ```
 LOCK  Raider
       HOSTILE   ◆ FIRING ON YOU
-      4.2 km · closing 85 m/s
-      shot 1.3 s · hit 62% fair
+      3.4 km · closing 85 m/s
+      shot 2.1 s · hit 62% fair
 ```
 
 **When.** Whenever a lock is held at the helm, except under warp, during an approach without combat,
@@ -967,7 +973,8 @@ and while latched to the Lock for boarding (X2 names it).
 **Zone.** Right middle, under H6, 308 x 70.
 
 **Content.** Guns: ready, reloading (s), no power, out of arc; who fires them: you, the gunner, or
-point defence only. Missiles: left, reload. Shields, on a ship with an emitter: raised or lowered,
+point defence only. Missiles: how many are left, and ready or the second until the next can go (a
+launcher throws one a second, and only a station restocks it). Shields, on a ship with an emitter: raised or lowered,
 and the trim. At the helm this is where the shield settings live: H4's bar shows only how much cloud
 there is, and the full control is F3. The decoy is P3's, not a row here.
 
@@ -990,9 +997,9 @@ gun's arc and hit chance are F2's, one row per mount, so F1 doesn't repeat them.
 ```
 LOCK  Raider
       HOSTILE   ◆ FIRING ON YOU
-      4.2 km · closing 85 m/s
+      3.4 km · closing 85 m/s
       120 m/s rel · course 040°
-      shot 1.3 s
+      shot 2.1 s
       kiting at gun range
       engine damaged
 ```
@@ -1003,12 +1010,26 @@ LOCK  Raider
 
 **Zone.** Bottom centre, up to 620 x 150.
 
-**Row anatomy.** Mount (nose, port, starboard ...) · weapon · state (ready, reloading s, no power,
-damaged, stunned s, out of arc) · hit chance on the lock · ammunition for launchers · controller
-(you, crew, PD). The mounts "in hand" (all at the console, one at a gun) are marked.
+**Row anatomy.** Mount · weapon · state (ready, reloading s, no power, damaged, stunned s, out of
+arc; for point defence, engaging) · hit chance on the lock · missiles left, for a launcher ·
+controller (you, crew, PD). The mounts "in hand" (all but point defence at the console, one at a gun)
+are marked. A point-defence mount picks its own targets, so it is never in hand and has no hit chance.
 
-Missiles are a row of their own (left, reload). The decoy is not in the rack: it is P3's. At a gun
-seat the rack shrinks to that gun's row and the missiles' row.
+**Mount names** follow the game's rule by facing (`StationYard.hardpointName`): NOSE, PORT, STBD, AFT.
+Where two mounts share a facing, FWD or AFT goes before it by where they sit along the hull: the
+gunship's are NOSE, FWD PORT, FWD STBD (its point-defence autocannons), AFT PORT and AFT STBD (its
+harpoon launchers).
+
+```
+▶ NOSE      Heavy cannon  ready            62% fair  you
+  FWD PORT  Autocannon    engaging MSL               PD
+  FWD STBD  Autocannon    ready                      PD
+▶ AFT PORT  Harpoon       ready · 3 left             you
+▶ AFT STBD  Harpoon       ready · 4 left             you
+```
+
+The decoy is not in the rack: it is P3's. At a gun seat the rack shrinks to that gun's row and any
+launcher's.
 
 **Data.** Weapon mounts (`WeaponMountComponent`: state, `ammo`, cooldown), power, `HitChance`, arc
 (needs a provider).
@@ -1170,7 +1191,7 @@ helm, as undocking from a station is).
 ```
 BOARD  Raider · latched
        taken: crew surrendered
-PARTY  4 aboard · holding
+PARTY  2 aboard · holding
 SALV   3 parts marked · 1 off
 CARGO  2 lots coming across
        prisoners to bring aboard
@@ -1255,8 +1276,9 @@ with the frame tag on them when it is not ORBIT.
 
 ### W3 Burn cues
 
-The next burn's arrow from the ship with its countdown. Later burns appear only on hover of H2's NEXT
-line, or in the map. (Today all are drawn with numbers.)
+The next burn's arrow from the ship, with no number: its countdown is H2's NEXT line, on screen with
+it. Later burns appear only on hover of H2's NEXT line, or in the map. (Today all are drawn with
+numbers.)
 
 ### W4 Approach corridor
 
@@ -1439,8 +1461,8 @@ appears at the helm console as the captain walks up; D2 appears over whatever th
 
 The ship is disabled, its reactor damaged, and its hold has lost its air. X3 offers abandon ship and the tow with their
 costs. P2 lists, in its order: EMERG O2, VACUUM and NO POWER, which nobody is free to handle (of the
-four crew, Ada is down, one tends her and two fight the fire); CREW CRIT and FIRE, with the crew on
-them; and SMOKE under "+1 more". D1 shows the captain's suit and
+corvette's three crew, Ada is down, Cole tends her and Bea fights the fire alone); CREW CRIT and FIRE,
+with the crew on them; and SMOKE under "+1 more". D1 shows the captain's suit and
 its air, not yet critical. The whole corvette is in view, so D3 tags the fire, the vacuum and Ada where
 they are; on a bigger ship the far ones would be pointers at the edge. The master alert cue
 stands alone at the bottom centre.
@@ -1550,7 +1572,7 @@ designs from the other two threads may differ; this section applies to skinning 
 | Small orbit panel and its caption hints | Bottom right | Duplicates the map and the orbit numbers | M1; H2 |
 | "ALL SYSTEMS NOMINAL", four bars at 100% | Ship panel, gauges | Dark cockpit | H4 compact lights |
 | "Dock port 1/1: S active, free" | Status column | Debug phrasing; shown even far from any port | H3 port line, approach only |
-| "strain 0%" | Status column | Debug value | P2 DOCK STRN above 50% |
+| "strain 0%" | Status column | Debug value | P2 DOCK STRAIN above 50% |
 | Raw approach numbers | Status column | Unflyable as text | H3 |
 | Fixed bottom key hint line | Bottom edge | Permanent teaching of known keys | P6 learning hints; M6 |
 | "Lighting on/off" (O) | Notices | Graphics option, not play | Settings › Graphics; developer layer; O opens the orders menu |
@@ -1583,6 +1605,7 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 | Contact state | Change `HudMarkerComponent` | Allegiance and state as a value (from `HostileLabel`), not only tint and label text |
 | Inspect | New | What is under the pointer on deck: crew, system, tile, door, bay, with their fields |
 | `BoardingProvider` | Change | The boarding party's size and what it is doing (crossing, fighting, holding), for X2 |
+| `ThreatProvider` | Change | Time to impact with the missile's closing burn in it: t = (−v + √(v² + 2ad)) / a, with a the missile's `closingBurn` while it has fuel above its reserve. Today's time (`CombatThreats`) is closest approach at the present speed, an upper bound that runs long while the motor burns: a harpoon from 7.7 km reads 37 s five seconds after launch, when it lands in about 17 |
 
 The existing providers (`TradeProvider`, `YardProvider`, `MissionProvider`, `BoardingProvider`,
 `CrewProvider`, `ShipyardProvider`, `OrbitPathProvider`, `ManeuverPlannerProvider`,
@@ -1653,3 +1676,4 @@ largest scale, and the centre stays clear.
 | 3 | 1 (art directions' critiques) | One home per datum enforced across every widget: approach distance and closing speed are H3's alone, the lock range the lock card's, the decoy P3's, missile times P3's or F4's, Δv left H1's, plan shortfall H2's, shield settings H7's at the helm and F3's at fire control; P2 details name where, never a value another widget shows. P2 rebuilt as fixed-width rows (severity, 10-character code, detail, handling, timer) with harm and recovery timers; handling shows YOU or a dot per crew member. The captain's suit air leaves P2 for D1, then X3 when critical. Acknowledge for warnings. P3 is two lines. H6 shows the state in one word, FIRING ON YOU as its own flag and the hit chance as a percentage. The starter corvette has no shield emitter, so the shields light, bar, H7 row and F3 appear only on a ship that has one. Room names follow the rule the task design already uses (BRIDGE, HOLD, ...). D3 becomes on-screen tags plus edge pointers. C1 grows to 620 x 250 and gives each reason once. Labels may drop to 12 units. Wireframes redrawn with a check that no text runs past its box; combat and fire control show the gunship |
 | 4 | 2 (self-critique) | Latched to another ship is the Boarding situation, not Docked: the screen is the docked one with X2 in X1's place, and H6 gives way when the latched ship is the Lock. X2 gets its size, an example and a cast-off key; wireframe 13 and walkthrough 11.13 added; the provider must give the party's size and activity. X3 fits under P3: Abandoning replaces Disabled, and a second state shows as one line. P2's "+n more" row lists only the codes that fit. In full-screen modes P1's chip is the master alert cue; docked or latched, the cue stands alone at the bottom centre |
 | 5 | 2 (VFD critique) | X2 gives the state a row of its own (seven rows, 308 x up to 150), so its worst case fits 34 characters. X3 doesn't offer abandoning or a tow while power is due back by itself; P2's NO POWER row counts it down, and walkthrough 11.7 now has a damaged reactor, which is a real emergency. The master alert cue stays lit under X3. Sample data made true to the game: a delivery to the ice mine is 40 Food (it buys food, and the corvette's hold takes 40), and missile times fit what a harpoon or dart can fly (T-4 s at 7.7 km, not T-37 s) |
+| 6 | 2 (NASA-punk critique) | P2 codes use whole words where they fit (HULL DAMAGE, SHIELD DOWN, SHIELD WEAK, SYSTEM DOWN, DOCK STRAIN) and put the noun first (O2 LOW, PRESS LOW): the code field grows to 11 characters and handling shrinks to 3, which still holds YOU, three dots or ●4. The missile impact time must include the missile's closing burn (section 14). Version 5 was wrong to call T-37 s at 7.7 km impossible: it is today's estimate early in a flight that lands in about 22 s; the examples stay, now read by the new estimate. F2 names mounts by the game's facing rule, with FWD and AFT to tell two apart, shows point defence as PD and never in hand, and shows launchers as ready with missiles left (they fire a second apart and only a station restocks them). H5 gains a 5 km step. W3's burn arrow drops its countdown, which is H2's. P4 gains the Shields and Boarding sources. Sample data: the corvette carries three crew, so 11.7's fire has one on it and X2's party is two; the lock sits at 3.4 km, inside the heavy cannon's reach, for its 62%; the latched raider lies over the port side, nose aft |
