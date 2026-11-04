@@ -116,6 +116,25 @@ class OpticTest {
     }
 
     @Test
+    void aMarkOnALocksBracketsOrANavsDiamondIsCoveredToo() {
+        Insets.Inset in = inset(640f, 400f, 640f, 400f);
+        // Where the lock's top tick goes, 70 units up; at its brackets' top right corner; at the nav's right point
+        float[] tick = {632f, 322f, 16f, 8f}, corner = {696f, 334f, 6f, 6f}, point = {703f, 404f, 6f, 6f};
+        for (float[] b : new float[][] {tick, corner, point}) {
+            assertFalse(Optic.covers(in, H, b[0], b[1], b[2], b[3]), "clear of a plain ring at " + b[0] + ", " + b[1]);
+        }
+        in.locked = true;
+        assertTrue(Optic.covers(in, H, tick[0], tick[1], tick[2], tick[3]), "on the lock's tick");
+        assertTrue(Optic.covers(in, H, corner[0], corner[1], corner[2], corner[3]), "on the lock's bracket");
+        assertFalse(Optic.covers(in, H, point[0], point[1], point[2], point[3]), "beside the lock's side tick");
+        in.locked = false;
+        in.nav = true;
+        assertTrue(Optic.covers(in, H, point[0], point[1], point[2], point[3]), "on the nav's point");
+        assertFalse(Optic.covers(in, H, tick[0], tick[1], tick[2], tick[3]), "past the nav's top point");
+        assertFalse(Optic.covers(in, H, corner[0], corner[1], corner[2], corner[3]), "between the nav's points");
+    }
+
+    @Test
     void theRoomAskedOfTheGameHoldsTheMarksAndATwoLineCaption() {
         float picture = 56f, ring = picture + Optic.RING_GAP, mark = Optic.markOut(lock);
         assertTrue(ring + mark <= picture + Optic.ABOVE, "the lock's ticks above: " + (ring + mark));
