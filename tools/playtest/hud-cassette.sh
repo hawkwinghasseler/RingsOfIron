@@ -69,10 +69,14 @@ key m; pause 1.5; shot t05-map; key m; pause 1
 cmd raider 7 raider_darts; pause 3; lock_raider; pause 1; shot t06-raider
 pause 8; shot t07-missiles
 pause 5; shot t08-missiles-later
+# Context: the orders panel swung up over the seat's instrument (Alt+O) in the fight, and down again
+if [ "$SPEC" = context ]; then key alt+o; pause 0.8; shot c01-orders; key alt+o; pause 0.5; fi
 # Stand up from the helm: the deck
 key v; pause 1.5; shot t09-deck
 # Walk to the weapons console: gunnery
 if to_weapons; then pause 1.5; shot t10-gunnery; pause 6; shot t11-gunnery-later; fi
+# Context: the raider beaten and latched to, at the weapons console: the boarding panel; then cast off
+if [ "$SPEC" = context ]; then cmd disable raider; pause 1; cmd latch; pause 2.5; shot c02-latched; key u; pause 2.5; fi
 # The hull beaten in and a hole: the schematic comes up outside
 cmd hull 0.45; cmd damage; pause 2; shot t12-damage
 # No reactor: the ship is disabled, the crisis placard comes down (at the guns the tow key does
