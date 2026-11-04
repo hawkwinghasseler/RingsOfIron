@@ -77,6 +77,11 @@ class FmtTest {
         assertEquals("KESTREL", Fmt.name("The Kestrel", 7));
         assertEquals("", Fmt.name(null, 8));
         assertEquals("HAUL", Fmt.name("Hauler 123456", 4));
+        // The game's tags on a marker's label are not the name
+        assertEquals("RAIDER 6", Fmt.name("Pirate raider 6 (surrendered)", 10));
+        assertEquals("KESTREL", Fmt.name("Kestrel [contract]", 14));
+        assertEquals("BATTERY 23", Fmt.name("Battery 23 (silenced) [contract]", 14));
+        assertEquals("(", Fmt.bare("("));
     }
 
     @Test
