@@ -1,14 +1,18 @@
 package com.ringsofiron.uihud.variants.vfd.context;
 
 import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.providers.BoardingProvider.BoardingBoard;
 import com.ringsofiron.uihud.variants.ClassicPart;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.FilamentActor;
+import com.ringsofiron.uihud.variants.vfd.Optic;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -325,6 +329,28 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         if (actor != null) actor.dispose();
         actor = null;
         host = null;
+    }
+
+    @Override
+    public void panels(Array<Rectangle> out) {
+        // W7: the insets are clamped to the world area, clear of every widget and the racks
+        world.panels(out, width, height);
+    }
+
+    @Override
+    public boolean drawsInsets() {
+        return true;
+    }
+
+    @Override
+    public void insetRoom(Insets.Room out) {
+        out.set(Optic.SIDE, Optic.ABOVE, Optic.BELOW);
+    }
+
+    @Override
+    public boolean wantsInset(Insets.Role role) {
+        // The own ship, Lock and Nav while the world's overlays show (W7)
+        return world.on;
     }
 
     @Override

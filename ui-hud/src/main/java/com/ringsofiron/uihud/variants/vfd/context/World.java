@@ -1,11 +1,13 @@
 package com.ringsofiron.uihud.variants.vfd.context;
 
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.providers.ContactProvider.Contact;
 import com.ringsofiron.uihud.providers.ContactProvider.Kind;
 import com.ringsofiron.uihud.providers.FlightStatusProvider.FlightStatus;
@@ -17,6 +19,7 @@ import com.ringsofiron.uihud.variants.vfd.Drive;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.Fmt;
 import com.ringsofiron.uihud.variants.vfd.Kit;
+import com.ringsofiron.uihud.variants.vfd.Optic;
 import com.ringsofiron.uihud.variants.vfd.Phosphor;
 
 /**
@@ -29,6 +32,11 @@ import com.ringsofiron.uihud.variants.vfd.Phosphor;
  * markers at the helm carry the frame's tag when it is not ORBIT, on the side away from the ship; the
  * lead reticle with a lock at the weapons seats and at the helm in a fight; missiles with their
  * predicted tracks and where the inbound ones will strike.
+ *
+ * <p>W7, the inset views: the game's magnified insets in the kit's ring of dots, clear of every
+ * widget, the side columns and the racks. Each carries its Lock or Nav mark and its craft's label as
+ * W1 writes it, which then has none in the view nor an edge marker; the marks under an inset are left
+ * out and counted on it.
  */
 final class World {
     static final int MARKS = 24, EDGES = 12, MISSILES = 16, CROSSES = 6, BOXES = 16;
@@ -72,7 +80,7 @@ final class World {
     final Cross[] crosses = new Cross[CROSSES];
     int markCount, edgeCount, missileCount, crossCount;
     boolean on;
-    boolean vel, velSquare;
+    boolean vel, velSquare, proShown, retroShown;
     String velTag = "";
     float proX, proY, retroX, retroY, velDx, velDy;
     boolean lead, leadOnTarget;
@@ -85,6 +93,13 @@ final class World {
     /** Labels placed so far, to drop the lower ones that would overlap them. */
     private final float[] placed = new float[MARKS * 4];
     private int placedCount;
+    /** The game's magnified insets this frame (W7), and how each reads. */
+    final Insets.Inset[] insets = new Insets.Inset[Insets.MAX];
+    final Optic.Look[] looks = new Optic.Look[Insets.MAX];
+    int insetCount;
+    private float stageHeight = Geo.H, ownRing, floor = Geo.H;
+    private final Optic.Layout optic = new Optic.Layout();
+    private final Rectangle[] panels = new Rectangle[BOXES + 2];
 
     private final Vector2 v = new Vector2(), lp = new Vector2();
 
@@ -93,6 +108,8 @@ final class World {
         for (int i = 0; i < EDGES; i++) edges[i] = new Edge();
         for (int i = 0; i < MISSILES; i++) missiles[i] = new Missile();
         for (int i = 0; i < CROSSES; i++) crosses[i] = new Cross();
+        for (int i = 0; i < Insets.MAX; i++) looks[i] = new Optic.Look();
+        for (int i = 0; i < panels.length; i++) panels[i] = new Rectangle();
     }
 
     /** Starts a frame's widget boxes. */
@@ -111,17 +128,45 @@ final class World {
     }
 
     /**
+     * What the inset views keep off (W7), as the game takes them (UI units, y up, on a stage
+     * {@code width} x {@code height}): every widget's box, the status strip and the bottom rack.
+     */
+    void panels(Array<Rectangle> out, float width, float height) {
+        if (!on) return;
+        for (int i = 0; i < boxCount; i++) {
+            float x0 = boxes[4 * i], y0 = boxes[4 * i + 1], x1 = boxes[4 * i + 2], y1 = boxes[4 * i + 3];
+            out.add(panels[i].set(x0 - 6f, height - y1 - 6f, x1 - x0 + 12f, y1 - y0 + 12f));
+        }
+        out.add(panels[BOXES].set(0f, height - Geo.STRIP_B, width, Geo.STRIP_B));
+        if (floor < height) out.add(panels[BOXES + 1].set(0f, 0f, width, height - floor));
+    }
+
+    /**
      * Lays out this frame's marks on a {@code width} x {@code height} stage. {@code floor} is the y
      * (down) of the bottom rack's top, {@code edges} the centre's box (l, t, r, b) the edge markers keep
      * to; {@code shows} which ranges a widget already gives: the Lock's, the Nav's, the hostiles'.
      */
     void update(HudData d, Situations s, ViewportManager views, float width, float height, float floor, float[] centre,
             boolean lockShown, boolean navShown, boolean hostilesShown, boolean missileTimesShown, int frame) {
-        markCount = edgeCount = missileCount = crossCount = placedCount = 0;
+        markCount = edgeCount = missileCount = crossCount = placedCount = insetCount = 0;
         vel = lead = false;
         TransformComponent ship = d.ctx.ship == null ? null : d.ctx.ship.getComponent(TransformComponent.class);
         on = s.exterior() && d.ctx.exteriorView && !s.fullScreen && ship != null && views != null;
         if (!on) return;
+        stageHeight = height;
+        this.floor = floor;
+        ownRing = 0f;
+        for (int i = 0; i < d.insets.count() && insetCount < Insets.MAX; i++) {
+            Insets.Inset in = d.insets.get(i);
+            insets[insetCount] = in;
+            Optic.Look look = looks[insetCount++].clear();
+            look.text = Phosphor.ZINC;
+            if (in.own) {
+                // The own ship goes unnamed, and quiet
+                look.level = Drive.DIM;
+                if (in.centered) ownRing = in.radius + Optic.RING_GAP;
+            }
+        }
         left = 8f;
         right = width - 8f;
         top = Geo.STRIP_B + 4f;
@@ -159,6 +204,20 @@ final class World {
                     lockedHalf = half;
                 }
                 boolean showRange = c.locked ? !lockShown : c.nav ? !navShown : hostile && !hostilesShown;
+                int own = insetOf(c);
+                if (own >= 0) {
+                    // On its inset rather than in the view or at the edge, labelled as W1 would label it
+                    Optic.Look look = looks[own];
+                    boolean named = !quiet || p == NAV || p == OBJECTIVE || p == LOCK && !s.warp;
+                    look.name = named ? label(c, Optic.CELLS) : "";
+                    look.sub = named && showRange ? Fmt.rangeText(c.range) : "";
+                    look.color = hostile ? Phosphor.RED : Phosphor.ZINC;
+                    look.mark = Phosphor.ZINC;
+                    look.lock = c.locked;
+                    look.nav = c.nav && !c.locked;
+                    look.level = Drive.NORM;
+                    continue;
+                }
                 if (!inside(sx, sy)) {
                     // One edge marker for each that matters: the Lock, the Nav, the objective, hostiles
                     boolean matters = p <= HOSTILE && (!quiet || p == NAV || p == OBJECTIVE);
@@ -167,6 +226,12 @@ final class World {
                         edge(sx, sy, showRange ? name + " " + Fmt.rangeText(c.range) : name,
                                 hostile ? Phosphor.RED : Phosphor.ZINC, c.locked ? Drive.FULL : Drive.NORM);
                     }
+                    continue;
+                }
+                // Under an inset: counted there
+                int under = under(sx, sy, half, p <= OBJECTIVE || !quiet);
+                if (under >= 0) {
+                    looks[under].others++;
                     continue;
                 }
                 if (markCount == MARKS) continue;
@@ -238,10 +303,15 @@ final class World {
         if (seat == Situations.Seat.HELM && fl.present && speed > 0.5f && !s.docked && !s.latched) {
             velDx = fl.vx / speed;
             velDy = -fl.vy / speed;
-            proX = shipX + velDx * VEL_R;
-            proY = shipY + velDy * VEL_R;
-            retroX = shipX - velDx * VEL_R;
-            retroY = shipY - velDy * VEL_R;
+            // Outside the own ship's inset when it sits over the ship
+            float r = Math.max(VEL_R, ownRing + 16f);
+            proX = shipX + velDx * r;
+            proY = shipY + velDy * r;
+            retroX = shipX - velDx * r;
+            retroY = shipY - velDy * r;
+            // Not on another craft's magnified picture, where it would read as a point on it
+            proShown = !onOtherInset(proX, proY);
+            retroShown = !onOtherInset(retroX, retroY);
             velSquare = frame != Flight.ORBIT;
             velTag = frame == Flight.ORBIT ? "" : Flight.FRAMES[frame];
             vel = true;
@@ -253,7 +323,8 @@ final class World {
             views.worldToUi(lp.x, lp.y, v);
             leadX = v.x;
             leadY = height - v.y;
-            lead = inside(leadX, leadY);
+            // Never on an inset's magnified picture, where it would read as a point on it
+            lead = inside(leadX, leadY) && under(leadX, leadY, 9f, false) < 0;
             leadOnTarget = Math.abs(leadX - lockedX) < lockedHalf && Math.abs(leadY - lockedY) < lockedHalf;
         }
         settleEdges();
@@ -272,6 +343,30 @@ final class World {
 
     private static String label(Contact c, int cells) {
         return Fmt.name(c.label, cells);
+    }
+
+    /** Which of this frame's insets is onto {@code c}'s craft, or -1. */
+    private int insetOf(Contact c) {
+        if (c.entity == null) return -1;
+        for (int i = 0; i < insetCount; i++) if (insets[i].entity == c.entity) return i;
+        return -1;
+    }
+
+    /** Which inset a mark at {@code x, y}, {@code half} across with a label under it or not, falls under, or -1. */
+    private int under(float x, float y, float half, boolean labelled) {
+        float w = Math.max(2f * half, labelled ? 14f * 12f : 0f), h = 2f * half + (labelled ? 40f : 0f);
+        for (int i = 0; i < insetCount; i++) {
+            if (Optic.covers(insets[i], stageHeight, x - w / 2f, y - half, w, h)) return i;
+        }
+        return -1;
+    }
+
+    /** Whether a velocity marker at {@code x, y} falls on the inset of a craft other than the own ship. */
+    private boolean onOtherInset(float x, float y) {
+        for (int i = 0; i < insetCount; i++) {
+            if (!insets[i].own && Optic.covers(insets[i], stageHeight, x - 10f, y - 10f, 20f, 20f)) return true;
+        }
+        return false;
     }
 
     /** Places {@code m}'s label if it overlaps none placed before it; returns whether it did. */
@@ -370,13 +465,14 @@ final class World {
 
     void paint(Filament f) {
         if (!on) return;
+        for (int i = 0; i < insetCount; i++) Optic.paint(f, insets[i], stageHeight, looks[i], optic);
         if (vel) {
-            Kit.velMark(f, true, proX, proY, velSquare, Drive.NORM);
-            Kit.velMark(f, false, retroX, retroY, velSquare, Drive.DIM);
+            if (proShown) Kit.velMark(f, true, proX, proY, velSquare, Drive.NORM);
+            if (retroShown) Kit.velMark(f, false, retroX, retroY, velSquare, Drive.DIM);
             if (!velTag.isEmpty()) {
                 // The frame's tag beyond each marker, on the side away from the ship
-                tag(f, proX + velDx * 20f, proY + velDy * 20f, Drive.NORM);
-                tag(f, retroX - velDx * 20f, retroY - velDy * 20f, Drive.DIM);
+                if (proShown) tag(f, proX + velDx * 20f, proY + velDy * 20f, Drive.NORM);
+                if (retroShown) tag(f, retroX - velDx * 20f, retroY - velDy * 20f, Drive.DIM);
             }
         }
         for (int i = 0; i < missileCount; i++) {
