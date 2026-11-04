@@ -121,6 +121,7 @@ their contents.
 | `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
 | `dockHint` | the docked banner's text, or "" when not docked |
 | `insets` | the game's magnified bubbles this frame, at most three: the craft, what each is for (the player's ship, the lock, the nav target), the craft's label as the game has it, the bubble's middle and radius (UI units, y up), where the craft is, whether it is in view and whether the bubble sits right over it, how far the craft reaches as drawn, and its distance. Filled before `update`, and empty on deck (`PictureInPicture.report`) |
+| `guideTitle`, `guideText`, `guideDone` | the tutorial running now, for a guide card of a variant's own: its heading ("FIRST PLAY · 2 OF 9", "GETTING STARTED") and the objective with the player's keys, both "" with none; and whether that is a finished guide's last word. Set by the game screen (`GameSession`) |
 
 `targeting`, `orbitInfo`, `interactor` and `physics` are the classic providers, set on `UiHud` as
 before and mirrored here.

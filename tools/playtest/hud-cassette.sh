@@ -56,6 +56,13 @@ pause 3; shot t01-docked
 key u; pause 4; shot t02-undocked
 cmd away 3000; pause 4; shot t03-cruise
 pause 12; shot t04-cruise-quiet
+# Ship Stations: the MFD pages the defaults don't show, each by its station's key on the right MFD
+# (Alt+1 to 6, again for its next page). Standing up and sitting again gives the defaults back
+if [ "$SPEC" = stations ]; then
+  n=0
+  for stn in 1 2 2 5 6 6 4 4 4 3 3 3; do key alt+$stn; pause 0.4; n=$((n + 1)); shot "p$(printf %02d $n)-alt$stn"; done
+  key v; pause 1.5; key v; pause 1.5
+fi
 key m; pause 1.5; shot t05-map; key m; pause 1
 # A raider with dart racks 7 km out (inside its darts' 8 km, outside our guns'), hunting us, locked
 # with Tab, until its darts are in the air
