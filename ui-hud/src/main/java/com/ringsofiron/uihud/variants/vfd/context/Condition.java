@@ -6,6 +6,7 @@ import com.ringsofiron.uihud.providers.PowerStatusProvider.Circuit;
 import com.ringsofiron.uihud.providers.PowerStatusProvider.PowerFrame;
 import com.ringsofiron.uihud.providers.ShieldStatusProvider.ShieldStatus;
 import com.ringsofiron.uihud.providers.ShipStatusProvider.ShipStatus;
+import com.ringsofiron.uihud.variants.vfd.DeckPlan;
 import com.ringsofiron.uihud.variants.vfd.Drive;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.Fmt;
@@ -37,7 +38,7 @@ final class Condition {
     int count;
     boolean on, plan, pinned;
     private float held;
-    final Plan deck = new Plan();
+    final DeckPlan deck = new DeckPlan();
 
     Condition() {
         for (int i = 0; i < rows.length; i++) rows[i] = new Row();
