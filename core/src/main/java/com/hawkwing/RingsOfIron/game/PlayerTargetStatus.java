@@ -54,10 +54,8 @@ public class PlayerTargetStatus implements TargetStatusProvider {
         Track track = sensor.trackFor(target);
         Body body = docking.bodyOf(ship);
         if (track == null || body == null) return;
-        float age = sensors.ageOf(track);
-        out.trackAge = age;
-        track.positionAt(age, pos);
-        track.velocityAt(age, vel);
+        out.trackAge = sensors.ageOf(track);
+        HudContacts.sensed(sensor, sensors, target, pos, vel);
         PhysicsManager.getPosition(body, shipPos);
         PhysicsManager.getVelocity(body, shipVel);
         float rx = pos.x - shipPos.x, ry = pos.y - shipPos.y;
