@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Screens of a Nasa-punk HUD in the running game, for review against its mockups
 # (documentation/ui-overhaul/variations/nasapunk-<spec>): the docked start, cruising near Highport,
-# a raider locked, its missiles inbound, the deck, the weapons console, and damage. Needs Xvfb, xdotool and
+# a raider locked, its missiles inbound, the deck, the weapons console, and damage; for stations
+# also the helm's docking approach, the warp strip and every MFD page. Needs Xvfb, xdotool and
 # ImageMagick's import. Waits on the game rather than the clock where it can, since a software-
 # rendered game under Xvfb runs its sim well below real time.
 #   tools/playtest/hud-nasapunk.sh <stations|context|task> [out-dir] [WxH] [ui-scale]
@@ -15,6 +16,10 @@ UI_SCALE=${4:-}
 # The game reads the HUD from -Dhud.variant (documentation/ui-hud/Variants.md)
 export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Dhud.variant=nasapunk.$SPEC"
 . tools/playtest/lib.sh
+
+# A key with Alt held, and with Alt and Shift: the Stations HUD's MFD keys
+alt() { xdotool keydown Alt_L; pause 0.1; key "$1"; xdotool keyup Alt_L; pause 0.3; }
+altshift() { xdotool keydown Alt_L Shift_L; pause 0.1; key "$1"; xdotool keyup Shift_L Alt_L; pause 0.3; }
 
 # Walks the standing captain to the weapons console and sits there, as raid-by-hand.sh does:
 # measures one step of W and of D on deck, walks the offset `seat` reads, then tries V
@@ -45,11 +50,28 @@ key 2 0 2 6; key Down Down; key Return
 key Up; key Return; key Down Down; key Return
 until_docked 180; pause 3; shot n-01-docked
 key u; pause 8; shot n-02-undocked
+# Stations: Highport as the nav target, close by, brings up the helm's docking approach
+[ "$SPEC" = stations ] && { cmd target highport; pause 3; shot n-02b-approach; }
 cmd away 3000; await 30 "PLAYTEST away"; pause 5; shot n-03-cruise
+# Stations: the warp strip, while warp lasts
+[ "$SPEC" = stations ] && { key period period; pause 2; shot n-03b-warp; key comma comma comma; pause 2; }
 # A raider with dart racks 2 km out, hunting us; locked
 cmd raider 2 raider_darts; await 30 "PLAYTEST raider"; pause 3; key Tab; pause 2; shot n-04-raider
 pause 30; shot n-05-missiles
 pause 10; shot n-06-missiles-later
+# Stations: every MFD page at the helm by its Alt key, the right MFD and then the left with Shift
+if [ "$SPEC" = stations ]; then
+  alt 2; altshift 4; altshift 4; pause 1; shot n-06b-nav-power
+  alt 2; altshift 4; pause 1; shot n-06c-plan-atmos
+  alt 6; altshift 5; pause 1; shot n-06d-crew-comms
+  alt 6; altshift 3; altshift 3; pause 1; shot n-06e-contracts-weapons
+  alt 1; altshift 3; pause 1; shot n-06f-helm-defense
+  # A fire aboard (13.1): a caution while the crew are on it or for its first 10 s, a warning once
+  # nobody has been. The right MFD turns to DAMAGE, which says who is on it. Put out after
+  cmd dev "fire(player)"; pause 2; shot n-06g-fire
+  pause 20; shot n-06h-fire-later
+  cmd dev "extinguish(player)"; pause 2
+fi
 key v; pause 3; shot n-07-deck
 to_weapons && { pause 3; shot n-08-gunnery; }
 # Damage for the alert band and the lamps: a holed tile, the hull beaten to 60%, the reactor out.
