@@ -69,6 +69,8 @@ public interface BoardingProvider {
         public boolean salvage;
         /** No one aboard fights for it any more: its crew are held. */
         public boolean taken;
+        /** It is disabled, beaten: a party goes across without storming it. */
+        public boolean disabled;
         /** Our boarding party aboard it, its crew still standing, and the prisoners held once it is taken. */
         public int aboard, defenders, prisoners;
         /** Why it can't be stripped yet, while it can't. */
@@ -90,7 +92,7 @@ public interface BoardingProvider {
 
         public void clear() {
             craftName = state = boardRefusal = stormRefusal = salvageRefusal = "";
-            boarding = salvage = byEva = taken = false;
+            boarding = salvage = byEva = taken = disabled = false;
             aboard = defenders = prisoners = 0;
             parts.clear();
             cargo.clear();
