@@ -1,6 +1,7 @@
 package com.ringsofiron.uihud.variants.vfd;
 
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 
 /**
  * FILAMENT's composite widgets, built from {@link Filament}'s parts and shared by its three HUDs, as
@@ -332,6 +333,29 @@ public final class Kit {
         float lx = dir == 'r' ? x - 10f - w : dir == 'l' ? x + 10f : x - w / 2f;
         float ly = dir == 'd' ? y - 14f - 14f * 1.35f : dir == 'u' ? y + 12f : y - 5f;
         label(f, lx, ly, 0, text, 2f, color, level);
+    }
+
+    /**
+     * The box an edge marker at {@code x, y} takes on the stage, y down, as {@link #edge} draws it: its
+     * chevron and its label, into {@code out}. A HUD hands it to the game with its panels, so the
+     * magnified insets keep off it.
+     */
+    public static Rectangle edgeBox(float x, float y, char dir, String text, Rectangle out) {
+        float w = text.length() * 12f;
+        switch (dir) {
+            case 'r':
+                return out.set(x - 10f - w, y - 7f, w + 14f, 16f);
+            case 'l':
+                return out.set(x - 4f, y - 7f, w + 14f, 16f);
+            case 'd': {
+                float half = Math.max(7f, w / 2f);
+                return out.set(x - half, y - 14f - 14f * 1.35f, 2f * half, 14f + 14f * 1.35f + 4f);
+            }
+            default: {
+                float half = Math.max(7f, w / 2f);
+                return out.set(x - half, y - 4f, 2f * half, 30f);
+            }
+        }
     }
 
     /** How far an edge marker's label reaches either side of it along its edge, for {@link #spread}. */
