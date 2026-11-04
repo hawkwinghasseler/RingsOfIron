@@ -10,6 +10,7 @@ import com.ringsofiron.uihud.data.AlertRegistry;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.data.MessageFeed;
+import com.ringsofiron.uihud.providers.BoardingProvider.BoardingBoard;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
 import com.ringsofiron.uihud.providers.ContactProvider;
 import com.ringsofiron.uihud.providers.ContactProvider.Contact;
@@ -45,6 +46,7 @@ import com.ringsofiron.uihud.variants.nasapunk.NpHardware;
 import com.ringsofiron.uihud.variants.nasapunk.NpInstruments;
 import com.ringsofiron.uihud.variants.nasapunk.NpKit;
 import com.ringsofiron.uihud.variants.nasapunk.NpSymbols;
+import com.ringsofiron.uihud.widgets.BoardingWindow;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -82,8 +84,6 @@ public class NasaPunkContextHud implements HudVariant {
     private static final float CONDITION_HOLD = 10f;
     /** In cruise the scope folds with nothing inside this, m; F4 lists hostiles inside it. */
     private static final float SCOPE_NEAR = 50_000f;
-    /** A beaten ship this close can be reached on EVA, m (section 4.2, Boarding). */
-    private static final float BOARD_REACH = 300f;
     /** The captain's suit air under this, away from breathable air, is an emergency, s ({@code AirWatch.WARN_AT}). */
     private static final float SUIT_AIR_SHORT = 240f;
     /** A hostile lock this close is inside weapons range, m: the coilgun's reach. */
@@ -122,6 +122,8 @@ public class NasaPunkContextHud implements HudVariant {
     private Vitals vitals;
     private StationPanel station;
     private BoardingPanel boarding;
+    /** The boarding window's board, which the game fills twice a second; null without one. */
+    private BoardingBoard board;
     private EmergencyCard emergency;
     private OrdersPanel orders;
     private MasterCue cue;
@@ -208,6 +210,8 @@ public class NasaPunkContextHud implements HudVariant {
         float dt = Math.max(0f, Math.min(delta, 0.25f));
         seat = seatOf(ctx.presence);
         boolean mapOpen = host.hud().isMapOpen();
+        BoardingWindow bw = host.hud().getBoardingWindow();
+        board = bw == null ? null : bw.getBoard();
         if (mapOpen) ordersOpen = false;
         situations(d, dt);
         int sig = signature();
@@ -316,7 +320,8 @@ public class NasaPunkContextHud implements HudVariant {
         boolean hostileInRange = t.present && t.relation == Relation.HOSTILE && fighting(t.state)
                 && (t.firingOnUs || !Float.isNaN(t.range) && t.range <= WEAPONS_RANGE);
         sitIn.combatTrigger = o.battleStations || ctx.missilesInbound > 0 || d.threatFrame.incoming() > 0 || hostileInRange;
-        sitIn.boarding = ctx.latched || beatenShipInReach(d.contactFrame) != null;
+        // in reach on EVA, only a beaten ship, or one our party is on, is a boarding: a fit one is a fight
+        sitIn.boarding = ctx.latched || BoardingRows.boarding(board);
         sitIn.emergency = disabledEmergency(d) || o.abandoning || suitAirShort(d.captainStatus);
         sit.update(sitIn, dt);
     }
@@ -324,14 +329,6 @@ public class NasaPunkContextHud implements HudVariant {
     /** The lock's state still fights: fit, running or silenced, rather than beaten or wrecked. */
     private static boolean fighting(String state) {
         return "fit".equals(state) || "running".equals(state) || "silenced".equals(state) || state == null || state.isEmpty();
-    }
-
-    private static Contact beatenShipInReach(ContactProvider.ContactFrame cf) {
-        for (Contact c : cf.contacts) {
-            if (c.kind != ContactProvider.Kind.SHIP || Float.isNaN(c.range) || c.range > BOARD_REACH) continue;
-            if (c.state == ContactProvider.State.DISABLED || c.state == ContactProvider.State.STRUCK) return c;
-        }
-        return null;
     }
 
     /**
@@ -1229,33 +1226,14 @@ public class NasaPunkContextHud implements HudVariant {
         station.setSize(StationPanel.W, station.heightFor());
     }
 
-    /** X2: the other ship, latched or by EVA, its state, and the ways on: K for the boarding window, U to cast off. */
+    /**
+     * X2: the other ship, latched or by EVA, how it stands, the party, salvage, cargo and prisoners
+     * from the boarding board, and the ways on: K for the boarding window, U to cast off.
+     */
     private void boarding(HudData d) {
         boolean latched = d.ctx.latched;
-        Contact c = null;
-        if (latched) {
-            for (Contact x : d.contactFrame.contacts) if (x.label.equalsIgnoreCase(d.docking.other)) { c = x; break; }
-        } else {
-            c = beatenShipInReach(d.contactFrame);
-        }
-        String name = latched ? d.docking.other : c == null ? "" : c.label;
-        boarding.ship = CautionRows.cut(upper(name), 16);
-        boarding.held = latched ? "LATCHED" : "BY EVA";
-        boarding.stateHead = "";
-        boarding.state = "";
-        boarding.stateHeadColor = NpColors.WHITE;
-        if (c != null) {
-            switch (c.state) {
-                case STRUCK: boarding.stateHead = "SURRENDERED"; break;
-                case DISABLED:
-                    boarding.stateHead = "DISABLED:";
-                    boarding.stateHeadColor = NpColors.AMBER;
-                    boarding.state = upper(c.disabledReason);
-                    break;
-                case WRECKED: boarding.stateHead = "WRECK"; break;
-                default: break;
-            }
-        }
+        if (board != null && board.isOpen()) boarding.rows.read(board, latched);
+        else boarding.rows.only(latched ? d.docking.other : "", latched);
         boarding.boardKey = key(d, Action.BOARD);
         boarding.castOffKey = latched ? key(d, Action.UNDOCK) : "";
         boarding.setSize(BoardingPanel.W, boarding.heightFor());
