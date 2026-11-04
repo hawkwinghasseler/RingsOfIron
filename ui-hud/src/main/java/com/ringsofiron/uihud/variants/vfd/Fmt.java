@@ -99,11 +99,13 @@ public final class Fmt {
      * A ship's or station's name in {@code cells}, in capitals: whole when it fits, else its leading
      * words dropped so the ones that tell it apart show ("Pirate raider 6" in 8 is "RAIDER 6"), and
      * when one word is still too long it is cut and a number after it kept ("GUNSH 12"). Never cuts a
-     * word where a shorter whole one would do, as {@link #cut} does ("PIRATE R").
+     * word where a shorter whole one would do, as {@link #cut} does ("PIRATE R"). The tags the game
+     * adds to a marker's label are dropped, since a HUD shows a craft's state its own way: "Pirate
+     * raider 6 (surrendered)", "Kestrel [contract]" and "Battery 23 (silenced)" are their names.
      */
     public static String name(String s, int cells) {
         if (s == null || cells <= 0) return "";
-        String u = s.trim().toUpperCase(Locale.ROOT);
+        String u = bare(s).toUpperCase(Locale.ROOT);
         if (u.length() <= cells) return u;
         String[] w = u.split("\\s+");
         int n = w.length;
@@ -117,6 +119,18 @@ public final class Fmt {
         int room = cells - number.length();
         if (room < 1) return u.substring(0, cells);
         return w[last].substring(0, Math.min(room, w[last].length())) + number;
+    }
+
+    /** {@code s} without the game's tags at its end: " (surrendered)", " (reactor down)", " [contract]". */
+    public static String bare(String s) {
+        String t = s.trim();
+        while (t.length() > 2) {
+            char last = t.charAt(t.length() - 1);
+            int open = last == ')' ? t.lastIndexOf(" (") : last == ']' ? t.lastIndexOf(" [") : -1;
+            if (open <= 0) break;
+            t = t.substring(0, open).trim();
+        }
+        return t;
     }
 
     private static boolean isNumber(String s) {

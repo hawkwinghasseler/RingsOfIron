@@ -3,7 +3,9 @@ package com.ringsofiron.uihud.variants;
 /**
  * The pieces of the classic HUD a variant can keep or hide ({@link HudVariant#keeps}). Windows
  * (market, yard, missions, crew, boarding, the console window and the map) and the world overlays the game draws under the HUD (burn arrows, fire arcs, picture-in-picture) are not
- * here: they stay under every variant until a variant replaces them in its own PR.
+ * here: they stay under every variant until a variant replaces them in its own PR. The
+ * picture-in-picture bubbles keep off a variant's panels ({@link HudVariant#panels}), and a variant
+ * can draw their rims itself ({@link HudVariant#drawsInsets}).
  */
 public enum ClassicPart {
     /** The flight readout, top left. */
