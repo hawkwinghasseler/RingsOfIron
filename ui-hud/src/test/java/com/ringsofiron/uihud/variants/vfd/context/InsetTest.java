@@ -207,6 +207,12 @@ class InsetTest {
         assertTrue(strip.contains(640f, 800f - Geo.STRIP_B / 2f), "the status strip, y up");
         assertTrue(rack.contains(640f, (800f - FLOOR) / 2f), "the rack");
         assertFalse(rack.contains(640f, 400f));
+        // At a gun the world shows the Lock and hostiles only
+        d.ctx.presence = Presence.GUN;
+        frame(false);
+        assertTrue(hud.wantsInset(Insets.Role.LOCK));
+        assertFalse(hud.wantsInset(Insets.Role.NAV));
+        d.ctx.presence = Presence.HELM;
         // Over a screen the world's overlays are down, and so are the insets
         frame(true);
         assertFalse(hud.wantsInset(Insets.Role.LOCK));

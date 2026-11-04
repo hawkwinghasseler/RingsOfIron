@@ -349,8 +349,9 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
 
     @Override
     public boolean wantsInset(Insets.Role role) {
-        // The own ship, Lock and Nav while the world's overlays show (W7)
-        return world.on;
+        // The own ship, Lock and Nav while the world's overlays show (W7); at a gun they show the
+        // Lock and hostiles only, so no Nav there
+        return world.on && (role != Insets.Role.NAV || sit.seat != Situations.Seat.GUN);
     }
 
     @Override
