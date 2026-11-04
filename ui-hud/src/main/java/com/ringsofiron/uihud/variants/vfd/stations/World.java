@@ -99,6 +99,10 @@ final class World {
     boolean ownTiny;
     private float stageHeight = Geo.H, ownRing;
     private final Optic.Layout optic = new Optic.Layout();
+    /** How far the player's ship reaches from its middle on the stage, and its box for the game. */
+    private float shipReach;
+    private final Rectangle shipPanel = new Rectangle();
+    private final Rectangle[] edgePanels = new Rectangle[EDGES];
 
     private final Vector2 v = new Vector2(), lp = new Vector2();
 
@@ -108,6 +112,7 @@ final class World {
         for (int i = 0; i < MISSILES; i++) missiles[i] = new Missile();
         for (int i = 0; i < CROSSES; i++) crosses[i] = new Cross();
         for (int i = 0; i < Insets.MAX; i++) looks[i] = new Optic.Look();
+        for (int i = 0; i < EDGES; i++) edgePanels[i] = new Rectangle();
     }
 
     /**
@@ -151,6 +156,7 @@ final class World {
         shipX = v.x;
         shipY = height - v.y;
         float unit = Math.max(1e-4f, views.metersPerUiUnit());
+        shipReach = Optic.hullReach(d.ctx.ship, unit);
         boolean green = d.ctx.condition == Condition.GREEN;
 
         // Contacts: brackets and labels by seat and condition (11.1, 11.2)
@@ -317,12 +323,25 @@ final class World {
         return false;
     }
 
-    /** The widgets the optics keep off, as the game takes them (UI units, y up): the top column, and the band or the gun's plate under the floor. */
+    /**
+     * What the optics keep off, as the game takes them (UI units, y up): the top column, the band or
+     * the gun's plate under the floor, the player's ship and the edge markers.
+     */
     void panels(Array<Rectangle> out, float topX, float height, Rectangle column, Rectangle band) {
         if (!on) return;
         out.add(column.set(colX0 - 6f, height - colBottom, colX1 - colX0 + 12f, colBottom));
         float floor = bottom + 8f;
         if (floor < height) out.add(band.set(topX + Geo.BAND_X - 6f, 0f, Geo.BAND_W + 12f, height - floor));
+        // The player's ship, so no other craft's magnified picture covers it
+        if (on && shipReach > 0f) {
+            float h = shipReach + 6f;
+            out.add(shipPanel.set(shipX - h, height - shipY - h, 2f * h, 2f * h));
+        }
+        for (int i = 0; i < edgeCount; i++) {
+            Edge e = edges[i];
+            Rectangle r = Kit.edgeBox(e.x, e.y, e.dir, e.text, edgePanels[i]);
+            out.add(r.set(r.x - 4f, height - r.y - r.height - 4f, r.width + 8f, r.height + 8f));
+        }
     }
 
     private static String label(Contact c, int cells) {

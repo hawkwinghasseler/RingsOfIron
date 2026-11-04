@@ -143,11 +143,23 @@ class InsetTest {
         frame();
         Array<Rectangle> panels = new Array<>();
         hud.panels(panels);
-        assertEquals(2, panels.size);
-        Rectangle column = panels.get(0), band = panels.get(1);
+        assertEquals(3, panels.size, "the top column, the band and the ship");
+        Rectangle column = panels.get(0), band = panels.get(1), ship = panels.get(2);
+        // A 40 x 16 m hull at 10 m a unit, and a margin
+        assertTrue(ship.contains(640f, 400f) && ship.contains(640f + 8f, 400f - 8f) && ship.width < 20f, "the ship: " + ship);
         assertTrue(column.contains(640f, 800f - 60f), "the top column, y up");
         assertTrue(band.contains(640f, 100f), "the band");
         assertFalse(band.contains(640f, 400f));
         assertFalse(column.contains(640f, 400f));
+        // and off the edge markers: the nav target off to the right
+        contact("Raider 7", Relation.HOSTILE, 9_000f, 0f).nav = true;
+        frame();
+        panels.clear();
+        hud.panels(panels);
+        assertEquals(1, hud.world.edgeCount);
+        World.Edge e = hud.world.edges[0];
+        assertEquals(4, panels.size, "the column, the band, the ship and the marker");
+        assertTrue(panels.get(3).contains(e.x, 800f - e.y), "the marker's chevron, y up");
+        assertTrue(panels.get(3).contains(e.x - 60f, 800f - e.y), "its label");
     }
 }
