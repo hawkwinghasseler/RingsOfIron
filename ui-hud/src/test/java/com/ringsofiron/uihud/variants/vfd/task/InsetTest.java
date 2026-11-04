@@ -5,6 +5,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.data.Insets;
@@ -123,6 +124,13 @@ class InsetTest {
         assertTrue(hud.world.looks[0].nav);
         assertEquals("HIGHPORT", hud.world.looks[0].name);
         assertTrue(raider.range > 0f);
+        // The arrow left is among the panels the game keeps the insets off, y up
+        Array<Rectangle> panels = new Array<>();
+        hud.panels(panels);
+        World.Edge e = hud.world.edges[0];
+        boolean kept = false;
+        for (Rectangle r : panels) kept |= r.contains(e.x, 800f - e.y) && r.contains(e.x + 30f, 800f - e.y);
+        assertTrue(kept, "the arrow at " + e.x + ", " + e.y + " among " + panels);
     }
 
     @Test
@@ -175,6 +183,14 @@ class InsetTest {
             if (Math.abs(r.x - (Geo.FLT_X - 6f)) < 0.01f && Math.abs(r.y - (800f - (Geo.FLT_Y + Geo.FLT_H + 6f))) < 0.01f) flt = true;
         }
         assertTrue(flt, "FLT among " + panels);
+        // and the player's ship, 40 x 16 m at 10 m a unit
+        d.ctx.ship.add(new ShipGridComponent(20, 8, 2f));
+        frame(false);
+        panels.clear();
+        hud.panels(panels);
+        boolean ship = false;
+        for (Rectangle r : panels) ship |= r.contains(640f, 400f) && r.contains(640f + 8f, 400f - 8f) && r.width < 20f;
+        assertTrue(ship, "the ship among " + panels);
         // Over a screen OVL is down, and so are the insets
         frame(true);
         assertFalse(hud.wantsInset(Insets.Role.LOCK));

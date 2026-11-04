@@ -93,9 +93,12 @@ final class World {
     float left, right, top, bottom, edgeL, edgeR, edgeT, edgeB;
     private final float[] boxes = new float[BOXES * 4];
     private int boxCount;
-    private final Rectangle[] panels = new Rectangle[BOXES];
+    private final Rectangle[] panels = new Rectangle[BOXES + EDGES];
     private final Vector2 v = new Vector2(), lp = new Vector2();
     private final Optic.Layout optic = new Optic.Layout();
+    /** How far the player's ship reaches from its middle on the stage, and its box for the game. */
+    private float shipReach;
+    private final Rectangle shipPanel = new Rectangle();
     private float stageHeight = Geo.H;
 
     World() {
@@ -104,7 +107,7 @@ final class World {
         for (int i = 0; i < MISSILES; i++) missiles[i] = new Missile();
         for (int i = 0; i < CROSSES; i++) crosses[i] = new Cross();
         for (int i = 0; i < Insets.MAX; i++) looks[i] = new Optic.Look();
-        for (int i = 0; i < BOXES; i++) panels[i] = new Rectangle();
+        for (int i = 0; i < panels.length; i++) panels[i] = new Rectangle();
     }
 
     void clearBoxes() {
@@ -121,11 +124,24 @@ final class World {
         boxCount++;
     }
 
-    /** The widgets' boxes as the game keeps its insets off them: UI units, y up, on a stage {@code height} tall. */
+    /**
+     * The widgets' boxes, the player's ship and the edge arrows as the game keeps its insets off them:
+     * UI units, y up, on a stage {@code height} tall.
+     */
     void panels(Array<Rectangle> out, float height) {
         for (int i = 0; i < boxCount; i++) {
             float x0 = boxes[4 * i], y0 = boxes[4 * i + 1], x1 = boxes[4 * i + 2], y1 = boxes[4 * i + 3];
             out.add(panels[i].set(x0, height - y1, x1 - x0, y1 - y0));
+        }
+        // The player's ship, so no other craft's magnified picture covers it
+        if (on && shipReach > 0f) {
+            float h = shipReach + 6f;
+            out.add(shipPanel.set(shipX - h, height - shipY - h, 2f * h, 2f * h));
+        }
+        for (int i = 0; i < edgeCount; i++) {
+            Edge e = edges[i];
+            Rectangle r = Kit.edgeBox(e.x, e.y, e.dir, e.text, panels[BOXES + i]);
+            out.add(r.set(r.x - 4f, height - r.y - r.height - 4f, r.width + 8f, r.height + 8f));
         }
     }
 
@@ -163,6 +179,7 @@ final class World {
         shipX = v.x;
         shipY = height - v.y;
         float unit = Math.max(1e-4f, views.metersPerUiUnit());
+        shipReach = Optic.hullReach(d.ctx.ship, unit);
         boolean quiet = p.rails || p.docked || p.latched;
         Array<Objective> objectives = d.objectiveFrame.objectives;
 
