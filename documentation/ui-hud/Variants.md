@@ -64,7 +64,27 @@ panel, the gauges, the radar, the ship panel, the orbit panel, the missile banne
 overlay, the world markers, the game's status column, the key hint line, the docked banner and the
 E prompt. Everything not in the set is hidden for you, each frame. Windows (market, yard, missions,
 crew, boarding, the console window and the map) and the world overlays the game draws under the HUD (burn
-arrows, fire arcs, picture-in-picture) stay until a variant replaces them in its own PR.
+arrows, fire arcs) stay until a variant replaces them in its own PR. The magnified bubbles stay too,
+but a variant can steer them and draw their rims itself (below).
+
+### The magnified bubbles
+
+The game's picture-in-picture bubbles magnify the player's ship, the lock and the nav target while
+the outside view draws them too small to make out. Four hooks on `HudVariant` steer them, and each
+default leaves them as the classic HUD has them:
+
+- `panels(out)`: the variant's own panels, in UI units with y up. The bubbles slide clear of them.
+  The classic status column and flight panel count only while the variant keeps them.
+- `wantsInset(role)`: whether there is a bubble at all for the player's ship, the lock or the nav
+  target.
+- `drawsInsets()`: when true, the game lays the magnified pictures alone, with no rim, line, pointer
+  or name, and the variant draws those from `HudData.insets`.
+- `insetRoom(room)`: how far the variant's rim, marks and caption reach past each picture: either
+  side, above and below. The game keeps that room clear of the panels, the other bubbles and the
+  stage's edges.
+
+The game reads the hooks as the variant left them at its last `update`, and fills `insets` before
+this frame's `update`, so the pictures and the variant's rims never fall a frame apart.
 
 ## The common data layer
 
@@ -97,6 +117,7 @@ their contents.
 | `key("FIRE")` | the key bound to an action, for a prompt |
 | `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
 | `dockHint` | the docked banner's text, or "" when not docked |
+| `insets` | the game's magnified bubbles this frame, at most three: the craft, what each is for (the player's ship, the lock, the nav target), the craft's label as the game has it, the bubble's middle and radius (UI units, y up), where the craft is, whether it is in view and whether the bubble sits right over it, how far the craft reaches as drawn, and its distance. Filled before `update`, and empty on deck (`PictureInPicture.report`) |
 
 `targeting`, `orbitInfo`, `interactor` and `physics` are the classic providers, set on `UiHud` as
 before and mirrored here.
