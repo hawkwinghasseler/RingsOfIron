@@ -11,15 +11,19 @@ import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.minimap.ShipAlerts;
 import com.ringsofiron.uihud.minimap.TileShade;
+import com.ringsofiron.uihud.providers.PowerStatusProvider.Fault;
+import com.ringsofiron.uihud.providers.PowerStatusProvider.SystemRow;
 
 /**
  * The player's ship's deck plan on a graphic dot panel, for the HUDs that draw one (Context's H4 face,
  * Task's schematic): its rooms' walls, lit round a room with something wrong in it; burning tiles as a
  * dense checker, smoke as a sparse dither, a breach as an X across its tile, a room without air in
- * red, and the last hit on the hull flashing. The walls are rebuilt only when the layout changes.
+ * red, and the last hit on the hull flashing. With {@link #systems} on it also rings each system
+ * that is down, in red while it is damaged and in amber while it comes back by itself (a short, a
+ * stun), and lights its room. The walls are rebuilt only when the layout changes.
  */
 public final class DeckPlan {
-    static final int FIRE = 1, SMOKE = 2, VACUUM = 4, BREACH = 8, LOW = 16;
+    static final int FIRE = 1, SMOKE = 2, VACUUM = 4, BREACH = 8, LOW = 16, SYSTEM = 32;
     /** The dot pitch the plan is drawn at. */
     static final float P = 2f;
 
@@ -34,6 +38,11 @@ public final class DeckPlan {
     private final IntIntMap trouble = new IntIntMap();
     private final IntArray burning = new IntArray(), smoky = new IntArray(), breached = new IntArray();
     private int hitX = -1, hitY = -1;
+    /** Whether to mark the systems that are down (Task's schematic); off, the plan is hazards alone. */
+    public boolean systems;
+    /** This frame: the tile of each system that is down, and whether it comes back by itself. */
+    private final IntArray downTiles = new IntArray();
+    private final IntArray downByItself = new IntArray();
 
     /** Reads this frame's ship: its layout when that changed, and each room's trouble. */
     public void update(HudData d) {
@@ -43,6 +52,8 @@ public final class DeckPlan {
         burning.clear();
         smoky.clear();
         breached.clear();
+        downTiles.clear();
+        downByItself.clear();
         hitX = hitY = -1;
         if (g == null) return;
         gridWidth = g.width;
@@ -71,9 +82,25 @@ public final class DeckPlan {
             }
             if (bits != 0) trouble.put(c.id, bits);
         }
+        if (systems) systemsDown(d, g);
         if (!Float.isNaN(d.lastHullHit.age) && d.lastHullHit.age < 1.2f) {
             hitX = d.lastHullHit.tileX;
             hitY = d.lastHullHit.tileY;
+        }
+    }
+
+    /** The systems that are down: damaged, destroyed, shorted or stunned; not those off or unpowered, which the room does not show. */
+    private void systemsDown(HudData d, ShipGridComponent g) {
+        Array<SystemRow> faults = d.powerFrame.faults;
+        for (int i = 0; i < faults.size; i++) {
+            SystemRow r = faults.get(i);
+            if (r.tileX < 0 || r.tileY < 0 || r.tileX >= g.width || r.tileY >= g.height) continue;
+            boolean byItself = r.fault == Fault.SHORTED || r.fault == Fault.STUNNED;
+            if (!byItself && r.fault != Fault.DESTROYED && r.fault != Fault.DISABLED) continue;
+            downTiles.add(r.tileY * g.width + r.tileX);
+            downByItself.add(byItself ? 1 : 0);
+            Tile t = g.getTile(r.tileX, r.tileY);
+            if (t != null && t.compartment != null) trouble.put(t.compartment.id, trouble.get(t.compartment.id, 0) | SYSTEM);
         }
     }
 
@@ -171,12 +198,29 @@ public final class DeckPlan {
                 f.dot(bx + t - t * k / n, by + t * k / n, f.o().size(size).red().full());
             }
         }
+        for (int i = 0; i < downTiles.size; i++) {
+            float bx = tileX(downTiles.get(i), ox, t), by = tileY(downTiles.get(i), oy, t);
+            ring(f, bx - P, by - P, t + 2f * P, size, downByItself.get(i) == 1 ? Phosphor.AMBER : Phosphor.RED);
+        }
         if (hitX >= 0 && gridWidth > 0) {
             int packed = hitY * gridWidth + hitX;
             float bx = tileX(packed, ox, t), by = tileY(packed, oy, t);
             for (float yy = by + P / 2f; yy < by + t; yy += P) {
                 for (float xx = bx + P / 2f; xx < bx + t; xx += P) f.dot(xx, yy, f.o().size(size).full());
             }
+        }
+    }
+
+    /** A square of dots {@code s} on a side from {@code x, y}, one every pitch: a ring round a tile. */
+    private static void ring(Filament f, float x, float y, float s, float size, Phosphor c) {
+        int n = Math.max(1, Math.round(s / P));
+        for (int k = 0; k <= n; k++) {
+            float a = s * k / n;
+            f.dot(x + a, y, f.o().size(size).color(c).full());
+            f.dot(x + a, y + s, f.o().size(size).color(c).full());
+            if (k == 0 || k == n) continue;
+            f.dot(x, y + a, f.o().size(size).color(c).full());
+            f.dot(x + s, y + a, f.o().size(size).color(c).full());
         }
     }
 
