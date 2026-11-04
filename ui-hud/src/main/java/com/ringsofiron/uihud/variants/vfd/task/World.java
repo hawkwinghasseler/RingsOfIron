@@ -1,11 +1,13 @@
 package com.ringsofiron.uihud.variants.vfd.task;
 
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.providers.ContactProvider.Contact;
 import com.ringsofiron.uihud.providers.ContactProvider.Kind;
 import com.ringsofiron.uihud.providers.FlightStatusProvider.FlightStatus;
@@ -19,6 +21,7 @@ import com.ringsofiron.uihud.variants.vfd.Drive;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.Fmt;
 import com.ringsofiron.uihud.variants.vfd.Kit;
+import com.ringsofiron.uihud.variants.vfd.Optic;
 import com.ringsofiron.uihud.variants.vfd.Phosphor;
 
 import java.util.Locale;
@@ -33,6 +36,10 @@ import java.util.Locale;
  * impact is the band's. At the helm prograde and retrograde in FLT's frame, square when the frame is
  * not the orbit; the next burn's arrow with its label; with a lock the lead reticle; missiles with
  * their tracks and where the inbound ones will strike. In rails warp, docked or latched, the markers only.
+ *
+ * <p>The game's magnified insets (style-vfd 8) carry the mark and name of their craft, which then has
+ * none in the view nor an edge arrow; marks under an inset are left out and counted on it, as the
+ * classic bubbles count the names they hide.
  */
 final class World {
     static final int MARKS = 32, EDGES = 12, MISSILES = 16, CROSSES = 6, BOXES = 16;
@@ -71,24 +78,33 @@ final class World {
     }
 
     final Mark[] marks = new Mark[MARKS];
+    /** The game's magnified insets this frame, and how each reads. */
+    final Insets.Inset[] insets = new Insets.Inset[Insets.MAX];
+    final Optic.Look[] looks = new Optic.Look[Insets.MAX];
+    int insetCount;
     final Edge[] edges = new Edge[EDGES];
     final Missile[] missiles = new Missile[MISSILES];
     final Cross[] crosses = new Cross[CROSSES];
     int markCount, edgeCount, missileCount, crossCount;
     boolean on;
-    boolean vel, velSquare, burn, lead, leadOnTarget;
-    float proX, proY, retroX, retroY, burnX, burnY, burnDx, burnDy, leadX, leadY, shipX, shipY;
+    boolean vel, velSquare, proShown, retroShown, burn, lead, leadOnTarget;
+    float proX, proY, retroX, retroY, burnX, burnY, burnDx, burnDy, burnFrom = 30f, leadX, leadY, shipX, shipY;
     String burnLabel = "";
     float left, right, top, bottom, edgeL, edgeR, edgeT, edgeB;
     private final float[] boxes = new float[BOXES * 4];
     private int boxCount;
+    private final Rectangle[] panels = new Rectangle[BOXES];
     private final Vector2 v = new Vector2(), lp = new Vector2();
+    private final Optic.Layout optic = new Optic.Layout();
+    private float stageHeight = Geo.H;
 
     World() {
         for (int i = 0; i < MARKS; i++) marks[i] = new Mark();
         for (int i = 0; i < EDGES; i++) edges[i] = new Edge();
         for (int i = 0; i < MISSILES; i++) missiles[i] = new Missile();
         for (int i = 0; i < CROSSES; i++) crosses[i] = new Cross();
+        for (int i = 0; i < Insets.MAX; i++) looks[i] = new Optic.Look();
+        for (int i = 0; i < BOXES; i++) panels[i] = new Rectangle();
     }
 
     void clearBoxes() {
@@ -105,16 +121,36 @@ final class World {
         boxCount++;
     }
 
+    /** The widgets' boxes as the game keeps its insets off them: UI units, y up, on a stage {@code height} tall. */
+    void panels(Array<Rectangle> out, float height) {
+        for (int i = 0; i < boxCount; i++) {
+            float x0 = boxes[4 * i], y0 = boxes[4 * i + 1], x1 = boxes[4 * i + 2], y1 = boxes[4 * i + 3];
+            out.add(panels[i].set(x0, height - y1, x1 - x0, y1 - y0));
+        }
+    }
+
     /**
      * Lays out this frame's overlays on a {@code width} x {@code height} stage, the edge arrows on the
      * box {@code l, t, r, b}; {@code burnShown} whether a burn is near enough to draw its arrow.
      */
     void update(HudData d, Posts p, ViewportManager views, float width, float height, float l, float t, float r, float b, boolean burnShown) {
-        markCount = edgeCount = missileCount = crossCount = 0;
+        markCount = edgeCount = missileCount = crossCount = insetCount = 0;
         vel = burn = lead = false;
         TransformComponent ship = d.ctx.ship == null ? null : d.ctx.ship.getComponent(TransformComponent.class);
         on = p.outside() && d.ctx.exteriorView && !p.screen && ship != null && views != null;
         if (!on) return;
+        stageHeight = height;
+        float ownRing = 0f;
+        for (int i = 0; i < d.insets.count() && insetCount < Insets.MAX; i++) {
+            Insets.Inset in = d.insets.get(i);
+            insets[insetCount] = in;
+            Optic.Look look = looks[insetCount++].clear();
+            // The player's own ship goes unnamed, and quiet
+            if (in.own) {
+                look.level = Drive.DIM;
+                if (in.centered) ownRing = in.radius + Optic.RING_GAP;
+            }
+        }
         left = 8f;
         right = width - 8f;
         top = 8f;
@@ -152,11 +188,30 @@ final class World {
                     lockedY = sy;
                     lockedHalf = half;
                 }
+                int own = insetOf(c);
+                if (own >= 0) {
+                    // Marked and named on its inset rather than in the view or at the edge: the lock's
+                    // zinc brackets round a hostile's red ring, as round its red triangles here
+                    Optic.Look look = looks[own];
+                    look.name = labelled ? Fmt.name(c.label, Optic.CELLS) : "";
+                    look.color = hostile ? Phosphor.RED : Phosphor.ZINC;
+                    look.mark = Phosphor.ZINC;
+                    look.lock = c.locked;
+                    look.nav = c.nav && !c.locked;
+                    look.level = labelled ? Drive.NORM : Drive.DIM;
+                    continue;
+                }
                 if (!inside(sx, sy)) {
                     // Arrows only for what matters, by name
                     if (c.locked || c.nav || hostile || contract) {
                         edge(sx, sy, Fmt.name(c.label, EDGE_NAME), hostile ? Phosphor.RED : Phosphor.ZINC, c.locked ? Drive.FULL : Drive.NORM);
                     }
+                    continue;
+                }
+                // Under an inset: counted there, as the classic bubbles count the names they hide
+                int under = under(sx, sy, half, labelled ? Math.min(NAME, Fmt.name(c.label, NAME).length()) : 0);
+                if (under >= 0) {
+                    looks[under].others++;
                     continue;
                 }
                 if (!labelled && merge(sx, sy)) continue;
@@ -218,13 +273,19 @@ final class World {
         // Prograde and retrograde in FLT's frame, at the helm
         FlightStatus fl = d.flightStatus;
         float speed = (float) Math.sqrt(fl.vx * fl.vx + fl.vy * fl.vy);
+        // Round the own ship's inset when it sits over the ship
+        float velR = Math.max(VEL_R, ownRing + 16f);
+        burnFrom = Math.max(30f, ownRing + 4f);
         if (p.post == Posts.Post.HELM && fl.present && speed > 0.5f) {
             float dx = fl.vx / speed, dy = -fl.vy / speed;
-            proX = shipX + dx * VEL_R;
-            proY = shipY + dy * VEL_R;
-            retroX = shipX - dx * VEL_R;
-            retroY = shipY - dy * VEL_R;
+            proX = shipX + dx * velR;
+            proY = shipY + dy * velR;
+            retroX = shipX - dx * velR;
+            retroY = shipY - dy * velR;
             velSquare = fl.frame != Frame.ORBIT && fl.frame != Frame.NONE;
+            // Not on another craft's magnified picture, where it would read as a point on it
+            proShown = !onOtherInset(proX, proY);
+            retroShown = !onOtherInset(retroX, retroY);
             vel = true;
         }
         // The next burn's arrow, labelled, while BURN shows
@@ -233,8 +294,8 @@ final class World {
             float a = n.burnHeadingDeg * MathUtils.degreesToRadians;
             burnDx = MathUtils.cos(a);
             burnDy = -MathUtils.sin(a);
-            burnX = shipX + burnDx * BURN_R;
-            burnY = shipY + burnDy * BURN_R;
+            burnX = shipX + burnDx * Math.max(BURN_R, burnFrom + 40f);
+            burnY = shipY + burnDy * Math.max(BURN_R, burnFrom + 40f);
             burnLabel = "BURN" + (n.burnNumber > 0 ? " " + n.burnNumber : "");
             burn = true;
         }
@@ -244,7 +305,8 @@ final class World {
             views.worldToUi(lp.x, lp.y, v);
             leadX = v.x;
             leadY = height - v.y;
-            lead = inside(leadX, leadY);
+            // Not over an inset's magnified picture, where it would read as a point on it
+            lead = inside(leadX, leadY) && under(leadX, leadY, 9f, 0) < 0;
             leadOnTarget = Math.abs(leadX - lockedX) < lockedHalf && Math.abs(leadY - lockedY) < lockedHalf;
         }
         settleEdges();
@@ -263,6 +325,30 @@ final class World {
         for (int i = 0; i < objectives.size; i++) {
             Objective o = objectives.get(i);
             if (o.title.toUpperCase(Locale.ROOT).contains(l) || o.station.equalsIgnoreCase(bare)) return true;
+        }
+        return false;
+    }
+
+    /** Which of this frame's insets is onto {@code c}'s craft, or -1. */
+    private int insetOf(Contact c) {
+        if (c.entity == null) return -1;
+        for (int i = 0; i < insetCount; i++) if (insets[i].entity == c.entity) return i;
+        return -1;
+    }
+
+    /** Which inset a mark at {@code x, y}, {@code half} across with a name of {@code cells} under it, falls under, or -1. */
+    private int under(float x, float y, float half, int cells) {
+        float w = Math.max(2f * half, cells * 12f), h = 2f * half + (cells > 0 ? 28f : 0f);
+        for (int i = 0; i < insetCount; i++) {
+            if (Optic.covers(insets[i], stageHeight, x - w / 2f, y - half, w, h)) return i;
+        }
+        return -1;
+    }
+
+    /** Whether a velocity marker at {@code x, y} falls on the inset of a craft other than the own ship. */
+    private boolean onOtherInset(float x, float y) {
+        for (int i = 0; i < insetCount; i++) {
+            if (!insets[i].own && Optic.covers(insets[i], stageHeight, x - 10f, y - 10f, 20f, 20f)) return true;
         }
         return false;
     }
@@ -360,12 +446,13 @@ final class World {
 
     void paint(Filament f) {
         if (!on) return;
+        for (int i = 0; i < insetCount; i++) Optic.paint(f, insets[i], stageHeight, looks[i], optic);
         if (vel) {
-            Kit.velMark(f, true, proX, proY, velSquare, Drive.NORM);
-            Kit.velMark(f, false, retroX, retroY, velSquare, Drive.DIM);
+            if (proShown) Kit.velMark(f, true, proX, proY, velSquare, Drive.NORM);
+            if (retroShown) Kit.velMark(f, false, retroX, retroY, velSquare, Drive.DIM);
         }
         if (burn) {
-            f.dotLine(shipX + burnDx * 30f, shipY + burnDy * 30f, burnX, burnY, f.o().proj().step(5f).size(1.6f).norm());
+            f.dotLine(shipX + burnDx * burnFrom, shipY + burnDy * burnFrom, burnX, burnY, f.o().proj().step(5f).size(1.6f).norm());
             Kit.sprite(f, Kit.CHEVRON_U, burnX, burnY, 2f, Phosphor.ZINC, Drive.NORM);
             Kit.nameplate(f, burnX + burnDx * 16f, burnY + burnDy * 16f - 7f, burnLabel, Drive.NORM);
         }

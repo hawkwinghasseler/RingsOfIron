@@ -2,6 +2,7 @@ package com.ringsofiron.uihud.variants.vfd.task;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -9,11 +10,13 @@ import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.data.AlertRegistry.Alert;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.variants.ClassicPart;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.FilamentActor;
+import com.ringsofiron.uihud.variants.vfd.Optic;
 
 import java.util.EnumSet;
 import java.util.Locale;
@@ -292,6 +295,28 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
         if (actor != null) actor.dispose();
         actor = null;
         host = null;
+    }
+
+    @Override
+    public void panels(Array<Rectangle> out) {
+        // Every widget's box, as OVL keeps clear of them
+        world.panels(out, height);
+    }
+
+    @Override
+    public boolean drawsInsets() {
+        return true;
+    }
+
+    @Override
+    public void insetRoom(Insets.Room out) {
+        out.set(Optic.SIDE, Optic.ABOVE, Optic.BELOW);
+    }
+
+    @Override
+    public boolean wantsInset(Insets.Role role) {
+        // Only while OVL shows to draw their rings: not over a screen, nor on deck
+        return world.on;
     }
 
     @Override
