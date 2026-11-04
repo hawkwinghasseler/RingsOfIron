@@ -238,8 +238,8 @@ final class GameHudText {
         return color;
     }
 
-    /** Where the player is, for the hints. */
-    private EnumSet<HintRegistry.Context> hintContexts() {
+    /** Where the player is, for the hints (and the HUD variants' key strips). */
+    EnumSet<HintRegistry.Context> hintContexts() {
         EnumSet<HintRegistry.Context> c = EnumSet.of(HintRegistry.Context.ANY);
         boolean outside = session.hud.getViewMode().getMode() != ViewMode.INTERIOR;
         if (!outside) c.add(HintRegistry.Context.DECK);

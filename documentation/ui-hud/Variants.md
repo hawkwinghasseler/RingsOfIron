@@ -49,7 +49,10 @@ Life cycle, all on the render thread:
 3. `resize(width, height, uiScale)` when the window or the UI scale changes. The stage's units are
    already resized; this is where a variant that generates its own fonts rebuilds them.
 4. `keyDown` for keys the classic HUD did not use, before the game's own bindings see them. Not
-   called while a window or the map has the keys.
+   called while a window or the map has the keys. Return true for a key you used and the game's
+   binding for it does nothing that frame (`UiHud.keyUsedByVariant`): Alt with 1 picks your page
+   and gives no helm order. The game reads its bindings whatever modifier is held, so take a key
+   only when it means yours (with Alt held, say); one you take is gone from the game that frame.
 5. `detach` to let go of fonts and textures.
 
 A variant that throws from `attach` leaves the classic HUD up rather than none, and says so in the log.
@@ -61,7 +64,27 @@ panel, the gauges, the radar, the ship panel, the orbit panel, the missile banne
 overlay, the world markers, the game's status column, the key hint line, the docked banner and the
 E prompt. Everything not in the set is hidden for you, each frame. Windows (market, yard, missions,
 crew, boarding, the console window and the map) and the world overlays the game draws under the HUD (burn
-arrows, fire arcs, picture-in-picture) stay until a variant replaces them in its own PR.
+arrows, fire arcs) stay until a variant replaces them in its own PR. The magnified bubbles stay too,
+but a variant can steer them and draw their rims itself (below).
+
+### The magnified bubbles
+
+The game's picture-in-picture bubbles magnify the player's ship, the lock and the nav target while
+the outside view draws them too small to make out. Four hooks on `HudVariant` steer them, and each
+default leaves them as the classic HUD has them:
+
+- `panels(out)`: the variant's own panels, in UI units with y up. The bubbles slide clear of them.
+  The classic status column and flight panel count only while the variant keeps them.
+- `wantsInset(role)`: whether there is a bubble at all for the player's ship, the lock or the nav
+  target.
+- `drawsInsets()`: when true, the game lays the magnified pictures alone, with no rim, line, pointer
+  or name, and the variant draws those from `HudData.insets`.
+- `insetRoom(room)`: how far the variant's rim, marks and caption reach past each picture: either
+  side, above and below. The game keeps that room clear of the panels, the other bubbles and the
+  stage's edges.
+
+The game reads the hooks as the variant left them at its last `update`, and fills `insets` before
+this frame's `update`, so the pictures and the variant's rims never fall a frame apart.
 
 ## The common data layer
 
@@ -79,12 +102,22 @@ their contents.
 | `powerFrame` | per circuit: reactors, rated and actual output, store and capacity, systems fed; plus every system that needs power and is not working, with its fault, timer (a short's reclose, a stun), health, room and tile |
 | `targetStatus` | the locked target: label, relation, state, range, closing, relative speed, closest approach and its time, bearing, aspect, firing on us, hull, track age |
 | `threatFrame` | missiles in flight: side, who launched it, position, path, **time to impact with the missile's closing burn in it**, closest approach, range, closing speed, burning |
+| `flightStatus` | the speed against the frame that matters, first that applies: the locked target, the nav target within 5 km, the nearest station within 20 km, else the body orbited (its name and the altitude); closing and lateral against that object, velocity for a marker; heading and spin; delta-v left, home (to the nearest station that would take the ship) and planned; mass and full-thrust acceleration; the stick, main engine and RCS firing, rotation assist and whether it is held, out of propellant, autopilot (`PlayerFlightStatus`) |
+| `navReadout` | the nav target: name, kind (station, ship, wreck, body, point), relation, distance and closing, in the bubble and its bearing, the closest approach along the plan, the contract whose waypoint it is, and a station's `StationInfo`; the plan: burns left, **burn n of N (counting burns already flown)**, the next burn's countdown to its centre, to the engine lighting and to the turn onto it, its delta-v; the burn being flown with its delta-v **to go**; for either, the burn time, its direction and the pointing error; the plan's delta-v and a proposal up; and the station docked at. `StationInfo` is the owner, sponsor or not, standing and its word (Hostile, Unwelcome, Neutral, Friendly, Trusted), why it would refuse clearance, and its services (market, yard, shipyard, contracts, hiring, infirmary) (`PlayerNavigation`) |
+| `docking` | the selected port: number of how many, size, armed, active, collar torn or jammed; free, lining up, captured or docked; the craft and port it lines up with or is latched to, and that port's size; clearance (none, granted with the seconds it has left, denied and why, no free port of the size, a struck ship that yields), read from the station's ports without asking; range, lateral (+ to port), turn still needed, closing and the safe closing speed; docked, the latch's strain and whether it has settled (`PlayerDockingApproach`) |
+| `contactFrame` | every marked craft in the bubble and every missile in flight, nearest first: label, kind (ship, station, missile, derelict, waypoint, crew adrift), relation, state (fit, running, struck, silenced, disabled, wrecked) and the disabled reason, position in bubble metres, range, bearing from the nose (port +), closing, size, locked, nav target, a threat to the ship (`PlayerContacts`) |
+| `objectiveFrame` | the contracts held, soonest deadline first: title, kind, giver and station, state (under way, homeward, done, failed), time left and late, where it sends the ship next and whether that is the nav target, progress of how many, pay; and the operation running with its step (`PlayerObjectives`) |
+| `stations` | each post aboard (helm, weapons, each gun, life support, reactor), named by place ("HELM", "FWD GUN", "PORT GUN 2"): who works it (you, a crew member by name, one on the way, nobody), whether the console works, its tile; and the crew aboard and how many are free for a post (`PlayerStationBoard`) |
+| `keyHints` | the hints the classic bottom line draws from, for where the player is, with the player's keys: every one, most useful first, each action once, then help; or, while placing furniture, the placing line instead. Set by the game screen (`PlayerKeyHints`) |
+| `orderState` | the orders that stand and why any can't be given now: the helm's order, who it flies relative to, an approach's distance and the helm's own line, and for each of keys 0 to 5 why the helm would refuse it, in its words; the autopilot (off, on, held), where to and why it holds, and why it can't be engaged; whether the player is at a seat, where those are taken; the crew's battle stations, suits for them and the EVA hold; abandoning ship, with the seconds until the pods go anyway, the crew aboard and in a pod, the pods and their free seats, and the captain's straight-line distance to the nearest pod with a seat free and its tile; why the crew can't be sent to the pods; the seconds left on a first press of abandon ship and of the tow; the tow's fee, standing cost and refusal; paused. Set by the game screen (`PlayerOrders`) |
+| `lastHullHit` | the last hit on the player's hull: the deck tile it struck, and seconds since (NaN before any), from `UiHud.flashHullHit` |
 | `alerts` | `AlertRegistry`: everything wrong now, as rows |
 | `messages` | `MessageFeed`: what the game has told the player lately |
 | `roomAt(x, y)`, `roomNames()` | the player's rooms' names (`RoomNames`) |
 | `key("FIRE")` | the key bound to an action, for a prompt |
 | `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
 | `dockHint` | the docked banner's text, or "" when not docked |
+| `insets` | the game's magnified bubbles this frame, at most three: the craft, what each is for (the player's ship, the lock, the nav target), the craft's label as the game has it, the bubble's middle and radius (UI units, y up), where the craft is, whether it is in view and whether the bubble sits right over it, how far the craft reaches as drawn, and its distance. Filled before `update`, and empty on deck (`PictureInPicture.report`) |
 
 `targeting`, `orbitInfo`, `interactor` and `physics` are the classic providers, set on `UiHud` as
 before and mirrored here.

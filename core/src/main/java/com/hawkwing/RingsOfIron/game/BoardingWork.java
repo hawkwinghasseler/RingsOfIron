@@ -45,6 +45,11 @@ public class BoardingWork implements BoardingProvider {
         BoardedComponent b = Boarding.of(craft);
         boolean ours = b != null && b.by != null && b.by.get(ctx.engine.getUuidRegistry()) == ship;
         out.boarding = ours && !b.taken;
+        out.taken = ours && b.taken;
+        out.disabled = ShipDisablement.isDisabled(craft);
+        out.prisoners = out.taken ? b.prisoners : 0;
+        out.aboard = ours ? boarding.boardersAboard(ship, craft) : 0;
+        out.defenders = out.taken ? 0 : boarding.defenders(craft);
         out.state = state(ship, craft, b, ours);
         String refused = boarding.refusal(ship, craft);
         out.boardRefusal = refused == null ? "" : refused;
@@ -52,7 +57,7 @@ public class BoardingWork implements BoardingProvider {
         out.stormRefusal = noStorm == null ? "" : noStorm;
         out.salvage = ours && b.taken;
         if (!out.salvage) {
-            boolean disabled = ShipDisablement.isDisabled(craft);
+            boolean disabled = out.disabled;
             // No one aboard defends it: marking a part to strip takes it, latched on or alongside
             if (!disabled || boarding.defenders(craft) > 0 || out.byEva && !alongside) {
                 out.salvageRefusal = !disabled ? (out.byEva && refused != null ? refused : "")
@@ -92,6 +97,7 @@ public class BoardingWork implements BoardingProvider {
                 row.name = salvage.partName(s.part);
                 row.value = salvage.salePrice(s.part);
                 row.marked = true;
+                row.off = true;
                 row.status = salvage.status(ship, craft, s);
                 row.toggleable = false;
             }

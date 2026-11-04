@@ -85,8 +85,27 @@ public class GameHud implements Disposable {
         data.shields = new PlayerShieldStatus(world.context);
         data.power = new PlayerPowerStatus(world.context);
         data.target = new PlayerTargetStatus(world.context, world.docking, world.sensors, world.pirateBase);
+        wireFlightAndPosts(data, world);
         alerts = new GameAlerts(world.context, world.warnings, world.spacewalks, world.crew, data);
         data.afterRefresh = alerts::update;
+    }
+
+    /**
+     * The providers for flight, navigation, docking, contacts, objectives and the posts aboard,
+     * which every variant reads; the game screen adds the key hints, which need its view of where
+     * the player is ({@link PlayerKeyHints}).
+     */
+    static void wireFlightAndPosts(com.ringsofiron.uihud.data.HudData data, GameWorld world) {
+        data.flight = new PlayerFlightStatus(world.context, world.docking, world.sensors, world.nav,
+                new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
+        StationServices services = new StationServices(world.macroSim, world.universe, world.standing, world.docking, world.shipyard);
+        data.navigation = new PlayerNavigation(world.context, world.nav, world.docking, world.contracts, world.universe,
+                world.pirateBase, new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), services);
+        data.dockingApproach = new PlayerDockingApproach(world.context, world.docking, world.physics);
+        data.contacts = new PlayerContacts(world.context, world.docking, world.nav.target, world.pirateBase, world.spacewalks,
+                world.sensors);
+        data.objectives = new PlayerObjectives(world.context, world.contracts, world.nav.target);
+        data.stationBoard = new PlayerStationBoard(world.context, world.crew, world.bridge);
     }
 
     /** The mod-script trust prompt as a dialog; pass to {@link GameWorld.Modules#modTrust} before loading content. */

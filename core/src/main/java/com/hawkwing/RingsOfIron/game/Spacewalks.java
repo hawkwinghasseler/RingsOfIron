@@ -222,6 +222,11 @@ public final class Spacewalks {
         return mps >= 10f ? Math.round(mps) + " m/s" : String.format(Locale.ROOT, "%.1f m/s", mps);
     }
 
+    /** True for the HUD marker that stands for one of the crew adrift outside ({@link #update}). */
+    public boolean isAdriftMarker(Entity e) {
+        return e != null && markers.containsValue(e);
+    }
+
     /**
      * Once a frame, after the engine's update: gives each of the player's crew adrift, alive, a
      * marker on the HUD ({@link PlaceMarkers} keeps it over them), and drops the markers of those
