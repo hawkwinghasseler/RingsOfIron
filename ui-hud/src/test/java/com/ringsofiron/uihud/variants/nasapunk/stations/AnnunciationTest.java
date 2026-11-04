@@ -34,6 +34,20 @@ class AnnunciationTest {
         r.raise("fire:" + room, Level.WARNING, Category.LIFE_SUPPORT).set("FIRE", "Fire in " + room).room(room).count(2);
     }
 
+    /** A fire as GameAlerts raises it, with {@code crew} putting it out. */
+    private static void fire(AlertRegistry r, String room, int crew) {
+        r.raise("fire:" + room, Level.WARNING, Category.LIFE_SUPPORT).set("FIRE", "Fire in " + room).room(room).count(2).handling(crew);
+    }
+
+    private static void breach(AlertRegistry r, String room, int crew) {
+        r.raise("breach:" + room, Level.WARNING, Category.LIFE_SUPPORT).set("BREACH", "Hull breach in " + room).room(room).handling(crew);
+    }
+
+    private static void casualty(AlertRegistry r, String name, int crew) {
+        r.raise("casualty:" + name, Level.WARNING, Category.CREW).set("CASUALTY", name + " is bleeding out")
+                .timer(90f, TimerKind.HARM).handling(crew);
+    }
+
     private static void sys(AlertRegistry r, String system, String room, Level l, String what, float timer) {
         r.raise("sys:" + system + ":" + system.length() + ",1", l, Category.ENGINEERING)
                 .set(system, system + (room.isEmpty() ? "" : " in " + room) + ": " + what).room(room)
@@ -172,6 +186,94 @@ class AnnunciationTest {
         });
         assertFalse(a.warnUnacked);
         assertTrue(a.cautUnacked);
+    }
+
+    @Test
+    void aFireTheCrewAreOnIsACautionAndAWarningOnceNobodyHasBeenOnItFor10s() {
+        frame(1.0, r -> fire(r, "BRIDGE", 1));
+        assertEquals(Level.CAUTION, a.get("FIRE").level);
+        assertEquals(Level.CAUTION, a.stations[Station.ENG.ordinal()]);
+        assertTrue(a.cautUnacked);
+        assertFalse(a.warnUnacked);
+        assertEquals(Level.CAUTION, a.level(alerts.get("fire:BRIDGE")), "the pages read the same level as the tile");
+        // the last of the crew leave it at 5 s
+        frame(5.0, r -> fire(r, "BRIDGE", 1));
+        frame(5.1, r -> fire(r, "BRIDGE", 0));
+        frame(14.9, r -> fire(r, "BRIDGE", 0));
+        assertEquals(Level.CAUTION, a.get("FIRE").level);
+        frame(15.1, r -> fire(r, "BRIDGE", 0));
+        assertEquals(Level.WARNING, a.get("FIRE").level);
+        assertEquals(Level.WARNING, a.stations[Station.ENG.ordinal()]);
+        assertTrue(a.warnUnacked);
+        frame(16.0, r -> fire(r, "BRIDGE", 2));
+        assertEquals(Level.CAUTION, a.get("FIRE").level, "back in hand");
+    }
+
+    @Test
+    void aFireNobodyIsOnIsACautionForItsFirst10sThenAWarning() {
+        frame(1.0, r -> fire(r, "HOLD", 0));
+        assertEquals(Level.CAUTION, a.get("FIRE").level);
+        frame(10.9, r -> fire(r, "HOLD", 0));
+        assertEquals(Level.CAUTION, a.get("FIRE").level);
+        frame(11.1, r -> fire(r, "HOLD", 0));
+        assertEquals(Level.WARNING, a.get("FIRE").level);
+    }
+
+    @Test
+    void aFireInASecondRoomIsAWarningWhoeverIsOnIt() {
+        frame(1.0, r -> {
+            fire(r, "BRIDGE", 1);
+            fire(r, "HOLD", 1);
+        });
+        assertEquals(Level.WARNING, a.get("FIRE").level);
+        frame(2.0, r -> fire(r, "BRIDGE", 1));
+        assertEquals(Level.CAUTION, a.get("FIRE").level, "out in the hold, the bridge's is in hand");
+    }
+
+    @Test
+    void aBreachBeingPatchedIsACautionAndAWarningOnceNobodyHasBeenOnItFor10s() {
+        frame(1.0, r -> breach(r, "HOLD", 1));
+        assertEquals(Level.CAUTION, a.get("BREACH").level);
+        frame(2.0, r -> breach(r, "HOLD", 0));
+        assertEquals(Level.CAUTION, a.get("BREACH").level);
+        frame(11.5, r -> breach(r, "HOLD", 0));
+        assertEquals(Level.WARNING, a.get("BREACH").level);
+    }
+
+    @Test
+    void aCasualtyIsACautionWhileSomeoneTendsThemAndAWarningWhileNobodyDoes() {
+        frame(1.0, r -> casualty(r, "Ada", 1));
+        assertEquals(Level.CAUTION, a.get("CASUALTY").level);
+        frame(1.1, r -> casualty(r, "Ada", 0));
+        assertEquals(Level.WARNING, a.get("CASUALTY").level, "at once: there is no grace for a casualty");
+        frame(1.2, r -> r.raise("captain:bleeding", Level.WARNING, Category.CAPTAIN).set("BLEEDING", "You are bleeding out").handling(1));
+        assertEquals(Level.CAUTION, a.get("BLEEDING").level);
+    }
+
+    @Test
+    void anAlertTheGameCantSayWhoWorksKeepsItsLevel() {
+        frame(1.0, r -> fire(r, "BRIDGE"));
+        assertEquals(Level.WARNING, a.get("FIRE").level);
+        frame(2.0, r -> r.raise("air:HOLD", Level.WARNING, Category.LIFE_SUPPORT).set("VACUUM", "HOLD is in vacuum").room("HOLD").handling(2));
+        assertEquals(Level.WARNING, a.get("AIR").level, "a room in vacuum is no less one for the patching");
+    }
+
+    @Test
+    void aRiseLightsTheLampAgainAndAFallLightsNothing() {
+        frame(1.0, r -> fire(r, "BRIDGE", 1));
+        a.acknowledge(alerts);
+        frame(2.0, r -> fire(r, "BRIDGE", 1));
+        assertFalse(a.cautUnacked || a.warnUnacked);
+        frame(2.1, r -> fire(r, "BRIDGE", 0));
+        frame(12.5, r -> fire(r, "BRIDGE", 0));
+        assertEquals(Level.WARNING, a.get("FIRE").level);
+        assertTrue(a.warnUnacked, "nobody on it any more: the warning lamp lights, acknowledged as a caution or not");
+        a.acknowledge(alerts);
+        frame(13.0, r -> fire(r, "BRIDGE", 0));
+        assertFalse(a.warnUnacked);
+        frame(14.0, r -> fire(r, "BRIDGE", 1));
+        assertEquals(Level.CAUTION, a.get("FIRE").level);
+        assertFalse(a.cautUnacked || a.warnUnacked, "the crew taking it on lights nothing");
     }
 
     @Test

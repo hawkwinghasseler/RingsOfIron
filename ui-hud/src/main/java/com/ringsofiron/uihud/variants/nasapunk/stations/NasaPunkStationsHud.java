@@ -317,9 +317,9 @@ public class NasaPunkStationsHud implements HudVariant {
         annunciator.setVisible(ship && (!ann.row.isEmpty() || ann.warnUnacked || ann.cautUnacked));
     }
 
-    /** Acknowledge: the master lamps stop flashing until something new or worse (section 7.1). */
+    /** Acknowledge: the master lamps stop flashing until something new or worse (sections 7.1 and 13.3). */
     private void acknowledge() {
-        host.data().alerts.acknowledgeAll();
+        ann.acknowledge(host.data().alerts);
     }
 
     private void warpStrip(HudData d, boolean show) {

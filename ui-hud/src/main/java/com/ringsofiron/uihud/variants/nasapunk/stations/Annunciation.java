@@ -7,10 +7,13 @@ import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.variants.nasapunk.NpFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,12 +30,19 @@ import java.util.regex.Pattern;
  * <p>Each tile has its station and home page, which the board's lights and the MFDs' paging follow.
  * The ship disabled and abandon ship take no tile, since the status strip says them, but light
  * Command's. The master lamps are lit while a warning, or a caution, is not yet acknowledged.
+ *
+ * <p>Section 13.1's escalation sets the level of what the crew work: a fire or a breach is a
+ * caution while crew are on it, or for its first 10 s, and a warning once nobody has been on it for
+ * 10 s, or for a fire, once it burns in a second room; a casualty is a caution while someone tends
+ * them, and a warning while nobody does. A rise lights its lamp again, acknowledged or not (13.3).
  */
 final class Annunciation {
     /** Tiles in the row. */
     static final int ROW = 6;
     /** Capitals on a tile's line. */
     static final int CHARS = 8;
+    /** Nobody on a fire or a breach this long makes it a warning, s (13.1). */
+    static final double UNATTENDED = 10.0;
     private static final Pattern PERCENT = Pattern.compile("(\\d+)%");
 
     static final class Tile {
@@ -61,6 +71,12 @@ final class Annunciation {
     private final List<List<Alert>> spare = new ArrayList<>();
     private final Tile more = new Tile();
     private final List<Tile> pool = new ArrayList<>();
+    /** Each alert's level after escalation this frame, and last frame's, by id. */
+    private Map<String, Level> levels = new HashMap<>(), lastLevels = new HashMap<>();
+    /** When crew were last on each fire and breach, sim s; its raising while nobody has been. */
+    private final Map<String, double[]> lastOn = new HashMap<>();
+    /** What escalation has made worse since the player last acknowledged: lit again. */
+    private final Set<String> rose = new HashSet<>();
     private boolean wasBlackout;
     private double blackoutSince;
 
@@ -83,15 +99,18 @@ final class Annunciation {
         wasBlackout = blackout;
 
         Array<Alert> a = alerts.all();
+        escalate(a, now);
         for (int i = 0; i < a.size; i++) {
             Alert x = a.get(i);
-            if (!x.acknowledged && x.level == Level.WARNING) warnUnacked = true;
-            if (!x.acknowledged && x.level == Level.CAUTION) cautUnacked = true;
+            Level l = level(x);
+            boolean acked = x.acknowledged && !rose.contains(x.id);
+            if (!acked && l == Level.WARNING) warnUnacked = true;
+            if (!acked && l == Level.CAUTION) cautUnacked = true;
             if (x.id.equals("disabled") || x.id.equals("abandon")) {
-                light(Station.CMD, x.level);
+                light(Station.CMD, l);
                 continue;
             }
-            if (x.level == Level.ADVISORY) continue;
+            if (l == Level.ADVISORY) continue;
             String key = keyOf(x);
             if (key != null) group(key).add(x);
         }
@@ -119,6 +138,57 @@ final class Annunciation {
         more.home = first.home;
         more.since = first.since;
         row.add(more);
+    }
+
+    /** {@code x}'s level after escalation (13.1): a warning the crew have in hand is a caution. */
+    Level level(Alert x) {
+        Level l = levels.get(x.id);
+        return l == null ? x.level : l;
+    }
+
+    /** The player acknowledges every alert as it stands: only something new or worse lights a lamp again. */
+    void acknowledge(AlertRegistry alerts) {
+        alerts.acknowledgeAll();
+        rose.clear();
+    }
+
+    /**
+     * This frame's levels: a fire, breach or casualty the game raises as a warning stays one only
+     * while the crew don't have it in hand. Alerts the game can't say who works ({@code handling}
+     * -1) keep its level.
+     */
+    private void escalate(Array<Alert> a, double now) {
+        Map<String, Level> t = lastLevels;
+        lastLevels = levels;
+        levels = t;
+        levels.clear();
+        int fires = 0;
+        for (int i = 0; i < a.size; i++) if (a.get(i).id.startsWith("fire:")) fires++;
+        for (int i = 0; i < a.size; i++) {
+            Alert x = a.get(i);
+            Level l = x.level;
+            boolean fire = x.id.startsWith("fire:"), breach = x.id.startsWith("breach:");
+            if (l == Level.WARNING && x.handling >= 0) {
+                if (fire || breach) {
+                    double[] on = lastOn.get(x.id);
+                    if (on == null) {
+                        on = new double[] {x.since};
+                        lastOn.put(x.id, on);
+                    }
+                    if (x.handling > 0) on[0] = now;
+                    boolean spread = fire && fires > 1;
+                    if (!spread && now - on[0] < UNATTENDED) l = Level.CAUTION;
+                } else if ((x.id.startsWith("casualty:") || x.id.equals("captain:bleeding")) && x.handling > 0) {
+                    l = Level.CAUTION;
+                }
+            }
+            levels.put(x.id, l);
+            Level was = lastLevels.get(x.id);
+            if (was != null && l.ordinal() > was.ordinal()) rose.add(x.id);
+        }
+        // what has cleared is forgotten
+        lastOn.keySet().retainAll(levels.keySet());
+        rose.retainAll(levels.keySet());
     }
 
     /** The tile of {@code key}, or null while it isn't lit. */
@@ -195,7 +265,8 @@ final class Annunciation {
         t.since = Double.NaN;
         for (int i = 0; i < g.size(); i++) {
             Alert x = g.get(i);
-            if (x.level.ordinal() > t.level.ordinal()) t.level = x.level;
+            Level l = level(x);
+            if (l.ordinal() > t.level.ordinal()) t.level = l;
             if (Double.isNaN(t.since) || x.since < t.since) t.since = x.since;
         }
         Alert first = g.isEmpty() ? null : g.get(0);

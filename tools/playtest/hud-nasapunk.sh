@@ -66,6 +66,11 @@ if [ "$SPEC" = stations ]; then
   alt 6; altshift 5; pause 1; shot n-06d-crew-comms
   alt 6; altshift 3; altshift 3; pause 1; shot n-06e-contracts-weapons
   alt 1; altshift 3; pause 1; shot n-06f-helm-defense
+  # A fire aboard (13.1): a caution while the crew are on it or for its first 10 s, a warning once
+  # nobody has been. The right MFD turns to DAMAGE, which says who is on it. Put out after
+  cmd dev "fire(player)"; pause 2; shot n-06g-fire
+  pause 20; shot n-06h-fire-later
+  cmd dev "extinguish(player)"; pause 2
 fi
 key v; pause 3; shot n-07-deck
 to_weapons && { pause 3; shot n-08-gunnery; }

@@ -601,7 +601,10 @@ final class Pages {
             }
         }
         Level worst = null;
-        for (int i = 0; i < alerts.size(); i++) if (worst == null || alerts.get(i).level.ordinal() > worst.ordinal()) worst = alerts.get(i).level;
+        for (int i = 0; i < alerts.size(); i++) {
+            Level l = level(alerts.get(i));
+            if (worst == null || l.ordinal() > worst.ordinal()) worst = l;
+        }
         StDraw.head(cv, gx, gy, gw, "DAMAGE", alerts.isEmpty() ? "NO DAMAGE" : alerts.size() + (alerts.size() == 1 ? " FAULT" : " FAULTS"), worst == null ? NpColors.DIM : StDraw.color(worst));
         float lw = StDraw.lab(cv, L, row(gy, 0), "HULL");
         float bx = L + lw + 10f, bw = R - bx - 46f;
@@ -616,13 +619,17 @@ final class Pages {
             Alert a = alerts.get(i);
             if (a.id.equals("hull")) continue;
             float y = row(gy, line++);
-            Color c = StDraw.color(a.level);
-            StDraw.severity(cv, L + 5f, y, a.level, c);
+            Level l = level(a);
+            Color c = StDraw.color(l);
+            StDraw.severity(cv, L + 5f, y, l, c);
             boolean sys = a.id.startsWith("sys:");
             float ww = StDraw.body(cv, L + 16f, y, up(a.code), c);
             String where = sys ? (Annunciation.what(a).equals("destroyed") ? "WRECKED" : "DISABLED") : up(a.room);
-            StDraw.lab(cv, L + 16f + ww + 8f, y, StDraw.fit(cv, where, R - L - ww - 70f, StDraw.LB, true, 0.4f));
-            if (!sys && a.count > 1) StDraw.labEnd(cv, R, y, a.count + " TILES");
+            // who is on it, where the game says; else how many tiles burn or vent
+            String who = a.handling > 0 ? a.handling + " ON IT" : a.handling == 0 ? "NOBODY" : !sys && a.count > 1 ? a.count + " TILES" : "";
+            float x = L + 16f + ww + 8f, rw = who.isEmpty() ? 0f : StDraw.labW(cv, who) + 8f;
+            StDraw.lab(cv, x, y, StDraw.fit(cv, where, R - x - rw, StDraw.LB, true, 0.4f));
+            if (!who.isEmpty()) cv.text(R, y, who, StDraw.LB, true, a.handling > 0 ? NpColors.WHITE : a.handling == 0 ? c : NpColors.DIM, 0.4f, NpCanvas.END);
         }
         if (line == 1) StDraw.lab(cv, L, row(gy, 1), "NO FIRES, BREACHES OR WRECKS");
     }
@@ -689,6 +696,11 @@ final class Pages {
         }
     }
 
+    /** {@code a}'s level as the annunciator escalates it (13.1), so a page and its tile agree. */
+    private Level level(Alert a) {
+        return ann == null ? a.level : ann.level(a);
+    }
+
     static String megawatts(double watts) {
         return watts <= 0 ? "0" : NpFormat.tenths(watts / 1e6);
     }
@@ -721,8 +733,8 @@ final class Pages {
         for (int i = 0; i < alerts.size() && line < 5; i++) {
             Alert a = alerts.get(i);
             float y = row(gy, line++);
-            Color col = StDraw.color(a.level);
-            StDraw.severity(cv, L + 5f, y, a.level, col);
+            Color col = StDraw.color(level(a));
+            StDraw.severity(cv, L + 5f, y, level(a), col);
             float w = StDraw.body(cv, L + 16f, y, up(a.code), col);
             StDraw.lab(cv, L + 16f + w + 8f, y, StDraw.fit(cv, up(a.room), R - L - w - 30f, StDraw.LB, true, 0.4f));
         }
@@ -803,8 +815,9 @@ final class Pages {
             Alert a = all.get(i);
             if (!a.id.startsWith("casualty:") && !a.id.equals("eva")) continue;
             float y = row(gy, line++);
-            Color c = a.level == Level.ADVISORY ? NpColors.WHITE : StDraw.color(a.level);
-            if (a.level != Level.ADVISORY) StDraw.severity(cv, L + 5f, y, a.level, c);
+            Level l = level(a);
+            Color c = l == Level.ADVISORY ? NpColors.WHITE : StDraw.color(l);
+            if (l != Level.ADVISORY) StDraw.severity(cv, L + 5f, y, l, c);
             cv.text(L + 16f, y, StDraw.fit(cv, up(a.text), R - L - 60f, StDraw.LB, true, 0.3f), StDraw.LB, true, c, 0.3f, NpCanvas.START);
             if (!Float.isNaN(a.timer)) cv.text(R, y, NpFormat.clock(a.timer), StDraw.B, true, c, 0f, NpCanvas.END);
         }
