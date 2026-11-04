@@ -86,7 +86,6 @@ public final class GameInput {
         this.exteriorViewMeters = startView;
     }
 
-    /** The action's key went down this frame. */
     /** The action's key went down this frame, and the HUD variant did not take it for itself. */
     private boolean just(Action action) {
         return Gdx.input.isKeyJustPressed(action.defaultKey) && !hud.keyUsedByVariant(action.defaultKey);
