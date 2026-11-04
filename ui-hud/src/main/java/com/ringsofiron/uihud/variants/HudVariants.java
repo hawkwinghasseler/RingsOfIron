@@ -122,4 +122,36 @@ public final class HudVariants {
     public static String getChosen() {
         return chosen;
     }
+
+    // Debug test only (combined HUD test branch): F11 cycles the functional design, F12 the art style.
+
+    private static final Spec[] SPEC_CYCLE = {Spec.TASK, Spec.STATIONS, Spec.CONTEXT};
+    private static final Style[] STYLE_CYCLE = {Style.NASAPUNK, Style.VFD, Style.CASSETTE};
+
+    /** Picks the next functional design (task, stations, context) in the current art style. */
+    public static void cycleSpec() {
+        Entry now = find(chosen);
+        if (now.style == null) {
+            setChosen(Style.NASAPUNK.id + "." + Spec.TASK.id);
+            return;
+        }
+        Spec next = SPEC_CYCLE[(indexOf(SPEC_CYCLE, now.spec) + 1) % SPEC_CYCLE.length];
+        setChosen(now.style.id + "." + next.id);
+    }
+
+    /** Picks the next art style (nasa-punk, vfd, cassette) with the current functional design. */
+    public static void cycleStyle() {
+        Entry now = find(chosen);
+        if (now.style == null) {
+            setChosen(Style.NASAPUNK.id + "." + Spec.TASK.id);
+            return;
+        }
+        Style next = STYLE_CYCLE[(indexOf(STYLE_CYCLE, now.style) + 1) % STYLE_CYCLE.length];
+        setChosen(next.id + "." + now.spec.id);
+    }
+
+    private static int indexOf(Object[] cycle, Object value) {
+        for (int i = 0; i < cycle.length; i++) if (cycle[i] == value) return i;
+        return -1;
+    }
 }

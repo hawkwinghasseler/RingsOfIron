@@ -332,6 +332,15 @@ public class UiHud implements Disposable {
 
     /** Handles HUD keys. Public so games that route input themselves can forward keys. */
     public boolean handleKey(int keycode) {
+        // Debug test: F11 cycles the HUD variant's functional design, F12 its art style
+        if (keycode == Input.Keys.F11) {
+            HudVariants.cycleSpec();
+            return true;
+        }
+        if (keycode == Input.Keys.F12) {
+            HudVariants.cycleStyle();
+            return true;
+        }
         if (handleClassicKey(keycode)) return true;
         // Keys the HUD did not use go to the variant, unless a window has the keys
         boolean used = variant != null && openWindow() == null && !isMapOpen() && variant.keyDown(keycode);
