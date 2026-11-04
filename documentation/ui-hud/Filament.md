@@ -59,3 +59,8 @@ words that tell two ships apart stay.
 projected HUD, velocity markers, the lead reticle, missile glyphs and the impact cross, edge
 markers (`spread` moves several on one edge apart, keeping their order), deck tags, the state rows
 and the pips.
+
+`DeckPlan` draws the player's ship's deck plan on a graphic dot panel: walls lit round a room with
+something wrong in it, fire as a dense checker, smoke as a dither, a breach as an X, a room without
+air in red, and the last hull hit flashing. Context's H4 face and Task's schematic both use it; call
+`update` each frame and `paint` into a box, and it fits whole tiles to its dot pitch.
