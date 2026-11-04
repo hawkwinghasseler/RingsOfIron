@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Screens of a Nasa-punk HUD in the running game, for review against its mockups
 # (documentation/ui-overhaul/variations/nasapunk-<spec>): the docked start, cruising near Highport,
-# a raider locked, its missiles inbound, the deck, the weapons console, and damage. Needs Xvfb, xdotool and
-# ImageMagick's import. Waits on the game rather than the clock where it can, since a software-
-# rendered game under Xvfb runs its sim well below real time.
+# a raider locked, its missiles inbound, the deck, the weapons console, a boarding (context), and
+# damage. Needs Xvfb, xdotool and ImageMagick's import. Waits on the game rather than the clock where
+# it can, since a software-rendered game under Xvfb runs its sim well below real time.
 #   tools/playtest/hud-nasapunk.sh <stations|context|task> [out-dir] [WxH] [ui-scale]
 # Run from the repository root.
 set -u
@@ -46,12 +46,28 @@ key Up; key Return; key Down Down; key Return
 until_docked 180; pause 3; shot n-01-docked
 key u; pause 8; shot n-02-undocked
 cmd away 3000; await 30 "PLAYTEST away"; pause 5; shot n-03-cruise
+# The context HUD's orders menu (C1) opens on 7 over the helm's instrument, and 7 closes it
+[ "$SPEC" = context ] && { key 7; pause 1; shot n-03-orders; key 7; pause 0.5; }
 # A raider with dart racks 2 km out, hunting us; locked
 cmd raider 2 raider_darts; await 30 "PLAYTEST raider"; pause 3; key Tab; pause 2; shot n-04-raider
 pause 30; shot n-05-missiles
 pause 10; shot n-06-missiles-later
 key v; pause 3; shot n-07-deck
 to_weapons && { pause 3; shot n-08-gunnery; }
+# The context HUD's boarding panel (X2): latched to the playtest's raider with its reactor out; then
+# it surrenders, the party goes across and takes it, and three of its parts are marked to strip.
+# Cast off by the console after, since U casts off only at the helm
+taken() { cmd dev "world.boarding.takenBy(game.raider, player)"; pause 0.4
+  grep 'PLAYTEST dev world.boarding.takenBy' "$OUT/game.log" | tail -1 | grep -q ': true$'; }
+if [ "$SPEC" = context ]; then
+  cmd disable raider; pause 3; cmd latch; pause 4; shot n-10-latched
+  cmd dev "world.disablement.set(game.raider, com.ringsofiron.shipops.DisabledComponent.Reason.SURRENDERED)"
+  cmd dev "world.boarding.order(player)"; pause 2; shot n-11-boarding
+  for _ in $(seq 1 90); do taken && break; pause 1; done
+  cmd dev "world.salvage.parts(game.raider).take(3).each { world.salvage.mark(player, it.system.footprint.originX, it.system.footprint.originY) }"
+  pause 3; shot n-12-taken
+  cmd dev "world.docking.undock(player)"; pause 3
+fi
 # Damage for the alert band and the lamps: a holed tile, the hull beaten to 60%, the reactor out.
 # Shot soon after, since the crew have the reactor back within seconds
 cmd damage; cmd hull 0.6; cmd disable player; pause 2; shot n-09-damage
