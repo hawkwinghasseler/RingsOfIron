@@ -2,7 +2,10 @@ package com.ringsofiron.uihud.variants.vfd.stations;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.providers.PowerStatusProvider.PowerFrame;
 import com.ringsofiron.uihud.providers.UiContextProvider.Presence;
 import com.ringsofiron.uihud.variants.ClassicPart;
@@ -10,6 +13,7 @@ import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.FilamentActor;
+import com.ringsofiron.uihud.variants.vfd.Optic;
 import com.ringsofiron.uihud.variants.vfd.stations.Mfds.Mfd;
 
 import java.util.EnumSet;
@@ -37,8 +41,9 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
     final TopColumn top = new TopColumn();
     final World world = new World();
     final Deck deck = new Deck();
-    private float topX, bandY;
+    private float topX, bandY, height = Geo.H;
     private boolean blackout;
+    private final Rectangle column = new Rectangle(), base = new Rectangle();
 
     @Override
     public void attach(HudVariantHost host) {
@@ -66,6 +71,7 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
 
     /** Reads this frame's data into every part, on a {@code w} x {@code h} stage. */
     void layout(HudData d, float w, float h, float delta) {
+        height = h;
         topX = Geo.topX(w);
         bandY = Geo.bandY(h);
         blackout = blackout(d);
@@ -164,6 +170,37 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
     public void detach() {
         if (actor != null) actor.dispose();
         actor = null;
+    }
+
+    @Override
+    public void panels(Array<Rectangle> out) {
+        // The top column, and the band or the gun's plate under the world's floor (rule 4 of 6.3)
+        world.panels(out, topX, height, column, base);
+    }
+
+    @Override
+    public boolean drawsInsets() {
+        return true;
+    }
+
+    @Override
+    public void insetRoom(Insets.Room out) {
+        out.set(Optic.SIDE, Optic.ABOVE, Optic.BELOW);
+    }
+
+    @Override
+    public boolean wantsInset(Insets.Role role) {
+        // The optics belong to the seats (11.3): the lock's; the nav target's at the helm; the own
+        // ship's once its hull is under 12 pixels
+        if (!world.on) return false;
+        switch (role) {
+            case NAV:
+                return world.seat == Presence.HELM;
+            case OWN:
+                return world.ownTiny;
+            default:
+                return true;
+        }
     }
 
     @Override

@@ -1,11 +1,14 @@
 package com.ringsofiron.uihud.variants.vfd.stations;
 
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.providers.ContactProvider.Contact;
 import com.ringsofiron.uihud.providers.ContactProvider.Kind;
 import com.ringsofiron.uihud.providers.FlightStatusProvider.FlightStatus;
@@ -19,6 +22,7 @@ import com.ringsofiron.uihud.variants.vfd.Drive;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.Fmt;
 import com.ringsofiron.uihud.variants.vfd.Kit;
+import com.ringsofiron.uihud.variants.vfd.Optic;
 import com.ringsofiron.uihud.variants.vfd.Phosphor;
 
 /**
@@ -27,7 +31,12 @@ import com.ringsofiron.uihud.variants.vfd.Phosphor;
  * (hostile red triangles, the lock's square brackets with ticks, the nav target's diamond, neutral
  * traffic as a glyph), velocity markers at the helm, the lead reticle with a lock, missiles with
  * their tracks and impact crosses, and edge markers for what matters off screen or under the band
- * and the top column (rule 4 of 6.3). Burn arrows, fire arcs and the optics stay the game's own.
+ * and the top column (rule 4 of 6.3). Burn arrows and fire arcs stay the game's own.
+ *
+ * <p>The optics (11.3) are the game's magnified insets in the kit's ring of dots: the lock's, the nav
+ * target's at the helm only, and the own ship's only once its hull is under 12 pixels. Each carries
+ * its craft's mark and name, which then has none in the view nor an edge marker; marks under an inset
+ * are left out and counted on it.
  */
 final class World {
     static final int MARKS = 24, EDGES = 12, MISSILES = 16, CROSSES = 6;
@@ -37,6 +46,8 @@ final class World {
     static final float CROSS_MERGE = 24f;
     /** Units from the ship's centre to its velocity markers. */
     static final float VEL_R = 70f;
+    /** The own ship's optic only once its hull is shorter than this on screen, pixels (11.3). */
+    static final float OWN_OPTIC_PX = 12f;
 
     static final class Mark {
         float x, y, half;
@@ -73,12 +84,21 @@ final class World {
     final Cross[] crosses = new Cross[CROSSES];
     int markCount, edgeCount, missileCount, crossCount;
     boolean on;
-    boolean vel, velSquare;
+    boolean vel, velSquare, proShown, retroShown;
     float proX, proY, retroX, retroY;
     boolean lead, leadOnTarget, leadLine;
     float leadX, leadY, shipX, shipY;
     /** Where labels may sit: the screen less its margins, the top column and the band. */
     float left, right, top, bottom, colX0, colX1, colBottom;
+    /** The game's magnified insets this frame, and how each reads. */
+    final Insets.Inset[] insets = new Insets.Inset[Insets.MAX];
+    final Optic.Look[] looks = new Optic.Look[Insets.MAX];
+    int insetCount;
+    /** The seat, and whether the own ship is drawn small enough for its optic (11.3). */
+    Presence seat;
+    boolean ownTiny;
+    private float stageHeight = Geo.H, ownRing;
+    private final Optic.Layout optic = new Optic.Layout();
 
     private final Vector2 v = new Vector2(), lp = new Vector2();
 
@@ -87,6 +107,7 @@ final class World {
         for (int i = 0; i < EDGES; i++) edges[i] = new Edge();
         for (int i = 0; i < MISSILES; i++) missiles[i] = new Missile();
         for (int i = 0; i < CROSSES; i++) crosses[i] = new Cross();
+        for (int i = 0; i < Insets.MAX; i++) looks[i] = new Optic.Look();
     }
 
     /**
@@ -95,13 +116,30 @@ final class World {
      * gun plate's, or the stage's bottom.
      */
     void update(HudData d, ViewportManager views, float width, float height, float topX, float floor, boolean blackout) {
-        markCount = edgeCount = missileCount = crossCount = 0;
-        vel = lead = false;
+        markCount = edgeCount = missileCount = crossCount = insetCount = 0;
+        vel = lead = ownTiny = false;
         Presence seat = d.ctx.presence;
+        this.seat = seat;
         boolean seated = seat == Presence.HELM || seat == Presence.WEAPONS || seat == Presence.GUN;
         TransformComponent ship = d.ctx.ship == null ? null : d.ctx.ship.getComponent(TransformComponent.class);
         on = seated && d.ctx.exteriorView && !blackout && ship != null && views != null;
         if (!on) return;
+        stageHeight = height;
+        ShipGridComponent grid = d.ctx.ship.getComponent(ShipGridComponent.class);
+        float hull = grid == null ? 0f : Math.max(grid.width, grid.height) * grid.tileSize;
+        ownTiny = hull > 0f && hull / Math.max(1e-4f, views.metersPerPixel()) < OWN_OPTIC_PX;
+        ownRing = 0f;
+        for (int i = 0; i < d.insets.count() && insetCount < Insets.MAX; i++) {
+            Insets.Inset in = d.insets.get(i);
+            insets[insetCount] = in;
+            Optic.Look look = looks[insetCount++].clear();
+            look.text = Phosphor.ZINC;
+            if (in.own) {
+                // The own ship goes unnamed, and quiet
+                look.level = Drive.DIM;
+                if (in.centered) ownRing = in.radius + Optic.RING_GAP;
+            }
+        }
         left = 16f;
         right = width - 16f;
         top = 16f;
@@ -136,11 +174,30 @@ final class World {
                 lockedHalf = half;
             }
             boolean bracketed = c.locked || nav || hostile && (!green || seat != Presence.HELM);
+            int own = insetOf(c);
+            if (own >= 0) {
+                // On its optic rather than in the view or at the edge: named as its mark would be, the
+                // lock by name only, its zinc brackets round a hostile's red ring
+                Optic.Look look = looks[own];
+                look.name = Fmt.name(c.label, Optic.CELLS);
+                look.color = hostile ? Phosphor.RED : Phosphor.ZINC;
+                look.mark = Phosphor.ZINC;
+                look.lock = c.locked;
+                look.nav = nav && !c.locked;
+                look.level = Drive.NORM;
+                continue;
+            }
             if (!inside(sx, sy)) {
                 // Off screen, or under the band or the top column: an edge marker for what matters (11.4)
                 boolean matters = c.locked || hostile && (!green || seat != Presence.HELM) || nav && seat == Presence.HELM;
                 if (matters) edge(sx, sy, width, height, label(c, EDGE_NAME) + " " + Fmt.rangeText(c.range),
                         hostile ? Phosphor.RED : Phosphor.ZINC, c.locked ? Drive.FULL : Drive.NORM);
+                continue;
+            }
+            // Under an optic: counted there
+            int under = under(sx, sy, half, bracketed || c.kind == Kind.STATION || c.range < 2_000f);
+            if (under >= 0) {
+                looks[under].others++;
                 continue;
             }
             if (markCount == MARKS) continue;
@@ -209,12 +266,17 @@ final class World {
         FlightStatus fl = d.flightStatus;
         float speed = (float) Math.sqrt(fl.vx * fl.vx + fl.vy * fl.vy);
         if (seat == Presence.HELM && fl.present && speed > 0.5f && !d.ctx.docked && !d.ctx.latched) {
+            // Outside the own ship's optic when it sits over the ship
+            float r = Math.max(VEL_R, ownRing + 16f);
             float dx = fl.vx / speed, dy = -fl.vy / speed;
-            proX = shipX + dx * VEL_R;
-            proY = shipY + dy * VEL_R;
-            retroX = shipX - dx * VEL_R;
-            retroY = shipY - dy * VEL_R;
+            proX = shipX + dx * r;
+            proY = shipY + dy * r;
+            retroX = shipX - dx * r;
+            retroY = shipY - dy * r;
             velSquare = fl.frame == Frame.TARGET || fl.frame == Frame.NAV || fl.frame == Frame.STATION;
+            // Not on another craft's magnified picture, where it would read as a point on it
+            proShown = !onOtherInset(proX, proY);
+            retroShown = !onOtherInset(retroX, retroY);
             vel = true;
         }
 
@@ -223,11 +285,44 @@ final class World {
             views.worldToUi(lp.x, lp.y, v);
             leadX = v.x;
             leadY = height - v.y;
-            lead = inside(leadX, leadY);
+            // Never on an optic's magnified picture, where it would read as a point on it
+            lead = inside(leadX, leadY) && under(leadX, leadY, 9f, false) < 0;
             leadOnTarget = Math.abs(leadX - lockedX) < lockedHalf && Math.abs(leadY - lockedY) < lockedHalf;
             leadLine = seat != Presence.HELM || d.ctx.condition == Condition.RED;
         }
         settleEdges();
+    }
+
+    /** Which of this frame's insets is onto {@code c}'s craft, or -1. */
+    private int insetOf(Contact c) {
+        if (c.entity == null) return -1;
+        for (int i = 0; i < insetCount; i++) if (insets[i].entity == c.entity) return i;
+        return -1;
+    }
+
+    /** Which inset a mark at {@code x, y}, {@code half} across with a name under it or not, falls under, or -1. */
+    private int under(float x, float y, float half, boolean named) {
+        float w = Math.max(2f * half, named ? 14f * 12f : 0f), h = 2f * half + (named ? 40f : 0f);
+        for (int i = 0; i < insetCount; i++) {
+            if (Optic.covers(insets[i], stageHeight, x - w / 2f, y - half, w, h)) return i;
+        }
+        return -1;
+    }
+
+    /** Whether a velocity marker at {@code x, y} falls on the optic of a craft other than the own ship. */
+    private boolean onOtherInset(float x, float y) {
+        for (int i = 0; i < insetCount; i++) {
+            if (!insets[i].own && Optic.covers(insets[i], stageHeight, x - 10f, y - 10f, 20f, 20f)) return true;
+        }
+        return false;
+    }
+
+    /** The widgets the optics keep off, as the game takes them (UI units, y up): the top column, and the band or the gun's plate under the floor. */
+    void panels(Array<Rectangle> out, float topX, float height, Rectangle column, Rectangle band) {
+        if (!on) return;
+        out.add(column.set(colX0 - 6f, height - colBottom, colX1 - colX0 + 12f, colBottom));
+        float floor = bottom + 8f;
+        if (floor < height) out.add(band.set(topX + Geo.BAND_X - 6f, 0f, Geo.BAND_W + 12f, height - floor));
     }
 
     private static String label(Contact c, int cells) {
@@ -317,9 +412,10 @@ final class World {
 
     void paint(Filament f) {
         if (!on) return;
+        for (int i = 0; i < insetCount; i++) Optic.paint(f, insets[i], stageHeight, looks[i], optic);
         if (vel) {
-            Kit.velMark(f, true, proX, proY, velSquare, Drive.NORM);
-            Kit.velMark(f, false, retroX, retroY, velSquare, Drive.DIM);
+            if (proShown) Kit.velMark(f, true, proX, proY, velSquare, Drive.NORM);
+            if (retroShown) Kit.velMark(f, false, retroX, retroY, velSquare, Drive.DIM);
         }
         for (int i = 0; i < missileCount; i++) {
             Missile m = missiles[i];
@@ -336,9 +432,11 @@ final class World {
         if (lead) {
             if (leadLine) {
                 float dx = leadX - shipX, dy = leadY - shipY, len = (float) Math.sqrt(dx * dx + dy * dy);
-                if (len > 50f) {
+                // From outside the own ship's optic when it sits over the ship
+                float from = Math.max(30f, ownRing + 4f);
+                if (len > from + 20f) {
                     float ux = dx / len, uy = dy / len;
-                    f.dotLine(shipX + ux * 30f, shipY + uy * 30f, leadX - ux * 12f, leadY - uy * 12f,
+                    f.dotLine(shipX + ux * from, shipY + uy * from, leadX - ux * 12f, leadY - uy * 12f,
                             f.o().proj().step(7f).size(1.3f).dim());
                 }
             }
