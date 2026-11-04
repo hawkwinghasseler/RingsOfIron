@@ -117,10 +117,14 @@ class SalvageEvaTest {
     }
 
     private BoardingProvider.Part row(MountFootprint f) {
+        for (BoardingProvider.Part p : board().parts) if (p.x == f.originX && p.y == f.originY) return p;
+        return null;
+    }
+
+    private BoardingProvider.BoardingBoard board() {
         BoardingProvider.BoardingBoard board = new BoardingProvider.BoardingBoard();
         new BoardingWork(world.context, world.docking, world.boarding, world.salvage).collect(board);
-        for (BoardingProvider.Part p : board.parts) if (p.x == f.originX && p.y == f.originY) return p;
-        return null;
+        return board;
     }
 
     private int ourCrewAboardRaider() {
@@ -137,6 +141,7 @@ class SalvageEvaTest {
         run(2f);
         assertSame(game.raider, world.docking.dockedTo(game.player));
         assertTrue(ShipDisablement.isDisabled(game.raider));
+        assertTrue(board().disabled, "the boarding board says the latched craft is beaten");
         Salvage.Part engine = engine();
         MountFootprint f = engine.system.footprint;
 
