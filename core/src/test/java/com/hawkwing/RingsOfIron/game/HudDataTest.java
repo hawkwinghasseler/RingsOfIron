@@ -8,12 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.career.NewGame;
+import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.uihud.data.AlertRegistry;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.providers.ContactProvider;
 import com.ringsofiron.uihud.providers.PowerStatusProvider;
 import com.ringsofiron.uihud.providers.UiContextProvider;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider;
@@ -156,6 +158,24 @@ class HudDataTest {
         assertEquals("Test notice", data.messages.newest().text);
         assertEquals(AlertRegistry.Level.WARNING, data.messages.newest().level);
         assertTrue(data.messages.newest().secondsLeft > 0f);
+    }
+
+    @Test
+    void theLockAndItsContactReadOneTrack() {
+        data.contacts = new PlayerContacts(world.context, world.docking, world.nav.target, world.pirateBase, world.spacewalks,
+                world.sensors);
+        assertNotNull(game.raider, "the patrol start has a raider in the bubble");
+        game.player.getComponent(SensorComponent.class).lockedTarget = game.raider;
+        run(60);
+        data.refresh();
+        assertTrue(data.targetStatus.present);
+        assertFalse(Float.isNaN(data.targetStatus.range), "the lock is tracked");
+        ContactProvider.Contact locked = null;
+        for (ContactProvider.Contact c : data.contactFrame.contacts) if (c.locked) locked = c;
+        assertNotNull(locked, "the lock is among the contacts");
+        // The sensors' noise puts the track metres off the truth: both read the track, so they agree exactly
+        assertEquals(data.targetStatus.range, locked.range, 1e-3f);
+        assertEquals(data.targetStatus.closing, locked.closing, 1e-4f);
     }
 
     /** The first alert's code and text, for a failure message. */

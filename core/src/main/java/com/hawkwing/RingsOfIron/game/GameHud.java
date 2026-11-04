@@ -102,7 +102,8 @@ public class GameHud implements Disposable {
         data.navigation = new PlayerNavigation(world.context, world.nav, world.docking, world.contracts, world.universe,
                 world.pirateBase, new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), services);
         data.dockingApproach = new PlayerDockingApproach(world.context, world.docking, world.physics);
-        data.contacts = new PlayerContacts(world.context, world.docking, world.nav.target, world.pirateBase, world.spacewalks);
+        data.contacts = new PlayerContacts(world.context, world.docking, world.nav.target, world.pirateBase, world.spacewalks,
+                world.sensors);
         data.objectives = new PlayerObjectives(world.context, world.contracts, world.nav.target);
         data.stationBoard = new PlayerStationBoard(world.context, world.crew, world.bridge);
     }
