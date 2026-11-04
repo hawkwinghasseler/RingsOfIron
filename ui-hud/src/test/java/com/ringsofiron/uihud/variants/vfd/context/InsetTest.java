@@ -5,6 +5,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.coreengine.components.TransformComponent;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.data.Insets;
@@ -144,6 +145,13 @@ class InsetTest {
         assertTrue(w.looks[0].nav);
         assertFalse(w.looks[0].lock);
         assertEquals("HIGHPORT", w.looks[0].name);
+        // The marker left is among the panels the game keeps the insets off, y up
+        Array<Rectangle> panels = new Array<>();
+        w.panels(panels, 1280f, 800f);
+        World.Edge e = w.edges[0];
+        boolean kept = false;
+        for (Rectangle r : panels) kept |= r.contains(e.x, 800f - e.y) && r.contains(e.x + 30f, 800f - e.y);
+        assertTrue(kept, "the marker at " + e.x + ", " + e.y + " among " + panels);
     }
 
     @Test
@@ -185,6 +193,8 @@ class InsetTest {
     void theInsetsKeepOffEveryWidgetTheStripAndTheRackAndAreAskedForOnlyWhileTheWorldShows() {
         w.clearBoxes();
         w.box(Geo.LX, 40f, Geo.CW, 200f);
+        // A 40 x 16 m hull, 2.2 units from its middle to a corner at 10 m a unit
+        d.ctx.ship.add(new ShipGridComponent(20, 8, 2f));
         frame(false);
         assertTrue(hud.drawsInsets());
         assertTrue(hud.wantsInset(Insets.Role.OWN));
@@ -197,8 +207,9 @@ class InsetTest {
         assertEquals(Optic.BELOW, room.below);
         Array<Rectangle> panels = new Array<>();
         w.panels(panels, 1280f, 800f);
-        assertEquals(3, panels.size, "the widget, the status strip and the rack");
-        Rectangle widget = panels.get(0), strip = panels.get(1), rack = panels.get(2);
+        assertEquals(4, panels.size, "the widget, the status strip, the rack and the ship");
+        Rectangle widget = panels.get(0), strip = panels.get(1), rack = panels.get(2), ship = panels.get(3);
+        assertTrue(ship.contains(640f, 400f) && ship.contains(640f + 8f, 400f - 8f) && ship.width < 20f, "the ship: " + ship);
         // The widget padded and turned over into the UI camera's y up
         assertEquals(Geo.LX - 6f, widget.x, 1e-3f);
         assertEquals(800f - 240f - 6f, widget.y, 1e-3f);

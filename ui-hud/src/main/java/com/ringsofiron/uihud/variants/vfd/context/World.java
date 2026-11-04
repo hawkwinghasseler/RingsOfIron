@@ -99,7 +99,10 @@ final class World {
     int insetCount;
     private float stageHeight = Geo.H, ownRing, floor = Geo.H;
     private final Optic.Layout optic = new Optic.Layout();
-    private final Rectangle[] panels = new Rectangle[BOXES + 2];
+    /** How far the player's ship reaches from its middle on the stage, and its box for the game. */
+    private float shipReach;
+    private final Rectangle shipPanel = new Rectangle();
+    private final Rectangle[] panels = new Rectangle[BOXES + 2 + EDGES];
 
     private final Vector2 v = new Vector2(), lp = new Vector2();
 
@@ -129,7 +132,8 @@ final class World {
 
     /**
      * What the inset views keep off (W7), as the game takes them (UI units, y up, on a stage
-     * {@code width} x {@code height}): every widget's box, the status strip and the bottom rack.
+     * {@code width} x {@code height}): every widget's box, the status strip, the bottom rack, the
+     * player's ship and the edge markers.
      */
     void panels(Array<Rectangle> out, float width, float height) {
         if (!on) return;
@@ -139,6 +143,16 @@ final class World {
         }
         out.add(panels[BOXES].set(0f, height - Geo.STRIP_B, width, Geo.STRIP_B));
         if (floor < height) out.add(panels[BOXES + 1].set(0f, 0f, width, height - floor));
+        // The player's ship, so no other craft's magnified picture covers it
+        if (on && shipReach > 0f) {
+            float h = shipReach + 6f;
+            out.add(shipPanel.set(shipX - h, height - shipY - h, 2f * h, 2f * h));
+        }
+        for (int i = 0; i < edgeCount; i++) {
+            Edge e = edges[i];
+            Rectangle r = Kit.edgeBox(e.x, e.y, e.dir, e.text, panels[BOXES + 2 + i]);
+            out.add(r.set(r.x - 4f, height - r.y - r.height - 4f, r.width + 8f, r.height + 8f));
+        }
     }
 
     /**
@@ -179,6 +193,7 @@ final class World {
         shipX = v.x;
         shipY = height - v.y;
         float unit = Math.max(1e-4f, views.metersPerUiUnit());
+        shipReach = Optic.hullReach(d.ctx.ship, unit);
         boolean quiet = s.warp || s.docked || s.latched;
         Situations.Seat seat = s.seat;
         Objective objective = d.objectiveFrame.first();
