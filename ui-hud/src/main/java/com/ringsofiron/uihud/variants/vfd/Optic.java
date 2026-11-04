@@ -30,8 +30,11 @@ public final class Optic {
      * room a HUD gives the game for each inset ({@code HudVariant#insetRoom}).
      */
     public static final float SIDE = 16f, ABOVE = 16f, BELOW = 56f;
-    /** The lock's brackets stand this far past the ring, its ticks 3 to 5 dots further; the nav's diamond points this far. */
-    static final float LOCK_OUT = 2f, TICKS = 5f * 2f, NAV_OUT = 9f;
+    /**
+     * The lock's brackets stand this far past the ring, its ticks 3 to 5 dots further; the nav's
+     * diamond points this far, each point's arms reaching {@link #NAV_ARM} back and across.
+     */
+    static final float LOCK_OUT = 2f, TICKS = 5f * 2f, NAV_OUT = 9f, NAV_ARM = 4f * 2f * 0.9f;
     /** The chevron's tip past the ring and any mark there; the caption's gap under them. */
     static final float CHEVRON_OUT = 11f, CAPTION_GAP = 5f;
 
@@ -174,14 +177,25 @@ public final class Optic {
     }
 
     /**
-     * True when a box on the stage, y down, reaches into inset {@code in}: its picture and ring, or
-     * the room under it where its caption goes. A HUD leaves its own mark out there and counts it on the
-     * caption.
+     * True when a box on the stage, y down, reaches into inset {@code in}: its picture and ring, the
+     * lock's brackets and ticks or the nav's diamond points round it, or the room under it where its
+     * caption goes. A HUD leaves its own mark out there and counts it on the caption.
      */
     public static boolean covers(Insets.Inset in, float height, float x, float y, float w, float h) {
-        float cx = in.x, cy = height - in.y, r = in.radius + RING_GAP + DOT;
+        float cx = in.x, cy = height - in.y, ring = in.radius + RING_GAP, r = ring + DOT;
+        // The box's nearest point to the middle, along each axis
         float nx = Math.max(x, Math.min(cx, x + w)) - cx, ny = Math.max(y, Math.min(cy, y + h)) - cy;
         if (nx * nx + ny * ny < r * r) return true;
+        float ax = Math.abs(nx), ay = Math.abs(ny);
+        if (in.locked) {
+            // The corner brackets' square, and the ticks out along the axes
+            float corner = ring + LOCK_OUT + DOT, tick = ring + LOCK_OUT + TICKS + DOT;
+            if (ax < corner && ay < corner || ax < DOT && ay < tick || ay < DOT && ax < tick) return true;
+        } else if (in.nav) {
+            // The diamond's four points on the axes
+            float point = ring + NAV_OUT + DOT, across = NAV_ARM + DOT;
+            if (ax < across && ay < point || ay < across && ax < point) return true;
+        }
         float half = CELLS * 6f * PITCH / 2f, top = cy + in.radius, bottom = cy + in.radius + BELOW;
         return x < cx + half && x + w > cx - half && y < bottom && y + h > top;
     }
