@@ -1,5 +1,7 @@
 package com.ringsofiron.uihud.variants.vfd;
 
+import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.uihud.data.Insets;
 
 /**
@@ -169,6 +171,17 @@ public final class Optic {
             f.dot(bx - l.dy * back, by + l.dx * back, o);
             f.dot(bx + l.dy * back, by - l.dx * back, o);
         }
+    }
+
+    /**
+     * How far the player's {@code ship} reaches from its middle on the stage at {@code metersPerUnit}:
+     * half its deck plan's diagonal, UI units; 0 without one. A HUD hands the game a box this big round
+     * the ship with its panels, so no other craft's magnified picture covers the ship itself.
+     */
+    public static float hullReach(Entity ship, float metersPerUnit) {
+        ShipGridComponent g = ship == null ? null : ship.getComponent(ShipGridComponent.class);
+        if (g == null) return 0f;
+        return 0.5f * (float) Math.hypot(g.width * g.tileSize, g.height * g.tileSize) / Math.max(1e-4f, metersPerUnit);
     }
 
     /** How wide a caption line sets: 6 dots a cell at pitch 2, less the last cell's gap. */

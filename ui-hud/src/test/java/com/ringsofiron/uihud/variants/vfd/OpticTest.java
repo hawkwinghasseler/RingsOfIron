@@ -1,5 +1,7 @@
 package com.ringsofiron.uihud.variants.vfd;
 
+import com.badlogic.ashley.core.Entity;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.uihud.data.Insets;
 import org.junit.jupiter.api.Test;
 
@@ -132,6 +134,17 @@ class OpticTest {
         assertTrue(Optic.covers(in, H, point[0], point[1], point[2], point[3]), "on the nav's point");
         assertFalse(Optic.covers(in, H, tick[0], tick[1], tick[2], tick[3]), "past the nav's top point");
         assertFalse(Optic.covers(in, H, corner[0], corner[1], corner[2], corner[3]), "between the nav's points");
+    }
+
+    @Test
+    void theShipsReachIsHalfItsDeckPlansDiagonal() {
+        Entity ship = new Entity();
+        assertEquals(0f, Optic.hullReach(ship, 1f), "no deck plan, no reach");
+        assertEquals(0f, Optic.hullReach(null, 1f));
+        // 20 x 8 tiles of 2 m: a 40 x 16 m hull, 21.5 m from its middle to a corner
+        ship.add(new ShipGridComponent(20, 8, 2f));
+        assertEquals(21.54f, Optic.hullReach(ship, 1f), 0.01f);
+        assertEquals(2.154f, Optic.hullReach(ship, 10f), 0.001f);
     }
 
     @Test
