@@ -90,6 +90,8 @@ public final class HudData {
     public final MessageFeed messages = new MessageFeed();
     /** The last hit on the player's hull, for a schematic to flash ({@link #hullHit(int, int)}). */
     public final HullHit lastHullHit = new HullHit();
+    /** The game's magnified insets this frame (picture-in-picture), set as it lays them, before the HUD updates. */
+    public final Insets insets = new Insets();
 
     /** A hit on the player's hull: the deck tile it struck, and seconds since, NaN before any. */
     public static final class HullHit {

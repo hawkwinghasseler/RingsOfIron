@@ -1,5 +1,9 @@
 package com.ringsofiron.uihud.variants;
 
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.uihud.data.Insets;
+
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -45,5 +49,38 @@ public interface HudVariant {
     /** The classic HUD's pieces that stay up under this variant; the rest are hidden. None by default. */
     default Set<ClassicPart> keeps() {
         return EnumSet.noneOf(ClassicPart.class);
+    }
+
+    /**
+     * The variant's own panels as it last laid them out, into {@code out}: UI units, y up, as the UI
+     * camera has them. What the game lays over the world under the HUD keeps off them: its magnified
+     * insets (picture-in-picture) slide clear. None by default.
+     */
+    default void panels(Array<Rectangle> out) {
+    }
+
+    /**
+     * Whether the variant draws the rims, marks and names of the game's magnified insets itself, from
+     * {@link com.ringsofiron.uihud.data.HudData#insets}; the game then lays only the magnified
+     * pictures. False by default: the game draws them as the classic HUD has them.
+     */
+    default boolean drawsInsets() {
+        return false;
+    }
+
+    /**
+     * How far the variant's own rim, marks and name reach past the edge of each inset's picture, into
+     * {@code out} (cleared to none): the game keeps that room clear of the panels, the other insets
+     * and the stage's edges. Read only when the variant {@link #drawsInsets}.
+     */
+    default void insetRoom(Insets.Room out) {
+    }
+
+    /**
+     * Whether the game shows an inset for {@code role} at all (still only while the outside view draws
+     * that craft too small to make out). All of them by default.
+     */
+    default boolean wantsInset(Insets.Role role) {
+        return true;
     }
 }
