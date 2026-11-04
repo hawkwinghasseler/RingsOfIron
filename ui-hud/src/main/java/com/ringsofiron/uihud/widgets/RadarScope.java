@@ -68,6 +68,11 @@ public class RadarScope extends Widget {
         pickListener = listener;
     }
 
+    /** Picks {@code contact} as a click on its mark would, for a HUD variant that draws its own scope. */
+    public void pick(Entity contact) {
+        if (pickListener != null && contact != null) pickListener.accept(contact);
+    }
+
     /** Steps to the next closer range, showing more detail; false when already at the closest. */
     public boolean zoomIn() {
         if (range == 0) return false;
