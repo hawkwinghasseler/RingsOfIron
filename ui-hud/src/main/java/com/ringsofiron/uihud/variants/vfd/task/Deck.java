@@ -22,9 +22,12 @@ import com.ringsofiron.uihud.variants.vfd.Phosphor;
 import java.util.Locale;
 
 /**
- * The deck's own parts (functional-task 6, INT and OVL's deck overlays). INT: beside what the captain
- * stands at, a small slab with its name once in legend type, then at most two keys, each with its verb
- * ("HELM  E OPEN  V SIT AND FLY"). The hazard tags: one on each hazard in view, its name ("FIRE
+ * The deck's own parts (functional-task 6, INT and OVL's deck overlays). INT: what the captain stands
+ * at, its name once in legend type, then at most two keys, each with its verb ("HELM  E OPEN  V SIT
+ * AND FLY"), on a plate like the key strip's in its own slot just over the strip. The spec puts it
+ * beside the object, but on deck the camera keeps the captain in the middle of the view, so beside
+ * the object was over the middle of the deck: it keeps to the bottom edge with the other keys. The
+ * hazard tags: one on each hazard in view, its name ("FIRE
  * (MEDIUM)", "BREACH, VENTING", "SHORT: REACTOR"), then who is on it ("1 ON IT") or NOBODY; and for
  * hazards out of sight at most five pointers at the edge of the view, warnings first.
  */
@@ -47,8 +50,13 @@ final class Deck {
     String name = "";
     final String[] keys = new String[2], verbs = new String[2];
     int verbCount;
-    float promptX, promptY;
-    private final Vector2 v = new Vector2(), avatar = new Vector2();
+    /** The prompt's slot: its left and top on the stage, and the widest it may be. */
+    float promptX, promptY, promptMax = Float.MAX_VALUE;
+    /** What fits of the prompt this frame: its name (dropped first) and its verbs, cut to fit. */
+    private String fitName = "";
+    private final String[] fitVerbs = new String[2];
+    private int fitCount;
+    private final Vector2 v = new Vector2();
 
     Deck() {
         for (int i = 0; i < TAGS; i++) tags[i] = new Tag();
@@ -61,23 +69,26 @@ final class Deck {
     void update(HudData d, Posts p, ViewportManager views, Entity console, float width, float height, float l, float t, float r, float b) {
         tagCount = 0;
         prompt = false;
-        if (!p.deck() || views == null || d.ctx.ship == null) return;
+        if (!p.deck() || d.ctx.ship == null) return;
+        prompt(d, console);
+        if (views == null) return;
         ShipGridComponent g = d.ctx.ship.getComponent(ShipGridComponent.class);
         TransformComponent tx = d.ctx.ship.getComponent(TransformComponent.class);
         if (g == null || tx == null) return;
         boolean own = d.ctx.presence != Presence.ABOARD_OTHER && d.ctx.presence != Presence.EVA;
-        prompt(d, views, g, tx, console, height);
         if (own) tags(d, views, g, tx, height, l, t, r, b);
-        if (prompt) {
-            // On the stage, clear of the edges
-            promptX = MathUtils.clamp(promptX, l, Math.max(l, r - 360f));
-            promptY = MathUtils.clamp(promptY, t, Math.max(t, b - PROMPT_H));
-        }
+    }
+
+    /** Where the prompt goes: its slot's left and top on the stage, and the widest it may be. */
+    void slot(float x, float y, float maxWidth) {
+        promptX = x;
+        promptY = y;
+        promptMax = maxWidth;
     }
 
     // ------------------------------------------------------------------ INT
 
-    private void prompt(HudData d, ViewportManager views, ShipGridComponent g, TransformComponent tx, Entity console, float height) {
+    private void prompt(HudData d, Entity console) {
         verbCount = 0;
         name = "";
         String act = d.promptAction == null ? "" : d.promptAction.trim();
@@ -105,20 +116,6 @@ final class Deck {
             verb(key, (lower.startsWith("to ") ? act.substring(3) : act).toUpperCase(Locale.ROOT));
         }
         if (!extraKey.isEmpty() && !extraVerb.isEmpty()) verb(extraKey, extraVerb);
-        // Beside the console, else beside the captain
-        float tileX, tileY;
-        if (c != null) {
-            tileX = c.tileX + 0.5f;
-            tileY = c.tileY + 0.5f;
-        } else if (d.interactor != null && d.interactor.getAvatarTile(avatar)) {
-            tileX = avatar.x;
-            tileY = avatar.y;
-        } else {
-            return;
-        }
-        screen(views, g, tx, tileX, tileY, height);
-        promptX = v.x + 28f;
-        promptY = v.y + 18f;
         prompt = true;
     }
 
@@ -245,21 +242,46 @@ final class Deck {
         }
     }
 
+    /** The prompt's width as it fits this frame: the plate's padding, the name and each key with its word window. */
     float promptWidth(Filament f) {
-        float w = 8f + f.legendWidth(name, f.o()) + (name.isEmpty() ? 0f : 12f);
-        for (int i = 0; i < verbCount; i++) w += f.keycapWidth(keys[i], 16f, 12f) + 4f + f.dmWidth(verbs[i].length(), f.o().pitch(Geo.P)) + 10f;
-        return w - 10f + 8f;
+        float w = 12f + (fitName.isEmpty() ? 0f : f.legendWidth(fitName, f.o()) + 10f);
+        for (int i = 0; i < fitCount; i++) w += f.keycapWidth(keys[i], 18f, 12f) + 4f + f.dmWidth(fitVerbs[i].length(), f.o().pitch(Geo.P)) + 12f + 10f;
+        return w - 10f;
+    }
+
+    /** The prompt cut to its slot: the name goes first, then the last verb is cut at a word, or goes when little of it would show. */
+    void fit(Filament f) {
+        fitName = name;
+        fitCount = verbCount;
+        for (int i = 0; i < verbCount; i++) fitVerbs[i] = verbs[i];
+        if (promptWidth(f) <= promptMax) return;
+        fitName = "";
+        float cell = 6f * Geo.P;
+        while (fitCount > 0 && promptWidth(f) > promptMax) {
+            int last = fitCount - 1;
+            int cells = fitVerbs[last].length() - (int) Math.ceil((promptWidth(f) - promptMax) / cell);
+            if (cells >= 6 || fitCount == 1) {
+                fitVerbs[last] = Words.cut(fitVerbs[last], Math.max(1, cells));
+                break;
+            }
+            fitCount--;
+        }
     }
 
     void paintPrompt(Filament f) {
         if (!prompt) return;
+        fit(f);
         float x = promptX, y = promptY, w = promptWidth(f);
-        f.slab(x, y, w, PROMPT_H, 4f, 1, false);
-        float cx = x + 8f;
-        if (!name.isEmpty()) cx += f.legend(cx, y + 17f, name, f.o().dim()) + 12f;
-        for (int i = 0; i < verbCount; i++) {
-            cx += f.keycap(cx, y + 4f, keys[i], 16f, 12f, i == 0) + 4f;
-            cx += f.dm(cx, y + 6.75f, verbs[i], f.o().pitch(Geo.P).full().noGhost()) + 10f;
+        f.plate(x, y, w, PROMPT_H, 3f, 6f);
+        float cx = x + 6f;
+        if (!fitName.isEmpty()) cx += f.legend(cx, y + 16f, fitName, f.o().dim()) + 10f;
+        for (int i = 0; i < fitCount; i++) {
+            // The first key is the one the prompt is for: lit, as a key strip's never is
+            cx += f.keycap(cx, y + 3f, keys[i], 18f, 12f, i == 0) + 4f;
+            float ww = f.dmWidth(fitVerbs[i].length(), f.o().pitch(Geo.P)) + 12f;
+            f.module(cx, y + 3f, ww, 18f, f.o().filaments(0).noGlare().radius(2f));
+            f.dm(cx + 6f, y + 6.75f, fitVerbs[i], f.o().pitch(Geo.P).norm());
+            cx += ww + 10f;
         }
     }
 }

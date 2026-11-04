@@ -104,6 +104,8 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
         crisis.update(d, posts);
         // The deck's tags keep between the side columns, under the band and over the helm's line
         float l = Geo.LX + Geo.CW + 8f, t = Geo.BAND_B + 8f, r = rightX + Geo.RX - 8f, b = bottomY + Geo.HLM_Y - 10f;
+        // The prompt keeps to the bottom edge, just over the key strip and short of HLM
+        deck.slot(Geo.LX, bottomY + Geo.HNT_Y - 6f - Deck.PROMPT_H, midX + Geo.FLT_X - 8f - Geo.LX);
         deck.update(d, posts, views, console, w, h, l, t, r, b);
         // A key on screen elsewhere is not repeated on the strip
         elsewhere.clear();

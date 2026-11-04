@@ -272,6 +272,35 @@ class VfdTaskHudTest {
         assertEquals("CUT A SHUT DOOR", hud.keys.words[3]);
     }
 
+    @Test
+    void onDeckThePromptKeepsToTheBottomEdgeOverTheKeyStripAndShortOfTheHelmsLine() {
+        d.ctx.presence = Presence.DECK;
+        d.ctx.exteriorView = false;
+        d.promptAction = "to put on a pressure suit";
+        d.promptKey = "E";
+        hint("E", "use", "INTERACT");
+        hint("F1", "controls", "HELP");
+        for (float[] s : STAGES) {
+            frame(s[0], s[1]);
+            assertEquals(Posts.Post.DECK, hud.posts.post);
+            assertTrue(hud.deck.prompt);
+            assertEquals("PUT ON A PRESSURE SUIT", hud.deck.verbs[0]);
+            float strip = hud.bottomY + Geo.HNT_Y;
+            // Its own slot at the left edge, just over the key strip: not by the captain in the middle of the view
+            assertEquals(Geo.LX, hud.deck.promptX, 0.01f);
+            assertTrue(hud.deck.promptY + Deck.PROMPT_H <= strip - 4f, "over the strip at " + s[0] + "x" + s[1]);
+            assertTrue(hud.deck.promptY >= strip - 40f, "against the strip at " + s[0] + "x" + s[1]);
+            assertTrue(hud.deck.promptY > s[1] * 0.75f, "low on the stage at " + s[0] + "x" + s[1]);
+            // Short of the helm's line beside it
+            assertTrue(hud.deck.promptX + hud.deck.promptMax <= hud.midX + hud.helm.x - 4f, "short of HLM at " + s[0] + "x" + s[1]);
+            // The strip leaves out the key the prompt shows
+            assertEquals(1, hud.keys.count);
+        }
+        d.promptAction = "";
+        frame(1280f, 800f);
+        assertFalse(hud.deck.prompt);
+    }
+
     private void hint(String key, String label, String action) {
         KeyHint h = d.keyHints.add();
         h.key = key;
