@@ -7,12 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.components.SensorComponent;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.crew.ExtinguishTask;
 import com.ringsofiron.uihud.data.AlertRegistry;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.ContactProvider;
@@ -135,6 +138,20 @@ class HudDataTest {
     }
 
     @Test
+    void aFireSaysHowManyCrewArePuttingItOut() {
+        int[] at = new int[2];
+        burn(at);
+        data.refresh();
+        assertEquals(0, alert("FIRE").handling, "nobody on it yet");
+        ShipTaskBoardComponent board = game.player.getComponent(ShipTaskBoardComponent.class);
+        ExtinguishTask task = new ExtinguishTask(at[0], at[1]);
+        assertTrue(board.post(task));
+        assertTrue(board.claim(task, hand()));
+        data.refresh();
+        assertEquals(1, alert("FIRE").handling, "one hand on the extinguisher");
+    }
+
+    @Test
     void aSwitchedOffSystemShowsAsAFaultAndAnAlert() {
         SubsystemComponent life = system(SubsystemComponent.SubsystemType.LIFE_SUPPORT);
         life.switchedOn = false;
@@ -200,16 +217,36 @@ class HudDataTest {
 
     /** Sets one floor tile of the ship alight, as a hit does. */
     private Tile burn() {
+        return burn(new int[2]);
+    }
+
+    /** Sets one floor tile alight, putting where in {@code at}. */
+    private Tile burn(int[] at) {
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         for (int y = 0; y < grid.height; y++) {
             for (int x = 0; x < grid.width; x++) {
                 Tile t = grid.getTile(x, y);
                 if (t != null && t.isFloor() && t.compartment != null) {
                     t.fireIntensity = 1f;
+                    at[0] = x;
+                    at[1] = y;
                     return t;
                 }
             }
         }
         throw new IllegalStateException("nowhere to light a fire");
+    }
+
+    private AlertRegistry.Alert alert(String code) {
+        for (AlertRegistry.Alert a : data.alerts.all()) if (code.equals(a.code)) return a;
+        throw new AssertionError("no " + code + " alert: " + first());
+    }
+
+    /** One of the crew, not the captain. */
+    private Entity hand() {
+        for (Entity e : world.crew.aboard(game.player)) {
+            if (e.getComponent(PlayerAvatarComponent.class) == null) return e;
+        }
+        throw new IllegalStateException("no crew aboard");
     }
 }
