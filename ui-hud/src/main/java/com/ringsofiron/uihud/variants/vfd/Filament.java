@@ -163,7 +163,7 @@ public final class Filament implements Disposable {
         public Opt cellW(float w) { cellW = w; return this; }
         /** Cells {@code from} to {@code to} (exclusive) shown inverse: lit block, dark letters. */
         public Opt inverse(int from, int to) { invFrom = from; invTo = to; return this; }
-        /** Dark letters cut out of a block already lit under them, with no block or ghost of their own. */
+        /** Dark letters (or an icon) cut out of a block already lit under them, with no block or ghost of their own. */
         public Opt knock() { knock = true; return this; }
         public Opt size(float s) { size = s; return this; }
         public Opt condense(float c) { condense = c; return this; }
@@ -1088,13 +1088,33 @@ public final class Filament implements Disposable {
 
     // ------------------------------------------------------------------ icons
 
-    /** An icon ({@link Icons}) {@code size} units square from {@code x, y}, lit, with its ghost behind. */
+    /**
+     * An icon ({@link Icons}) {@code size} units square from {@code x, y}, lit, with its ghost behind; or
+     * with {@link Opt#knock} cut out of a lit block drawn first, as {@link #knockout}'s letters are.
+     */
     public void icon(String name, float x, float y, float size, Opt o) {
         Icons.Part[] parts = Icons.get(name);
         if (parts == null) return;
+        float k = size / 16f, lw = o.or(o.stroke, 1.5f) * k;
+        if (o.knock) {
+            if (dark) return;
+            if (pass == Pass.PROBE) {
+                cuts++;
+            } else if (litNow(false)) {
+                if (glow.capturing()) {
+                    erase(true);
+                    iconParts(parts, x, y, k, lw, Color.toFloatBits(0f, 0f, 0f, 1f));
+                    erase(false);
+                } else {
+                    iconParts(parts, x, y, k, lw, Ink.bits(Ink.CUT, 0.92f));
+                }
+            } else if (pass == Pass.CUT) {
+                iconParts(parts, x, y, k, lw, Ink.bits(Ink.CUT, 0.8f));
+            }
+            return;
+        }
         boolean lit = o.lit && litNow(o.proj), base = baseNow() && o.ghost && !o.proj;
         if (!lit && !base) return;
-        float k = size / 16f, lw = o.or(o.stroke, 1.5f) * k;
         if (base) iconParts(parts, x, y, k, lw, o.color.ghost(1.3f));
         if (lit) iconParts(parts, x, y, k, lw, o.color.lit(o.level));
     }
