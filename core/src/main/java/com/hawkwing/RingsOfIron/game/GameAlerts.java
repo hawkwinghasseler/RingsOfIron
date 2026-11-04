@@ -2,14 +2,21 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
+import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.aicrew.StabiliseTask;
+import com.ringsofiron.aicrew.TreatTask;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.RoomNames;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.interiorgrid.crew.CrewTask;
+import com.ringsofiron.interiorgrid.crew.RepairTask;
+import com.ringsofiron.interiorgrid.crew.RescueTask;
 import com.ringsofiron.shipops.AbandonShip;
 import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.shipops.ShipDisablement;
@@ -42,6 +49,10 @@ import java.util.Locale;
  * each room's fire, breach, air and smoke, the hull, every system that needs power and is not
  * working, the ship disabled or abandoning, the captain's body and suit, critically wounded crew,
  * crew outside, the helm, hostiles, the shield, life support's oxygen and empty launchers.
+ *
+ * <p>Each alert crew can work says how many are on it ({@link AlertRegistry.Alert#handling}), from
+ * the tasks claimed on the ship's task board: putting out a fire in the room, sealing its breaches,
+ * repairing or resetting the system, treating the casualty, repairing the hull.
  */
 public class GameAlerts {
     /** Suit air below this share of full is a caution, below {@link #SUIT_WARNING} a warning. */
@@ -60,6 +71,11 @@ public class GameAlerts {
     private Entity roomsFor;
     private final ShipAlerts scan = new ShipAlerts();
     private final PowerStatusProvider.PowerFrame power = new PowerStatusProvider.PowerFrame();
+    /** This frame's claimed tasks on the ship's board, and the crew counted so far by {@link #working}. */
+    private final Array<CrewTask> claimed = new Array<>();
+    private final Array<Entity> counted = new Array<>();
+    /** A system's repairers work from beside its footprint: within this many tiles of its origin. */
+    static final int REPAIR_REACH = 3;
 
     public GameAlerts(GameContext ctx, FlightWarnings warnings, Spacewalks spacewalks, CrewService crew, HudData data) {
         this.ctx = ctx;
@@ -88,6 +104,7 @@ public class GameAlerts {
 
     private void raise(Entity ship, AlertRegistry alerts) {
         UiContext ctx = data.ctx;
+        claimed(ship);
         missiles(data.threatFrame, alerts);
         if (warnings.propellantLow()) {
             ShipStatus s = data.shipStatus;
@@ -167,20 +184,23 @@ public class GameAlerts {
             }
             if (burning > 0) {
                 alerts.raise("fire:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("FIRE", "Fire in " + name)
-                        .room(name).tile(fx, fy).count(burning);
+                        .room(name).tile(fx, fy).count(burning).handling(working(grid, c, CrewTask.Kind.EXTINGUISH, null));
             }
+            int sealing = working(grid, c, CrewTask.Kind.SEAL_BREACH, CrewTask.Kind.PATCH_LEAK);
             if (breaches > 0) {
                 alerts.raise("breach:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("BREACH", "Hull breach in " + name)
-                        .room(name).tile(bx, by).count(breaches);
+                        .room(name).tile(bx, by).count(breaches).handling(sealing);
             }
             // An airlock pumped down for a spacewalk is empty on purpose
             if (name.startsWith("AIRLOCK")) continue;
             float p = c.pressureRatio();
             if (p < ShipAlerts.VACUUM_PRESSURE) {
-                alerts.raise("air:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("VACUUM", name + " is in vacuum").room(name);
+                alerts.raise("air:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("VACUUM", name + " is in vacuum").room(name)
+                        .handling(sealing);
             } else if (p < ShipAlerts.LOW_PRESSURE) {
                 alerts.raise("air:" + name, Level.CAUTION, Category.LIFE_SUPPORT)
-                        .set("PRESSURE", String.format(Locale.ROOT, "%s at %.0f%% pressure", name, p * 100f)).room(name);
+                        .set("PRESSURE", String.format(Locale.ROOT, "%s at %.0f%% pressure", name, p * 100f)).room(name)
+                        .handling(sealing);
             }
             if (c.smokeDensity() > TileShade.THICK_SMOKE * 0.3f) {
                 alerts.raise("smoke:" + name, Level.CAUTION, Category.LIFE_SUPPORT).set("SMOKE", "Smoke in " + name).room(name);
@@ -190,10 +210,9 @@ public class GameAlerts {
 
     private void hull(ShipGridComponent grid, AlertRegistry alerts) {
         float hull = scan.scan(grid).hullIntegrity;
-        if (hull < HULL_WARNING) {
-            alerts.raise("hull", Level.WARNING, Category.ENGINEERING).set("HULL", String.format(Locale.ROOT, "Hull at %.0f%%", hull * 100f));
-        } else if (hull < ShipAlerts.HULL_DAMAGED) {
-            alerts.raise("hull", Level.CAUTION, Category.ENGINEERING).set("HULL", String.format(Locale.ROOT, "Hull at %.0f%%", hull * 100f));
+        if (hull < ShipAlerts.HULL_DAMAGED) {
+            alerts.raise("hull", hull < HULL_WARNING ? Level.WARNING : Level.CAUTION, Category.ENGINEERING)
+                    .set("HULL", String.format(Locale.ROOT, "Hull at %.0f%%", hull * 100f)).handling(hullCrew());
         }
     }
 
@@ -212,9 +231,13 @@ public class GameAlerts {
                 case NO_POWER: level = Level.CAUTION; what = "no power"; break;
                 default: level = Level.ADVISORY; what = "off"; break;
             }
-            alerts.raise("sys:" + r.system + ":" + r.tileX + "," + r.tileY, level, Category.ENGINEERING)
+            AlertRegistry.Alert a = alerts.raise("sys:" + r.system + ":" + r.tileX + "," + r.tileY, level, Category.ENGINEERING)
                     .set(r.system, r.system + (r.room.isEmpty() ? "" : " in " + r.room) + ": " + what)
                     .room(r.room).tile(r.tileX, r.tileY).timer(r.timer, Float.isNaN(r.timer) ? TimerKind.NONE : timer);
+            // Crew repair what is wrecked and reset what is shorted; a stun wears off and power comes from elsewhere
+            boolean crewWork = r.fault == PowerStatusProvider.Fault.DESTROYED || r.fault == PowerStatusProvider.Fault.DISABLED
+                    || r.fault == PowerStatusProvider.Fault.SHORTED;
+            if (crewWork) a.handling(repairing(r.tileX, r.tileY));
         }
     }
 
@@ -240,12 +263,77 @@ public class GameAlerts {
         ImmutableArray<Entity> aboard = crew.aboard(ship);
         for (int i = 0; i < aboard.size(); i++) {
             Entity e = aboard.get(i);
-            if (e.getComponent(PlayerAvatarComponent.class) != null) continue;
             CrewMemberComponent c = e.getComponent(CrewMemberComponent.class);
+            if (e.getComponent(PlayerAvatarComponent.class) != null) {
+                // The captain's own wound: a medic on it, or nobody
+                AlertRegistry.Alert bleeding = alerts.get("captain:bleeding");
+                if (bleeding != null && c != null) bleeding.handling(treating(e, c));
+                continue;
+            }
             if (c == null || c.wound != Wound.CRITICAL || c.stabilised) continue;
             alerts.raise("casualty:" + c.name, Level.WARNING, Category.CREW).set("CASUALTY", c.name + " is bleeding out")
-                    .timer(c.bleedOut, TimerKind.HARM);
+                    .timer(c.bleedOut, TimerKind.HARM).handling(treating(e, c));
         }
+    }
+
+    /** The tasks crew have claimed on {@code ship}'s board, for this frame's handling counts. */
+    private void claimed(Entity ship) {
+        claimed.clear();
+        ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
+        if (board == null) return;
+        for (CrewTask t : board.tasks) {
+            if (t.status == CrewTask.Status.CLAIMED && t.claimedBy != null) claimed.add(t);
+        }
+    }
+
+    /** Crew working a task of kind {@code a} or {@code b} (null for one kind) on a tile of {@code room}: one each. */
+    private int working(ShipGridComponent grid, Compartment room, CrewTask.Kind a, CrewTask.Kind b) {
+        counted.clear();
+        for (CrewTask t : claimed) {
+            if (t.kind != a && t.kind != b) continue;
+            if (t.x < 0 || t.y < 0 || t.x >= grid.width || t.y >= grid.height) continue;
+            if (room.tiles.contains(t.y * grid.width + t.x)) count(t.claimedBy);
+        }
+        return counted.size;
+    }
+
+    /** Crew repairing or resetting the system whose mount starts at {@code x, y}. */
+    private int repairing(int x, int y) {
+        counted.clear();
+        if (x < 0 || y < 0) return 0;
+        for (CrewTask t : claimed) {
+            if (t.kind != CrewTask.Kind.REPAIR && t.kind != CrewTask.Kind.RESET_SHORT) continue;
+            if (Math.abs(t.x - x) <= REPAIR_REACH && Math.abs(t.y - y) <= REPAIR_REACH) count(t.claimedBy);
+        }
+        return counted.size;
+    }
+
+    /** Crew mending the hull: framing wrecked tiles back up from inside or patching them from outside. */
+    private int hullCrew() {
+        counted.clear();
+        for (CrewTask t : claimed) {
+            boolean hullWork = t.kind == CrewTask.Kind.PATCH_HULL || t.kind == CrewTask.Kind.REPAIR_RCS
+                    || t instanceof RepairTask && ((RepairTask) t).subsystem == null;
+            if (hullWork) count(t.claimedBy);
+        }
+        return counted.size;
+    }
+
+    /** Crew tending {@code patient}: the medic treating them, and whoever is stabilising or carrying them. */
+    private int treating(Entity patient, CrewMemberComponent c) {
+        counted.clear();
+        if (c.treatedBy != null) count(c.treatedBy);
+        for (CrewTask t : claimed) {
+            Entity of = t instanceof TreatTask ? ((TreatTask) t).patient
+                    : t instanceof StabiliseTask ? ((StabiliseTask) t).patient
+                    : t instanceof RescueTask ? ((RescueTask) t).casualty : null;
+            if (of == patient) count(t.claimedBy);
+        }
+        return counted.size;
+    }
+
+    private void count(Entity crewMember) {
+        if (!counted.contains(crewMember, true)) counted.add(crewMember);
     }
 
     private static void shield(ShieldStatus s, UiContext ctx, AlertRegistry alerts) {
