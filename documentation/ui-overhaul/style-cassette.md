@@ -244,8 +244,8 @@ the identity stripe and the logo plate; instruments, phosphor and lamps never ch
 
 ## 5. Typography
 
-All typefaces are SIL Open Font License, so they ship in `assets/fonts` next to the Inter files that
-are there now. Four roles, each tied to a material:
+All typefaces are open licensed (the SIL Open Font License, and Apache 2.0 for Special Elite), so they
+ship in `assets/fonts` next to the Inter files that are there now. Four roles, each tied to a material:
 
 | Role | Typeface | Where | Notes |
 |---|---|---|---|
@@ -615,8 +615,8 @@ Written so this can be built on the existing `ui-hud` module without a rewrite o
   of 9-patch faceplates, bezels, keycaps, switch frames and lens tiles at 1x, 2x and 3x, chosen by
   `UiScale`. `HudFrame` can draw the faceplates procedurally until the atlas exists.
 * **Fonts.** Add Barlow Semi Condensed, Barlow Condensed, IBM Plex Mono, VT323, Special Elite and Big
-  Shoulders Stencil Display (all OFL) to `assets/fonts` with their licences; extend `HudFonts` with
-  the roles in section 5.
+  Shoulders Stencil Display (OFL, and Apache 2.0 for Special Elite) to `assets/fonts` with their
+  licences; extend `HudFonts` with the roles in section 5.
 * **New widgets** (Scene2D `Widget`s that take a provider, as the current ones do):
   * `NeedleGauge` (scale, zones, spring), `EdgewiseMeter`, `DrumCounter` (drums, units, `OFF` flag),
     `CompassCard`;
