@@ -1308,6 +1308,167 @@ public final class Filament implements Disposable {
         return w;
     }
 
+    /**
+     * Dot-matrix text on the LCD (the slate, style-vfd.md 18.4): dark dots on the grey-green, each
+     * with its faint shadow on the reflector, from {@code x, y} (the top of its cells) as {@link #dm}
+     * places them. {@link Opt#inverse} is a dark block with the dots left clear (the focus, a tab
+     * showing), in the backlight's colour with {@link Opt#backlight}; {@link Opt#dim} prints at half
+     * the ink. Returns the width.
+     */
+    public float lcdDm(float x, float y, CharSequence text, Opt o) {
+        float p = o.pitch, d = p * 0.86f;
+        int len = text.length();
+        int n = o.cells >= 0 ? Math.min(o.cells, MAX_CELLS) : Math.min(len, MAX_CELLS);
+        int pad = Math.max(0, n - len);
+        boolean right = o.align == Align.RIGHT;
+        float adv = p * o.cellW, total = n * adv - p;
+        if (!baseNow()) return total;
+        boolean inverse = o.invFrom >= 0 && o.invTo > o.invFrom;
+        float ink = Ink.bits(Ink.LCD_INK, o.level <= Drive.DIM + 1e-3f ? 0.5f : 1f);
+        float shade = Color.toFloatBits(0f, 0f, 0f, 0.13f);
+        if (inverse) {
+            float bx = x + o.invFrom * adv - p * 0.5f, bw = (Math.min(o.invTo, n) - o.invFrom) * adv;
+            shapes.rect(bx + 0.7f, y - p + 0.8f, bw, 9f * p, Color.toFloatBits(0f, 0f, 0f, 0.16f));
+            shapes.rect(bx, y - p, bw, 9f * p, Ink.bits(Ink.LCD_INK, 1f));
+        }
+        float clear = Ink.bits(o.backlight ? Ink.LCD_LIT_CLEAR : Ink.LCD_CLEAR, 1f);
+        for (int pass = 0; pass < 2; pass++) {
+            for (int i = 0; i < n; i++) {
+                int src = right ? i - pad : i;
+                char ch = src >= 0 && src < len ? text.charAt(src) : ' ';
+                long g = Rom.glyph(ch);
+                if (g == 0L) continue;
+                boolean flip = inverse && i >= o.invFrom && i < o.invTo;
+                if (flip && pass == 0) continue;
+                for (int r = 0; r < Rom.ROWS; r++) {
+                    for (int c = 0; c < Rom.COLS; c++) {
+                        if (!Rom.lit(g, r, c)) continue;
+                        float dx = x + i * adv + c * p + (p - d) / 2f, dy = y + r * p + (p - d) / 2f;
+                        if (flip) shapes.rect(dx, dy, d, d, clear);
+                        else if (pass == 0) shapes.rect(dx + 0.6f, dy + 0.7f, d, d, shade);
+                        else shapes.rect(dx, dy, d, d, ink);
+                    }
+                }
+            }
+        }
+        return total;
+    }
+
+    /**
+     * A severity square on the LCD, which has no colour (18.4): a caution an outlined square, a
+     * warning a solid one, centred on {@code x, y}; off, only a faint outline.
+     */
+    public void lcdPip(float x, float y, boolean on, boolean warning) {
+        if (!baseNow()) return;
+        float r = 2f;
+        if (!on) {
+            float faint = Color.toFloatBits(26 / 255f, 32 / 255f, 22 / 255f, 0.12f);
+            frame(x - r, y - r, 2f * r, 2f * r, 0.6f, faint);
+            return;
+        }
+        shapes.rect(x - r + 0.6f, y - r + 0.7f, 2f * r, 2f * r, Color.toFloatBits(0f, 0f, 0f, 0.14f));
+        float ink = Ink.bits(Ink.LCD_INK, 1f);
+        if (warning) shapes.rect(x - r, y - r, 2f * r, 2f * r, ink);
+        else frame(x - r, y - r, 2f * r, 2f * r, 1f, ink);
+    }
+
+    /** A dark rule or block on the LCD, with its shadow, at {@code alpha} of the ink. */
+    public void lcdRect(float x, float y, float w, float h, float alpha) {
+        if (!baseNow()) return;
+        shapes.rect(x + 0.6f, y + 0.7f, w, h, Color.toFloatBits(0f, 0f, 0f, 0.12f * alpha));
+        shapes.rect(x, y, w, h, Ink.bits(Ink.LCD_INK, alpha));
+    }
+
+    private void frame(float x, float y, float w, float h, float t, float color) {
+        shapes.rect(x, y, w, t, color);
+        shapes.rect(x, y + h - t, w, t, color);
+        shapes.rect(x, y + t, t, h - 2f * t, color);
+        shapes.rect(x + w - t, y + t, t, h - 2f * t, color);
+    }
+
+    /**
+     * A slate's housing (18.4): dark moulded rubber with a soft shadow and a rim, the silk at its top
+     * edge naming it ({@code brand}) and its owner, right.
+     */
+    public void slateHousing(float x, float y, float w, float h, String brand, String owner) {
+        if (!baseNow()) return;
+        float r = 9f;
+        shadow(x, y + 4f, w, h, r, 0.8f, 16f);
+        shapes.roundRectGradient(x, y, w, h, r, new float[] {0f, Ink.bits(Ink.SLATE_TOP, 1f), 1f, Ink.bits(Ink.SLATE_BOTTOM, 1f)});
+        shapes.roundRectStroke(x + 0.4f, y + 0.4f, w - 0.8f, h - 0.8f, r, 0.8f, Ink.bits(Ink.SLATE_RIM, 1f));
+        Opt o = o().size(12f).ink(Ink.SLATE_SILK);
+        if (brand != null && !brand.isEmpty()) silk(x + 14f, y + 17f, brand, o);
+        if (owner != null && !owner.isEmpty()) silk(x + w - 14f, y + 17f, owner, o().size(12f).ink(Ink.SLATE_SILK).right());
+    }
+
+    // ------------------------------------------------------------------ printed cards (out of fiction)
+
+    /**
+     * A printed quick-reference card laid over the game (style-vfd.md 7.12, 18.6): off-white
+     * laminated card with its shadow and the laminate's faint sheen, the only light surface there is.
+     */
+    public void card(float x, float y, float w, float h) {
+        if (!baseNow()) return;
+        shadow(x, y + 6f, w, h, 7f, 0.7f, 22f);
+        cardSheet(x, y, w, h, 7f, Ink.CARD);
+    }
+
+    /** A sheet of card {@code color} with the laminate's sheen and no shadow: a tab joined to a card. */
+    public void cardSheet(float x, float y, float w, float h, float r, Color color) {
+        if (!baseNow()) return;
+        shapes.roundRect(x, y, w, h, r, Ink.bits(color, 1f));
+        shapes.roundRectGradient(x, y, w, h, r, new float[] {0f, Color.toFloatBits(1f, 1f, 1f, 0.30f), 0.3f,
+                Color.toFloatBits(1f, 1f, 1f, 0.04f), 1f, Color.toFloatBits(0f, 0f, 0f, 0.03f)});
+    }
+
+    /** A soft shadow under a box on a card, as a tab behind the card casts. */
+    public void cardShadow(float x, float y, float w, float h, float r, float alpha, float blur) {
+        if (baseNow()) shadow(x, y, w, h, r, alpha, blur);
+    }
+
+    /**
+     * Words printed on a card in Inter, as written (sentence case), black by default ({@link Opt#ink});
+     * {@link Opt#size} 13 and {@link Opt#track} 0.02 unless set, {@link Opt#align} placing it on
+     * {@code x}. Placed by the baseline. Returns the width.
+     */
+    public float print(float x, float y, CharSequence text, Opt o) {
+        float size = o.or(o.size, 13f), track = o.or(o.track, 0.02f);
+        Type.Face face = type.face(size, track);
+        float w = type.width(face, text, 1f);
+        if (baseNow()) type.draw(batch, face, text, aligned(x, w, o.align), y, 1f, Ink.bits(o.ink != null ? o.ink : Ink.CARD_INK, 1f), height);
+        return w;
+    }
+
+    /** How wide {@link #print} sets. */
+    public float printWidth(CharSequence text, float size, float track) {
+        return type.width(type.face(size, track), text, 1f);
+    }
+
+    /** A printed key cap on a card: an outlined rounded key with its legend. Returns its width. */
+    public float printedKey(float x, float y, CharSequence label, float h, float size) {
+        Type.Face face = type.face(size, 0.02f);
+        float lw = type.width(face, label, 1f), w = Math.max(h, lw + 9f);
+        if (baseNow()) {
+            float ink = Ink.bits(Ink.CARD_INK, 1f);
+            shapes.roundRect(x, y, w, h, 3f, Ink.bits(Ink.CARD_KEY, 1f));
+            shapes.roundRectStroke(x + 0.5f, y + 0.5f, w - 1f, h - 1f, 3f, 1f, ink);
+            type.draw(batch, face, label, x + (w - lw) / 2f, y + h / 2f + size * 0.36f, 1f, ink, height);
+        }
+        return w;
+    }
+
+    /** How wide {@link #printedKey} sets. */
+    public float printedKeyWidth(CharSequence label, float h, float size) {
+        return Math.max(h, type.width(type.face(size, 0.02f), label, 1f) + 9f);
+    }
+
+    /** A flat block of printed ink on a card: a rule, or the dark tag behind a section that is HERE. */
+    public void ink(float x, float y, float w, float h, float r, Color color, float alpha) {
+        if (!baseNow()) return;
+        if (r > 0f) shapes.roundRect(x, y, w, h, r, Ink.bits(color, alpha));
+        else shapes.rect(x, y, w, h, Ink.bits(color, alpha));
+    }
+
     // ------------------------------------------------------------------ finishing
 
     /** One display window, kept from the base layer for its filaments and glare. */

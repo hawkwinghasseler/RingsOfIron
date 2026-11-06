@@ -30,6 +30,14 @@ public final class Ink {
     public static final Color LCD_TOP = Color.valueOf("97a386"), LCD_BOTTOM = Color.valueOf("7f8a70");
     public static final Color LCD_LIT_TOP = Color.valueOf("68b3a4"), LCD_LIT_BOTTOM = Color.valueOf("4f978a");
     public static final Color LCD_INK = Color.valueOf("1a2016");
+    /** The dots left clear in a dark block on the LCD, unlit and backlit. */
+    public static final Color LCD_CLEAR = Color.valueOf("8e9a7e"), LCD_LIT_CLEAR = Color.valueOf("5aa596");
+    /** The slate's rubber housing, top to bottom, its rim, and its printed silk. */
+    public static final Color SLATE_TOP = Color.valueOf("2a2b2d"), SLATE_BOTTOM = Color.valueOf("161718"), SLATE_RIM = Color.valueOf("3a3c3f"),
+            SLATE_SILK = Color.valueOf("7b8186");
+    /** The printed cards (out of fiction): the card, the card behind it, black ink, the soft grey, a printed key cap. */
+    public static final Color CARD = Color.valueOf("e9e6dc"), CARD_BACK = Color.valueOf("d2cec2"), CARD_INK = Color.valueOf("1c1c1c"),
+            CARD_SOFT = Color.valueOf("5d5b55"), CARD_KEY = Color.valueOf("d8d4c8"), CARD_TAG = Color.valueOf("bdb8aa");
     /** What a letter cut out of a lit block shows: the dark behind the glass. */
     public static final Color CUT = Color.valueOf("0a0605");
 
