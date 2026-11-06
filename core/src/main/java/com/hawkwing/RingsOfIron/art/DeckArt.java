@@ -342,6 +342,14 @@ public final class DeckArt {
         for (MountFootprint m : grid.mounts) {
             SubsystemComponent sub = m.installed == null ? null : m.installed.getComponent(SubsystemComponent.class);
             if (sub == null) continue;
+            if (sub.stripped) {
+                // Gone, not wrecked: a square bay shows where its machine was torn out, a slot shows nothing
+                if (glowing || m.kind != MountFootprint.MountKind.PRIMARY) continue;
+                TextureRegion bay = art.region(ArtNames.guttedBay(m.size));
+                int bw = m.size.baseWidth(m.kind), bh = m.size.baseHeight(m.kind);
+                if (bay != null) footprint(batch, bay, grid, m.originX, m.originY, m.width(), m.height(), bw, bh, m.rotation);
+                continue;
+            }
             boolean port = m.kind == MountFootprint.MountKind.PORT;
             boolean powered = port ? power && !sub.isDisabled() : sub.isOperational;
             // Dark art may fall back to the lit one, whose glow is not this system's

@@ -206,7 +206,7 @@ public final class ExteriorArt {
         if (hasEngines(grid)) {
             for (MountFootprint m : grid.mounts) {
                 SubsystemComponent sub = engineIn(m);
-                if (sub == null) continue;
+                if (sub == null || sub.stripped) continue;
                 socket(grid, m);
                 boolean works = sub.isOperational && sub.switchedOn && !sub.isDisabled();
                 float burn = works ? throttle * MathUtils.clamp(sub.health, 0f, 1f) : 0f;
@@ -236,7 +236,8 @@ public final class ExteriorArt {
             float s = grid.tileSize;
             for (MountFootprint m : grid.mounts) {
                 SubsystemComponent sub = engineIn(m);
-                if (sub == null) continue;
+                // A stripped engine is gone from its slot
+                if (sub == null || sub.stripped) continue;
                 String size = ArtNames.engineSize(m.size);
                 AtlasRegion engine = art.first(ArtNames.nacelle(sub.component, size, burning && sub.isOperational));
                 if (engine == null) continue;

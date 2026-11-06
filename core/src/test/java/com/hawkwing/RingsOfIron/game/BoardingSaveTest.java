@@ -178,6 +178,14 @@ class BoardingSaveTest {
                     + fresh.salvage.notices);
             assertEquals(1, hold.amount(part), 1e-9, "exactly one crate, not two");
             assertTrue(raider.getComponent(SalvagedComponent.class).has(f.originX, f.originY));
+            SubsystemComponent gone = null;
+            for (MountFootprint m : raider.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent.class).mounts) {
+                if (m.originX == f.originX && m.originY == f.originY && m.installed != null) {
+                    gone = m.installed.getComponent(SubsystemComponent.class);
+                }
+            }
+            assertNotNull(gone);
+            assertTrue(gone.stripped, "it is gone from its mount");
             assertTrue(fresh.salvage.parts(raider).stream().noneMatch(p -> p.system.footprint.originX == f.originX
                     && p.system.footprint.originY == f.originY), "and it can't be stripped again");
         } finally {

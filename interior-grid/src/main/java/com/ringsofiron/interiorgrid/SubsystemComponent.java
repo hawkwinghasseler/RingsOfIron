@@ -60,6 +60,12 @@ public class SubsystemComponent implements Component {
     public float stunned;
     /** Structural health 0.0 = destroyed, 1.0 = fully intact. Only damage changes it. */
     public float health = 1.0f;
+    /**
+     * Whether the system has been stripped off its mount for salvage: it is gone, not wrecked, so
+     * nothing of it is drawn, inside or out, and a primary mount shows its gutted bay. Set by
+     * salvage, which also leaves it at zero health. Saved.
+     */
+    public boolean stripped;
     /** Whether this subsystem is currently receiving power. Set by PowerRoutingSystem. */
     public boolean powered = false;
     /** Id of the ship component this system was built from (see {@link ShipPartCatalog}); null for one made in code. */

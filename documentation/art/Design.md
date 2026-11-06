@@ -47,6 +47,9 @@ Every component size (docking ports in both door states) also has its own damage
 
 The game picks them by the system's health: `_damaged` below half (`ArtNames.DAMAGED_BELOW`), `_destroyed` at zero. Collars have no damage states.
 
+## Stripped
+A system stripped off its mount for salvage is gone, not wrecked (`SubsystemComponent.stripped`), so none of its art is drawn, inside or out: an engine leaves its slot empty, a turret comes off its hardpoint. A primary (square) mount shows `components/gutted_bay_<size>` instead, the bay with the machine torn out: the mounting frame round a sunken well, a clean square in the grime where the machine's base stood, sheared and pulled hold-down bolts, rails cut through with a torch, power leads cut and hanging from a dead junction box, pipes ending in an open flange, a torn-off end or a blanking plate with a hazard tag, and the nuts, washers and drag marks the crew left. It is dark and passive, with no other states. `tools/art/gutted_bay_svgs.py` draws it, one layout for each size. A rectangular slot has no gutted art: the deck under it shows.
+
 ## Walls
 ### Full-tile walls
 Each wall tile type (`hull`, `hull_light`, `hull_medium`, `hull_heavy`, `composite_armor_light`, `composite_armor_medium`, `composite_armor_heavy`, `internal_wall`) has 16 files, one for each combination of neighbors it joins: `walls/<id>_<sides>.svg`, where `<sides>` lists the joined sides in the order `n`, `e`, `s`, `w` (up, right, down, left), or `0` for none. A wall joins the neighbors of the same tile type.
