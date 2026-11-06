@@ -141,6 +141,7 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
     private final Vector2 estVel = new Vector2();
     private final Vector2 dir = new Vector2();
     private final Vector2 backstop = new Vector2();
+    private final Vector2 mountPos = new Vector2();
 
     public WeaponControlSystem(PhysicsManager physics, CombatEvents events, CombatDefs defs, BallisticsSystem ballistics,
                                MissileGuidanceSystem missiles, SensorTrackingSystem sensors, long seed) {
@@ -263,13 +264,13 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         // Point defense picks its own missiles, unless it has been given a target or is aimed by hand
         boolean hand = mount.manualAim && def.mount != WeaponDef.MountType.LAUNCHER;
         boolean hunting = def.pointDefense && mount.target == null && !hand;
-        Entity target = hunting ? pickMissileThreat(ship, body, sensor, def)
+        Entity target = hunting ? pickMissileThreat(ship, body, sensor, mount)
                 : (mount.target != null ? mount.target : sensor == null ? null : sensor.lockedTarget);
         if (hand) target = null;
         // A beam firing at will turns on the most urgent missile in its reach first: lasers are point defense too
         mount.defending = false;
         if (def.mount == WeaponDef.MountType.BEAM && !hunting && !hand && !mount.trigger && mount.target == null) {
-            Entity threat = pickMissileThreat(ship, body, sensor, def);
+            Entity threat = pickMissileThreat(ship, body, sensor, mount);
             if (threat != null) {
                 target = threat;
                 mount.defending = true;
@@ -495,12 +496,17 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
 
     /**
      * The tracked missile, not this ship's own, that will pass within {@link #PD_THREAT_MISS}
-     * soonest, inside the mount's reach. Null when nothing threatens.
+     * soonest, inside the mount's reach and its firing arc. Null when nothing threatens. A missile in
+     * the mount's blind spot is left to the other mounts: locking onto it would hold the barrel at the
+     * edge of its arc, never on target, while a missile it could shoot came on unopposed.
      */
-    private Entity pickMissileThreat(Entity ship, Body body, SensorComponent sensor, WeaponDef def) {
+    private Entity pickMissileThreat(Entity ship, Body body, SensorComponent sensor, WeaponMountComponent mount) {
         if (sensor == null) return null;
+        WeaponDef def = mount.def;
         PhysicsManager.getPosition(body, shipPos);
         PhysicsManager.getVelocity(body, shipVel);
+        CombatPhysics.toWorld(body, mount.hardpoint.x, mount.hardpoint.y, mountPos);
+        float bodyAngle = body.getAngle();
         ProjectileDef round = def.projectile == null ? null : defs.projectiles.get(def.projectile);
         float reach = def.mount == WeaponDef.MountType.BEAM ? beamReach(def) : def.maxRange > 0f ? def.maxRange
                 : round == null ? 0f : round.muzzleSpeed * round.maxLifetime;
@@ -515,6 +521,8 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
             t.velocityAt(age, estVel).sub(shipVel);
             float dist = estPos.len();
             if (dist > reach) continue;
+            if (!inArc(mount, estPos.x + shipPos.x - mountPos.x, estPos.y + shipPos.y - mountPos.y, bodyAngle))
+                continue;
             float v2 = estVel.len2();
             float tca = v2 > 1e-6f ? -estPos.dot(estVel) / v2 : 0f;
             if (tca < 0f) continue; // already going away
@@ -668,6 +676,14 @@ public class WeaponControlSystem extends EntitySystem implements PhysicsManager.
         float delta = def.firingArcDeg >= 360f ? wrap(goal - now) : goal - now;
         now += MathUtils.clamp(delta, -max, max);
         mount.aim = wrap(mount.facing + now);
+    }
+
+    /** Whether the mount can turn to bear on world-frame offset (dx, dy) from its hardpoint. */
+    static boolean inArc(WeaponMountComponent mount, float dx, float dy, float bodyAngle) {
+        WeaponDef def = mount.def;
+        if (def.firingArcDeg >= 360f) return true;
+        float rel = wrap(MathUtils.atan2(dy, dx) - bodyAngle - mount.facing);
+        return Math.abs(rel) <= 0.5f * def.firingArcDeg * MathUtils.degreesToRadians;
     }
 
     static float clampToArc(float rel, WeaponDef def) {

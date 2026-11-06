@@ -345,6 +345,31 @@ class FireControlTest {
     }
 
     @Test
+    void pointDefenseLeavesAMissileInItsBlindSpotForOneItCanShoot() {
+        // A 300 degree mount looking forward: one missile closes from dead astern, in the blind cone,
+        // and arrives first; another comes in ahead. The gun takes the one it can turn to.
+        Entity astern = spawnShip(-1500, 0, 0, 0);
+        Entity ahead = spawnShip(3000, 0, 0, 0);
+        Entity defender = spawnShip(0, 0, 0, 0);
+        WeaponMountComponent pd = arm(defender, "autocannon_mk1", 8f, 0f, 0f);
+        run(1f);
+        MissileDef harpoon = defs.missile("harpoon");
+        Entity blind = missiles.launch(harpoon, astern, null, defender, -1490f, 0f, harpoon.ejectSpeed, 0f, 0f);
+        Entity open = missiles.launch(harpoon, ahead, null, defender, 2990f, 0f, -harpoon.ejectSpeed, 0f,
+                MathUtils.PI);
+        boolean[] killed = new boolean[1];
+        boolean[] lockedOnBlind = new boolean[1];
+        events.intercepts.add((s, hit) -> killed[0] |= hit.destroyed && hit.shooter == defender
+                && hit.missile == open);
+        for (int i = 0; i < 40 * 60 && !killed[0]; i++) {
+            engine.update(DT);
+            lockedOnBlind[0] |= pd.engaged == blind;
+        }
+        assertFalse(lockedOnBlind[0], "the gun never locked onto the missile it cannot turn to");
+        assertTrue(killed[0], "and broke up the one ahead");
+    }
+
+    @Test
     void pointDefenseHoldsWhenItsMissesWouldCarryOnIntoAShipItSpares() {
         // A station out past the incoming missile: rounds that miss the missile go on into it
         Entity attacker = spawnShip(-3000, 0, 0, 0);
