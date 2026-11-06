@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 19.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 20.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -1268,27 +1268,31 @@ your home station. J opens its mission board".
 
 **Content.** The other ship's name, latched or by EVA, and its state (disabled and why, surrendered,
 being boarded, taken); the boarding party (the ship's marines, or its crewmen if it has none, as
-`Boarding.party` picks them): how many, and crossing, fighting or coming home (once the craft is
-taken the party stands down and goes home), or why none can go; salvage: parts marked and how many
-are off; cargo, when the craft has any aboard: how many lots and how many are coming across; and the
-prisoners held aboard it, with the berths free for them, since only as many come across as there are
-berths (`Prisoners.takeAboard`). "[K] Boarding" opens M4, where the orders are; while latched,
-"[U] Cast off" undocks from it (at the helm, as undocking from a station is).
+`Boarding.party` picks them): how many, and crossing, fighting or coming home (once the craft is taken
+the party stands down and goes home), or why none can go; salvage: until a part is marked, how many are
+worth taking and what a station would pay for them, then how many are marked and how many are off (a
+part worth nothing is left out, as in M4); cargo, when the craft has any aboard: how many lots and how
+many are coming across; and the prisoners held aboard it, with the berths free for them, since only as
+many come across as there are berths (`Prisoners.takeAboard`). "[K] Boarding" opens M4, where the orders
+are; while latched, "[U] Cast off" undocks from it (at the helm, as undocking from a station is).
 
 ```
 BOARD  Pirate raider 3 · latched
        taken: crew surrendered
 PARTY  1 · coming home
-SALV   3 parts marked · 1 off
+SALV   10 parts · 7,550 cr
 HELD   3 · 4 berths free
 [K] Boarding       [U] Cast off
 ```
 
 Seven rows at most, each in the 34-character budget: the name (cut to 16) and "latched" or "by EVA"
-share the first, so the state ("disabled: reactor down", in the game's words, or "being boarded") has
-a row of its own. The sample is a Light Raider whose crew of three surrendered. It has no CARGO row,
-since a pirate's loot is never loaded into its hold; a craft with cargo aboard adds one ("CARGO  2 lots
-· 1 coming across").
+share the first, so the state ("disabled: reactor down", in the game's words, or "being boarded") has a
+row of its own. The sample is the moment of the taking, which the feed's notice of it (5 s) shows too: a
+Light Raider whose crew of three surrendered, the party on its way home, and nothing marked yet, so SALV
+gives the ten parts worth taking and what they would sell for. Later it reads "3 parts marked · 1 off",
+long after the notice is gone: a part is off only once the crew have crossed, stripped it and carried
+its crate home. It has no CARGO row, since a pirate's loot is never loaded into its hold; a craft with
+cargo aboard adds one ("2 lots · 1 coming across").
 
 **A craft nobody defends.** First Play's Raider flies with nobody aboard, and a disabled craft with
 no one aboard to fight for it is taken as soon as the salvage begins (`Boarding.takeUndefended`): no
@@ -1469,8 +1473,9 @@ treat or has billed for one since docking (X1's rule).
 ### 10.4 M4 Boarding
 
 Today's `BoardingWindow`, with the same orders: board, storm, recall; parts to strip (mark, value,
-status); cargo to take; prisoners to bring aboard. Adds a plan of the other ship with the boarding
-party's positions while they are aboard.
+status), leaving out a part worth nothing (today the escape pod, which `Salvage.systemPrice` doesn't
+price), so the crew never carry home a part that sells for 0; cargo to take; prisoners to bring aboard.
+Adds a plan of the other ship with the boarding party's positions while they are aboard.
 
 ### 10.5 M5 Captain's record
 
@@ -1659,7 +1664,9 @@ learns what exists.
 Day 6, and the fight is over: Pirate raider 3, a Light Raider the player held a bounty on, cut thrust
 and surrendered, and the ship latched onto it. Cole, the ship's marine and so its boarding party,
 stepped aboard, the crew of three yielded, and the raider is taken: its crew are held aboard it, and
-the corvette has four berths free for them (eight berths, four aboard). Latched, the ship can't fly,
+the corvette has four berths free for them (eight berths, four aboard). This is the moment of the
+taking: nothing is marked yet, so X2 counts the ten parts worth taking (the escape pod, which sells for
+nothing, isn't one) and what a station would pay for them. Latched, the ship can't fly,
 so the screen is the docked one: P1, with an empty helm field; H4's quiet lights; X2 where the station
 panel would be; and the feed's notice of the taking, in the game's words. P5 is not drawn: the bounty
 paid the moment the raider surrendered, as a bounty does when its ship is beaten, and nothing else is
@@ -1777,7 +1784,7 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 | `StationProvider` | New, gathering existing | Station name, faction, standing, services available with counts, and the infirmary: who it is treating, and how many it has treated and for how much since docking, which `StationInfirmary` would need to keep (today it only posts notices) |
 | Contact state | Change `HudMarkerComponent` | Allegiance and state as a value (from `HostileLabel`), not only tint and label text |
 | Inspect | New | What is under the pointer on deck: crew, system, tile, door, bay, with their fields |
-| `BoardingProvider` | Change | The boarding party's size and what it is doing (crossing, fighting or coming home), for X2 |
+| `BoardingProvider` | Change | The boarding party's size and what it is doing (crossing, fighting or coming home), for X2; the parts worth taking and their sale total, leaving out parts worth nothing |
 | `OrbitPathProvider` | Change | A ghost mark carries the time it stands for (`PlayerOrbitPath.ghostTime`), for M1's label beside the ghost; today it has the body's name and sizes only |
 | `ThreatProvider` | Change | Time to impact with the missile's closing burn in it: t = (−v + √(v² + 2ad)) / a, with a the missile's `closingBurn` while it has fuel above its reserve. Today's time (`CombatThreats`) is closest approach at the present speed, an upper bound that runs long while the motor burns: a harpoon from 7.7 km reads 37 s five seconds after launch, when it lands in about 17 |
 
@@ -1865,3 +1872,4 @@ largest scale, and the centre stays clear.
 | 17 | 4 (NASA-punk critique) | P2 shows a room's air as one row at a time, the first that holds of BREACH, VACUUM (sealed, still airless) and PRESS LOW (refilling), so one hole never takes three rows; wireframe 07 and the P2 sample show the open breach as BREACH, as wireframe 04 does. The Log writes conditions in the catalogue's long form, follows a room's air through those steps, and takes the hits the ship takes from guns as merged lines, which needs `HullHitEvent` to name the shooter. Conditions, missiles and hits taken take a source and a severity in the Log (a missile's lines are warnings). The Log's severity filter is a threshold, and a merged line takes its first event's time |
 | 18 | 4 (cassette critique) | Building the modes in game found data with no source: section 14 adds `CareerProvider` for M5's Career and Standing, `CargoProvider` for M2's Cargo in flight, and `DamageControlProvider` for the names and waits on M2's board, and `PowerStatusProvider` gives the cut conduits and the yard's price. A group's switch, when its members disagree, turns them all on, then all off |
 | 19 | 5 (NASA-punk critique) | Samples checked against the game again. X1's standing is the game's signed number, +0 on day 0 (the game names no levels); the Yard line counts repairs only when there are any; the infirmary has a line only while it is treating one of the crew or has billed for one since docking, so wireframes 08 and 10 have none on day 0. P1's helm field is empty while docked or latched, where today's bridge line says the ship drifts. At a gun seat that gun is in hand, point defense too, and then hunts no missile until it is let go (`PlayerGunnery.inHand`): F2 says so, and P6's prompt at a point-defense gun gives the cost. Weapons carry the game's names, mark and all, and a gun outside the rack is its weapon and mount ("Autocannon Mk1 (FWD STBD)"), as D2's type, P1's seat, M2's systems list (wireframe 11) and F2 (wireframe 05) now give it. Wireframe 13 latches onto a crewed pirate on day 6, since First Play's Raider flies with nobody aboard: X2 holds its three prisoners against four berths free and has no cargo row, P5 is not drawn because a bounty pays the moment its ship is beaten, and X2 says how an undefended craft is taken. P4's examples and the feed lines in wireframes 03, 08 and 13 are the game's own notices, but for "Log: autosaved", which is new |
+| 20 | 5 (NASA-punk critique) | Wireframe 13 and X2's sample stand at the moment of the taking, since the feed's notice of it holds 5 s and a part is off only once the crew have crossed, stripped it and carried it home: nothing is marked yet, so SALV gives the ten parts worth taking and their sale total, 7,550 cr. M4 and X2 leave out a part worth nothing (today the escape pod, which `Salvage.systemPrice` doesn't price), so the crew never carry one home |
