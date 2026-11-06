@@ -67,6 +67,37 @@ schematic, so Z5 is empty and FLT, WPN and SNS are hidden; the console prompt na
 console once, then E OPEN and V SIT, so the hint line doesn't repeat them. The sponsor's payday
 is a news slip under the delivery.
 
+### The windows the overhaul skipped
+
+The shell's pages are in [nasapunk-shell](../nasapunk-shell/README.md); these are the spec's own
+panels, drawn after the first rounds.
+
+![The map, a transfer proposed](t4-map.png)
+
+**T4, MAP from any post (M), near Highport on day 3.** The player has asked for a transfer to
+Shackleton Ice, where the held food delivery goes, and the computer has proposed one: two burns,
+3 912 m/s of the 7 007 left. Not yet accepted, it is a modification, so the path and its burns are
+dashed white, PLAN's title reads MOD and EXEC's bar is lit: Enter (EXEC) makes it the planned path,
+solid magenta, and Backspace (ERASE) drops it. It arrives 22 h 40 m after the contract's
+deadline, so ARRIVES carries an amber LATE flag and the timeline puts the deadline before the
+arrival. The orbit's numbers live here and nowhere else, under the plot's title. The numbers are
+the game's: Shackleton Ice orbits the Moon 100 km up, and the Moon, 384 400 km out, moves 50
+degrees in the 3.8 days the transfer takes.
+
+![Boarding, taken](t5-boarding.png)
+
+**T5, BRD in its third phase: taken (section 7).** The party took the raider Vex and went home,
+and the salvage is under way. The panel runs down the right side so the deck stays in sight, and
+the raider lies the way the game docks two ships, half a turn round over the corvette's port side.
+On its deck the workers carry their work tags (Ada stripping the laser, Cole carrying the ore
+across the collar), and the parts marked to strip carry cyan outlines. The salvage list is the
+game's, dearest first, priced at a twentieth of each part's price. A mark box sits on each part
+that can be marked, filled cyan once it is; the engines hang outside the hull and come off only on
+EVA, so they have none and say so. Enter marks the cursor's row, and the scratchpad says what that
+will do. The prize sells for 21 000 CR whole and 8 400 once a part is off, the second line in
+amber, since Ada's laser is the first part. Prisoners are shown against the free berths, and the
+cargo with the hold after all of it.
+
 ## Round 6 critique
 
 Round 8 of the spec took all three round 4 notes: the scope's − and + are back, the 5 km step's

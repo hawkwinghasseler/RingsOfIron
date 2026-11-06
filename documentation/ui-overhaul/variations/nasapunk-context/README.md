@@ -82,6 +82,32 @@ row, and H4 has its quiet lights. The raider lies the way the game docks two shi
 apart, port to port. That puts it over the corvette's port side, upside down and nose aft. Its lock
 brackets and name stay, but there is no lock card and no range.
 
+### The windows the overhaul skipped
+
+The shell's pages are in [nasapunk-shell](../nasapunk-shell/README.md); these are the spec's own
+full-screen modes, drawn after the first rounds.
+
+![The map, burn 1 selected](c5-map.png)
+
+**C5, M1, the map as a full-screen mode (10.1).** P1 stays above; below it come the mode's frame,
+a title row, the Plan panel on the left and Target and traffic on the right, with the timeline
+between them under the map and the foot row with the one-line feed and the close keys. It shows the
+task variation's transfer, here accepted: the planned path solid magenta, and burn 1 selected in
+cyan with its handles and its result, an apoapsis at the Moon's distance. The arrival still misses
+the delivery's deadline, so the total carries LATE and the timeline shows the deadline before the
+arrival. The timeline's cursor is on burn 1, the next event, with its warp-to.
+
+![Boarding, the party aboard](c6-boarding.png)
+
+**C6, M4, the boarding mode (10.4), two minutes before C4.** The raider's reactor is down, the
+dock's door was pried (the raider has no power to cut against), and the party has swept the hold
+and is fighting in the bridge. The party is the game's: the ship's marines, so Cole alone, at 64%
+and in a pressure suit whose air stays full while the bridge holds pressure. The plan of both
+ships shows who is where, with the rooms swept and fighting. The state line is the game's own
+("Boarding: 1 of ours aboard, 1 of theirs standing"). SEND PARTY and STORM are barred while the
+party is aboard, with the reason once on the strip under them, and RECALL is live. Salvage, cargo
+and prisoners wait, each saying what it will offer once the ship is taken.
+
 ## Round 5 critique
 
 Version 8 took both round 4 notes: F1's kiter now moves along the line of sight (closing 12, REL 12,

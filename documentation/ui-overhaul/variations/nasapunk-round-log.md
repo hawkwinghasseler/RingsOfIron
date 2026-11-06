@@ -267,7 +267,57 @@ marks a range set by hand instead, in cyan. That is argued in the task README's 
 
 **State.** All three variations stay converged.
 
+## Round 7 (6 November 2026): the windows the overhaul skipped
+
+**The ask.** The overhaul covered the in-flight HUD and left the rest of the game's windows as they
+were: the main menu and the other shell pages, the map, boarding, the station's services, the
+crew, the log, the controls and the consoles. Each spec already places them (the context spec's
+M1 to M6, the task spec's section 7, the stations spec's panels in 10.2 to 10.4), so they are drawn
+from each designer's own words, with the contents of today's windows (shot in the game, one by one)
+and the game's numbers.
+
+**Drawn so far:**
+
+| Screen | Task | Context | Stations |
+|---|---|---|---|
+| The shell (shared by all three) | [SH1 to SH8](nasapunk-shell/README.md) | | |
+| The map | T4, a proposed transfer waiting for EXEC, late against the deadline | C5, the accepted plan with burn 1 selected | S4, the full-screen Plot with a cursor reading the path |
+| Boarding | T5, BRD once the ship is taken, with the salvage marked | C6, M4 with the party fighting aboard | S5, the slate's Boarding tab before the party goes |
+
+**New pieces in the kit.** A mark box for lists where Enter marks or leaves a row: filled cyan when
+marked (a command, so cyan), hollow and dim when not, and absent where the row can't be marked,
+which then says why. Work tags on deck: white slips on leaders, with a bar for work that has an
+end. Prisoners and carried crates on the deck plan (`corvetteDeck`'s `held` and `carry`).
+
+**Checked against the code.** Every boarding number is the game's. The party is the ship's marines,
+or its crewmen if it has none (`Boarding.party`), so on the starting corvette it is Cole alone. A
+station pays a twentieth of a part's price, and stripping takes an engineer 10 s for each tile of
+the part's mount. Every part comes off as a 1 m³ crate, and the engines only on EVA. A prize
+sells for a twentieth of its value whole and a fiftieth once a part is off. A pressure suit holds
+10 minutes of air and uses it only where the air is not breathable. Storming forces every shut
+door, prying with the power down.
+
+**Critique, round 1.** S5's world first showed the two ships apart. They are latched now, the
+raider drawn on the corvette's hull since it is the corvette refitted. S5's party table first
+listed 20 minutes of air, and C6 listed 18:40. Both now show the pressure suit's 10:00, which stays
+full in a pressurised ship. S5 had no key for STORM, and its response line repeated the soft
+key's legend. STORM is now on F, and with no key pressed the response line is empty. T5's mark
+outlines were a row off on the half-turned raider, and the prisoners stood on the tanks; both are
+fixed.
+
+**For the designers** (sample text only, nothing structural):
+
+| Spec | Note |
+|---|---|
+| Context (X2) | The sample "party 2 aboard · holding" can't happen on the corvette: its party is Cole alone, and a party that takes a ship stands down and comes home |
+| Task (section 7) | The taken phase's "Recall all" is refused by the game once the ship is taken ("No boarding under way"). The sample part values differ from the game's: the harpoon launcher sells for 1 500, the reactor for 2 000, and every part is a 1 m³ crate |
+
+**Next.** The station's services, ship and crew, the record and log, the controls and the
+consoles, in each spec's own terms. Then all of it goes into the game on the shared screens hook,
+one pull request per spec.
+
 ## Next
 
-Nothing is left to iterate on these three. If a spec changes again (the other artists' rounds can
-still move them), the new version is drawn and checked the same way.
+The windows the overhaul skipped, as above. The three HUD variations themselves stay converged. If
+a spec changes again (the other artists' rounds can still move them), the new version is drawn and
+checked the same way.

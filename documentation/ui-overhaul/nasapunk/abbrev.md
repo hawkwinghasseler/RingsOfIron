@@ -42,6 +42,7 @@ in step with the specs since.
 | S | seconds, for a duration | `SHOT 1.3 S`, `TOF 1.1 S` |
 | D, H | days and hours, for a time left over a day, with no space | `1D 10H LEFT` |
 | CR | credits | `3 400 CR` |
+| M³ | cubic metres, for volume: a hold, a cargo lot, a crate (the game writes m3) | `HOLD 18 OF 40 M³` |
 | × | a multiple, with the sign | warp `1×`, a camera's `×40`, a repeat `×3` |
 
 ## Time

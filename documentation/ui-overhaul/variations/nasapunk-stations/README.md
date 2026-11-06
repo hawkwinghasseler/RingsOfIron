@@ -65,6 +65,37 @@ working, in the order they come back. The shorted gun is on top, back in 0:37, w
 45 s wait as a bar 8 s along; the nose gun under it is disabled at 24% health and needs a repair.
 The top row is the next to come back, so the page needs no NEXT line.
 
+### The windows the overhaul skipped
+
+The shell's pages are in [nasapunk-shell](../nasapunk-shell/README.md); these are the spec's own
+panels (10.2 to 10.4), drawn after the first rounds.
+
+![The plot](s4-plot.png)
+
+**S4, the Plot (10.2), full screen, opened with M at the helm.** Its console hosts Navigation, so
+it is owned and its keys work; elsewhere it opens read-only, keys greyed. It hides the band and
+brings its own annunciator and ticker, and it has the grammar of every panel: a title bar with the
+station and console, tabs (MAP with traffic, PLAN, TARGETS), the body, and a footer of soft keys
+with their key caps that shows the last key's response. The transfer is the other two variations',
+accepted: the path solid magenta with the burns on it. The cursor is on the path two days out
+and reads what is there. Nothing is wrong aboard, so the annunciator is dark and the ticker
+carries the helmsman's word on the burn she will fly. The MAP tab carries no plan numbers: their
+home is the PLAN tab.
+
+![The slate, boarding](s5-slate-boarding.png)
+
+**S5, the slate's Boarding tab (10.4), seated at the helm, just latched onto the disabled
+raider.** K opened it as a side panel that stops above the band. The top column recentres left of
+it, and the camera's centre moves left by half its width, so the pair stays in the middle of the
+world still in view. The raider is the corvette refitted by pirates, so it is drawn on the
+corvette's hull in its own colours, half a turn round along the port side with the collar between.
+Latched, the strip and the CMD tile read LATCHED, the cluster's Velocity slot reads DOCKED with
+the Reference and Next event slots dark, and the rails offer DOCK and CARGO. The tab is the
+decision to board: the raider's state and what boarding it costs; the party, which is the ship's
+marines, so Cole alone, and what his going leaves (TAC empty, in amber); the two orders on the
+footer's keys, each with what it does; and what waits for the ship to be taken. Storming forces
+every shut door, pried here since the raider's power is down, as the game's "Force a way in" does.
+
 ## Round 5 critique
 
 Round 14 of the spec took all four round 4 notes: POWER lists what is not working in the order it

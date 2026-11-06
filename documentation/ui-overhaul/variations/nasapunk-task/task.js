@@ -172,3 +172,18 @@ function scopeDU(contacts, o = {}) {
     },
   }).svg;
 }
+
+// Deck work tag (OVL's deck set, for a crew member at work: a boarder, a salvage hand): a glass
+// slip on a leader from the worker, white because work under way is the normal state, not an
+// alert. Who, then what, and the work's progress under them when it has one (the bar the crew
+// already show over their work).
+function workTag(ax, ay, x, y, who, what, o = {}) {
+  const h = o.progress != null ? 30 : 24, ww = tw(who, 12, true, 0.4);
+  const w = o.w || Math.round(ww + 10 + tw(what, 12, false, 0.2) + 22);
+  const ex = ax < x ? x : ax > x + w ? x + w : ax, ey = ay < y ? y : y + h;
+  let s = haloed((c, lw) => line(ax, ay, ex, ey, c, lw), C.white, 1) + `<circle cx="${ax}" cy="${ay}" r="2.5" fill="${C.white}"/>`;
+  s += rect(x, y, w, h, { fill: 'rgba(5,7,10,0.93)', stroke: '#5B636D', sw: 1, r: 1.5 }) + rect(x, y, 5, h, { fill: C.white, r: 1 });
+  s += text(x + 12, y + 16, who, { size: 12, bold: true, fill: C.white, track: 0.4 }) + text(x + 12 + ww + 10, y + 16, what, { size: 12, fill: C.white, track: 0.2 });
+  if (o.progress != null) s += rect(x + 12, y + 21, w - 22, 4, { fill: '#2A333D' }) + rect(x + 12, y + 21, (w - 22) * o.progress, 4, { fill: C.white });
+  return s;
+}

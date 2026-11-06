@@ -464,7 +464,7 @@ const CORVETTE = {
 // chassis x 0 at ox. o: { fire:[[tx,ty,r]], fireRoom, smoke:[[tx,ty,r]], breach:[tx,ty] (a hull
 // tile blown out), short:[tx,ty], thin:[room], vacuum:[room], battle (Red battle lighting),
 // alarm:[[tx,ty,angle]], glow:{helm|weapons|life|reactor: 'caution'|'warning'}, door:'ok'|'bad'|'shut',
-// crew:[[tx,ty,name,bubble]], speaking:[[tx,ty]], down:[[tx,ty,angle]] (casualties), avatar:[tx,ty], labels, dark, unpowered }. Points are chassis
+// crew:[[tx,ty,name,bubble]], held:[[tx,ty]] (prisoners), carry:[[tx,ty,angle]] (crew carrying a crate), stencils: false (no tank stencils, for a deck drawn turned), speaking:[[tx,ty]], down:[[tx,ty,angle]] (casualties), avatar:[tx,ty], labels, dark, unpowered }. Points are chassis
 // corner coordinates (a tile's centre is x + 0.5, y + 0.5).
 function corvetteDeck(ox, oy, k, o = {}) {
   const X = tx => ox + tx * k, Y = ty => oy + (6 - ty) * k;
@@ -511,7 +511,7 @@ function corvetteDeck(ox, oy, k, o = {}) {
       s += rect(x + m, y + m, ww - 2 * m, hh - 2 * m, { fill: kind === 'o2' ? '#3E5566' : kind === 'n2' ? '#4A4E5C' : '#5A4A3A', stroke: '#15181B', sw: 1.2, r: Math.min(ww, hh) / 2 - m });
       const vert = h > w;
       for (let i = 1; i < 3; i++) s += vert ? line(x + m, y + hh * i / 3, x + ww - m, y + hh * i / 3, '#15181B', 1) : line(x + ww * i / 3, y + m, x + ww * i / 3, y + hh - m, '#15181B', 1);
-      s += text(x + ww / 2, y + hh / 2 + 4, kind === 'prop' ? 'PROP' : kind.toUpperCase(), { size: 9, bold: true, fill: 'rgba(230,235,240,0.5)', anchor: 'middle', legend: true });
+      if (o.stencils !== false) s += text(x + ww / 2, y + hh / 2 + 4, kind === 'prop' ? 'PROP' : kind.toUpperCase(), { size: 9, bold: true, fill: 'rgba(230,235,240,0.5)', anchor: 'middle', legend: true });
     } else if (kind === 'reactor') {
       s += rect(x + m, y + m, ww - 2 * m, hh - 2 * m, { fill: '#2B3138', stroke: '#5B636D', sw: 1.5, r: 3 });
       if (!o.unpowered) s += `<circle cx="${x + ww / 2}" cy="${y + hh / 2}" r="${k * 0.85}" fill="url(#${id}core)"/>`;
@@ -572,6 +572,10 @@ function corvetteDeck(ox, oy, k, o = {}) {
   // people: crew in orange suits; the captain blue-grey with a cyan ring
   const person = (tx, ty, suit, helmet) => `<ellipse cx="${X(tx)}" cy="${Y(ty)}" rx="${k * 0.36}" ry="${k * 0.26}" fill="${suit}" stroke="#1A1A1A" stroke-width="1"/><circle cx="${X(tx)}" cy="${Y(ty)}" r="${k * 0.17}" fill="${helmet ? '#DDE3E8' : '#C99A78'}" stroke="#1A1A1A" stroke-width="0.8"/>`;
   (o.crew || []).forEach(([tx, ty]) => s += person(tx, ty, '#E06A2C'));
+  // prisoners: a taken ship's crew, held, in their own grey suits
+  (o.held || []).forEach(([tx, ty]) => s += person(tx, ty, '#7D8590'));
+  // a crew member carrying a crate (a stripped part, or cargo) in both arms, ahead of them
+  (o.carry || []).forEach(([tx, ty, a = 0]) => s += `<g transform="rotate(${a} ${X(tx)} ${Y(ty)})">${person(tx, ty, '#E06A2C')}<rect x="${X(tx) + k * 0.22}" y="${Y(ty) - k * 0.24}" width="${k * 0.42}" height="${k * 0.48}" fill="#4B4436" stroke="#2E2A22" stroke-width="1"/></g>`);
   // a speaking mark over a crew member for the first 3 s of a callout (o.speaking: [[tx, ty]]): the
   // comm loop's transmit arcs, no words, since the words are in the ticker
   (o.speaking || []).forEach(([tx, ty]) => {
