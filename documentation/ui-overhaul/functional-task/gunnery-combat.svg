@@ -16,7 +16,7 @@
 <rect x="320.0" y="66" width="190.66666666666666" height="26" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
 <text x="327.0" y="81" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">FIRE Hold  Ada</text>
 <rect x="518.6666666666666" y="66" width="190.66666666666666" height="26" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
-<text x="525.6666666666666" y="81" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">WOUNDED Cole  no medic</text>
+<text x="525.6666666666666" y="81" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">WOUNDED Cole  nobody</text>
 <rect x="16" y="72" width="240" height="64" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
 <text x="23" y="87" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">ANN  Annunciator</text>
 <rect x="22" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>

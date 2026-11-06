@@ -224,7 +224,7 @@ def gunnery_combat(out):
     s.ship(640, 390)
     chr_(s, "WARP 1x", "held: fire aboard")
     alr(s, ("MISSILE  2 inbound  impact 14 s", "F decoy   point defense engaging"),
-        ("FIRE Hold  Ada", "WOUNDED Cole  no medic"))
+        ("FIRE Hold  Ada", "WOUNDED Cole  nobody"))
     ann(s, [("FIRE", "caut"), ("CREW", "caut")], shields=False)
     s.box(16, 610, 300, 150, "SCH", "Ship (shown: FIRE, CREW lit)", ["", "  [deck plan: fire in the Hold,", "   crew as dots, you at", "   the weapons console]"], kind="cond")
     obj(s, ["Bounty: Raider 'Vex'   2d 21h"])
@@ -339,8 +339,11 @@ def deck(out):
         "health  light wound",
         "suit    pressure   air 7:40",
         "here    Bridge: thin"], kind="cond")
-    obj(s, ["Delivery: Shackleton Ice  2d 20h"])
-    ntf(s, ["Payday: 2,000 cr"], y=66)
+    # Z3 is 240 wide: a row too long for one line breaks before where the job goes, and its time
+    # stays on the first line; the urgent delivery is late on the map's plan, so it is marked
+    obj(s, ["Deliver 40 Food        LATE  2d 9h", "  to Shackleton Ice"])
+    # A slip takes two lines at most; Bea's light wound is the CREW lamp's advisory
+    ntf(s, ["Bea is lightly wounded and working", "  slower"], y=80)
     s.box(420, 734, 440, 26, "HLM", "Helm: Bea   holding heading", kind="cond")
     hnt(s, "W/A/S/D walk   O lights   F1 controls", "note: E and V are not repeated, the prompt shows them")
     legend(s, 600)
@@ -360,11 +363,11 @@ def map_(out):
     chr_(s, "WARP 1x", "")  # over the map the plan's times are MAP.2's and MAP.5's, not the chronometer's
     s.box(320, 16, 640, 76, "ALR", "(alerts stay visible over the map, both rows)", kind="cond")
     s.box(944, 100, 320, 134, "MAP.1", "DESTINATION", [
-        "Shackleton Ice  (Selene Combine)",
+        "Shackleton Ice  (Selene Mining Combine)",
         "relation: neutral  standing 12",
         "services: market, yard, shipyard,",
         "          contracts, hiring",
-        "serves: Delivery contract",
+        "serves: Deliver 40 Food",
         "distance 385,479 km",
         "[Q] next   [Shift+Q] back   list >"])
     s.box(944, 242, 320, 176, "MAP.2", "PLAN", [
@@ -372,7 +375,7 @@ def map_(out):
         "dv needs 3,912   left 7,007",
         "after plan 3,095  home from there 520",
         "arrives Day 7 09:40",
-        "deadline Day 6 11:00  LATE by 22h 40m",
+        "deadline Day 6 00:00  LATE by 1d 9h 40m",
         "",
         "burn 1  T-1:29:51   3,084 m/s  prograde",
         "burn 2  T-3d 17h      828 m/s  retro",
@@ -388,7 +391,7 @@ def map_(out):
         "burn 1   prograde +3,083.6   radial +0.0",
         "drag a handle; Shift finer; Del delete"], kind="cond")
     s.box(16, 692, 1248, 92, "MAP.5", "PLAN TIMELINE  (now to arrival, log scale)", [
-        "now --|burn 1 1.5h ----!deadline 2.9d --|SOI Moon 3.3d --|burn 2 3.7d -|arrive 3.8d",
+        "now --|burn 1 1.5h ---!deadline 2.4d ---|SOI Moon 3.3d --|burn 2 3.7d -|arrive 3.8d",
         "click an event: centre the map on it      double-click: warp to it"])
     s.box(24, 592, 220, 84, "MAP.6", "Layers", [
         "[x] stations  [x] traffic",
@@ -414,28 +417,36 @@ def terminal(out):
         s.text(x + 75, 179, t, size=12, weight="bold" if i == 0 else "normal", anchor="middle")
         x += 158
     s.text(x + 4, 179, "(no SHIPYARD tab: Highport sells no ships; Anvil Yards does)", size=10, fill="#999", style="italic")
-    s.box(16, 196, 760, 588, "TRM.1", "Offers (5 today, 1 operation)", [
-        "type   job                            pay      stdg  time    reach",
-        "OPER.  Clear the Lanes (1/3)          8,000    +6    --      LOCKED: Lieutenant",
-        "BOUNTY Raider 'Vex', near Highport    5,000    +6    3d      here     ok",
-        "DELIV. Food to Shackleton Ice         1,240+   +3    2d 20h  3.8 d    LATE 23h",
-        "ESCORT Hauler Kestrel to Anvil Yards  1,500    +4    2d      2.1 h    ok  dv 3,000",
-        "PATROL Deepwell Depot and back        1,000    +3    2d      2 h      ok  dv 1,860",
+    # The day's five, and the urgent delivery Shackleton Ice's shortage posted here (an extra, WorldEvents)
+    s.box(16, 196, 760, 588, "TRM.1", "Offers (5 today, 1 operation; 1 urgent)", [
+        "type   job                            pay      standing   time    reach",
+        "OPER.  Clear the Lanes (1/3)          8,000    +6         --      LOCKED: Lieutenant",
+        "BOUNTY Raider 'Vex', near Highport    5,000    +6         3d      here     ok",
+        "DELIV. 40 Food to Shackleton Ice      2,620    +5 Selene  2d 9h   3.8 d    LATE 1d 9h",
+        "ESCORT Hauler Kestrel to Anvil Yards  1,500    +4         2d      2.1 h    ok  dv 3,000",
+        "PATROL Deepwell Depot and back        1,000    +3         2d      2 h      ok  dv 1,860",
+        "DELIV. 18 Food to Anvil Yards         860      +3         2d      2.1 h    ok  dv 3,000",
         "",
         "'reach' = travel time and dv from here, checked against dv left and the deadline",
+        "'pay' for a delivery = its fee, plus the buyer's price for the cargo, less its price here",
+        "'standing' names the giver when it isn't your sponsor",
         "",
         "sorted by: pay / time / distance (player's choice)"])
-    s.box(784, 196, 480, 588, "TRM.2", "Delivery: Food to Shackleton Ice", [
-        "giver   Highport (sponsor)",
-        "cargo   18 m3 food, loaded here",
-        "pay     1,240 cr on delivery + sale",
-        "standing +3   fail -1.5",
-        "deadline Day 6 11:00 (2d 20h)",
+    # Shackleton Ice ran short of food on day 3 (WorldEvents): an urgent delivery, due 3 days after the
+    # roll, posted at Highport for the short station's owner, sized to the whole 40 m3 hold
+    s.box(784, 196, 480, 588, "TRM.2", "Deliver 40 Food to Shackleton Ice", [
+        "why     Shackleton Ice is short of Food (urgent)",
+        "giver   Selene Mining Combine, posted here",
+        "cargo   40 food (40 m3), 25 cr each here: 1,000",
+        "pay     500 fee + 78 cr each at the buyer = 3,620",
+        "        net of the cargo 2,620 cr",
+        "standing +5 with Selene   fail -2.5",
+        "deadline Day 6 00:00 (2d 9h)",
         "",
         "route   Shackleton Ice, at the Moon",
         "        transfer ~3,900 m/s, ~3.8 d",
-        "        arrive Day 7 09:40 -> 22h 40m late",
-        "hold    needs 18 m3, 34 free -> fits",
+        "        arrive Day 7 09:40 -> 1d 9h 40m late",
+        "hold    needs 40 m3, 34 free -> 6 m3 short",
         "",
         "[Take]        [Show route on map]"])
     s.save(os.path.join(out, "terminal.svg"))
