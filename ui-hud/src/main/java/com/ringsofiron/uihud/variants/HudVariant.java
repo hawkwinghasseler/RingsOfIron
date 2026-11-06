@@ -3,6 +3,7 @@ package com.ringsofiron.uihud.variants;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.Insets;
+import com.ringsofiron.uihud.widgets.MapPainter;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -17,7 +18,12 @@ import java.util.Set;
  * {@link com.ringsofiron.uihud.data.HudData#refresh} has read this frame's data, then the stage draws
  * the variant's actors; {@link #resize} when the window or the UI scale changes; {@link #detach}
  * when another variant is picked or the game closes. Everything a variant adds to the stage goes in
- * {@link HudVariantHost#layer()}, which the host clears on detach.
+ * {@link HudVariantHost#layer()}, or for its screens {@link HudVariantHost#screenLayer()}, which the
+ * host clears on detach.
+ *
+ * <p>Besides the HUD's panels ({@link #keeps}), a variant may show its own screens in place of the
+ * classic windows, the map's panels and the game's text panels ({@link #replaces}, {@link ClassicWindow}).
+ * While one of its screens shows, the keys the HUD does not use go to {@link #keyDown} first.
  */
 public interface HudVariant {
 
@@ -82,5 +88,62 @@ public interface HudVariant {
      */
     default boolean wantsInset(Insets.Role role) {
         return true;
+    }
+
+    // --- Screens in place of the classic windows ----------------------------------------------
+
+    /**
+     * Whether the variant shows a screen of its own in place of the classic {@code window}. The
+     * classic window then never opens; the game asks the variant instead ({@link #open}). None by
+     * default. Read once, when the variant is attached: the answer must not change after.
+     */
+    default boolean replaces(ClassicWindow window) {
+        return false;
+    }
+
+    /**
+     * Shows the variant's screen for {@code window}, or turns an open screen to it (a station
+     * terminal to its market tab): its key was pressed, the game opened it, or another screen asked
+     * ({@code UiHud#open}). Only for a window the variant {@link #replaces}, and only while the game
+     * says it can open ({@code UiHud#available}). True when it shows now. A screen goes in
+     * {@link HudVariantHost#screenLayer()}, over the classic windows and the map.
+     */
+    default boolean open(ClassicWindow window) {
+        return false;
+    }
+
+    /** Whether the variant's screen for {@code window} shows now. A screen that serves several (a terminal's tabs) shows the one on its tab. */
+    default boolean showing(ClassicWindow window) {
+        return false;
+    }
+
+    /**
+     * Closes the variant's screen for {@code window} if it shows: its key pressed again, Esc, or the
+     * game (the ship undocked, so the market can no longer open). A screen that serves several may
+     * close whole.
+     */
+    default void close(ClassicWindow window) {
+    }
+
+    /**
+     * How the full-screen map looks under this variant: a {@link MapPainter} that draws every piece of
+     * it (the backdrop, the orbits, the bodies, the marks, the labels, the traffic, the burn handles,
+     * the scale bar and the title), or null for the classic look. Read once, after {@link #attach}.
+     * The map keeps where everything goes, the zoom, the panning and the clicks. A variant that also
+     * {@link #replaces} {@link ClassicWindow#MAP} shows the side panel's contents in its own panels,
+     * and keeps the canvas clear of them with {@code host.hud().getManeuverMap().setCanvasInsets}.
+     */
+    default MapPainter mapPainter() {
+        return null;
+    }
+
+    /**
+     * How the game's menus look with this variant picked ({@link ShellLook}): the main menu, new game,
+     * pause, load, save, settings and the mod scripts dialog. Null keeps the classic menus. The game
+     * asks a fresh instance that it never attaches, as soon as the variant is picked (on the main
+     * menu, before any game), so make the look's own fonts and skin in it, not in {@link #attach}.
+     */
+    default ShellLook shellLook() {
+        return null;
     }
 }

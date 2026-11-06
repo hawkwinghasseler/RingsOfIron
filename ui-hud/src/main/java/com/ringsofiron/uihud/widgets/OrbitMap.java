@@ -5,14 +5,14 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Widget;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
-import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
+import com.ringsofiron.uihud.widgets.MapPainter.Role;
 
 /**
  * Small top-down map of the player's orbit around its parent body: the body, the orbit now, the
@@ -31,34 +31,24 @@ import com.ringsofiron.uihud.providers.OrbitPathProvider;
  *
  * <p>{@link #setView} fixes the scale and centre instead of fitting the orbit, for a map that fills a
  * screen and zooms; {@link #screenX} and {@link #screenY} then place anything else in the same frame.
+ *
+ * <p>It works out where everything goes; a {@link MapPainter} draws each piece there, the classic look
+ * unless a HUD variant gives the full-screen map its own ({@link #setPainter}).
  */
 public class OrbitMap extends Widget {
-    private static final Color BODY = new Color(0.12f, 0.25f, 0.42f, 1f);
-    private static final Color PLANNED = new Color(1f, 0.7f, 0.2f, 1f);
-    private static final Color OTHER_BODY = new Color(0.55f, 0.6f, 0.65f, 1f);
-    private static final Color OTHER_ORBIT = new Color(0.55f, 0.6f, 0.65f, 0.45f);
-    private static final Color STATION = new Color(0.4f, 0.75f, 1f, 1f);
-    private static final Color TARGET = new Color(1f, 0.35f, 0.9f, 1f);
-    private static final Color TARGET_ORBIT = new Color(1f, 0.35f, 0.9f, 0.5f);
-    private static final Color PROPOSED = new Color(0.35f, 1f, 0.45f, 1f);
-    private static final Color CURRENT_LEG = new Color(0.45f, 0.85f, 1f, 0.6f);
-    private static final Color PLANNED_LEG = new Color(1f, 0.82f, 0.45f, 0.85f);
-    private static final Color GHOST = new Color(0.55f, 0.6f, 0.65f, 0.55f);
-    private static final Color GHOST_SOI = new Color(0.55f, 0.6f, 0.65f, 0.25f);
-    private static final Color IMPACT = new Color(1f, 0.3f, 0.25f, 1f);
     /** Wide enough for a transfer to Earth's Moon, about 60 Earth radii out. */
     private static final float MAX_BODY_RADII = 80f;
     private static final float EDGE = 8f;
     private static final float LABEL_WIDTH = 110f;
 
-    private final TextureRegion white;
+    private final MapPainter classic;
+    private MapPainter painter;
     private final OrbitPathProvider.OrbitPath path = new OrbitPathProvider.OrbitPath();
     private OrbitPathProvider provider;
     private Label caption;
     /** Names drawn so far this frame, so the next one keeps clear. */
     private final Array<Rectangle> placed = new Array<>();
     private final GlyphLayout layout = new GlyphLayout();
-    private BitmapFont font;
     private boolean hasPath;
     private boolean showMarks;
     /** Stations and an on-map target drawn here; off where another layer draws the traffic. */
@@ -74,19 +64,28 @@ public class OrbitMap extends Widget {
     private double pathX, pathY;
     /** The map's middle in the frame last drawn, meters from the body: where the path is sampled finely. */
     private double lastViewX, lastViewY;
-    private final float[] quad = new float[20];
 
     public OrbitMap(TextureRegion white) {
-        this.white = white;
+        classic = new MapPainter(white, null);
+        painter = classic;
     }
 
     public void setProvider(OrbitPathProvider provider) {
         this.provider = provider;
     }
 
-    /** Font for other bodies' names, or null to draw them unlabelled. */
+    /** Font for other bodies' names, or null to draw them unlabelled; the classic look's. */
     public void setFont(BitmapFont font) {
-        this.font = font;
+        classic.setFont(font);
+    }
+
+    /** Draws the map's pieces with {@code painter}, a HUD variant's look; null goes back to the classic look. */
+    public void setPainter(MapPainter painter) {
+        this.painter = painter == null ? classic : painter;
+    }
+
+    public MapPainter getPainter() {
+        return painter;
     }
 
     /** Label to show the provider's caption in, or null. */
@@ -191,11 +190,22 @@ public class OrbitMap extends Widget {
         validate();
         if (!hasPath) return;
         Color old = batch.getColor().cpy();
-        float a = parentAlpha * getColor().a;
+        place();
+        batch.flush();
+        if (!clipBegin()) return;
+        drawPieces(batch, parentAlpha * getColor().a);
+        batch.flush();
+        clipEnd();
+        batch.setColor(old);
+    }
 
-        // vx, vy: the map's middle; the body's centre is drawn at (originX, originY), the same unless a
-        // view is set. Positions are worked out in doubles and only the pixel they land on is a float:
-        // zoomed in on a far orbit the body's centre is hundreds of millions of pixels off the map.
+    /**
+     * Works out this frame's scale and where the body's centre goes. Positions are worked out in doubles
+     * and only the pixel they land on is a float: zoomed in on a far orbit the body's centre is hundreds
+     * of millions of pixels off the map.
+     */
+    void place() {
+        // vx, vy: the map's middle; the body's centre is drawn at (originX, originY), the same unless a view is set
         float vx = getX() + getWidth() / 2f;
         float vy = getY() + getHeight() / 2f;
         float half = Math.min(getWidth(), getHeight()) / 2f;
@@ -215,69 +225,61 @@ public class OrbitMap extends Widget {
         }
         pathX = originX + path.originX * drawScale;
         pathY = originY + path.originY * drawScale;
-        float scale = (float) drawScale;
-        batch.flush();
-        if (!clipBegin()) return;
+    }
 
-        for (OrbitPathProvider.MapBody b : path.bodies) polyline(batch, b.orbit, OTHER_ORBIT, a);
+    /** Every piece, where {@link #place} put this frame's frame, through the painter. */
+    void drawPieces(Batch batch, float a) {
+        float vx = getX() + getWidth() / 2f;
+        float vy = getY() + getHeight() / 2f;
+        float half = Math.min(getWidth(), getHeight()) / 2f;
+        float scale = (float) drawScale;
+        BitmapFont font = painter.font();
+
+        for (OrbitPathProvider.MapBody b : path.bodies) polyline(batch, b.orbit, Role.MOON_ORBIT, a);
         // Where a moon the path meets will be by then, under everything else
+        float largest = 20f * Math.max(getWidth(), getHeight());
         for (OrbitPathProvider.PathMark m : path.marks) {
             if (m.kind != OrbitPathProvider.MarkKind.GHOST) continue;
-            float gx = screenX(m.x), gy = screenY(m.y);
-            circle(batch, gx, gy, (float) m.soiRadius * scale, 1f, GHOST_SOI, a);
-            circle(batch, gx, gy, Math.max(3f, (float) m.radius * scale), 1.5f, GHOST, a);
+            float soi = (float) m.soiRadius * scale, outline = Math.max(3f, (float) m.radius * scale);
+            // Too small to see, or far bigger than the map: not drawn
+            painter.ghost(batch, screenX(m.x), screenY(m.y), outline > largest ? 0f : outline,
+                    soi < 2f || soi > largest ? 0f : soi, a);
         }
 
-        // The body as a disc of thin horizontal slices, only those on the map (zoomed in it is huge).
-        double r = path.bodyRadius * drawScale;
-        batch.setColor(BODY.r, BODY.g, BODY.b, BODY.a * a);
-        // Zoomed far out it stays a dot rather than vanishing
-        if (r < 3) dot(batch, (float) originX, (float) originY, 6f, OTHER_BODY, a);
-        float left = getX(), right = getX() + getWidth();
-        for (double y = Math.max(-r, Math.floor(getY() - originY)); y < Math.min(r, getY() + getHeight() - originY); y += 1) {
-            double w = Math.sqrt(Math.max(0, r * r - (y + 0.5) * (y + 0.5)));
-            float x0 = (float) Math.max(left, originX - w), x1 = (float) Math.min(right, originX + w);
-            if (x1 > x0) batch.draw(white, x0, (float) (originY + y), x1 - x0, 1f);
-        }
+        painter.body(batch, originX, originY, path.bodyRadius * drawScale, getX(), getY(), getX() + getWidth(),
+                getY() + getHeight(), a);
 
-        polyline(batch, path.targetOrbit, TARGET_ORBIT, a);
-        polyline(batch, path.current, HudSkin.HUD_CYAN, a);
-        polyline(batch, path.planned, PLANNED, a);
-        for (OrbitPathProvider.PathLeg l : path.legs) polyline(batch, l.points, l.planned ? PLANNED_LEG : CURRENT_LEG, a);
-        polyline(batch, path.proposed, PROPOSED, a);
+        polyline(batch, path.targetOrbit, Role.TARGET_ORBIT, a);
+        polyline(batch, path.current, Role.CURRENT, a);
+        polyline(batch, path.planned, Role.PLANNED, a);
+        for (OrbitPathProvider.PathLeg l : path.legs) polyline(batch, l.points, l.planned ? Role.PLANNED_LEG : Role.CURRENT_LEG, a);
+        polyline(batch, path.proposed, Role.PROPOSED, a);
         for (int i = 0; i + 1 < path.proposedNodes.size; i += 2) {
-            dot(batch, pathScreenX(path.proposedNodes.get(i)), pathScreenY(path.proposedNodes.get(i + 1)), 5f, PROPOSED, a);
+            painter.burn(batch, Role.PROPOSED, pathScreenX(path.proposedNodes.get(i)), pathScreenY(path.proposedNodes.get(i + 1)), a);
         }
         if (path.approach.size >= 4) {
-            float x0 = pathScreenX(path.approach.get(0)), y0 = pathScreenY(path.approach.get(1));
-            float x1 = pathScreenX(path.approach.get(2)), y1 = pathScreenY(path.approach.get(3));
-            batch.setColor(TARGET.r, TARGET.g, TARGET.b, a);
-            line(batch, x0, y0, x1, y1);
-            dot(batch, x0, y0, 4f, Color.WHITE, a);
-            dot(batch, x1, y1, 4f, TARGET, a);
+            painter.approach(batch, pathScreenX(path.approach.get(0)), pathScreenY(path.approach.get(1)),
+                    pathScreenX(path.approach.get(2)), pathScreenY(path.approach.get(3)), a);
         }
         placed.clear();
-        for (OrbitPathProvider.MapMarker m : path.markers) marker(batch, m, vx, vy, half, scale, a);
+        for (OrbitPathProvider.MapMarker m : path.markers) marker(batch, m, vx, vy, half, a);
         for (int i = 0; i + 1 < path.nodes.size; i += 2) {
             boolean selected = i / 2 == path.selectedNode;
+            Role role = selected ? Role.SELECTED : Role.PLANNED;
             float nx = pathScreenX(path.nodes.get(i)), ny = pathScreenY(path.nodes.get(i + 1));
-            dot(batch, nx, ny, selected ? 7f : 5f, selected ? Color.WHITE : PLANNED, a);
+            painter.burn(batch, role, nx, ny, a);
             // Every burn's countdown beside it, not only the next one's
             if (font != null && i / 2 < path.nodeLabels.size) {
-                Color c = selected ? Color.WHITE : PLANNED;
-                font.setColor(c.r, c.g, c.b, a);
                 float ly = ny - 4f - 14f * ((i / 2) % 2);
-                layout.setText(font, path.nodeLabels.get(i / 2));
-                font.draw(batch, layout, nx + 6f, ly);
+                String text = path.nodeLabels.get(i / 2);
+                layout.setText(font, text);
                 placed.add(new Rectangle(nx + 6f, ly - layout.height, layout.width, layout.height));
+                painter.label(batch, role, text, nx + 6f, ly, 0f, Align.left, a);
             }
         }
-        dot(batch, screenX(path.shipX), screenY(path.shipY), 5f, Color.WHITE, a);
+        painter.ship(batch, screenX(path.shipX), screenY(path.shipY), a);
         for (OrbitPathProvider.MapBody b : path.bodies) otherBody(batch, b, vx, vy, half, scale, a);
         for (OrbitPathProvider.PathMark m : path.marks) mark(batch, m, a);
-        batch.flush();
-        clipEnd();
-        batch.setColor(old);
     }
 
     private void otherBody(Batch batch, OrbitPathProvider.MapBody b, float vx, float vy, float half, float scale,
@@ -293,13 +295,13 @@ public class OrbitMap extends Widget {
             y *= reach / far;
         }
         float size = inside ? Math.max(5f, 2f * (float) b.radius * scale) : 5f;
-        dot(batch, vx + x, vy + y, size, OTHER_BODY, alpha);
-        if (font == null || b.name.isEmpty()) return;
-        font.setColor(OTHER_BODY.r, OTHER_BODY.g, OTHER_BODY.b, alpha);
+        painter.moon(batch, vx + x, vy + y, size, alpha);
+        if (painter.font() == null || b.name.isEmpty()) return;
         // Label toward the map's middle so it stays on the map.
         float lx = x > 0 ? vx + x - size / 2f - 4f - LABEL_WIDTH : vx + x + size / 2f + 4f;
-        int align = x > 0 ? com.badlogic.gdx.utils.Align.right : com.badlogic.gdx.utils.Align.left;
-        label(batch, inside ? b.name : b.name + " (off map)", lx, vy + y + (y > 0 ? -6f : 14f), align, y > 0 ? -1f : 1f);
+        int align = x > 0 ? Align.right : Align.left;
+        label(batch, Role.MOON, inside ? b.name : b.name + " (off map)", lx, vy + y + (y > 0 ? -6f : 14f), align,
+                y > 0 ? -1f : 1f, alpha);
     }
 
     /**
@@ -307,9 +309,10 @@ public class OrbitMap extends Widget {
      * clears the names already drawn: a target on a body that is off the map sits on the body's own
      * marker at the edge.
      */
-    private void label(Batch batch, String text, float lx, float ly, int align, float dir) {
+    private void label(Batch batch, Role role, String text, float lx, float ly, int align, float dir, float alpha) {
+        BitmapFont font = painter.font();
         layout.setText(font, text);
-        float x = align == com.badlogic.gdx.utils.Align.right ? lx + LABEL_WIDTH - layout.width : lx;
+        float x = align == Align.right ? lx + LABEL_WIDTH - layout.width : lx;
         Rectangle box = new Rectangle(x, ly - layout.height, layout.width, layout.height);
         float step = font.getLineHeight();
         for (int tries = 0; tries < 4; tries++) {
@@ -319,12 +322,12 @@ public class OrbitMap extends Widget {
             box.y += dir * step;
         }
         placed.add(box);
-        font.draw(batch, text, lx, box.y + box.height, LABEL_WIDTH, align, false);
+        painter.label(batch, role, text, lx, box.y + box.height, LABEL_WIDTH, align, alpha);
     }
 
     /**
-     * An apsis as a small tick across the path, a change of sphere of influence as a diamond and an
-     * impact as a red cross, each with its label when {@link #setShowMarks} is on; impacts always.
+     * An apsis, a change of sphere of influence or an impact, each with its label when
+     * {@link #setShowMarks} is on; impacts always.
      */
     private void mark(Batch batch, OrbitPathProvider.PathMark m, float alpha) {
         if (m.kind == OrbitPathProvider.MarkKind.GHOST) return;
@@ -332,47 +335,15 @@ public class OrbitMap extends Widget {
         if (!showMarks && !impact) return;
         float x = screenX(m.x), y = screenY(m.y);
         if (x < getX() || x > getX() + getWidth() || y < getY() || y > getY() + getHeight()) return;
-        Color c = impact ? IMPACT : m.planned ? PLANNED : HudSkin.HUD_CYAN;
-        batch.setColor(c.r, c.g, c.b, c.a * alpha);
-        switch (m.kind) {
-            case IMPACT:
-                batch.draw(white, x - 6f, y - 1f, 6f, 1f, 12f, 2f, 1f, 1f, 45f);
-                batch.draw(white, x - 6f, y - 1f, 6f, 1f, 12f, 2f, 1f, 1f, -45f);
-                break;
-            case SOI_ENTRY:
-            case SOI_EXIT:
-                batch.draw(white, x - 4f, y - 4f, 4f, 4f, 8f, 8f, 1f, 1f, 45f);
-                break;
-            default:
-                // Apsides: a hollow square, small enough not to hide the path under it
-                batch.draw(white, x - 4f, y - 4f, 8f, 1.5f);
-                batch.draw(white, x - 4f, y + 2.5f, 8f, 1.5f);
-                batch.draw(white, x - 4f, y - 4f, 1.5f, 8f);
-                batch.draw(white, x + 2.5f, y - 4f, 1.5f, 8f);
-        }
-        if (font == null || m.text.isEmpty() || !showMarks && !impact) return;
-        font.setColor(c.r, c.g, c.b, alpha);
+        Role role = impact ? Role.IMPACT : m.planned ? Role.PLANNED : Role.CURRENT;
+        painter.mark(batch, m.kind, role, x, y, alpha);
+        if (painter.font() == null || m.text.isEmpty() || !showMarks && !impact) return;
         boolean right = x > getX() + getWidth() - LABEL_WIDTH - 20f;
-        label(batch, m.text, right ? x - 8f - LABEL_WIDTH : x + 8f, y + 6f,
-                right ? com.badlogic.gdx.utils.Align.right : com.badlogic.gdx.utils.Align.left, -1f);
+        label(batch, role, m.text, right ? x - 8f - LABEL_WIDTH : x + 8f, y + 6f, right ? Align.right : Align.left, -1f, alpha);
     }
 
-    /** A circle outline as short segments; nothing when it is far bigger than the map or too small to see. */
-    private void circle(Batch batch, float x, float y, float r, float t, Color c, float alpha) {
-        if (r < 2f || r > 20f * Math.max(getWidth(), getHeight())) return;
-        batch.setColor(c.r, c.g, c.b, c.a * alpha);
-        int n = MathUtils.clamp((int) (r * 0.6f), 16, 160);
-        for (int i = 0; i < n; i++) {
-            // Math's sine rather than MathUtils' table: a sphere of influence can be far bigger than the map
-            double a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
-            line(batch, x + (float) Math.cos(a0) * r, y + (float) Math.sin(a0) * r, x + (float) Math.cos(a1) * r,
-                    y + (float) Math.sin(a1) * r, t);
-        }
-    }
-
-    /** A station or the target as a square outline, pulled to the map's edge when off it. */
-    private void marker(Batch batch, OrbitPathProvider.MapMarker m, float vx, float vy, float half, float scale,
-                        float alpha) {
+    /** A station or the target, pulled to the map's edge when off it (the target only). */
+    private void marker(Batch batch, OrbitPathProvider.MapMarker m, float vx, float vy, float half, float alpha) {
         float x = (float) (originX - vx + m.x * drawScale), y = (float) (originY - vy + m.y * drawScale);
         float reach = half - EDGE;
         float far = Math.max(Math.abs(x), Math.abs(y));
@@ -383,19 +354,12 @@ public class OrbitMap extends Widget {
         } else if (!showStations) {
             return;
         }
-        Color c = m.target ? TARGET : STATION;
-        float size = m.target ? 9f : 5f;
-        batch.setColor(c.r, c.g, c.b, c.a * alpha);
-        float x0 = vx + x - size / 2f, y0 = vy + y - size / 2f;
-        batch.draw(white, x0, y0, size, 1.5f);
-        batch.draw(white, x0, y0 + size - 1.5f, size, 1.5f);
-        batch.draw(white, x0, y0, 1.5f, size);
-        batch.draw(white, x0 + size - 1.5f, y0, 1.5f, size);
-        if (!m.target || font == null || m.name.isEmpty()) return;
-        font.setColor(c.r, c.g, c.b, alpha);
+        painter.marker(batch, vx + x, vy + y, m.target, alpha);
+        if (!m.target || painter.font() == null || m.name.isEmpty()) return;
+        float size = 9f;
         float lx = x > 0 ? vx + x - size / 2f - 4f - LABEL_WIDTH : vx + x + size / 2f + 4f;
-        int align = x > 0 ? com.badlogic.gdx.utils.Align.right : com.badlogic.gdx.utils.Align.left;
-        label(batch, m.name, lx, vy + y + (y > 0 ? -6f : 14f), align, y > 0 ? -1f : 1f);
+        int align = x > 0 ? Align.right : Align.left;
+        label(batch, Role.TARGET, m.name, lx, vy + y + (y > 0 ? -6f : 14f), align, y > 0 ? -1f : 1f, alpha);
     }
 
     private static float extent(FloatArray points) {
@@ -405,12 +369,11 @@ public class OrbitMap extends Widget {
     }
 
     /**
-     * The path's points as a line, each segment worked out in doubles and cut to the map before it is
-     * drawn: zoomed in, one segment of a far orbit runs tens of thousands of pixels, and drawn whole its
-     * far end strays from where the next one starts.
+     * The path's points as pieces of line, each segment worked out in doubles and cut to the map before
+     * it is drawn: zoomed in, one segment of a far orbit runs tens of thousands of pixels, and drawn whole
+     * its far end strays from where the next one starts.
      */
-    private void polyline(Batch batch, FloatArray points, Color c, float alpha) {
-        batch.setColor(c.r, c.g, c.b, c.a * alpha);
+    private void polyline(Batch batch, FloatArray points, Role role, float alpha) {
         double left = getX() - 2, right = getX() + getWidth() + 2, bottom = getY() - 2, top = getY() + getHeight() + 2;
         for (int i = 2; i + 1 < points.size; i += 2) {
             double x0 = pathX + points.get(i - 2) * drawScale, y0 = pathY + points.get(i - 1) * drawScale;
@@ -435,45 +398,9 @@ public class OrbitMap extends Widget {
                 }
             }
             if (outside) continue;
-            line(batch, (float) (x0 + dx * t0), (float) (y0 + dy * t0), (float) (x0 + dx * t1), (float) (y0 + dy * t1));
+            painter.path(batch, role, (float) (x0 + dx * t0), (float) (y0 + dy * t0), (float) (x0 + dx * t1),
+                    (float) (y0 + dy * t1), alpha);
         }
-    }
-
-    private void line(Batch batch, float x0, float y0, float x1, float y1) {
-        line(batch, x0, y0, x1, y1, 1.5f);
-    }
-
-    /**
-     * A line {@code width} wide as one quad, its corners set exactly: the batch's rotated draw takes its
-     * angle from a lookup table, which over a long line puts the far end a few pixels astray.
-     */
-    private void line(Batch batch, float x0, float y0, float x1, float y1, float width) {
-        float dx = x1 - x0, dy = y1 - y0;
-        float len = (float) Math.sqrt(dx * dx + dy * dy);
-        if (len < 1e-3f) return;
-        // Half the width across the line
-        float nx = -dy / len * width / 2f, ny = dx / len * width / 2f;
-        float color = batch.getPackedColor();
-        float u = (white.getU() + white.getU2()) / 2f, v = (white.getV() + white.getV2()) / 2f;
-        corner(0, x0 - nx, y0 - ny, color, u, v);
-        corner(1, x0 + nx, y0 + ny, color, u, v);
-        corner(2, x1 + nx, y1 + ny, color, u, v);
-        corner(3, x1 - nx, y1 - ny, color, u, v);
-        batch.draw(white.getTexture(), quad, 0, quad.length);
-    }
-
-    private void corner(int i, float x, float y, float color, float u, float v) {
-        int at = i * 5;
-        quad[at] = x;
-        quad[at + 1] = y;
-        quad[at + 2] = color;
-        quad[at + 3] = u;
-        quad[at + 4] = v;
-    }
-
-    private void dot(Batch batch, float x, float y, float size, Color c, float alpha) {
-        batch.setColor(c.r, c.g, c.b, c.a * alpha);
-        batch.draw(white, x - size / 2f, y - size / 2f, size, size);
     }
 
     @Override

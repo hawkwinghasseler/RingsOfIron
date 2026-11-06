@@ -1,25 +1,34 @@
 package com.ringsofiron.uihud.data;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.interiorgrid.RoomNames;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.uihud.components.InteractableConsoleComponent;
+import com.ringsofiron.uihud.providers.BoardingProvider;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
 import com.ringsofiron.uihud.providers.ContactProvider;
 import com.ringsofiron.uihud.providers.ContactProvider.ContactFrame;
+import com.ringsofiron.uihud.providers.CrewProvider;
 import com.ringsofiron.uihud.providers.DockingApproachProvider;
 import com.ringsofiron.uihud.providers.DockingApproachProvider.DockingApproach;
 import com.ringsofiron.uihud.providers.FlightStatusProvider;
 import com.ringsofiron.uihud.providers.FlightStatusProvider.FlightStatus;
+import com.ringsofiron.uihud.providers.GameOverProvider;
+import com.ringsofiron.uihud.providers.GameOverProvider.GameOver;
 import com.ringsofiron.uihud.providers.InteractorProvider;
 import com.ringsofiron.uihud.providers.KeyHintProvider;
 import com.ringsofiron.uihud.providers.KeyHintProvider.KeyHintFrame;
+import com.ringsofiron.uihud.providers.ManeuverPlannerProvider;
+import com.ringsofiron.uihud.providers.MissionProvider;
 import com.ringsofiron.uihud.providers.NavigationProvider;
 import com.ringsofiron.uihud.providers.NavigationProvider.NavReadout;
 import com.ringsofiron.uihud.providers.ObjectiveProvider;
 import com.ringsofiron.uihud.providers.ObjectiveProvider.ObjectiveFrame;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
+import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import com.ringsofiron.uihud.providers.OrdersProvider;
 import com.ringsofiron.uihud.providers.OrdersProvider.Orders;
 import com.ringsofiron.uihud.providers.PowerStatusProvider;
@@ -28,6 +37,7 @@ import com.ringsofiron.uihud.providers.ShieldStatusProvider;
 import com.ringsofiron.uihud.providers.ShieldStatusProvider.ShieldStatus;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 import com.ringsofiron.uihud.providers.ShipStatusProvider.ShipStatus;
+import com.ringsofiron.uihud.providers.ShipyardProvider;
 import com.ringsofiron.uihud.providers.StationBoardProvider;
 import com.ringsofiron.uihud.providers.StationBoardProvider.StationBoard;
 import com.ringsofiron.uihud.providers.TargetStatusProvider;
@@ -35,10 +45,13 @@ import com.ringsofiron.uihud.providers.TargetStatusProvider.TargetStatus;
 import com.ringsofiron.uihud.providers.TargetingProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider;
 import com.ringsofiron.uihud.providers.ThreatProvider.ThreatFrame;
+import com.ringsofiron.uihud.providers.TradeProvider;
+import com.ringsofiron.uihud.providers.TrafficMapProvider;
 import com.ringsofiron.uihud.providers.UiContextProvider;
 import com.ringsofiron.uihud.providers.UiContextProvider.UiContext;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.WeaponFrame;
+import com.ringsofiron.uihud.providers.YardProvider;
 
 import java.util.function.Function;
 
@@ -70,11 +83,35 @@ public final class HudData {
     public StationBoardProvider stationBoard;
     public KeyHintProvider hints;
     public OrdersProvider orders;
+    /** Ship lost or career over; null leaves {@link #gameOver} down. */
+    public GameOverProvider ending;
     /** Also set by {@code UiHud} when the game sets them there. */
     public TargetingProvider targeting;
     public OrbitInfoProvider orbitInfo;
     public InteractorProvider interactor;
     public PhysicsManager physics;
+
+    // --- The classic windows' providers, for a variant's own screens ({@code ClassicWindow}) ----
+    // Set by UiHud's setters as the game sets them there. A screen reads them when it draws (each
+    // fills a board, as the classic window's refresh does) and acts through them (buy, take, board).
+    /** The station market ({@code ClassicWindow.TRADE}). */
+    public TradeProvider trade;
+    /** The yard, or the crew's field refit away from one ({@code ClassicWindow.YARD}). */
+    public YardProvider yard;
+    /** Ships for sale, the trade-in, a prize to hand over ({@code ClassicWindow.SHIPYARD}). */
+    public ShipyardProvider shipyard;
+    /** The mission board: the career line, offers and the contracts held ({@code ClassicWindow.MISSIONS}). */
+    public MissionProvider missions;
+    /** Boarding and salvage while latched ({@code ClassicWindow.BOARDING}). */
+    public BoardingProvider boarding;
+    /** The crew roster ({@code ClassicWindow.CREW}). */
+    public CrewProvider crew;
+    /** The orbit, the plan's paths and the bodies, as the map draws them ({@code ClassicWindow.MAP}). */
+    public OrbitPathProvider orbitPath;
+    /** What the map's panel does: the burns, transfers, warp, the helm's and the autopilot's orders. */
+    public ManeuverPlannerProvider planner;
+    /** The traffic round the body, for the map. */
+    public TrafficMapProvider trafficMap;
     /** Key names for actions, by {@code Action} name ("FIRE" → "Space"), or null to show none. */
     public Function<String, String> keyNames;
     /**
@@ -92,6 +129,52 @@ public final class HudData {
     public final HullHit lastHullHit = new HullHit();
     /** The game's magnified insets this frame (picture-in-picture), set as it lays them, before the HUD updates. */
     public final Insets insets = new Insets();
+    /** The console E opened, while a variant shows its screen for it ({@code ClassicWindow.CONSOLE}); kept by {@code UiHud}. */
+    public final ConsoleView console = new ConsoleView();
+
+    /**
+     * The console the player is using, for a variant's own console screen: the entity (its
+     * {@code SubsystemComponent} is the system, health and switch the classic window shows), what E
+     * found there, and what else the game offers at it ("Take fire control"). Empty while none.
+     */
+    public static final class ConsoleView {
+        public Entity console;
+        public InteractableConsoleComponent data;
+        /** The game's own actions at this console, in order ({@code UiHud#registerConsoleAction}). */
+        public final Array<ConsoleAction> actions = new Array<>();
+
+        public boolean isOpen() {
+            return console != null;
+        }
+
+        public void set(Entity console, InteractableConsoleComponent data, Array<ConsoleAction> actions) {
+            this.console = console;
+            this.data = data;
+            this.actions.clear();
+            if (actions != null) this.actions.addAll(actions);
+        }
+
+        public void clear() {
+            console = null;
+            data = null;
+            actions.clear();
+        }
+    }
+
+    /** An action the game offers at a console, as the classic window's button: what it says, its key, and what it does. */
+    public static final class ConsoleAction {
+        /** "Take fire control: every gun". */
+        public final String label;
+        /** The {@code Action} name of its key ("VIEW"), for {@link HudData#key}; "" for none. */
+        public final String action;
+        public final Runnable run;
+
+        public ConsoleAction(String label, String action, Runnable run) {
+            this.label = label;
+            this.action = action == null ? "" : action;
+            this.run = run;
+        }
+    }
 
     /** A hit on the player's hull: the deck tile it struck, and seconds since, NaN before any. */
     public static final class HullHit {
@@ -124,6 +207,8 @@ public final class HudData {
     public final KeyHintFrame keyHints = new KeyHintFrame();
     /** The orders that stand, and why any can't be given now. */
     public final Orders orderState = new Orders();
+    /** Ship lost or career over, and the ways to go on ({@code ClassicWindow.GAME_OVER}). */
+    public final GameOver gameOver = new GameOver();
     /** Whether {@link #shipStatus} holds a ship this frame. */
     public boolean hasShipStatus;
     /**
@@ -185,6 +270,8 @@ public final class HudData {
         if (hints != null) hints.collect(keyHints);
         orderState.clear();
         if (orders != null) orders.read(orderState);
+        gameOver.clear();
+        if (ending != null) ending.read(gameOver);
         if (afterRefresh != null) afterRefresh.run();
     }
 
