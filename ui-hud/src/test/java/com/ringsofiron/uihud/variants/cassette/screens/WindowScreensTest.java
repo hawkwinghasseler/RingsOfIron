@@ -229,14 +229,14 @@ class WindowScreensTest {
         Boards b = new Boards();
         b.data = d;
         fill(d, "Third", "Second", "First");
-        LogPage log = new LogPage();
+        LogPage log = new LogPage(new ConditionLog());
         log.refresh(b);
         assertEquals("Third", log.line(0), "the newest first");
         // The game refills the feed each frame: its pooled entries now carry other notices
         fill(d, "Third", "Second", "First");
         assertEquals("Third", log.line(0));
         assertEquals("First", log.line(2));
-        // A new notice is read in at the next refresh; the cautions key shows only the caution
+        // A new notice is read in at the next refresh; notable and up shows only the caution
         fill(d, "Fourth", "Third", "Second", "First");
         d.messages.all().get(1).level = com.ringsofiron.uihud.data.AlertRegistry.Level.CAUTION;
         log.refresh(b);

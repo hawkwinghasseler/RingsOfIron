@@ -14,7 +14,8 @@ import com.ringsofiron.uihud.variants.cassette.YardPaint;
  * The game's windows in the Yard Standard (style guide, section 9), shared by the three Cassette HUDs:
  * each classic window is a tab of a big console, laid out as the Context spec arranges its modes
  * (section 10). The station's console has the market, yard, shipyard, missions and hire; the ship's
- * the crew, its loadout and a prize in tow; boarding has its own; the record has the contracts held
+ * its systems, the crew, the hold, its loadout and a prize in tow (I opens the last of the first
+ * three used); boarding has its own; the record has the contracts held
  * and the log; the controls are cards. The ship lost or the career over is a telex. The map's panels
  * are the console's bays round the game's map ({@link MapMode}), which its look's painter draws. The
  * console E opens at a deck console stays the classic one.
@@ -34,8 +35,12 @@ public final class WindowScreens {
     private final ShipyardPage shipyard = new ShipyardPage(false), prize = new ShipyardPage(true);
     private final MissionsPage missions = new MissionsPage(false), contracts = new MissionsPage(true);
     private final CrewPage crew = new CrewPage(false), hire = new CrewPage(true);
+    private final SystemsPage systems = new SystemsPage();
+    private final CargoPage cargo = new CargoPage();
     private final BoardingPage boardingPage = new BoardingPage();
-    private final LogPage log = new LogPage();
+    /** The fight's record for the log: each condition as it is raised and clears, watched every frame. */
+    private final ConditionLog conditions = new ConditionLog();
+    private final LogPage log = new LogPage(conditions);
     private final HelpFrame help = new HelpFrame();
     private final ControlsCard[] cards = new ControlsCard[8];
     private final Telex telex = new Telex();
@@ -44,12 +49,14 @@ public final class WindowScreens {
     private YardCanvas canvas;
     private float top;
     private boolean mapWasOpen;
+    /** The ship's console's tab I opens: the last of systems, crew and cargo used (the crew the first time). */
+    private Page shipTab;
 
     public WindowScreens() {
         station = console(new BigConsole(BigConsole.Livery.STATION, "STATION", boards)
                 .add(market).add(yard).add(shipyard).add(missions).add(hire));
         ship = console(new BigConsole(BigConsole.Livery.SHIP, "SHIP", boards).shipName()
-                .add(crew).add(loadout).add(prize));
+                .add(systems).add(crew).add(cargo).add(loadout).add(prize));
         boarding = console(new BigConsole(BigConsole.Livery.SHIP, "BOARDING", boards).add(boardingPage));
         record = console(new BigConsole(BigConsole.Livery.SHIP, "RECORD", boards).add(contracts).add(log));
         // The controls cards, a card for each place keys apply; what no card names goes on Anywhere
@@ -126,7 +133,7 @@ public final class WindowScreens {
             case BOARDING:
                 return boardingPage;
             case CREW:
-                return crew;
+                return shipTab != null && shipTab.offered() ? shipTab : crew;
             case LOG:
                 return log;
             case HELP:
@@ -240,6 +247,7 @@ public final class WindowScreens {
 
     public void update(float delta) {
         if (host == null) return;
+        conditions.update(host.data().alerts, host.data().weaponFrame.mounts, host.data().ctx.simSeconds);
         if (telex.visible) {
             if (host.data().gameOver.shown) telex.show(host.data().gameOver, host.data().ctx.simSeconds);
             telex.update(delta);
@@ -258,6 +266,7 @@ public final class WindowScreens {
             } else {
                 c.update(delta);
                 Page p = c.current();
+                if (c == ship && (p == systems || p == crew || p == cargo)) shipTab = p;
                 if (p == null || !p.offered() || c.closing()) {
                     c.hide();
                     c = null;

@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # The game's windows in the Yard Standard (documentation/ui-overhaul/cassette) under a Cassette HUD,
 # in a real window under Xvfb: docked at Highport, the station's console on each of its tabs (the
-# market with a trade, the yard, the missions with an offer taken, the hire), the ship's (the crew),
-# the record (the log and the contract held) and the controls cards; undocked, the loadout and the
-# contract; then out to a raider, disabled and latched, the boarding console and the latched card;
-# the map with a console opened over it; and the career over, killed aboard, as the telex. Keyboard only. Needs Xvfb, xdotool and ImageMagick's import.
+# market with a trade, the yard, the missions with an offer taken, the hire), the ship's (the crew;
+# the systems, a gun switched off and on, the reactor's guard lifted, the engines opened; the hold),
+# the record (the log and the contract held) and the controls cards; undocked, trouble aboard (a
+# fire, a breach, a short, a gun shot up, a missile) on the systems' board and in the log, the
+# loadout and the contract; then out to a raider, disabled and latched, the boarding console and the
+# latched card; the map with a console opened over it; and the career over, killed aboard, as the
+# telex. Keyboard only. Needs Xvfb, xdotool and ImageMagick's import.
 #   tools/playtest/windows-cassette.sh <task|stations|context> [out-dir] [WxH] [ui-scale]
 #   (default build/playtest-windows-cassette-<spec>, 1280x800, the automatic scale)
 # Run from the repository root.
@@ -38,9 +41,18 @@ key Escape; pause 1; shot w04-closed
 # The ship's console (the crew), the record (the log, its cautions, the contract held), the controls cards
 key i; pause 1.2; shot w05-crew
 key Down; key Down; pause 0.4; shot w05-crew-row
+# The systems: a gun switched off and on again, the reactor's guard lifted (and left to drop), the
+# engines' group opened; then the hold
+key 1; pause 1; shot w05-systems
+key Down; key Down; key Down; pause 0.4; key Return; pause 1; shot w05-systems-gun-off
+key Return; pause 0.6
+key Home; pause 0.3; key Return; pause 0.5; shot w05-systems-reactor-guard
+pause 4.5
+key Down; key Right; pause 0.3; key Return; pause 0.8; shot w05-systems-engines-open
+key 3; pause 1; shot w05-cargo
 key Escape; pause 1
 key l; pause 1.2; shot w06-log
-key Right; pause 0.5; shot w06-log-cautions
+key Right; pause 0.5; shot w06-log-notable
 key 1; pause 1; shot w07-contracts
 key Escape; pause 1
 key F1; pause 1.2; shot w08-controls-docked
@@ -49,6 +61,25 @@ key 1; pause 0.5; shot w08-controls-helm
 key Escape; pause 1
 # Away from the station: the loadout in the field and the contract held
 key u; pause 4; shot w09-undocked
+# Trouble aboard, by the developer console's Groovy: a hull breach on the port side, an engine
+# shorted, a gun shot up and a fire fed to last (the crew are quick with it), on the systems' plan and
+# damage control board; then a missile fired at the ship from starboard, clear of Highport, and the
+# log's record of it all, then one source's alone from cautions up; then put right once the missile
+# is done with, the crew's tab left the last one used
+GRID="def g = player.getComponent(com.ringsofiron.interiorgrid.ShipGridComponent)"
+ABOARD="player.getComponent(com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent).subsystems.collect { it.getComponent(com.ringsofiron.interiorgrid.SubsystemComponent) }"
+key i; pause 1; key 1; pause 1
+cmd dev "$GRID; def space = { x, y -> x < 0 || y < 0 || x >= g.width || y >= g.height || g.getTile(x, y).isVoid() }; def out = 'no hull'; for (x in g.width.intdiv(2)..<g.width) for (y in 1..<g.height) { def t = g.getTile(x, y); if (out == 'no hull' && t.isIntactWall() && space(x, y + 1) && g.getTile(x, y - 1).isFloor()) out = actions.breach(player, x, y) }; out"
+cmd dev "def e = $ABOARD.find { it.type.name() == 'ENGINE' }; actions.shortOut(player, e.footprint.originX, e.footprint.originY)"
+cmd dev "def gun = $ABOARD.find { it.type.name() == 'TURRET_MOUNT' }; actions.damageTile(player, gun.footprint.originX, gun.footprint.originY, 0.85f)"
+cmd dev "fire(player); $GRID; for (y in 0..<g.height) for (x in 0..<g.width) { def t = g.getTile(x, y); if (t.isBurning()) t.fuel = 300f }; 'fed'"
+pause 1; shot w09-systems-trouble
+key 2; pause 0.5; key Escape; pause 1
+cmd dev "shoot('harpoon_launcher', player, 2500, 270)"; pause 2
+key l; pause 1.2; shot w09-log-record
+key Right; key Down; key Right; pause 0.6; shot w09-log-one-source
+key Escape; pause 12
+cmd dev "extinguish(player)"; cmd dev "repair(player)"; cmd dev "air(player)"; pause 4
 key y; pause 1.2; shot w10-loadout
 key Escape; pause 1
 key j; pause 1.2; shot w11-contracts-away
