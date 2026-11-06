@@ -1,7 +1,10 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.coreengine.EntityRef;
+import com.ringsofiron.interiorgrid.GridLink;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.CargoHoldComponent;
 import com.ringsofiron.shipops.BoardedComponent;
 import com.ringsofiron.shipops.Boarding;
@@ -26,6 +29,12 @@ public class BoardingWork implements BoardingProvider {
     private final DockingSystem docking;
     private final Boarding boarding;
     private final Salvage salvage;
+    /** Seconds a part's reach is kept before it is looked at again. */
+    static final double REACH_SECONDS = 2;
+    private final ObjectMap<Long, Boolean> reach = new ObjectMap<>();
+    private Entity reachOf;
+    private int reachLinks;
+    private double reachAt = Double.NEGATIVE_INFINITY;
 
     public BoardingWork(GameContext ctx, DockingSystem docking, Boarding boarding, Salvage salvage) {
         this.ctx = ctx;
@@ -83,6 +92,12 @@ public class BoardingWork implements BoardingProvider {
             } else if (out.byEva && !salvage.onHull(craft, row.x, row.y)) {
                 row.status = "inside the hull: latch on to strip it";
                 row.toggleable = false;
+                row.reach = "latch on";
+                row.reachWhy = row.status;
+            } else if (!out.byEva && !reachable(ship, craft, row.x, row.y)) {
+                // The game finds this out once the strip is ordered; the board says it before
+                row.reach = "EVA only";
+                row.reachWhy = "can't be reached from inside: stand off alongside to strip it on EVA";
             }
         }
         // Parts already off and on their way home
@@ -117,6 +132,42 @@ public class BoardingWork implements BoardingProvider {
                 row.onOrder = cargo == null ? 0 : Math.max(0, cargo.pending(EntityRef.of(craft), c));
             }
         }
+    }
+
+    /**
+     * Whether the part at (x, y) on {@code craft} can be walked to from the dock: the path search
+     * runs again only when the craft or the dock changes, or every {@link #REACH_SECONDS}, not on
+     * every collect.
+     */
+    private boolean reachable(Entity ship, Entity craft, int x, int y) {
+        double now = ctx.engine.getSimSeconds();
+        int links = links(ship, craft);
+        if (craft != reachOf || links != reachLinks || now - reachAt > REACH_SECONDS || now < reachAt) {
+            reach.clear();
+            reachOf = craft;
+            reachLinks = links;
+            reachAt = now;
+        }
+        long key = ((long) x << 32) | (y & 0xffffffffL);
+        Boolean known = reach.get(key);
+        if (known == null) {
+            known = salvage.reachable(ship, craft, x, y);
+            reach.put(key, known);
+        }
+        return known;
+    }
+
+    /** The links between {@code ship} and {@code craft}, and how many can be crossed, as one number that changes with either. */
+    private static int links(Entity ship, Entity craft) {
+        ShipGridComponent g = ship.getComponent(ShipGridComponent.class);
+        if (g == null) return 0;
+        int n = 0, open = 0;
+        for (GridLink l : g.links) {
+            if (l.otherShip != craft) continue;
+            n++;
+            if (l.canCross()) open++;
+        }
+        return n * 64 + open;
     }
 
     private String state(Entity ship, Entity craft, BoardedComponent b, boolean ours) {

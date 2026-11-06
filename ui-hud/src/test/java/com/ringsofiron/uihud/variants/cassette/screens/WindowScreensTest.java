@@ -18,6 +18,7 @@ import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -177,6 +178,70 @@ class WindowScreensTest {
     }
 
     @Test
+    void boardingOffersOnlyTheOrdersOfItsPhaseAndSaysWhatTheLinkCantReachBeforeAPartIsMarked() {
+        BoardingProvider.BoardingBoard want = new BoardingProvider.BoardingBoard();
+        HudData d = new HudData();
+        d.boarding = boarding(want);
+        Boards b = new Boards();
+        BoardingPage page = new BoardingPage();
+        // Before the boarding: send the party, or storm it
+        want.craftName = "Pirate raider 3";
+        want.state = "Disabled: reactor down";
+        want.disabled = true;
+        want.defenders = 3;
+        b.refresh(d);
+        page.refresh(b);
+        assertEquals("ORDERS BOARD STORM", page.outline());
+        // While the party is across, only the recall
+        want.boarding = true;
+        b.refresh(d);
+        page.refresh(b);
+        assertEquals("ORDERS RECALL", page.outline());
+        // Taken, the game refuses a recall: no orders, the parts
+        want.boarding = false;
+        want.taken = true;
+        want.salvage = true;
+        want.defenders = 0;
+        BoardingProvider.Part engine = want.addPart(), off = want.addPart();
+        engine.name = "Ion Drive";
+        engine.value = 900;
+        engine.reach = "EVA only";
+        engine.reachWhy = "can't be reached from inside: stand off alongside to strip it on EVA";
+        off.name = "Laser Mk1";
+        off.value = 2250;
+        off.marked = off.off = true;
+        off.toggleable = false;
+        off.status = "carrying it home";
+        // An escape pod is worth nothing: it is left out
+        BoardingProvider.Part pod = want.addPart();
+        pod.name = "Escape Pod";
+        b.refresh(d);
+        page.refresh(b);
+        assertEquals("PARTS_TO_STRIP PART PART", page.outline());
+        // Latched, the engine nobody can reach from inside says so, and can still be marked
+        assertEquals("EVA only", BoardingPage.partState(engine));
+        assertNull(BoardingPage.partRefusal(b.boarding, engine));
+        // Marked, its state is the game's
+        engine.marked = true;
+        engine.status = "can't be reached from inside: stand off alongside to strip it on EVA";
+        assertEquals(engine.status, BoardingPage.partState(engine));
+        assertEquals("carrying it home", BoardingPage.partState(off));
+        assertEquals("ALREADY OFF: IT IS BEING CARRIED HOME", BoardingPage.partRefusal(b.boarding, off));
+        // Standing off, a part inside the hull can't be marked, and says why
+        BoardingProvider.Part inside = new BoardingProvider.Part();
+        inside.reach = "latch on";
+        inside.reachWhy = inside.status = "inside the hull: latch on to strip it";
+        inside.toggleable = false;
+        assertEquals("latch on", BoardingPage.partState(inside));
+        assertEquals("INSIDE THE HULL: LATCH ON TO STRIP IT", BoardingPage.partRefusal(b.boarding, inside));
+        // A beaten craft nobody defends needs no party: straight to the lists
+        want.taken = false;
+        b.refresh(d);
+        page.refresh(b);
+        assertEquals("PARTS_TO_STRIP PART PART", page.outline());
+    }
+
+    @Test
     void aKeyThatCannotActSaysWhyAndEnterGoesToOneThatCan() {
         Rows r = new Rows(false);
         r.refusal = "The hold is full";
@@ -327,6 +392,44 @@ class WindowScreensTest {
 
             @Override
             public String abandon(long id) {
+                return "";
+            }
+        };
+    }
+
+    /** A boarding board that says what {@code from} says and takes no orders. */
+    private static BoardingProvider boarding(BoardingProvider.BoardingBoard from) {
+        return new BoardingProvider() {
+            @Override
+            public void collect(BoardingBoard out) {
+                out.craftName = from.craftName;
+                out.state = from.state;
+                out.byEva = from.byEva;
+                out.boarding = from.boarding;
+                out.salvage = from.salvage;
+                out.taken = from.taken;
+                out.disabled = from.disabled;
+                out.defenders = from.defenders;
+                out.parts.addAll(from.parts);
+            }
+
+            @Override
+            public String orderBoarding() {
+                return "";
+            }
+
+            @Override
+            public String recall() {
+                return "";
+            }
+
+            @Override
+            public String toggleStrip(int x, int y) {
+                return "";
+            }
+
+            @Override
+            public String takeCargo(String commodity) {
                 return "";
             }
         };
