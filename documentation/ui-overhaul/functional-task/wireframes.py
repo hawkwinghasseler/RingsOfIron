@@ -521,6 +521,8 @@ def boarding(out):
     # a station pays a twentieth of a part's price (Salvage.SALE_SHARE) and of the prize, and a
     # fiftieth of what is left once anything is off (Shipyard), each gun taken off taking its price.
     # A tile's work is 10 s at the usual rate, so a Small turret's gun takes 10 s, the Medium reactor 40 s.
+    # Once taken there is no recall (Boarding.recall), and latched on nobody reaches the engines from
+    # inside (Salvage.reachable), so they read EVA only before they are marked.
     s.box(904, 72, 360, 684, "BRD", "Boarding: Raider", [
         "state     TAKEN, nobody aboard (was: reactor down)",
         "link      latched, port to port",
@@ -529,13 +531,12 @@ def boarding(out):
         "ACROSS                status",
         "Ada (engineer)        stripping the laser",
         "Cole (marine)         waiting to carry",
-        "                      [Recall all]",
         "",
         "SALVAGE           sells  work  crate",
         "Laser Mk1         2,250  10 s  1 m3  stripping 40%",
         "Reactor           2,000  40 s  1 m3  [strip]",
         "Harpoon Launcher  1,500  10 s  1 m3  marked",
-        "Engine            1,250  20 s  1 m3  [strip]",
+        "Engine            1,250  20 s  1 m3  EVA only",
         "11 more, 5,500 in all       [show all]",
         "",
         "CARGO  hold empty",
