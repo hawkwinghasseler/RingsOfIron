@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 11.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 12.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -955,9 +955,13 @@ bar shows supply and the store, never load.
 Lock, Nav and objective marks; missiles inbound and outbound as their own glyphs; the ship's heading;
 range rings and the range setting. North up, like the view.
 
-**Range.** Automatic by situation (approach 2 km; combat: the smallest step that holds the lock and
-every inbound missile; cruise: 50 km), with − and + (each at least 24 units) to set it by hand until
-the situation changes. The steps are `RadarScope.RANGES` with a 5 km step added (0.5, 2, 5, 10, 50,
+**Range.** Automatic by situation: approach 2 km; combat, the smallest step that holds the lock and
+every inbound missile; cruise, the smallest step that holds every contact inside 50 km. The commonest
+cruise is leaving a station, and at a fixed 50 km a station 3 km off would sit 6% of the way out,
+under the own-ship mark; on the 5 km step it sits 60% out. An automatic range steps out as soon as
+something it holds passes the ring, and back in only once everything is inside 80% of the smaller
+ring, so a contact on a ring doesn't flick it to and fro. − and + (each at least 24 units) set it by
+hand until the situation changes. The steps are `RadarScope.RANGES` with a 5 km step added (0.5, 2, 5, 10, 50,
 250, 1,000 km): fights reach 5 km (the corvette's coilgun 5, a kiter holding at 4.5, point defense
 4), which on the 10 km step fills only the inner half.
 
@@ -1450,8 +1454,9 @@ Each walkthrough is what is on screen, nothing more. The grey-box wireframe for 
 ![Helm, cruise](wireframes/01-helm-cruise.png)
 
 P1 (HELM, clock, warp) · P5 objective (compact) · H2 navigation · H1 flight display · H4 three quiet
-lights (the corvette has no shield emitter) · H5 at its cruise range of 50 km, holding Highport and the
-hauler the ship has just left (with nothing inside 50 km it shrinks to a 48 x 48 button). P2, P3 and
+lights (the corvette has no shield emitter) · H5 at 5 km, the smallest step that holds Highport, which
+the ship has just left, and the Hauler Kestrel, both 3 km off (with nothing inside 50 km it shrinks to
+a 48 x 48 button). P2, P3 and
 P4 are empty and invisible. About 10 lines of text, against about 40 today.
 
 ### 11.2 Helm, warp
@@ -1752,3 +1757,4 @@ largest scale, and the centre stays clear.
 | 9 | 3 (VFD critique) | H6's example closes at 12 m/s (pilots close at 80 m/s at most), and wireframe 04's H1 reads the kiter's 12 m/s in the LOCK frame, matching F1 |
 | 10 | 3 (cassette critique) | Sample data true to the game's geography and ships: Shackleton Ice orbits the Moon, so from Highport's orbit it is 384,000 km away, and the planner's trip is 3,084 m/s out, about 793 to capture and 4.2 days; the corvette's 2,000 kg of propellant give about 8,750 m/s with an empty hold, so with the delivery's 20 t of food aboard H1 reads 5,606 at 72% (the gunship's 4,000 kg give it 6,831); the delivery's deadline (5.2 d) outlasts the trip; the market at Highport (an agricultural dome) trades water, food, machinery and salvage; Gateway, which the game doesn't have, becomes Anvil Yards; the ship is named by its class. H2 leaves out an apsis past the next burn, and for a Nav around another body names the body and gives the arrival in place of closing and the closest approach. A trip to another body is shown as the game plans it, a leg at a time: one burn before the crossing, then the capture as an estimated event, which H2, M1's burns list and the timeline show and section 14's NavigationProvider keeps. Mode tabs carry their keys (their numbers, which take the helm orders' keys only while a mode with tabs is open) and the foot the close keys. M1 lists all of today's map controls (Delete burn, Next target, Centre, Fit, All traffic). M3 becomes a panel as tall as its tab, and its Market lists the held deliveries it can supply. Wireframe 01's scope shows at 50 km, since the ship has just left Highport, which the map at the same moment lists 3 km off. Wireframe 11: Bea flies and Cole seals the breach, the P1 chip counts the breach and the two guns out of action, and the job held for battle stations is the EVA one |
 | 11 | 4 (NASA-punk critique) | Samples the game can't produce, checked against its code. Wireframe 11's crew do what the game's crews would: Cole is a marine, who never seals, and mans the weapons console; Cole's light wound in the HOLD keeps the crew clear of the breach until the fight ends; Ada repairs the gun, whose repair never waits; Bea, with nothing else to take, flies. A cut conduit is yard work, not a crew job, so version 10's "Repair conduit ×2" is gone and the power panel gives the yard's price. The cut that strands a gun is one conduit under the FWD STBD autocannon, since the laser's tile is the only link from the aft systems to the reactor. The damaged autocannon is at 20%, under the 30% where a system stops working. The systems list shows two engines and eight RCS blocks, one stopped. P2 gains a fourth handling state, Held (‖), for the game's rule that crews keep clear of where crew were hit and stay inside at battle stations; the P2 sample and wireframe 07 use it, and Ada's bleed-out in 07 is under the two minutes that send the crew in anyway. The P2 sample says why nobody is free for the vacuum: the gunship's other two crew are marines, who never seal. X2's party is the ship's marines (Cole alone) and goes home once the craft is taken. Wireframe 10 has no salvage on day 0 and nothing on order, so the delivery's 40 Food fit the 40 m³ hold |
+| 12 | 4 (NASA-punk critique) | H5's cruise range is the smallest step that holds every contact inside 50 km, in the shape of the combat rule: at a fixed 50 km, the station the ship has just left sat under the own-ship mark, and leaving a station is the commonest cruise. Automatic ranges step out at once and back in only inside 80% of the smaller ring. Wireframes 01 and 12 show the scope at 5 km |
