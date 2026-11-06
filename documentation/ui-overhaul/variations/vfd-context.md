@@ -1,6 +1,6 @@
 # FILAMENT × Context-driven
 
-The context-driven functional design (`functional-context.md`, version 16) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The context-driven functional design (`functional-context.md`, version 17) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -14,7 +14,7 @@ Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game
 
 ![Helm, combat](vfd/context-helm-combat.jpg)
 
-**11.7 Deck, emergency.** The corvette disabled, its reactor damaged and its hold airless. The emergency card offers the two ways out with their presses and costs; P2 lists, in order, what needs the captain (emergency oxygen, the power, both `YOU`), what is held (the vacuum, `‖`: the crew keep clear of where crew were hit), what the crew are on (Ada's bleed-out, 1:40 and under the two minutes that send the crew in anyway, and the fire, a dot each) and `+1 MORE: SMOKE`; each hazard in view carries a tag; the captain's own kit is LCD; the master lamps stand alone at the bottom centre. The strip is on the dimmer bus.
+**11.7 Deck, emergency.** The corvette disabled, its reactor damaged and its hold airless. The emergency card offers the two ways out with their presses and costs; P2 lists, in order, what needs the captain (emergency oxygen, the power, both `YOU`), what is held (the hold's open breach, `‖`: the crew keep clear of where crew were hit; D3's tag marks its vacuum), what the crew are on (Ada's bleed-out, 1:40 and under the two minutes that send the crew in anyway, and the fire, a dot each) and `+1 MORE: SMOKE`; each hazard in view carries a tag; the captain's own kit is LCD; the master lamps stand alone at the bottom centre. The strip is on the dimmer bus.
 
 ![Deck, emergency](vfd/context-deck-emergency.jpg)
 
@@ -40,7 +40,7 @@ The full-screen modes (spec section 10) are built in the mode frame of the guide
 
 ![Boarding mode](vfd/context-boarding-mode.jpg)
 
-**M5 Captain's record (10.5).** A slate across the screen in the mode's frame: its tab keys in the housing over the glass's title row, the feed and the closing keys in the glass's last row. The Log is showing, two minutes after M2: the record so far, newest first, under its two filters (source and severity, each a value between ◀ and ▶ stepped with ← and →). With the messages are the Log-only rows at their rows' severity: the conditions P2 raised and cleared (`FIRE BRIDGE`, and 1:56 later `FIRE BRIDGE CLEARED`), and each missile P3 counted, when it was fired at the ship and how it ended, shot down by point defense or into the HOLD. The feed's merged gunnery lines are kept, and the one in focus is open to its three hits, each with its time. The list pages rather than scrolls, as every FILAMENT list does: ↑ and ↓ move the focus, Page Up, Page Down and the wheel turn the page, and → and ← open and fold a merged line.
+**M5 Captain's record (10.5).** A slate across the screen in the mode's frame: its tab keys in the housing over the glass's title row, the feed and the closing keys in the glass's last row. The Log is showing, two minutes after M2: the record so far, newest first, under its two filters (one source or all, and a severity threshold, each a value between ◀ and ▶ stepped with ← and →). With the messages are the Log-only rows, each under the source of what it is about and at its row's severity: the conditions P2 raised and cleared, in the catalogue's long form (`FIRE: BRIDGE`, then `FIRE: BRIDGE, CLEARED AFTER 1:56`), each missile P3 counted, when it was fired at the ship and how it ended (shot down by point defense, or into the HOLD), and the hits the ship took from guns. Merged gunnery lines are kept, each at its first event's time, and the one in focus is open to where each hit landed and what it did: the two in the BRIDGE that cut the FWD STBD autocannon's conduit and started the fire. The list pages rather than scrolls, as every FILAMENT list does: ↑ and ↓ move the focus, Page Up, Page Down and the wheel turn the page, and → and ← open and fold a merged line.
 
 ![Captain's record](vfd/context-record.jpg)
 
@@ -166,7 +166,7 @@ The guide gained the ship's plan (18.3) and a wider fourteen-segment field for a
 
 Version 15 took both round-6 notes: 11.11's stopped RCS quad, the HOLD's breach and Cole's light wound are one hit on one hull tile, and every system takes the switch, a group's row switching the group and the reactor's guarded. M2 is redrawn for them: the breach's callout names Cole's wound; the board's notes give the hit, the two waits and why a cut conduit shows under Power; the feed is the game's wound notice (`CrewMedical`); and `OPEN` and `FOLD` sit beside `SWITCH` for a group's members. Checking version 15 against the game found nothing more: the RCS blocks belong to the ship's grid, not its systems (`ShipGridComponent.rcsThrusters`), and sealing the breach leaves the quad stopped until the repair outside frames its tile again, as 11.11 now says.
 
-Version 16 gave the Log a fight's record and the gun seat its own controls, so the last two modes are drawn: M5 on the slate with the Log showing, and M6 as the card with its tabs. Every screen the spec has is now drawn. Drawing the Log turned up one note (round 7, below).
+Version 16 gave the Log a fight's record and the gun seat its own controls, so the last two modes are drawn: M5 on the slate with the Log showing, and M6 as the card with its tabs. Every screen the spec has is now drawn. Drawing the Log turned up one note (round 7, below), which version 17 took, filing a condition's row by what it is about much as FILAMENT had. Version 17 also writes the Log's conditions in the catalogue's long form, adds the hits the ship takes from guns as merged lines, makes the severity filter a threshold, and shows a room's air as one P2 row at a time, so 11.7's row and master cue read `BREACH` for the open hold (D3's tag still marks the vacuum where people walk into it). M5 and 11.7 are redrawn for them. Converged.
 
 The guide gained the slate and the card as modes (18.4, 18.6) and a group's row with `OPEN` and `FOLD` (18.2).
 
@@ -201,6 +201,6 @@ Round 6 (after version 14; both taken in version 15):
 1. **The stopped RCS block is on the breach.** The game stops a block only while the hull tile it is bolted to is wrecked (`RcsThruster.fieldRepairable`), and a wrecked hull tile beside the interior is a breach (`Tile.isHullBreach`, the `SealBreachTask` the scan posts). Every block on the corvette stands on such a tile, so 11.11's one stopped block puts a breach on its tile, and with the only breach in the HOLD, the block is one of the hold's two aft quads. FILAMENT draws the port one: one hit made the breach, stopped the quad and wounded Cole, and its two jobs are the seal from inside and the thruster's repair outside. Suggest 11.11's text say so, or the sample's breach move to where it can't stop a block.
 2. **Which systems have a switch.** Wireframe 11 gives `[off]` to the reactor and the coilgun only; the game lets every system be switched off (`SubsystemComponent.switchedOn`, `ConsoleWindow`'s switch). FILAMENT has one `SWITCH` key on the focused row, its LED lit while that system is on. Suggest 10.2 say which systems take the switch: all, as the game has it, or a subset and why.
 
-Round 7 (after version 16):
+Round 7 (after version 16; taken in version 17):
 
 1. **The source of a Log-only row.** The Log filters by source, but P2's conditions and P3's missiles are not notices, and neither 10.5 nor P4 says which source their rows take, or what severity a missile's row has (P3's rows have none). FILAMENT files each by what it is about, as P4 does a notice: fire, breaches, vacuum and systems under Engineering, a crew member's wound under Crew, shields under Shields, the orbit, the approach and the plan under Helm, boarders under Boarding, and a missile fired at the ship, shot down or hitting it under Gunnery, as a warning. Suggest 10.5 say so, or name the sources it means.

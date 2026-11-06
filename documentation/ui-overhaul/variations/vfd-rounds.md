@@ -5,18 +5,16 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
 | Ship stations | `functional-stations.md` round 14 | Converged in round 7; round 10 adds the panels: the Plot, the station link, the slate |
-| Context-driven | `functional-context.md` version 16 | Round 12: every screen the spec has is drawn, M2 as version 15 has it and M5 and M6 for 16; one note out |
+| Context-driven | `functional-context.md` version 17 | Converged in round 12: every screen the spec has is drawn, the last of them (the ship's systems, the captain's record, the controls) as versions 15 to 17 have them |
 | Task-driven | `functional-task.md` round 9 | Converged in round 9; round 10 adds the map, the station terminal, the ship's book and boarding |
 
 A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
 
 ## Round 12
 
-**Context** (versions 15 and 16). The designer took both of round 11's notes: the stopped RCS quad, the HOLD's breach and Cole's light wound are one hit, and every system takes the switch, a group's row switching the group and the reactor's pressed twice. M2 is redrawn: the breach's callout and the board's notes tell the hit, the feed is the game's wound notice, and `OPEN` and `FOLD` sit beside `SWITCH` for a group's members. Version 16 gave the Log a fight's record and the gun seat its own controls, so the last two modes are drawn: the captain's record (M5) on the slate with the Log showing, its conditions, missiles and merged gunnery lines, and the controls (M6) as the card with its tabs and the seat sections.
+**Context** (versions 15 to 17). The designer took both of round 11's notes: the stopped RCS quad, the HOLD's breach and Cole's light wound are one hit, and every system takes the switch, a group's row switching the group and the reactor's pressed twice. M2 is redrawn: the breach's callout and the board's notes tell the hit, the feed is the game's wound notice, and `OPEN` and `FOLD` sit beside `SWITCH` for a group's members. Version 16 gave the Log a fight's record and the gun seat its own controls, so the last two modes are drawn: the captain's record (M5) on the slate with the Log showing, its conditions, missiles and merged gunnery lines, and the controls (M6) as the card with its tabs and the seat sections. Drawing the Log raised one note, which source and severity a Log-only row takes; version 17 took it, and also wrote the Log's conditions in their long form, added the hits taken from guns as merged lines, and showed a room's air as one P2 row at a time, so 11.7 reads `BREACH` for the open hold. M5 and 11.7 are redrawn. Converged.
 
 **Guide.** The slate and the card as modes (18.4, 18.6); a group's row opens and folds (18.2).
-
-**Sent to the designers.** Context: which source and severity a Log-only row takes (the Log filters by source, and P2's conditions and P3's missiles are not notices).
 
 ## Round 11
 

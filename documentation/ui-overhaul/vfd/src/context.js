@@ -526,7 +526,7 @@
     p2(S, [
       { sev: 'warning', code: 'EMERG O2', you: true },
       { sev: 'warning', code: 'NO POWER', detail: 'DAMAGED', you: true },
-      { sev: 'warning', code: 'VACUUM', detail: 'HOLD', held: true },
+      { sev: 'warning', code: 'BREACH', detail: 'HOLD', held: true },
       { sev: 'warning', code: 'CREW CRIT', detail: 'ADA', crew: 1, timer: '1:40' },
       { sev: 'warning', code: 'FIRE', detail: 'BRIDGE', crew: 1 },
     ], '+1 MORE: SMOKE');
@@ -542,7 +542,7 @@
       { label: 'LIFE SUP', text: 'EMERGENCY', value: '42', unit: 'KG', sev: 'warning' },
     ] });
     d1(S, 702, { you: 'LIGHT WOUND', suit: 'ON', air: '9:40', here: 'THIN AIR', alert: true });
-    cue(S, 640, 750, { warn: 'VACUUM' }, { plate: true });
+    cue(S, 640, 750, { warn: 'BREACH' }, { plate: true });
     S.finish();
   };
 
@@ -1054,9 +1054,10 @@
   // The captain's own book, so FILAMENT builds it on the slate (7.11), across the screen as the mode it is:
   // the frame every mode has, in reflective LCD, its tabs as keys over the glass's title row and the feed
   // and the closing keys in its foot row. Two minutes after M2, the record so far, newest first: P4's
-  // messages and, Log-only at their rows' severity, the conditions P2 raised and cleared and each missile
-  // P3 counted, fired and how it ended. The feed's merged gunnery lines are kept; the one in focus is open
-  // to its events. A condition's or a missile's row takes the source of what it is about, as P4's notices do.
+  // messages and, Log-only, the conditions P2 raised and cleared in the catalogue's long form, each missile
+  // P3 counted, fired and how it ended, and the hits the ship took from guns. Each takes the source of what
+  // it is about and its row's severity (P2). Merged gunnery lines are kept, each at its first event's time;
+  // the one in focus is open to where each hit landed and what it did.
   SCREENS['cx-record'] = async (canvas) => {
     const S = K.scene(canvas);
     K.space(S, { seed: 33 });
@@ -1083,7 +1084,7 @@
       D(vx, fy, '◀', { level: 'dim' }); D(vx + 2 * CWL, fy, value, { cells }); D(vx + (cells + 3) * CWL, fy, '▶', { level: 'dim' });
       return vx + (cells + 4) * CWL;
     };
-    choice(choice(x0, 'SOURCE', 'ALL', 11) + 40, 'SEVERITY', 'ALL', 7);
+    choice(choice(x0, 'SOURCE', 'ALL', 11) + 40, 'SEVERITY', 'ALL', 15);
     D(x1 - 15 * CWL, fy, 'PG 1/1', { level: 'dim' }); D(x1 - 8 * CWL, fy, '▲', { level: 'dim' }); D(x1 - 6 * CWL, fy, '▼', { level: 'dim' });
     // the record: pips, then the time, the source and what happened; the day heads its rows
     const g = SC.grid(S, x0, L.y + 104, Math.floor((L.w - 28) / CWL), 26, { lcd: true });
@@ -1091,16 +1092,17 @@
     g.text(3, 0, 'DAY 0', { level: 'dim' });
     const rows = [
       ['00:21:58', 'GUNNERY', '2 HITS ON RAIDER'],
-      ['00:20:41', 'ENGINEERING', 'FIRE BRIDGE CLEARED, 1:56', 'red'],
+      ['00:20:41', 'ENGINEERING', 'FIRE: BRIDGE, CLEARED AFTER 1:56', 'red'],
       ['00:19:57', 'CREW', 'COLE IS LIGHTLY WOUNDED AND WORKING SLOWER'],
-      ['00:19:56', 'ENGINEERING', 'HULL BREACH HOLD', 'red'],
+      ['00:19:56', 'ENGINEERING', 'HULL BREACH: HOLD', 'red'],
       ['00:19:56', 'GUNNERY', 'MISSILE FROM RAIDER HIT THE HOLD', 'red'],
       ['00:19:49', 'GUNNERY', 'MISSILE FIRED AT US BY RAIDER', 'red'],
-      ['00:18:45', 'ENGINEERING', 'FIRE BRIDGE', 'red'],
-      ['00:18:45', 'ENGINEERING', 'SYSTEM DOWN: AUTOCANNON (FWD STBD), CUT OFF', 'amber'],
-      ['00:17:30', 'ENGINEERING', 'SYSTEM DOWN: AUTOCANNON (FWD PORT), DAMAGED', 'amber'],
-      ['00:16:12', 'GUNNERY', '3 HITS ON RAIDER', null, [['00:16:12', 'AUTOCANNON (FWD PORT) HIT RAIDER'],
-        ['00:16:10', 'COILGUN (NOSE) HIT RAIDER'], ['00:16:08', 'AUTOCANNON (FWD PORT) HIT RAIDER']]],
+      ['00:18:45', 'ENGINEERING', 'FIRE: BRIDGE', 'red'],
+      ['00:18:43', 'ENGINEERING', 'SYSTEM DOWN: FWD STBD, CUT OFF', 'amber'],
+      ['00:18:43', 'GUNNERY', '2 HITS FROM RAIDER', null, [['00:18:43', 'BRIDGE: CUT A CONDUIT'], ['00:18:45', 'BRIDGE: STARTED A FIRE']]],
+      ['00:17:30', 'ENGINEERING', 'SYSTEM DOWN: FWD PORT, DAMAGED', 'amber'],
+      ['00:17:30', 'GUNNERY', '1 HIT FROM RAIDER'],
+      ['00:16:08', 'GUNNERY', '3 HITS ON RAIDER'],
       ['00:14:20', 'GUNNERY', 'MISSILE SHOT DOWN BY POINT DEFENSE', 'red'],
       ['00:14:12', 'GUNNERY', 'MISSILE FIRED AT US BY RAIDER', 'red'],
       ['00:13:05', 'GUNNERY', 'MISSILE AWAY AT RAIDER'],
