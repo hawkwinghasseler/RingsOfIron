@@ -84,7 +84,7 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     const val = (x, y, t, o = {}) => text(x, y, t, { size: o.size || SB, bold: o.bold !== false, fill: o.c || C.white, anchor: o.anchor || 'start', track: 0.4 });
     const note = (x, y, t, fill = C.white) => text(x, y, t, { size: 12, bold: true, fill, track: 0.4 });
     // the title bar's live part, on the glass: the captain's rank, the ship and the credits
-    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '2 950 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
+    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '13 700 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
     c += rule(gy + 48);
     c += head(gy + 72, 'BERTHS') + val(V0, gy + 72, '4 OF 8') + note(V0 + tw('4 OF 8', SB, true, 0.4) + 10, gy + 72, 'YOU AND 3 CREW', C.dim);
     c += head(gy + 92, 'HIRING') + val(V0, gy + 92, '5 LOOKING FOR A BERTH') + note(V0 + tw('5 LOOKING FOR A BERTH', SB, true, 0.4) + 10, gy + 92, 'ON THE STATION LINK', C.dim);

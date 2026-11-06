@@ -90,7 +90,7 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     const val = (x, y, t, o = {}) => text(x, y, t, { size: o.size || SB, bold: o.bold !== false, fill: o.c || C.white, anchor: o.anchor || 'start', track: 0.4 });
     const note = (x, y, t, fill = C.white) => text(x, y, t, { size: 12, bold: true, fill, track: 0.4 });
     // the title bar's live part, on the glass: the captain's rank, the ship and the credits
-    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '5 000 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
+    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '12 500 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
     c += rule(gy + 48);
     // the other ship
     c += val(L, gy + 72, 'RAIDER', { size: 15 }) + text(R, gy + 72, 'LATCHED, PORT TO PORT', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });

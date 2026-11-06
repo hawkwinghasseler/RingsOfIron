@@ -16,32 +16,39 @@
 // height and the world's centre moves left by half its width, as in S7; nothing is wrong aboard, so
 // the annunciator is dark and the ticker empty.
 //
-// What the Log holds (10.4, round 16): a line for each event, newest first. An alert as it is
+// What the Log holds (10.4, round 17): a line for each event, newest first. An alert as it is
 // raised is the words of its callout if one was spoken, else its own text (13.7), with its
 // severity's mark; as it clears, its record (13.7: "Fire in the bridge out after 1:42", "Missiles
 // gone after 0:13"), with the same mark, hollow. Advisories and crew lines answering an order are
-// logged with their station tag and speaker, as on the ticker; responses are not (13.6). Today's
-// notices come in as advisories under 13.4's station (COMMS for docking, latching and salvage, CMD
-// for boarding progress and the prisoners, and CMD for a notice with no station, such as the
-// raider's disablement), spoken by whoever deals with it, else the one at the station, else SHIP
-// (13.5), in the notice's own words where they fit 50 characters ("Raider is taken: 3 held", "The
-// airlock door of Raider is forced open", "Crew 4 (Void Raiders) handed over: +400 cr", with the
-// word list's CR), and in the spec's shorter ones where they don't ("clearance granted, Highport
-// port 2"). The raider's "is breaking off" is the record of the PIRATES caution it clears, so it is
-// not logged twice. The times are First Play's day 0 (GameHudText counts days from 0), with
-// walkthrough E at 00:06:44 (round 16): the fight comes minutes after the undocking, as First Play
-// provokes the raider once the ship is 2 km clear.
+// logged with their station tag and speaker, as on the ticker; responses are not (13.6), so taking
+// the bounty, before the undocking, has no line. Today's notices come in as advisories under 13.4's
+// station (COMMS for docking, latching and salvage; TAC for another ship disabled; CMD for the
+// contract, boarding progress and the prisoners), spoken by whoever deals with it, else the one at
+// the station, else SHIP, and a station's own message in the station's name (13.5: "Highport:
+// clearance granted, port 2."). Each is in the notice's own words where they fit 50 characters
+// ("Raider is taken: 3 held", "The airlock door of Raider is forced open", "Crew 4 (Void Raiders)
+// handed over: +400 cr", with the word list's CR), and in shorter ones where they don't: the game's
+// "Contract done: Raider of the Void Raiders is beaten. Paid 7,500 cr, standing +6 with Terran
+// Patrol Authority" (ContractBoard.end) is "bounty done: Raider beaten, +7 500 CR, +6 standing". The
+// times are First Play's day 0 (GameHudText counts days from 0), with walkthrough E at 00:06:44
+// (round 16): the fight comes minutes after the undocking, as First Play turns the raider on the
+// ship once it is 2 km clear (FirstPlay's FIGHT step, GameScenario.provokeRaider).
 //
-// The fight: the Raider comes in to intercept (PIRATES INBOUND, a caution, 13.4), comes into the
-// guns' range, opens fire (HOSTILE FIRING) and throws two harpoons, which point defense shoots down
-// 13 s later (S2's lines; "in range" and "missile down" are the gunner's callouts, 5.4); its hull
-// low, it breaks off (HostileTraffic), and a parting hit shorts the aft starboard gun, whose sparks
-// light the bridge (S3: the breaker recloses 45 s after the short, DamageStates.AUTO_RESET, and Ada
-// has the fire out in 1:42). The corvette runs it down and disables it, reactor down, and latches
-// on (S5's "ready to go across"). Walkthrough E, S2, is the moment at 00:06:44 with both harpoons
-// still inbound. Above the page, ten newer lines: the boarding, the prisoners and
-// the chaingun, the way home, the clearance, the docking, and the prisoners handed over, 400 CR each
+// The fight: First Play's raider is a ship placed close by (GameScenario), not a pirate on the
+// rails, so it raises no PIRATES caution, and nothing flies it home: it never breaks off
+// (HostileTraffic flies only the pirates on the rails). It comes into the guns' range, opens fire
+// (HOSTILE FIRING) and throws two harpoons, which point defense shoots down 13 s later (S2's lines;
+// "in range" and "missile down" are the gunner's callouts, 5.4). A hit from its chaingun shorts the
+// aft starboard gun, whose sparks light the bridge (S3: the breaker recloses 45 s after the short,
+// DamageStates.AUTO_RESET, and Ada has the fire out in 1:42). It fights on until it is disabled,
+// reactor down, which ends its fire and pays the bounty at once (ContractBoard: 7 500 and +6 for a
+// ship the corvette's match, Difficulty 1 for a new ensign), and the corvette latches on (S5's
+// "ready to go across"). Walkthrough E, S2, is the moment at 00:06:44 with both harpoons still
+// inbound. Above the page, ten newer lines: the boarding, the prisoners and the chaingun, the way
+// home, the clearance, the docking, and the prisoners handed over, 400 CR each
 // (Prisoners.HANDOVER_PAY), the chaingun selling for a twentieth of its 18 000 (Salvage.SALE_SHARE).
+// The credits are the game's sum: 5 000 to start (GameScenario.STARTING_CREDITS), the bounty's
+// 7 500 and the three handovers' 1 200.
 //
 // The filters are two rows of positions at the top of the tab, each with its count, as on the
 // context variation's record (C9): station takes one station or all, and severity is a threshold,
@@ -76,7 +83,7 @@ const LOG = [
   ['01:07:55', 'CMD', '', 'SHIP: Crew 3 (Void Raiders) handed over: +400 CR'],
   ['01:07:40', 'CMD', '', 'SHIP: Crew 2 (Void Raiders) handed over: +400 CR'],
   ['01:06:30', 'COMMS', '', 'SHIP: docked at Highport, port 2.'],
-  ['01:05:10', 'COMMS', '', 'SHIP: clearance granted, Highport port 2.'],
+  ['01:05:10', 'COMMS', '', 'Highport: clearance granted, port 2.'],
   ['00:53:20', 'COMMS', '', 'SHIP: undocked from Raider.'],
   ['00:50:30', 'COMMS', '', 'SHIP: the Chaingun Mk1 is in the hold, 900 CR.'],
   ['00:42:00', 'CMD', '', 'SHIP: 3 prisoners brought aboard.'],
@@ -84,13 +91,13 @@ const LOG = [
   ['00:32:40', 'CMD', '', 'Cole: the airlock door of Raider is forced open.'],
   ['00:27:08', 'CMD', '', 'Cole: ready to go across, Captain.'],
   ['00:27:05', 'COMMS', '', 'SHIP: docked at Raider.'],
+  ['00:15:37', 'CMD', '', 'SHIP: bounty done: Raider beaten, +7 500 CR, +6 standing.'],
   ['00:15:37', 'TAC', 'c-', 'Raider firing on you: cleared after 9:12'],
-  ['00:15:37', 'CMD', '', 'SHIP: Raider is disabled: reactor down.'],
+  ['00:15:37', 'TAC', '', 'Cole: Raider is disabled: reactor down.'],
   ['00:10:05', 'ENG', 'c-', 'Fire in the bridge out after 1:42'],
   ['00:09:02', 'ENG', 'c-', 'Aft starboard gun back after 0:45'],
   ['00:08:23', 'ENG', 'c', 'Ada: fire in the bridge, I\'m on it.'],
   ['00:08:17', 'ENG', 'c', 'SHIP: aft starboard gun shorted, resets itself.'],
-  ['00:07:57', 'TAC', 'c-', 'Pirates broke off after 4:47'],
   ['00:06:49', 'TAC', 'w-', 'Missiles gone after 0:13'],
   ['00:06:47', 'TAC', '', 'Cole: one harpoon down.'],
   ['00:06:36', 'HELM', '', 'Bea: holding position.'],
@@ -98,7 +105,6 @@ const LOG = [
   ['00:06:25', 'TAC', 'c', 'Cole: Raider has opened fire, Captain.'],
   ['00:05:45', 'TAC', '', 'Cole: Raider\'s in range.'],
   ['00:04:50', 'HELM', '', 'Bea: holding your heading, Captain.'],
-  ['00:03:10', 'TAC', 'c', 'Cole: Raider moving to intercept, from port.'],
   ['00:01:20', 'COMMS', '', 'SHIP: undocked from Highport.'],
 ];
 const TOP = 10;   // the lines scrolled past, above: the list is at the fight
@@ -125,7 +131,7 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     const L = gx + 12, R = gx + gw - 12;
     const rule = y => line(gx + 4, y, gx + gw - 4, y, C.graticule, 1);
     const head = (x, y, t, fill = C.dim) => text(x, y, t, { size: 12, bold: true, fill, track: 0.6 });
-    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '2 950 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
+    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '13 700 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
     c += rule(gy + 48);
 
     // the filters: each a row of positions under its name, with their counts, the one set white
@@ -174,7 +180,12 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
       const m = /^([A-Z][a-z]*|SHIP):\s/.exec(msg);
       let lines = [msg];
       if (tw(msg, SB) > room) {
-        const words = msg.split(' ');
+        // a number keeps its digit groups and its unit on one line: "+7 500 CR" never breaks
+        const words = msg.split(' ').reduce((a, w) => {
+          if (a.length && (/^CR[,.]?$/.test(w) || /^\d{3}/.test(w) && /\d$/.test(a[a.length - 1]))) a[a.length - 1] += ' ' + w;
+          else a.push(w);
+          return a;
+        }, []);
         let a = words.shift();
         while (words.length && tw(a + ' ' + words[0], SB) <= room) a += ' ' + words.shift();
         lines = [a, words.join(' ')];

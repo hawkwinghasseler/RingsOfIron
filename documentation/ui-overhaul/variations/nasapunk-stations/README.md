@@ -1,6 +1,6 @@
 # Nasa-punk × Ship Stations
 
-The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn, S7 at round 15, and S8 and S9 at round 16) skinned in the
+The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn, S7 at round 15, S9 at round 16 and S8 at round 17) skinned in the
 Nasa-punk style (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
 2x; sources are the HTML files here, using `stations.js` and the shared kit in
@@ -135,23 +135,27 @@ for good.
 
 ![The slate, log](s8-slate-log.png)
 
-**S8, the slate's Log tab (10.4), on deck, docked at Highport on S7's visit (round 16).** The tab
+**S8, the slate's Log tab (10.4), on deck, docked at Highport on S7's visit (round 17).** The tab
 is what happened aboard, newest first, the last 500 lines. L opened it, and the captain has
 scrolled down to the First Play fight, ten lines below the newest. Each line is what the ticker
 carried, with its station tag and its speaker. An alert someone called is one line, the callout,
 with the alert's mark, and its clearing is its record from 13.7 at the same severity, hollow
-("Missiles gone after 0:13", "Pirates broke off after 4:47"). Advisories and crew lines answering
-an order carry no mark, and responses, the player's own answers, are not logged. Today's notices
-come in under the station 13.4 gives them, COMMS for docking and salvage and CMD for boarding
-progress and the prisoners, in the game's own words where they fit 50 characters ("Raider is
-taken: 3 held"). Read from the bottom, the fight goes in order on First Play's day 0: the Raider
-moving to intercept, in the guns' range, opening fire; its harpoons, both shot down 13 s later;
-the Raider breaking off, the parting short on the aft starboard gun and the fire it lit; the
-Raider disabled and the latch. Above the page are the boarding, the way home and the three
-prisoners handed over, 400 CR each. The filters are two rows at the top, each position with its
-count: station takes one or all, and severity is a threshold, each position keeping what is more
-serious. ← and → step the focused row, under `FocusNav`, and ↑ ↓ scroll. NAV has nothing in it,
-so it is dark.
+("Missiles gone after 0:13", "Raider firing on you: cleared after 9:12"). Advisories and crew
+lines answering an order carry no mark, and responses, the player's own answers, are not logged.
+Today's notices come in under the station 13.4 gives them, COMMS for docking and salvage, TAC for
+the Raider's disablement and CMD for the bounty, boarding progress and the prisoners, in the
+game's own words where they fit 50 characters ("Raider is taken: 3 held") and shorter ones where
+they don't (the bounty's "bounty done: Raider beaten, +7 500 CR, +6 standing"). A station speaks
+in its own name ("Highport: clearance granted, port 2."); the ship's own events are SHIP's. Read
+from the bottom, the fight goes in order on First Play's day 0: the Raider in the guns' range and
+opening fire, its harpoons, both shot down 13 s later, the short on the aft starboard gun and the
+fire it lit, then the Raider disabled, which pays the bounty, and the latch. First Play's raider is
+a ship placed beside Highport, not a pirate on the rails, so it never intercepts or breaks off.
+Above the page are the boarding, the way home and the three prisoners handed over, 400 CR each,
+and the credits are the game's sum: 5 000 to start, the bounty's 7 500 and the handovers' 1 200.
+The filters are two rows at the top, each position with its count: station takes one or all, and
+severity is a threshold, each position keeping what is more serious. ← and → step the focused row,
+under `FocusNav`, and ↑ ↓ scroll. NAV has nothing in it, so it is dark.
 
 ![The gun panel](s9-gun-panel.png)
 

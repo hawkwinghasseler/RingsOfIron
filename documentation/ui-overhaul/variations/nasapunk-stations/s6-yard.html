@@ -42,7 +42,7 @@ s += consoleFace(8, 84, 1264, 708, {
     const note = (x, y, t, o = {}) => text(x, y, t, { size: 12, bold: true, fill: o.c || C.dim, anchor: o.anchor || 'start', track: 0.5 });
     // the title bar's live part: where, and what you have
     g += text(L, gy + 50, 'HIGHPORT', { size: 15, bold: true, fill: C.white, track: 0.8 }) + note(L + 96, gy + 50, 'TERRAN PATROL AUTHORITY · YOUR SPONSOR');
-    g += parts(R, gy + 50, [['CREDITS', C.dim, 12], ['2 950 CR', C.white, 13], ['·', C.dim, 12], ['HOLD', C.dim, 12], ['14 OF 40 M³', C.white, 13]], { gap: 8, anchor: 'end' }).svg;
+    g += parts(R, gy + 50, [['CREDITS', C.dim, 12], ['13 700 CR', C.white, 13], ['·', C.dim, 12], ['HOLD', C.dim, 12], ['14 OF 40 M³', C.white, 13]], { gap: 8, anchor: 'end' }).svg;
     g += rule(gx + 4, gy + 62, gx + gw - 4);
 
     // ---- repairs, under way ----
