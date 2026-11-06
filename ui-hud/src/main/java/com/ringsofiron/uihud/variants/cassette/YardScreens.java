@@ -9,11 +9,12 @@ import com.ringsofiron.uihud.widgets.MapPainter;
 /**
  * The Yard Standard's screens that the three Cassette HUDs share (style guide, section 9): the game's
  * menus in a yard office at night ({@link YardShellLook}), the map on a phosphor tube
- * ({@link YardMapPainter}), and the game's windows as tabs of big consoles ({@link WindowScreens}). A
- * HUD keeps one and hands them on from its own hooks: {@code shellLook()}, {@code mapPainter()},
- * {@code attach}, {@code update}, {@code resize}, {@code detach} and the screen hooks
- * ({@code replaces}, {@code open}, {@code showing}, {@code close}, {@code keyDown}). It makes nothing
- * until asked, so a HUD made only to be asked for its menus' look costs nothing more.
+ * ({@link YardMapPainter}) with the console's bays round it, and the game's windows as tabs of big
+ * consoles ({@link WindowScreens}). A HUD keeps one and hands them on from its own hooks:
+ * {@code shellLook()}, {@code mapPainter()}, {@code attach}, {@code update}, {@code resize},
+ * {@code detach} and the screen hooks ({@code replaces}, {@code open}, {@code showing}, {@code close},
+ * {@code keyDown}). It makes nothing until asked, so a HUD made only to be asked for its menus' look
+ * costs nothing more.
  */
 public final class YardScreens {
     private YardPaint paint;

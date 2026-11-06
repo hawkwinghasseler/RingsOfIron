@@ -39,6 +39,9 @@ public class TrafficLayer {
     private TrafficMapProvider provider;
     /** Where each pickable contact was drawn last frame: x, y, index into the frame's contacts. */
     private final FloatArray picks = new FloatArray();
+    /** Kinds a HUD variant's layer toggles hide, and whether contracts' waypoints are ringed. */
+    private final java.util.EnumSet<ContactKind> hidden = java.util.EnumSet.noneOf(ContactKind.class);
+    private boolean objectivesShown = true;
 
     public TrafficLayer(TextureRegion white, BitmapFont font) {
         classic = new MapPainter(white, font);
@@ -60,6 +63,34 @@ public class TrafficLayer {
 
     public TrafficFrame getFrame() {
         return frame;
+    }
+
+    /**
+     * Shows or hides a kind of contact, as a HUD variant's layer toggle does: a hidden one is neither
+     * drawn nor picked, but the navigation target shows whatever its kind. All show by default.
+     */
+    public void setShown(ContactKind kind, boolean shown) {
+        if (shown) hidden.remove(kind);
+        else hidden.add(kind);
+    }
+
+    public boolean isShown(ContactKind kind) {
+        return !hidden.contains(kind);
+    }
+
+    /** Rings contracts' waypoints, or not (a variant's layer toggle); on by default. */
+    public void setObjectivesShown(boolean shown) {
+        objectivesShown = shown;
+    }
+
+    public boolean objectivesShown() {
+        return objectivesShown;
+    }
+
+    /** Every kind of contact and the waypoints' rings shown again, as the map is by default. */
+    public void showAll() {
+        hidden.clear();
+        objectivesShown = true;
     }
 
     /**
@@ -133,13 +164,13 @@ public class TrafficLayer {
         float line = painter.lineHeight();
         for (int index = 0; index < frame.contacts.size; index++) {
             Contact c = frame.contacts.get(index);
-            if (c.kind == ContactKind.PLAYER) continue;
+            if (c.kind == ContactKind.PLAYER || !c.target && hidden.contains(c.kind)) continue;
             float x = map.screenX(c.x), y = map.screenY(c.y);
             if (x < left || x > left + width || y < bottom || y > bottom + height) continue;
             if (!c.id.isEmpty()) picks.add(x, y, index);
             painter.contact(batch, c.kind, c.stale, x, y, alpha);
             // A contract's waypoint gets a gold ring
-            if (c.objective) painter.objective(batch, x, y, alpha);
+            if (c.objective && objectivesShown) painter.objective(batch, x, y, alpha);
             // The navigation target gets brackets
             if (c.target) painter.targetBrackets(batch, x, y, alpha);
             if (font == null || dockedQuietly(c) || c.faded && !c.target && !c.objective) continue;

@@ -15,8 +15,9 @@ import com.ringsofiron.uihud.variants.cassette.YardPaint;
  * each classic window is a tab of a big console, laid out as the Context spec arranges its modes
  * (section 10). The station's console has the market, yard, shipyard, missions and hire; the ship's
  * the crew, its loadout and a prize in tow; boarding has its own; the record has the contracts held
- * and the log; the controls are cards. The ship lost or the career over is a telex. The console E
- * opens at a deck console stays the classic one, and the map keeps its own look's painter.
+ * and the log; the controls are cards. The ship lost or the career over is a telex. The map's panels
+ * are the console's bays round the game's map ({@link MapMode}), which its look's painter draws. The
+ * console E opens at a deck console stays the classic one.
  *
  * <p>A HUD attaches it with its own, and hands it the screen hooks ({@code replaces}, {@code open},
  * {@code showing}, {@code close}, {@code keyDown}), {@code update} and {@code detach}.
@@ -38,6 +39,7 @@ public final class WindowScreens {
     private final HelpFrame help = new HelpFrame();
     private final ControlsCard[] cards = new ControlsCard[8];
     private final Telex telex = new Telex();
+    private final MapMode map = new MapMode();
     private HudVariantHost host;
     private YardCanvas canvas;
     private float top;
@@ -77,14 +79,16 @@ public final class WindowScreens {
         this.host = host;
         this.top = top;
         canvas = new YardCanvas(paint);
+        canvas.add(map);
         for (int i = 0; i < consoles.size; i++) canvas.add(consoles.get(i));
         canvas.add(telex);
         canvas.addListener(new InputListener() {
             @Override
             public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY) {
                 BigConsole c = up();
-                if (c == null) return false;
-                c.scroll(amountY);
+                // Over the map's contacts the wheel scrolls them; elsewhere on the map it zooms, as the game has it
+                if (c == null && !map.scroll(x, canvas.getHeight() - y, amountY)) return false;
+                if (c != null) c.scroll(amountY);
                 event.stop();
                 return true;
             }
@@ -94,6 +98,8 @@ public final class WindowScreens {
     }
 
     public void detach() {
+        // The map's layers as the game has them by default
+        if (host != null) host.hud().getManeuverMap().getTraffic().showAll();
         Stage stage = host == null ? null : host.stage();
         if (stage != null && canvas != null && stage.getScrollFocus() == canvas) stage.setScrollFocus(null);
         if (canvas != null) canvas.remove();
@@ -101,9 +107,9 @@ public final class WindowScreens {
         host = null;
     }
 
-    /** The windows these screens show in place of the classic ones. */
+    /** The windows these screens show in place of the classic ones: all but a deck console's. */
     public boolean replaces(ClassicWindow w) {
-        return w != ClassicWindow.MAP && w != ClassicWindow.CONSOLE;
+        return w != ClassicWindow.CONSOLE;
     }
 
     /** The console and tab for {@code w} as things stand: the yard's at a yard, the crew's own away from one. */
@@ -152,6 +158,15 @@ public final class WindowScreens {
 
     public boolean open(ClassicWindow w) {
         if (host == null) return false;
+        if (w == ClassicWindow.MAP) {
+            // The game has put its map up: the console's bays go round it
+            for (int i = 0; i < consoles.size; i++) consoles.get(i).hide();
+            map.show(host);
+            mapWasOpen = true;
+            layout();
+            map.refreshNow();
+            return true;
+        }
         if (w == ClassicWindow.GAME_OVER) {
             for (int i = 0; i < consoles.size; i++) consoles.get(i).hide();
             telex.show(host.data().gameOver, host.data().ctx.simSeconds);
@@ -198,13 +213,15 @@ public final class WindowScreens {
     }
 
     public boolean showing(ClassicWindow w) {
+        if (w == ClassicWindow.MAP) return map.visible;
         if (w == ClassicWindow.GAME_OVER) return telex.visible;
         BigConsole c = up();
         return c != null && c.current() != null && c.current().window == w;
     }
 
     public void close(ClassicWindow w) {
-        if (w == ClassicWindow.GAME_OVER) telex.hide();
+        if (w == ClassicWindow.MAP) map.hide();
+        else if (w == ClassicWindow.GAME_OVER) telex.hide();
         else if (showing(w)) up().hide();
     }
 
@@ -229,6 +246,10 @@ public final class WindowScreens {
         }
         BigConsole c = up();
         boolean mapOpen = host.hud().isOpen(ClassicWindow.MAP);
+        if (map.visible) {
+            if (!mapOpen) map.hide();
+            else map.update(delta);
+        }
         if (c != null) {
             // The map opened over the console: it takes the screen
             if (mapOpen && !mapWasOpen) {
@@ -249,8 +270,9 @@ public final class WindowScreens {
         layout();
         Stage stage = host.stage();
         if (stage != null) {
-            if (c != null && stage.getScrollFocus() != canvas) stage.setScrollFocus(canvas);
-            else if (c == null && stage.getScrollFocus() == canvas) stage.setScrollFocus(null);
+            boolean wheel = c != null || map.visible;
+            if (wheel && stage.getScrollFocus() != canvas) stage.setScrollFocus(canvas);
+            else if (!wheel && stage.getScrollFocus() == canvas) stage.setScrollFocus(null);
         }
     }
 
@@ -264,5 +286,7 @@ public final class WindowScreens {
             c.place((sw - w) / 2f, top + c.riseOffset(), w, sh - top);
         }
         telex.place(0f, 0f, sw, sh);
+        map.layout(sw, sh, top);
+        if (map.visible) map.fitMap();
     }
 }

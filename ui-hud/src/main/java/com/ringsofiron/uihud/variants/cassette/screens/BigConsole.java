@@ -5,13 +5,10 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.HudData;
-import com.ringsofiron.uihud.data.MessageFeed;
 import com.ringsofiron.uihud.variants.cassette.Yard;
 import com.ringsofiron.uihud.variants.cassette.YardFonts;
 import com.ringsofiron.uihud.variants.cassette.YardPaint;
 import com.ringsofiron.uihud.variants.cassette.YardPart;
-
-import java.util.Locale;
 
 /**
  * The big console a full-screen mode raises (style guide 9.2): the head with the mode's nameplate
@@ -64,12 +61,8 @@ final class BigConsole extends YardPart implements Hits.Target {
     private boolean closing;
     private float sinceRefresh;
     private HudData data;
-    // The foot's feed: what the newest notice says, or a page's answer for a while
-    private String feedTag = "LOG", feedText = "";
-    private String saidTag, saidText;
-    private float saidFor;
-    private String lastNewestText;
-    private int lastNewestCount;
+    /** The foot's feed: the newest notice, or a page's answer for a while. */
+    private final FeedTube feed = new FeedTube();
 
     BigConsole(Livery livery, String nameplate, Boards boards) {
         super(0f, 0f);
@@ -115,7 +108,7 @@ final class BigConsole extends YardPart implements Hits.Target {
 
     void hide() {
         visible = false;
-        saidText = null;
+        feed.clear();
         closing = false;
     }
 
@@ -145,15 +138,12 @@ final class BigConsole extends YardPart implements Hits.Target {
         riseT = Math.min(RISE, riseT + delta);
         sinceRefresh += delta;
         if (sinceRefresh >= 0.5f) refreshNow();
-        if (saidText != null && (saidFor -= delta) <= 0f) saidText = null;
+        feed.update(delta);
     }
 
     /** A page's answer to an order, in the feed tube for a while. */
     void say(String tag, String text) {
-        if (text == null || text.isEmpty()) return;
-        saidTag = tag;
-        saidText = text.toUpperCase(Locale.ROOT);
-        saidFor = 8f;
+        feed.say(tag, text);
     }
 
     /** Turns to the tab with key {@code n} (1 for the first shown). */
@@ -309,15 +299,7 @@ final class BigConsole extends YardPart implements Hits.Target {
     private void foot(YardPaint p, float y) {
         p.rect(0f, y, w, FOOT_H, Yard.CHASSIS_DEEP);
         p.rect(0f, y, w, 1.5f, Yard.hex("0B0908"));
-        feed();
-        float tw = Math.min(560f, w * 0.44f);
-        p.tube(14f, y + 5f, tw, 18f, 2f, 3f, false);
-        String tag = saidText != null ? saidTag : feedTag, text = saidText != null ? saidText : feedText;
-        p.rect(19f, y + 7.5f, 46f, 15f, Yard.P_AMBER);
-        p.text(YardFonts.Face.TUBE, 12.5f, tag, 22f, y + 18.5f, Yard.CRT_BLACK);
-        int room = (int) ((tw - 70f) / 7.8f);
-        p.tube(text.length() > room ? Ledger.cut(text, room) : text, 76f, y + 19f, 13f, Yard.P_AMBER, false);
-        p.tubeOver(14f, y + 5f, tw, 18f);
+        feed.draw(p, data, 14f, y + 5f, Math.min(560f, w * 0.44f));
         float x = w - 12f;
         x -= p.width(YardFonts.Face.LEGEND, 12f, "CLOSE");
         p.legend("CLOSE", x, y + 18.5f, Yard.INK_LIGHT);
@@ -327,24 +309,6 @@ final class BigConsole extends YardPart implements Hits.Target {
             x -= p.keyWidth(k);
             p.key(x, y + 6.5f, k);
             x -= 3f;
-        }
-    }
-
-    /**
-     * Reads the newest notice into the feed, upper-cased once when it changes: by what it says, as
-     * the feed's messages are pooled and one entry carries another notice after a refill.
-     */
-    private void feed() {
-        MessageFeed.Message m = data == null ? null : data.messages.newest();
-        if (m == null) {
-            feedText = "";
-            lastNewestText = null;
-            return;
-        }
-        if (!m.text.equals(lastNewestText) || m.count != lastNewestCount) {
-            lastNewestText = m.text;
-            lastNewestCount = m.count;
-            feedText = m.label().toUpperCase(Locale.ROOT);
         }
     }
 
