@@ -32,7 +32,7 @@ abstract class ListPage extends Page {
     /** Whether the view follows the selection: off once the wheel moves it, on again with a key. */
     private boolean follow = true;
     // The selected row's soft keys, as keys() says them each frame
-    private final String[] keyLabel = new String[MAX_KEYS], keyRefusal = new String[MAX_KEYS];
+    private final String[] keyLabel = new String[MAX_KEYS], keyRefusal = new String[MAX_KEYS], keyAsk = new String[MAX_KEYS];
     private final boolean[] keyGuarded = new boolean[MAX_KEYS];
     private int keyCount;
     private int guardKey = -1;
@@ -73,15 +73,25 @@ abstract class ListPage extends Page {
 
     /** A soft key whose order can't be undone: it sits under a red guard. */
     final void guardedKey(String label, String refusal) {
-        softKey(label, refusal, true);
+        guardedKey(label, refusal, null);
     }
 
-    private void softKey(String label, String refusal, boolean guarded) {
-        if (keyCount >= MAX_KEYS) return;
+    /**
+     * A guarded soft key whose first press says {@code ask} in the feed: what the second press does
+     * ("Let Cole go? Press again: Cole leaves the ship for good"). Null says it can't be undone.
+     */
+    final void guardedKey(String label, String refusal, String ask) {
+        if (softKey(label, refusal, true)) keyAsk[keyCount - 1] = ask;
+    }
+
+    private boolean softKey(String label, String refusal, boolean guarded) {
+        if (keyCount >= MAX_KEYS) return false;
         keyLabel[keyCount] = label;
         keyRefusal[keyCount] = refusal;
         keyGuarded[keyCount] = guarded;
+        keyAsk[keyCount] = null;
         keyCount++;
+        return true;
     }
 
     private void sayKeys() {
@@ -203,6 +213,7 @@ abstract class ListPage extends Page {
         if (keyGuarded[k] && (guardKey != k || now - guardAt > GUARD_UP)) {
             guardKey = k;
             guardAt = now;
+            say(keyAsk[k] != null ? keyAsk[k] : "Press " + keyLabel[k] + " again: it can't be undone");
             return;
         }
         guardKey = -1;

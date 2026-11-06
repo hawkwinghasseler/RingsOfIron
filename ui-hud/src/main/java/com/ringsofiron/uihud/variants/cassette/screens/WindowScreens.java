@@ -51,6 +51,14 @@ public final class WindowScreens {
     private boolean mapWasOpen;
     /** The ship's console's tab I opens: the last of systems, crew and cargo used (the crew the first time). */
     private Page shipTab;
+    /**
+     * The controls card rises over the screen under it (the map, or a console on its tab), and Esc or
+     * F1 closes it first, giving that screen back (Task, round 11). Else it replaces the screen, one
+     * mode at a time (Context, Stations).
+     */
+    private boolean controlsOver;
+    /** The console the controls card rose over, which comes back as it closes; null for none. */
+    private BigConsole under;
 
     public WindowScreens() {
         station = console(new BigConsole(BigConsole.Livery.STATION, "STATION", boards)
@@ -71,6 +79,12 @@ public final class WindowScreens {
         BigConsole c = new BigConsole(BigConsole.Livery.SHIP, "CONTROLS", boards);
         for (ControlsCard card : cards) c.add(card);
         controls = console(c);
+    }
+
+    /** Has the controls card rise over the screen under it, Esc closing it first; else it replaces the screen. */
+    public WindowScreens controlsOver(boolean over) {
+        controlsOver = over;
+        return this;
     }
 
     private BigConsole console(BigConsole c) {
@@ -168,6 +182,7 @@ public final class WindowScreens {
         if (w == ClassicWindow.MAP) {
             // The game has put its map up: the console's bays go round it
             for (int i = 0; i < consoles.size; i++) consoles.get(i).hide();
+            under = null;
             map.show(host);
             mapWasOpen = true;
             layout();
@@ -176,6 +191,7 @@ public final class WindowScreens {
         }
         if (w == ClassicWindow.GAME_OVER) {
             for (int i = 0; i < consoles.size; i++) consoles.get(i).hide();
+            under = null;
             telex.show(host.data().gameOver, host.data().ctx.simSeconds);
             layout();
             return true;
@@ -186,10 +202,18 @@ public final class WindowScreens {
         page.refresh(boards);
         if (!page.offered()) return false;
         BigConsole c = page.console;
-        // One mode at a time: the map, or another console, gives way
-        for (int i = 0; i < consoles.size; i++) if (consoles.get(i) != c) consoles.get(i).hide();
-        if (host.hud().isOpen(ClassicWindow.MAP)) host.hud().close(ClassicWindow.MAP);
-        mapWasOpen = false;
+        if (controlsOver && c == controls) {
+            // Over what is up: the map stays open under it, a console waits on its tab
+            BigConsole was = up();
+            if (was != null && was != controls) under = was;
+            if (was != null && was != controls) was.hide();
+        } else {
+            // One mode at a time: the map, or another console, gives way
+            for (int i = 0; i < consoles.size; i++) if (consoles.get(i) != c) consoles.get(i).hide();
+            under = null;
+            if (host.hud().isOpen(ClassicWindow.MAP)) host.hud().close(ClassicWindow.MAP);
+            mapWasOpen = false;
+        }
         c.closeKeys(keyOf(w));
         c.show(page, host.data());
         layout();
@@ -229,7 +253,24 @@ public final class WindowScreens {
     public void close(ClassicWindow w) {
         if (w == ClassicWindow.MAP) map.hide();
         else if (w == ClassicWindow.GAME_OVER) telex.hide();
-        else if (showing(w)) up().hide();
+        else if (showing(w)) {
+            BigConsole c = up();
+            c.hide();
+            if (c == controls) uncover();
+        }
+    }
+
+    /** The controls card has gone: the console it rose over comes back on its tab, if its place still offers it. */
+    private void uncover() {
+        BigConsole u = under;
+        under = null;
+        if (u == null || host == null) return;
+        Page p = u.current();
+        if (p == null) return;
+        boards.refresh(host.data());
+        p.refresh(boards);
+        if (p.offered()) u.resume(host.data());
+        layout();
     }
 
     /** The console up now, or null. */
@@ -263,13 +304,15 @@ public final class WindowScreens {
             if (mapOpen && !mapWasOpen) {
                 c.hide();
                 c = null;
+                under = null;
             } else {
                 c.update(delta);
                 Page p = c.current();
                 if (c == ship && (p == systems || p == crew || p == cargo)) shipTab = p;
                 if (p == null || !p.offered() || c.closing()) {
                     c.hide();
-                    c = null;
+                    if (c == controls) uncover();
+                    c = up();
                 } else {
                     c.closeKeys(keyOf(p.window));
                 }
