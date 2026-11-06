@@ -228,7 +228,8 @@ class ContextLayoutTest {
             l.cueH = MasterCue.H;
         }
         if (seat != Seat.GUN && seat != Seat.FIRE && r.nextBoolean()) {
-            l.promptW = PromptPlate.W;
+            // A gun's prompt with its mount and what taking it costs runs to the widest
+            l.promptW = r.nextBoolean() ? PromptPlate.W : PromptPlate.W_MOST;
             l.promptH = PromptPlate.H;
         }
         if (r.nextInt(4) == 0) {

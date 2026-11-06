@@ -123,35 +123,36 @@ final class HeaderRail extends YardPart {
         p.tubeOver(x, y, w, 18f);
     }
 
-    /** The seat field (14): HELM, FIRE CONTROL, GUN · FWD, DECK; aboard another craft, DECK · HIGHPORT. */
+    /** The seat field (14): HELM, FIRE CONTROL, GUN (FWD PORT), DECK; aboard another craft, DECK · HIGHPORT. */
     static String seat(HudData d, ContextFrame f) {
         switch (f.seat) {
             case HELM: return "HELM";
             case FIRE: return "FIRE CONTROL";
             case GUN: {
                 String g = gunName(d);
-                return g.isEmpty() ? "GUN" : "GUN · " + g;
+                return g.isEmpty() ? "GUN" : "GUN (" + g + ")";
             }
             case DECK: return f.aboard.isEmpty() ? "DECK" : "DECK · " + f.aboard;
             default: return "";
         }
     }
 
-    /** The gun the captain has taken, by its place ("FWD GUN" reads FWD), or "". */
+    /** The gun the captain has taken, by its mount ("FWD PORT GUN" reads FWD PORT), or "". */
     private static String gunName(HudData d) {
         for (int i = 0; i < d.stations.seats.size; i++) {
             Seat s = d.stations.seats.get(i);
-            if (s.post == Post.GUN && s.hand == Hand.PLAYER) return s.name.replace("GUN", "").replaceAll("\\s+", " ").trim();
+            if (s.post == Post.GUN && s.hand == Hand.PLAYER) return Kit.place(s.name);
         }
         return "";
     }
 
     /**
      * Helm authority (P1): only when someone other than the captain flies, or nobody does. Empty when the
-     * captain has the helm with no order running; while the autopilot is held for warp, the reason is the
-     * warp field's.
+     * captain has the helm with no order running, and while docked or latched, where the ship can't fly
+     * (v19); while the autopilot is held for warp, the reason is the warp field's.
      */
     static String authority(HudData d, ContextFrame f) {
+        if (f.berthed()) return "";
         Orders o = d.orderState;
         UiContext c = d.ctx;
         if (o.autopilot == Autopilot.ON) return o.autopilotTo.isEmpty() ? "Autopilot on" : "Autopilot to " + o.autopilotTo;
@@ -162,7 +163,7 @@ final class HeaderRail extends YardPart {
         String who = c.helmsman == null ? "" : c.helmsman;
         if (who.equalsIgnoreCase("you")) return "";
         if (who.equalsIgnoreCase("autopilot")) return "Autopilot";
-        if (who.isEmpty()) return f.berthed() || f.seat == ContextFrame.Seat.NONE ? "" : "Helm: nobody";
+        if (who.isEmpty()) return f.seat == ContextFrame.Seat.NONE ? "" : "Helm: nobody";
         return "Helm: " + who + (c.helmOrder.isEmpty() ? "" : " · " + lowerFirst(c.helmOrder));
     }
 

@@ -274,6 +274,26 @@ final class Kit {
         return c > 0 ? (float) Math.max(0, Math.min(1, s / c)) : 0f;
     }
 
+    /**
+     * A mount's place, without the kind the game adds after it: "FWD PORT GUN" is "FWD PORT", "AFT PD 2"
+     * "AFT 2" (F2: the weapon's own name says what it is). The game's name when nothing else is left.
+     */
+    static String place(String mountName) {
+        StringBuilder b = new StringBuilder();
+        for (String w : mountName.trim().split("\\s+")) {
+            if (w.equals("GUN") || w.equals("PD") || w.equals("MSL") || w.equals("BEAM")) continue;
+            if (b.length() > 0) b.append(' ');
+            b.append(w);
+        }
+        return b.length() == 0 || Character.isDigit(b.charAt(0)) ? mountName.trim() : b.toString();
+    }
+
+    /** A gun by its weapon and its mount, where a row doesn't give the mount: "Autocannon Mk1 (FWD STBD)". */
+    static String gun(com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount m) {
+        String where = place(m.name);
+        return m.weapon.isEmpty() ? where : where.isEmpty() ? m.weapon : m.weapon + " (" + where + ")";
+    }
+
     /** A key cap's name for {@code action}, or {@code fallback} when the game has none. */
     static String key(HudData d, String action, String fallback) {
         String k = d.key(action);

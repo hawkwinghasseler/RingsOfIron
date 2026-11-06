@@ -245,8 +245,8 @@ public class CassetteContextHud implements HudVariant {
         boolean fireLock = (fire || gun) && lockedOn;
         l.lockH = helmLock ? lock.measure(false) : fireLock ? lock.measure(true) : 0f;
         l.armamentH = helm && f.combat && !f.docked ? ArmamentPlate.H : 0f;
-        l.stationH = f.docked ? station.measure(d) : 0f;
-        l.boardingH = f.boarding ? boarding.measure(paint) : 0f;
+        l.stationH = f.docked ? station.measure(d, delta) : 0f;
+        l.boardingH = f.boarding ? boarding.measure(paint, delta) : 0f;
 
         // The right foot: the scope, folded to its key while there is nothing near
         boolean scopeUp = f.seated() && !f.warp && !f.berthed();
@@ -269,7 +269,7 @@ public class CassetteContextHud implements HudVariant {
         // The bottom centre's top: the prompt, or the orders panel swung up over the instrument
         boolean promptWanted = (helm && !f.combat && !f.warp || deck || f.docked) && !orders.open;
         boolean promptUp = promptWanted && prompt.choose();
-        l.promptW = promptUp ? PromptPlate.W : 0f;
+        l.promptW = promptUp ? prompt.width(paint) : 0f;
         l.promptH = promptUp ? PromptPlate.H : 0f;
         float oh = orders.measure(d);
         l.ordersW = oh > 0f ? OrdersPanel.W : 0f;

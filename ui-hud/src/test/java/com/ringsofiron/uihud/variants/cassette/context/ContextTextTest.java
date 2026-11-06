@@ -106,17 +106,21 @@ class ContextTextTest {
         String why = OrdersPanel.sentence("you can't dock while the station has not given clearance, and the port is taken by another ship.");
         assertTrue(why.length() <= 56, why);
         assertTrue(Character.isUpperCase(why.charAt(0)));
-        // The party flaps hold eight
+        // The party flaps hold eleven
         BoardingBoard b = new BoardingBoard();
         b.craftName = "Corsair";
         b.boardRefusal = "No one to send";
-        assertTrue(BoardingPanel.party(b).length() <= 8);
+        assertEquals("CAN'T GO", BoardingPanel.party(b));
         b.boarding = true;
         assertEquals("CROSSING", BoardingPanel.party(b));
         b.aboard = 3;
+        b.defenders = 2;
+        assertEquals("FIGHTING", BoardingPanel.party(b));
+        b.defenders = 0;
         assertEquals("ABOARD", BoardingPanel.party(b));
         b.taken = true;
-        assertEquals("TAKEN", BoardingPanel.party(b));
+        assertEquals("COMING HOME", BoardingPanel.party(b));
+        assertTrue(BoardingPanel.party(b).length() <= 11);
         // The suit unit's condition flaps hold eight, the lock card's state flaps eleven
         CaptainStatus c = new CaptainStatus();
         c.present = true;
@@ -214,5 +218,126 @@ class ContextTextTest {
         // A suit locker or an airlock is not a target lock
         assertEquals("CREW", Intercom.tag("", "The air here is going: get to a pressurised room, or a suit locker to put on a suit"));
         assertEquals("GUNS", Intercom.tag("", "Target locked: Pirate raider 6"));
+    }
+
+    @Test
+    void theBoardingCardSaysHowTheCraftStandsAndWhoIsHeld() {
+        BoardingBoard b = new BoardingBoard();
+        b.craftName = "Pirate raider 3";
+        b.state = "Disabled: reactor down";
+        b.disabled = true;
+        b.defenders = 3;
+        assertEquals("Disabled: reactor down", BoardingPanel.state(b));
+        assertEquals("READY", BoardingPanel.party(b));
+        b.boarding = true;
+        b.aboard = 1;
+        assertEquals("Being boarded", BoardingPanel.state(b));
+        // Taken: the party comes home, and the prisoners are held with the berths free for them
+        b.boarding = false;
+        b.taken = true;
+        b.defenders = 0;
+        b.prisoners = 3;
+        b.state = "Taken, 3 held";
+        assertEquals("Taken: crew held", BoardingPanel.state(b));
+        assertEquals("COMING HOME", BoardingPanel.party(b));
+        b.aboard = 0;
+        assertEquals(null, BoardingPanel.party(b), "home: the party has nothing to say");
+        assertEquals(4, BoardingPanel.berthsFree("4 / 8 berths, 470 cr/wk in wages, 3 medical stores"));
+        assertEquals(0, BoardingPanel.berthsFree("9 / 8 berths, 0 cr/wk in wages, 0 medical stores"));
+        assertEquals(-1, BoardingPanel.berthsFree(""));
+        // A craft nobody defends: no party goes, and the salvage takes it
+        BoardingBoard u = new BoardingBoard();
+        u.craftName = "Raider";
+        u.state = "Disabled: crew down";
+        u.disabled = true;
+        u.salvage = true;
+        assertEquals("Nobody aboard: a part marked takes it", BoardingPanel.state(u));
+        assertEquals(null, BoardingPanel.party(u));
+        u.taken = true;
+        assertEquals("Taken: undefended", BoardingPanel.state(u));
+    }
+
+    @Test
+    void theStationCardGivesTheStandingAsANumberAndItsServicesOnlyWhenTheySaySomething() {
+        assertEquals("TANKS 72%", StationPanel.yardNote(0, "Propellant 72%, oxygen 100%"));
+        assertEquals("2 REPAIRS · TANKS 86%", StationPanel.yardNote(2, "Propellant 86%, oxygen 100%"));
+        assertEquals("1 REPAIR", StationPanel.yardNote(1, ""));
+        assertEquals("", StationPanel.yardNote(0, ""));
+        com.ringsofiron.uihud.providers.CrewProvider.CrewSheet sheet = new com.ringsofiron.uihud.providers.CrewProvider.CrewSheet();
+        com.ringsofiron.uihud.providers.CrewProvider.Member ada = sheet.addMember();
+        ada.name = "Ada";
+        ada.condition = "OK 100%";
+        assertEquals("", StationPanel.treating(sheet), "day 0: nobody hurt, no infirmary line");
+        ada.condition = "Serious wound, being treated";
+        com.ringsofiron.uihud.providers.CrewProvider.Member cole = sheet.addMember();
+        cole.name = "Cole";
+        cole.condition = "Unconscious 40%";
+        assertEquals("TREATING ADA +1", StationPanel.treating(sheet));
+        cole.condition = "Light wound 80%";
+        assertEquals("TREATING ADA", StationPanel.treating(sheet));
+    }
+
+    @Test
+    void aGunIsItsWeaponAndItsMount() {
+        assertEquals("FWD PORT", Kit.place("FWD PORT GUN"));
+        assertEquals("AFT 2", Kit.place("AFT PD 2"));
+        assertEquals("GUN", Kit.place("GUN"));
+        Mount m = new Mount();
+        m.name = "FWD STBD PD";
+        m.weapon = "Autocannon Mk1";
+        assertEquals("Autocannon Mk1 (FWD STBD)", Kit.gun(m));
+        // P1 names the gun seat by its mount
+        HudData d = new HudData();
+        ContextFrame f = new ContextFrame();
+        f.seat = ContextFrame.Seat.GUN;
+        com.ringsofiron.uihud.providers.StationBoardProvider.Seat s = d.stations.add();
+        s.post = com.ringsofiron.uihud.providers.StationBoardProvider.Post.GUN;
+        s.hand = com.ringsofiron.uihud.providers.StationBoardProvider.Hand.PLAYER;
+        s.name = "FWD PORT GUN";
+        assertEquals("GUN (FWD PORT)", HeaderRail.seat(d, f));
+        assertTrue(HeaderRail.seat(d, f).length() <= 14);
+        // At a berth the ship can't fly, so nobody's helm is news
+        f.docked = true;
+        d.ctx.helmsman = "";
+        assertEquals("", HeaderRail.authority(d, f));
+    }
+
+    @Test
+    void pointDefenseInHandIsAGunLikeAnyOther() {
+        HudData d = new HudData();
+        Mount m = d.weaponFrame.add();
+        m.name = "FWD PORT PD";
+        m.weapon = "Autocannon Mk1";
+        m.kind = Kind.POINT_DEFENSE;
+        m.controller = Controller.AUTO;
+        m.defending = true;
+        assertTrue(WeaponsRack.pdFree(m));
+        assertEquals("ENGAGING", WeaponsRack.state(m, true));
+        assertEquals("PD", WeaponsRack.who(d, m));
+        // Taken at its gun: it shoots where the captain aims, out of arc or not
+        m.controller = Controller.PLAYER;
+        m.defending = false;
+        m.inArc = false;
+        assertTrue(!WeaponsRack.pdFree(m));
+        assertEquals("OUT OF ARC", WeaponsRack.state(m, true));
+        assertEquals("YOU", WeaponsRack.who(d, m));
+    }
+
+    @Test
+    void aConsolesPromptNamesItThenItsVerbs() {
+        assertEquals("Helm · [V] sit and fly · [E] panel", PromptPlate.prompt("E", "for the Helm panel   [V] sit and fly", null));
+        assertEquals("Reactor · [E] panel", PromptPlate.prompt("E", "for the Reactor panel", null));
+        assertEquals("[E] put on a pressure suit", PromptPlate.prompt("E", "to put on a pressure suit", null));
+        Mount gun = new Mount();
+        gun.name = "FWD GUN";
+        gun.weapon = "Coilgun Mk1";
+        assertEquals("Coilgun Mk1 (FWD) · [V] take the gun · [E] panel", PromptPlate.prompt("E", "for the Gun panel   [V] take the gun", gun));
+        gun.name = "FWD PORT PD";
+        gun.weapon = "Autocannon Mk1";
+        gun.kind = Kind.POINT_DEFENSE;
+        assertEquals("Autocannon Mk1 (FWD PORT) · [V] take the gun (point defense pauses) · [E] panel",
+                PromptPlate.prompt("E", "for the Gun panel   [V] take the gun", gun));
+        // Not knowing which gun, the console's own title
+        assertEquals("Gun · [V] take the gun · [E] panel", PromptPlate.prompt("E", "for the Gun panel   [V] take the gun", null));
     }
 }

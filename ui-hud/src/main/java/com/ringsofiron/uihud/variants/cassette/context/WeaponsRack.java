@@ -11,6 +11,7 @@ import com.ringsofiron.uihud.providers.WeaponStatusProvider.Kind;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.State;
 import com.ringsofiron.uihud.variants.cassette.Yard;
+import com.ringsofiron.uihud.variants.cassette.YardFonts;
 import com.ringsofiron.uihud.variants.cassette.YardPaint;
 import com.ringsofiron.uihud.variants.cassette.YardPart;
 import com.ringsofiron.uihud.variants.cassette.YardText;
@@ -29,6 +30,10 @@ final class WeaponsRack extends YardPart {
     static final float W = 620f, PAD = 8f, ROW = 26f, ROW_TIGHT = 21f;
     /** Rows the rack holds; more mounts than this share the last row as "+n more". */
     static final int MOST = 6;
+    /** Where the weapon's tape starts, and where it must end: before the state's lamp. */
+    static final float WEAPON_X = 110f, WEAPON_END = 236f;
+    /** The longest weapon name the rack carries (v19). */
+    static final int WEAPON_CHARS = 16;
 
     private final ContextFrame f;
     final Array<Mount> rows = new Array<>();
@@ -59,6 +64,14 @@ final class WeaponsRack extends YardPart {
         return PAD * 2f + n * rowH + 2f;
     }
 
+    /**
+     * Point defense out of hand: it picks its own targets and has no chance on the lock. In hand (at its
+     * gun) it shoots where the captain aims, like any gun, and hunts no missile until let go (v19).
+     */
+    static boolean pdFree(Mount m) {
+        return m.kind == Kind.POINT_DEFENSE && m.controller != Controller.PLAYER;
+    }
+
     /** A mount's state on its flaps (F2): READY, RELOAD, NO POWER, DAMAGED, STUNNED, OUT OF ARC; ENGAGING for point defense. */
     static String state(Mount m, boolean locked) {
         switch (m.state) {
@@ -71,10 +84,19 @@ final class WeaponsRack extends YardPart {
             case RELOADING: return "RELOAD";
             case CHARGING: return "CHARGING";
             default:
-                if (m.kind == Kind.POINT_DEFENSE) return m.engaging || m.defending ? "ENGAGING" : "READY";
+                if (pdFree(m)) return m.engaging || m.defending ? "ENGAGING" : "READY";
                 if (locked && m.kind != Kind.LAUNCHER && !m.inArc) return "OUT OF ARC";
                 return m.engaging ? "FIRING" : "READY";
         }
+    }
+
+    /** The weapon's name for its tape: the game's, cut at 16 and then to the room before the state. */
+    static String weaponTape(YardPaint p, String weapon) {
+        String t = YardText.fit(weapon, WEAPON_CHARS);
+        for (int n = WEAPON_CHARS - 1; n > 4 && p.width(YardFonts.Face.DYMO, 12f, t) + 9f > WEAPON_END - WEAPON_X; n--) {
+            t = YardText.fit(weapon, n);
+        }
+        return t;
     }
 
     /** Its seconds count down on the drums: reloading, shorted or stunned with a time. */
@@ -84,8 +106,8 @@ final class WeaponsRack extends YardPart {
 
     /** Who fires it: YOU, CREW (a gunner, or crew at the console), PD by itself, or nobody. */
     static String who(HudData d, Mount m) {
-        if (m.kind == Kind.POINT_DEFENSE || m.controller == Controller.AUTO) return "PD";
         if (m.controller == Controller.PLAYER) return "YOU";
+        if (m.kind == Kind.POINT_DEFENSE || m.controller == Controller.AUTO) return "PD";
         if (m.controller == Controller.CREW || m.controller == Controller.CONSOLE) return gunner(d, m) != null ? YardText.fit(gunner(d, m), 5) : "CREW";
         return "";
     }
@@ -116,12 +138,13 @@ final class WeaponsRack extends YardPart {
     private void module(YardPaint p, HudData d, Mount m, float y, boolean locked) {
         float mh = rowH - 3f, cy = y + mh / 2f;
         p.face(8f, y + 1f, w - 16f, mh, Yard.Finish.GUN, false);
-        boolean pd = m.kind == Kind.POINT_DEFENSE;
-        // In hand: the white lamp
-        p.lamp(20f, cy + 1f, 3f, Yard.WHITE_LAMP, m.controller == Controller.PLAYER && !pd);
+        boolean pd = pdFree(m);
+        // In hand: the white lamp, point defense too at its own gun
+        p.lamp(20f, cy + 1f, 3f, Yard.WHITE_LAMP, m.controller == Controller.PLAYER);
         float fy = cy + 1f - 7.5f;
-        p.dymo(32f, fy, YardText.fit(m.name, 9));
-        p.dymo(118f, fy, YardText.fit(m.weapon, 13));
+        p.dymo(32f, fy, YardText.fit(Kit.place(m.name), 9));
+        // The weapon by the game's name, mark and all (v19: 16 at most), on its tape before the state
+        p.dymo(WEAPON_X, fy, weaponTape(p, m.weapon));
         // The state: a lamp and its word, the seconds where it counts down
         String st = state(m, locked);
         boolean ok = st.equals("READY") || st.equals("FIRING") || st.equals("ENGAGING");
@@ -165,10 +188,11 @@ final class WeaponsRack extends YardPart {
             int word = LockCard.hitWord(m.hitChance);
             return word < 0 ? "No solution on the lock" : "Chance to hit while it dodges: " + LockCard.HIT_WORDS[word].toLowerCase(Locale.ROOT);
         }
-        if (m.kind == Kind.POINT_DEFENSE) return m.name + ": point defense picks its own targets";
+        if (pdFree(m)) return Kit.place(m.name) + ": point defense picks its own targets";
+        if (m.kind == Kind.POINT_DEFENSE) return Kit.place(m.name) + ": in hand, it shoots where you aim and hunts no missile until let go";
         String st = state(m, d.targetStatus.present);
-        if (st.equals("OUT OF ARC")) return m.name + " doesn't bear on the lock";
-        if (st.equals("NO POWER")) return m.name + ": no circuit feeds it";
+        if (st.equals("OUT OF ARC")) return Kit.gun(m) + " doesn't bear on the lock";
+        if (st.equals("NO POWER")) return Kit.gun(m) + ": no circuit feeds it";
         return null;
     }
 }
