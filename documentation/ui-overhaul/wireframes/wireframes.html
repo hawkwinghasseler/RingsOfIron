@@ -270,7 +270,7 @@ const layouts = {
   '03': ['Helm, docking approach', () => {
     strip('HELM', 'Day 0 · 00:41     1x');
     emptySlots(true, false);
-    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Station: clearance granted, port 2']);
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Station: Highport gives clearance:', '  port 2 is armed for you']);
     const h3 = box('H3', 'Docking display', 440, 598, 400, 190, 'full', ['Port (S) → Highport #2 · armed'],
       { h: 92, text: 'alignment picture (0.4 m left, 2° off)   |   closing gauge: 120 m, 6.2 m/s against a safe 4.9, in the FAST band' });
     addLines(h3, ['clearance granted · contact T-19 s', '▣main ▢turn ▢strafe · assist ON · Δv 6,070']);
@@ -326,11 +326,11 @@ const layouts = {
     addLines(f3, ['emitter (S)  holding · heat 40%']);
     box('H4', 'Ship condition (no plan, no shields)', 12, 748, 308, 40, 'compact', ['○ HULL     ○ POWER     ○ LIFE SUP']);
     box('F2', 'Weapons rack', 330, 676, 620, 112, 'full', [
-      '▶ NOSE      Heavy cannon  ready            62% fair  you',
-      '  FWD PORT  Autocannon    engaging MSL               PD',
-      '  FWD STBD  Autocannon    ready                      PD',
-      '▶ AFT PORT  Harpoon       ready · 3 left             you',
-      '▶ AFT STBD  Harpoon       ready · 4 left             you']);
+      '▶ NOSE      Heavy Cannon      ready            62% fair  you',
+      '  FWD PORT  Autocannon Mk1    engaging MSL               PD',
+      '  FWD STBD  Autocannon Mk1    ready                      PD',
+      '▶ AFT PORT  Harpoon Launcher  ready · 3 left             you',
+      '▶ AFT STBD  Harpoon Launcher  ready · 4 left             you']);
     box('H5', 'Contact scope · 5 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope: the raider and the missile; Raider 2 is beyond 5 km' });
     centreClear(); ship(640, 400);
     contact(870, 300, 'diamond', 'Raider'); lockMark(870, 300);
@@ -382,41 +382,39 @@ const layouts = {
   '08': ['Docked', () => {
     strip('HELM', 'Day 0 · 00:08     1x');
     box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
-    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Log: autosaved', 'Station: welcome to Highport']);
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Log: autosaved', 'Station: Docked at Highport']);
     box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 5.2 d left']);
     box('X1', 'Station panel', 960, 194, 308, 260, 'full', [
       'HIGHPORT · port 2',
       'Terran Patrol Authority',
-      'standing: Trusted (+42)',
+      'standing +0',
       '^[T] Market',
-      '^[Y] Yard · 2 repairs · tanks 86%',
+      '^[Y] Yard · tanks 72%',
       '^[J] Missions · 4 offers',
       'Hire: 3 looking for a berth',
-      'Infirmary: 1 treated · 150 cr',
       'Credits 5,000 cr · hold 12/40 m³',
       '^[U] Undock']);
     shipLights();
     rect(560, 120, 160, 160, { fill: '#41454b' }); wtext(566, 124, 'Highport', 'tag');
     ship(640, 330);
   }],
-  '13': ['Boarding (latched to a taken raider)', () => {
-    strip('HELM', 'Day 0 · 01:30     1x');
+  '13': ['Boarding (latched to a taken pirate)', () => {
+    strip('HELM', 'Day 6 · 10:15     1x');
     box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
-    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Boarding: the Raider is taken']);
-    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Bounty: Raider · taken', '→ turn in at Highport']);
-    box('X2', 'Boarding panel (H6 gives way: the Raider is the Lock)', 960, 194, 308, 0, 'full', [
-      'BOARD  Raider · latched',
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Boarding: Pirate raider 3', '  is taken: 3 held']);
+    box('P5', 'Objective (not drawn: the bounty is paid)', 12, 194, 308, 40, 'slot');
+    box('X2', 'Boarding panel (H6 gives way: the raider is the Lock)', 960, 194, 308, 0, 'full', [
+      'BOARD  Pirate raider 3 · latched',
       '       taken: crew surrendered',
       'PARTY  1 · coming home',
       'SALV   3 parts marked · 1 off',
-      'CARGO  2 lots coming across',
-      '       prisoners to bring aboard',
+      'HELD   3 · 4 berths free',
       '^[K] Boarding       [U] Cast off']);
     shipLights();
     ship(600, 405);
     rect(558, 364, 84, 26, { fill: '#3a3d42', 'stroke-dasharray': '4 3' });
     el('polygon', { points: `558,364 544,377 558,390`, fill: '#3a3d42', stroke: 'var(--world-line)', 'stroke-dasharray': '4 3' });
-    wtext(560, 344, 'Raider', 'tag'); lockMark(600, 377);
+    wtext(560, 344, 'Pirate raider 3', 'tag'); lockMark(600, 377);
     wtext(470, 470, 'latched port to port: the raider lies over the port side, nose aft;', '');
     wtext(470, 486, 'the ship can\'t fly, so the flight instruments retire as when docked', '');
   }],
@@ -498,46 +496,43 @@ const layouts = {
       'Deliver 40 Food → Shackleton Ice · 12 of 40 aboard · 5.2 d left']);
     box('', 'Rail', 880, 94, 320, 166, 'mode', [
       'Credits      5,000 cr',
-      'Standing     Trusted (+42)',
+      'Standing     +0',
       'Hold         12 / 40 m³',
       'Tanks        propellant 72%',
-      '             oxygen 100%',
-      '',
-      'Infirmary    treating 1',
-      '             bill 150 cr']);
-    box('', 'foot: the one-line feed and the close keys', 80, 260, 1120, 26, 'mode',
-      ['Station: clearance granted' + ' '.repeat(62) + '[T] close · [Esc]']);
+      '             oxygen 100%']);
+    box('', 'foot: the one-line feed (nothing new since docking) and the close keys', 80, 260, 1120, 26, 'mode',
+      [' '.repeat(88) + '[T] close · [Esc]']);
   }],
   '11': ['Ship, systems tab (full-screen mode)', () => {
     strip('DECK      Helm: Bea · holding heading      BATTLE STATIONS      ◆ 1 · ▲ 2', 'Day 0 · 00:20     1x');
     box('M2', 'Ship', 0, 26, W, 34, 'mode', ['PATROL CORVETTE    [1] Systems   [2] Crew   [3] Cargo   [4] Loadout']);
-    box('', 'Plan', 0, 60, 760, 440, 'mode', [], { h: 404, text: 'the ship plan at large scale: every system by state, hazards, crew and their work' });
-    box('', 'Systems', 760, 60, 520, 440, 'mode', [
-      'SYSTEM                 HEALTH  POWER   STATE',
-      '^Reactor M               100%   –       on        [off] twice',
-      '^Engines ×2              100%   ok      on        [off]',
-      'RCS ×8                     –   –       7 on · 1 stopped',
-      '^Coilgun (NOSE)          100%   ok      on        [off]',
-      '^Autocannon (FWD PORT)    20%   ok      damaged   [off]',
-      '^Autocannon (FWD STBD)   100%   none    cut off   [off]',
-      '^Harpoon (AFT PORT)      100%   ok      on        [off]',
-      '^Laser (AFT STBD)        100%   ok      on        [off]',
-      '^Life support            100%   ok      on        [off]',
+    box('', 'Plan', 0, 60, 700, 440, 'mode', [], { h: 404, text: 'the ship plan at large scale: every system by state, hazards, crew and their work' });
+    box('', 'Systems', 700, 60, 580, 440, 'mode', [
+      'SYSTEM                      HEALTH  POWER   STATE',
+      '^Reactor M                    100%   –       on        [off] twice',
+      '^Engines ×2                   100%   ok      on        [off]',
+      'RCS ×8                          –   –       7 on · 1 stopped',
+      '^Coilgun Mk1 (NOSE)           100%   ok      on        [off]',
+      '^Autocannon Mk1 (FWD PORT)     20%   ok      damaged   [off]',
+      '^Autocannon Mk1 (FWD STBD)    100%   none    cut off   [off]',
+      '^Harpoon Launcher (AFT PORT)  100%   ok      on        [off]',
+      '^Laser Mk1 (AFT STBD)         100%   ok      on        [off]',
+      '^Life support                 100%   ok      on        [off]',
       '...']);
-    box('', 'Damage control', 0, 500, 760, 274, 'mode', [
-      'TASK                            WHERE        WHO',
-      'Repair autocannon (FWD PORT)    BRIDGE       Ada',
-      'Seal breach                     HOLD         waits: under fire',
-      'Repair RCS thruster             outside      waits: battle stations',
+    box('', 'Damage control', 0, 500, 700, 274, 'mode', [
+      'TASK                              WHERE        WHO',
+      'Repair Autocannon Mk1 (FWD PORT)  BRIDGE       Ada',
+      'Seal breach                       HOLD         waits: under fire',
+      'Repair RCS thruster               outside      waits: battle stations',
       '',
       '~One hit wrecked the hull tile under the HOLD\'s aft port RCS quad: the breach,',
       '~the stopped thruster and Cole\'s light wound. Work within 2 tiles of where',
       '~crew were hit waits for the fight to end. A cut conduit is no crew job: only',
       '~a yard repairs it, so it shows under Power.']);
-    box('', 'Power', 760, 500, 520, 274, 'mode', [
+    box('', 'Power', 700, 500, 580, 274, 'mode', [
       'CIRCUIT 1   reactor M · 3.0 of 3.0 MW',
       '            store ▮▮▮▮▮▮▮▮▯▯ 80%',
-      'CUT OFF     Autocannon (FWD STBD): no reactor reaches it',
+      'CUT OFF     Autocannon Mk1 (FWD STBD): no reactor reaches it',
       '',
       'One cut conduit in the BRIDGE strands it. The crew can',
       'only reset a short; a yard repairs a cut (400 cr).']);

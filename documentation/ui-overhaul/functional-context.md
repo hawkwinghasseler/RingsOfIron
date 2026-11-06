@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 18.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 19.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -483,8 +483,8 @@ a monospaced face (the worst case):
 
 | Field | Max chars | Shows | States |
 |---|---|---|---|
-| Seat | 14 | HELM · FIRE CONTROL · GUN (bow) · DECK; aboard another craft, "DECK · Highport" | Neutral |
-| Helm authority | 36 | Only when someone other than the captain flies, or nobody does: "Helm: Bea · holding heading"; "Helm order: approach Highport 500 m"; "Autopilot → Shackleton Ice"; "Autopilot held: pirates about"; "Helm: nobody". Empty (not "none") when the captain sits at the helm with no order running. When the autopilot is held because warp is held, the reason shows once, in the warp field, and this field reads "Autopilot held" | Neutral; advisory while the autopilot is held. A status, not an alarm: when nobody at the helm is a danger, P2 says so (NO HELM) |
+| Seat | 14 | HELM · FIRE CONTROL · GUN with its mount, "GUN (FWD PORT)" · DECK; aboard another craft, "DECK · Highport" | Neutral |
+| Helm authority | 36 | Only when someone other than the captain flies, or nobody does: "Helm: Bea · holding heading"; "Helm order: approach Highport 500 m"; "Autopilot → Shackleton Ice"; "Autopilot held: pirates about"; "Helm: nobody". Empty (not "none") when the captain sits at the helm with no order running, and while docked or latched to another craft: the ship can't fly, so who sits at the helm says nothing (today's bridge line has no docked case, and at a berth reads "Helm: nobody; the ship drifts"). When the autopilot is held because warp is held, the reason shows once, in the warp field, and this field reads "Autopilot held" | Neutral; advisory while the autopilot is held. A status, not an alarm: when nobody at the helm is a danger, P2 says so (NO HELM) |
 | Battle stations | 15 | "BATTLE STATIONS" while the crew are at them | Caution |
 | Caution and warning chip | 10 | In full-screen modes only: "◆ 1 · ▲ 2" (warnings, cautions). It is the master alert cue while a mode is open: a new warning lights it, with the sound, and Acknowledge (`\`) puts it out. A click on it closes the mode, back to P2's rows | Severity of the worst |
 | Clock | 16 | "Day 0 · 00:33" | Neutral |
@@ -492,7 +492,7 @@ a monospaced face (the worst case):
 | Paused | 6 | "PAUSED" | Advisory |
 
 **Data.** `TimeWarpController`, `Bridge.helmsman`, `HelmOrders.describe`, `Autopilot.describe`,
-`ShipTaskBoardComponent.battleStations`, `Spacewalks` (warp hold reason).
+`ShipTaskBoardComponent.battleStations`, `Spacewalks` (warp hold reason), `DockingSystem.dockedTo`.
 
 **Replaces.** Status column clock line, bridge line, navigation readout's helm and autopilot lines,
 "View EXTERIOR [V]".
@@ -701,8 +701,10 @@ and the hits the ship takes from guns, merged as the feed merges its own gunnery
 from Raider", opening to where each landed and what it did), so a fight's record says what caused
 its damage. A message that only restates a condition in P2 is not posted to the feed.
 
-**Examples.** "Station: clearance granted, port 2"; "Sponsor: payday, 2,000 cr"; "Crew: Ada is back
-in from EVA"; "Gunnery: Raider disabled"; "Log: autosaved".
+**Examples**, in the game's own words: "Station: Highport gives clearance: port 2 is armed for you";
+"Sponsor: Budget from the Terran Patrol Authority: +2,000 cr"; "Crew: Ada is back in from EVA";
+"Gunnery: Raider is disabled: reactor down". One is new: "Log: autosaved", which the game doesn't
+post today (an autosave speaks only when it fails), so the player knows that docking saved the game.
 
 **In combat** the feed would flood with hits and kills, so it summarises: gunnery events from the last
 5 s merge into one line ("Gunnery: 3 hits on Raider"), and routine messages from other sources wait in
@@ -738,6 +740,9 @@ line of the column at the minimum text size.
 In combat, P5 shows only when the tracked contract is a fight (a defence, a bounty, a convoy), compact,
 with its progress.
 
+With nothing to track, P5 is not drawn. A bounty is done, and paid, the moment its ship is beaten or
+gone (`ContractBoard`): there is no step to turn it in, so it leaves P5 then.
+
 **Data.** `ContractBoard.describe/progress`, `FirstPlay.objective`, `OpeningGuide.text`.
 
 **Replaces.** The gold contract lines, the First Play objective and the walkthrough text in the status
@@ -754,10 +759,13 @@ nothing on screen is the subject.
 **Content.**
 
 - **Prompts** (always on): the object's name and up to three verbs with keys: "Helm · [E] sit and
-  fly"; "Suit locker · [E] suit up"; "Reactor · [E] systems"; "Door (jammed) · [F] force".
+  fly"; "Suit locker · [E] suit up"; "Reactor · [E] systems"; "Door (jammed) · [F] force";
+  "Coilgun Mk1 (NOSE) · [E] take the gun".
   E is always the object's main action: at a seat it sits (as V does), at a system's console it opens
   Ship › Systems at that system (section 4.3), at a locker it suits up. Today E at the helm opens a
-  power panel, which D2 replaces.
+  power panel, which D2 replaces. At a point-defense gun the prompt says what taking it costs:
+  "Autocannon Mk1 (FWD PORT) · [E] take the gun (point defense pauses)". In hand it shoots where the
+  captain aims and leaves the missiles alone until it is let go (`PlayerGunnery.inHand`).
 - **Learning hints** (by setting): for each action in the context's hint list, the hint shows until
   the player has used that action 3 times, then retires; F1 always lists all. Settings: Learning
   (default), Always, Off.
@@ -1070,20 +1078,28 @@ LOCK  Raider
 
 **Row anatomy.** Mount · weapon · state (ready, reloading s, no power, damaged, stunned s, out of
 arc; for point defense, engaging) · hit chance on the lock · missiles left, for a launcher ·
-controller (you, crew, PD). The mounts "in hand" (all but point defense at the console, one at a gun)
-are marked. A point-defense mount picks its own targets, so it is never in hand and has no hit chance.
+controller (you, crew, PD). The mounts in hand (`PlayerGunnery.inHand`) are marked: at the weapons
+console every gun and launcher but point defense, which keeps shooting down missiles by itself; at a
+gun, that gun alone, point defense or not. A point-defense mount in hand shoots where the captain aims,
+with a hit chance like any gun's, and hunts no missile until it is let go; out of hand it picks its own
+targets, has no hit chance on the Lock, and reads PD.
 
 **Mount names** follow the game's rule by facing (`StationYard.hardpointName`): NOSE, PORT, STBD, AFT.
 Where two mounts share a facing, FWD or AFT goes before it by where they sit along the hull: the
 gunship's are NOSE, FWD PORT, FWD STBD (its point-defense autocannons), AFT PORT and AFT STBD (its
 harpoon launchers).
 
+**Weapon names** are the game's (`WeaponDef.name`: Heavy Cannon, Autocannon Mk1, Harpoon Launcher),
+mark and all, since some guns come in more than one mark (Railgun Mk1 and Mk2); 16 characters at most.
+Where a row doesn't already give the mount (M2's systems list and damage control board, D2, P6), a
+gun is its weapon and its mount: "Autocannon Mk1 (FWD STBD)", 27 characters at most.
+
 ```
-▶ NOSE      Heavy cannon  ready            62% fair  you
-  FWD PORT  Autocannon    engaging MSL               PD
-  FWD STBD  Autocannon    ready                      PD
-▶ AFT PORT  Harpoon       ready · 3 left             you
-▶ AFT STBD  Harpoon       ready · 4 left             you
+▶ NOSE      Heavy Cannon      ready            62% fair  you
+  FWD PORT  Autocannon Mk1    engaging MSL               PD
+  FWD STBD  Autocannon Mk1    ready                      PD
+▶ AFT PORT  Harpoon Launcher  ready · 3 left             you
+▶ AFT STBD  Harpoon Launcher  ready · 4 left             you
 ```
 
 The decoy is not in the rack: it is P3's. At a gun seat the rack shrinks to that gun's row and any
@@ -1177,7 +1193,7 @@ picks a console today), and a button cycles to the next.
 | Subject | Shows | Actions |
 |---|---|---|
 | Crew member | Name, role, condition, activity ("sealing a breach", "lounging on the couch"), suit, morale | Open in Ship › Crew; the EVA order that applies (send out, call in, let out) |
-| System | Type, health, powered, on or off, stunned (s), circuit | Switch on or off (today's console power switch) |
+| System | Type (a gun is its weapon and mount, F2's rule: "Autocannon Mk1 (FWD STBD)"), health, powered, on or off, stunned (s), circuit | Switch on or off (today's console power switch) |
 | Tile or room | Pressure, temperature, fire, smoke | – |
 | Door | Open, shut, jammed, held | Force (F), cut (B) as today |
 | Cargo bay | Contents, volume | Open Ship › Cargo |
@@ -1217,12 +1233,11 @@ become pointers. Hovering a P2 row highlights its markers.
 ```
 HIGHPORT · port 2
 Terran Patrol Authority
-standing: Trusted (+42)
+standing +0
 [T] Market
-[Y] Yard · 2 repairs · tanks 86%
+[Y] Yard · tanks 72%
 [J] Missions · 4 offers
 Hire: 3 looking for a berth
-Infirmary: 1 treated · 150 cr
 Credits 5,000 cr · hold 12/40 m³
 [U] Undock
 ```
@@ -1230,7 +1245,17 @@ Credits 5,000 cr · hold 12/40 m³
 Each line fits the column's 34 characters. Services the station doesn't offer are left out, and the
 counts tell the player whether a service is worth opening: Highport has no shipyard, so there is no
 Shipyard line, while a station that sells ships adds "Shipyard: 3 ships". Shipyard and Hire have no
-keys of their own: they are tabs in the terminal. The autosave on docking is a feed message, not a line here.
+keys of their own: they are tabs in the terminal. The sample is day 0:
+
+- **Standing** is the game's number with the station's faction, signed as the game signs it
+  (`FactionStanding`; the game names no levels), and +0 until the player has dealt with it.
+- **The Yard** counts repairs when there are any ("[Y] Yard · 2 repairs · tanks 86%"), so on day 0 it
+  gives only the tanks.
+- **The infirmary** has a line only while it has one of the crew to treat, or has billed for one
+  since docking: "Infirmary: treating Ada", then "Infirmary: 1 treated · 150 cr". On day 0 nobody is
+  hurt, so it has none.
+
+The autosave on docking is a feed message ("Log: autosaved"), not a line here.
 
 **Replaces.** The dock banner, "Docked at Highport strain 0%", the docked key hints, "You are docked at
 your home station. J opens its mission board".
@@ -1244,30 +1269,40 @@ your home station. J opens its mission board".
 **Content.** The other ship's name, latched or by EVA, and its state (disabled and why, surrendered,
 being boarded, taken); the boarding party (the ship's marines, or its crewmen if it has none, as
 `Boarding.party` picks them): how many, and crossing, fighting or coming home (once the craft is
-taken the party stands down and goes home), or why none can go; salvage: parts marked and how many are off; cargo coming across; prisoners to bring aboard.
-"[K] Boarding" opens M4, where the orders are; while latched, "[U] Cast off" undocks from it (at the
-helm, as undocking from a station is).
+taken the party stands down and goes home), or why none can go; salvage: parts marked and how many
+are off; cargo, when the craft has any aboard: how many lots and how many are coming across; and the
+prisoners held aboard it, with the berths free for them, since only as many come across as there are
+berths (`Prisoners.takeAboard`). "[K] Boarding" opens M4, where the orders are; while latched,
+"[U] Cast off" undocks from it (at the helm, as undocking from a station is).
 
 ```
-BOARD  Raider · latched
+BOARD  Pirate raider 3 · latched
        taken: crew surrendered
 PARTY  1 · coming home
 SALV   3 parts marked · 1 off
-CARGO  2 lots coming across
-       prisoners to bring aboard
+HELD   3 · 4 berths free
 [K] Boarding       [U] Cast off
 ```
 
 Seven rows at most, each in the 34-character budget: the name (cut to 16) and "latched" or "by EVA"
-share the first, so the state ("disabled: reactor out", "being boarded") has a row of its own.
+share the first, so the state ("disabled: reactor down", in the game's words, or "being boarded") has
+a row of its own. The sample is a Light Raider whose crew of three surrendered. It has no CARGO row,
+since a pirate's loot is never loaded into its hold; a craft with cargo aboard adds one ("CARGO  2 lots
+· 1 coming across").
+
+**A craft nobody defends.** First Play's Raider flies with nobody aboard, and a disabled craft with
+no one aboard to fight for it is taken as soon as the salvage begins (`Boarding.takeUndefended`): no
+party goes and nobody is held, so X2 is its name, its state (disabled, then "taken: undefended"), SALV
+and the keys.
 
 **When.** Boarding situation. Latched, the ship is docked to the other and can't fly, so the screen is
 the docked one with X2 in X1's place; then H6 gives way too if the latched ship is the Lock (X2 names
 it, and a range of 40 m tells nothing). Reaching a beaten ship on EVA, the ship still flies, and X2
 sits under the lock card.
 
-**Data.** `BoardingProvider` (state, refusals, by EVA, salvage), `CrewProvider` (prisoners alongside),
-and the party's size and activity (needs exposing).
+**Data.** `BoardingProvider` (state, refusals, by EVA, salvage, cargo), `CrewProvider` (prisoners
+alongside), the berths free (`CrewHiring.berths`, less everyone aboard), and the party's size and
+activity (needs exposing).
 
 **Replaces.** The latched key hints ("boarding", "cast off", "prisoners"), which teach the keys but
 not how the boarding stands.
@@ -1428,7 +1463,8 @@ on every tab: credits, standing with the station's faction, hold used of capacit
 | Missions | Offers (title, giver, terms, note, locked and why), each with Take; the faction tension line; the contracts already held, one line each with Give up, so the player can weigh a new job against them (their full detail is in M5) |
 | Hire | Who is looking for a berth (role, skills, terms), berths free and the week's wages |
 
-The station's infirmary is passive and shows in X1 and the rail.
+The station's infirmary is passive. It shows in X1 and the rail only while it has one of the crew to
+treat or has billed for one since docking (X1's rule).
 
 ### 10.4 M4 Boarding
 
@@ -1566,7 +1602,9 @@ stands alone at the bottom centre.
 ![Docked](wireframes/08-docked.png)
 
 X1 station panel on the right; P5 objective; H4 compact (or expanded if there is damage, which the yard
-can fix); P1. The flight instruments retire.
+can fix); P1, whose helm field is empty at a berth. The flight instruments retire. It is day 0: the
+standing with the Patrol is +0, nothing needs repair, so the Yard line gives only the tanks, and nobody
+needs the infirmary, so it has no line. The feed has the game's docking notice and the autosave.
 
 ### 11.9 Map
 
@@ -1584,7 +1622,9 @@ runs to the contract's deadline. The map has no tabs, so the number keys keep th
 
 M3 as a panel over the docked view, as tall as its tab. Highport's Market is three rows (water, food
 and machinery; each salvaged part aboard would add a sell-only row, but on day 0 nothing has been
-salvaged), with the delivery this market can supply under the table: 28 more Food fill the hold. The tabs carry their numbers, and T closes the panel from the Market.
+salvaged), with the delivery this market can supply under the table: 28 more Food fill the hold. The tabs carry their numbers, and T closes the panel from the Market. The rail has the Patrol's standing, +0,
+and no infirmary line, since nobody aboard is hurt; the foot's feed line is empty, as nothing has
+happened since docking.
 
 ### 11.11 Ship, systems
 
@@ -1616,11 +1656,17 @@ learns what exists.
 
 ![Boarding](wireframes/13-boarding.png)
 
-The fight is over and the ship has latched onto the beaten raider; the party has taken it. Latched,
-the ship can't fly, so the screen is the docked one: P1, P5 with the bounty's next step, H4's quiet
-lights, and X2 where the station panel would be. The raider is still the Lock, but H6 gives way: X2
-names it, and its range and closing speed say nothing at 40 m. K opens M4 to mark parts and take the
-cargo; U at the helm casts off.
+Day 6, and the fight is over: Pirate raider 3, a Light Raider the player held a bounty on, cut thrust
+and surrendered, and the ship latched onto it. Cole, the ship's marine and so its boarding party,
+stepped aboard, the crew of three yielded, and the raider is taken: its crew are held aboard it, and
+the corvette has four berths free for them (eight berths, four aboard). Latched, the ship can't fly,
+so the screen is the docked one: P1, with an empty helm field; H4's quiet lights; X2 where the station
+panel would be; and the feed's notice of the taking, in the game's words. P5 is not drawn: the bounty
+paid the moment the raider surrendered, as a bounty does when its ship is beaten, and nothing else is
+held. The raider is still the Lock, but H6 gives way: X2 names it, and its range and closing speed say
+nothing at 40 m. K opens M4 to mark parts and bring the prisoners aboard; U at the helm casts off.
+First Play's Raider, which flies with nobody aboard, would give X2 no party and no prisoners (section
+8).
 
 ---
 
@@ -1712,7 +1758,7 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 
 | Provider | New or changed | Data |
 |---|---|---|
-| `UiContextProvider` | New | Seat (helm, fire control, gun and which, deck); situation flags with their reasons; helm authority (who, order, autopilot, held reason); battle stations; warp hold reason |
+| `UiContextProvider` | New | Seat (helm, fire control, gun and its mount, deck); situation flags with their reasons; helm authority (who, order, autopilot, held reason; none while docked or latched); battle stations; warp hold reason |
 | `ConditionProvider` | New | The P2 catalogue as structured rows: code, severity, detail, location tiles, handling (assigned crew count, or held and why: under fire or outside), timer and its kind (harm or recovery) |
 | `MessageProvider` | Change `NoticeLog` | Each notice with a source (P4's list) and a kind split into event or condition; conditions stop posting as notices. The Log also takes P2's conditions from `ConditionProvider` and P3's missiles from `ThreatProvider` as they start and end, and keeps each merged gunnery line's events |
 | `HintRegistry` | Change | A gun context apart from the weapons console's, so M6 lists the gun seat's keys under the seat P1 names |
@@ -1728,7 +1774,7 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 | `FlightStatus` | Extend `ShipStatusProvider` or new | Thrust per axis, rotation assist, delta-v left, acceleration, mass, frame velocities |
 | `NavigationProvider` | New, over `Navigation` | Structured readout: nav target, distance, closing, closest approach, next events (burns, apsides with times, SOI changes, a leg's capture, impact, arrival), plan Δv. An accepted trip to another body keeps the leg still to come (the capture's estimated time and Δv, and the arrival) with its `TransferLegComponent`: today accepting drops the proposal and keeps only the burns, so after burn 1 the capture has no time and the plan's Δv is gone |
 | `DockingProvider` | New, over `PlayerDocking` | Ports, selected, armed, clearance state, the approach (distance, lateral, angle, closing, safe speed), capture state |
-| `StationProvider` | New, gathering existing | Station name, faction, standing, services available with counts, infirmary |
+| `StationProvider` | New, gathering existing | Station name, faction, standing, services available with counts, and the infirmary: who it is treating, and how many it has treated and for how much since docking, which `StationInfirmary` would need to keep (today it only posts notices) |
 | Contact state | Change `HudMarkerComponent` | Allegiance and state as a value (from `HostileLabel`), not only tint and label text |
 | Inspect | New | What is under the pointer on deck: crew, system, tile, door, bay, with their fields |
 | `BoardingProvider` | Change | The boarding party's size and what it is doing (crossing, fighting or coming home), for X2 |
@@ -1818,3 +1864,4 @@ largest scale, and the centre stays clear.
 | 16 | 4 (NASA-punk critique) | The Log keeps a fight's record: P2's conditions and P3's missiles go to it, Log-only, as they start and end, since the feed leaves them out; it keeps the feed's merged gunnery lines, each opening to its events. P4 says which source each notice takes. The Log's filters step with ← and → under `FocusNav` and the list scrolls as today's log does. M6 gives the gun seat its own section, which needs a gun hint context (section 14). P4's example crew line is the game's own ("Ada is back in from EVA") |
 | 17 | 4 (NASA-punk critique) | P2 shows a room's air as one row at a time, the first that holds of BREACH, VACUUM (sealed, still airless) and PRESS LOW (refilling), so one hole never takes three rows; wireframe 07 and the P2 sample show the open breach as BREACH, as wireframe 04 does. The Log writes conditions in the catalogue's long form, follows a room's air through those steps, and takes the hits the ship takes from guns as merged lines, which needs `HullHitEvent` to name the shooter. Conditions, missiles and hits taken take a source and a severity in the Log (a missile's lines are warnings). The Log's severity filter is a threshold, and a merged line takes its first event's time |
 | 18 | 4 (cassette critique) | Building the modes in game found data with no source: section 14 adds `CareerProvider` for M5's Career and Standing, `CargoProvider` for M2's Cargo in flight, and `DamageControlProvider` for the names and waits on M2's board, and `PowerStatusProvider` gives the cut conduits and the yard's price. A group's switch, when its members disagree, turns them all on, then all off |
+| 19 | 5 (NASA-punk critique) | Samples checked against the game again. X1's standing is the game's signed number, +0 on day 0 (the game names no levels); the Yard line counts repairs only when there are any; the infirmary has a line only while it is treating one of the crew or has billed for one since docking, so wireframes 08 and 10 have none on day 0. P1's helm field is empty while docked or latched, where today's bridge line says the ship drifts. At a gun seat that gun is in hand, point defense too, and then hunts no missile until it is let go (`PlayerGunnery.inHand`): F2 says so, and P6's prompt at a point-defense gun gives the cost. Weapons carry the game's names, mark and all, and a gun outside the rack is its weapon and mount ("Autocannon Mk1 (FWD STBD)"), as D2's type, P1's seat, M2's systems list (wireframe 11) and F2 (wireframe 05) now give it. Wireframe 13 latches onto a crewed pirate on day 6, since First Play's Raider flies with nobody aboard: X2 holds its three prisoners against four berths free and has no cargo row, P5 is not drawn because a bounty pays the moment its ship is beaten, and X2 says how an undefended craft is taken. P4's examples and the feed lines in wireframes 03, 08 and 13 are the game's own notices, but for "Log: autosaved", which is new |
