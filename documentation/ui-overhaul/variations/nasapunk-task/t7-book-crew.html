@@ -43,7 +43,7 @@ s += du(16, 118, 1248, 62, {
     let g = parts(gx + 12, gy + 21, [['SHIP\'S BOOK', C.white, S_TITLE], ['PATROL CORVETTE', C.white, 13], ['·', C.dim, 12], ['DOCKED AT HIGHPORT', C.dim, 12]], { gap: 10 }).svg;
     g += parts(gx + 12, gy + 39, [['BERTHS', C.dim, 12], ['7 OF 8', C.white, 13], ['·', C.dim, 12], ['WAGES', C.dim, 12], ['0 CR A WEEK, ALL IN THE SERVICE', C.white, 13], ['·', C.dim, 12], ['MEDICAL STORES', C.dim, 12], ['5', C.white, 13]], { gap: 8 }).svg;
     const ck = (x, k) => softKey(x, gy + 8, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 21.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
-    g += ck(gx + gw - 168, 'ESC') + text(gx + gw - 12, gy + 22, 'BACK TO THE DECK', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+    g += ck(gx + gw - 53 - tw('BACK TO THE DECK', S_LABEL, true, 0.6), 'ESC') + text(gx + gw - 12, gy + 22, 'BACK TO THE DECK', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
     return g;
   },
 }).svg;

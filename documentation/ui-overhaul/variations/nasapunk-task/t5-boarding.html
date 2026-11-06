@@ -58,7 +58,8 @@ s += workTag(RX(4.0), RY(1.5), 560, 192, '3 HELD', 'PRISONERS');
 // ---- the fixed zones ----
 s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
 s += annunciatorPanel({});
-s += objectives([{ t: 'BOUNTY: RAIDER \'VEX\'', left: 'TAKEN', sub: 'TURN IN AT HIGHPORT' }]).svg;
+// OBJ is hidden: the bounty was paid the moment Vex was beaten (ContractBoard), and nothing else
+// is held. TURN IN under PRIZE is the yard's (Shipyard), for the ship itself.
 
 // ---- BRD, down the right side ----
 s += du(896, 72, 376, 688, {

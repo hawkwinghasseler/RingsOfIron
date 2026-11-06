@@ -64,8 +64,10 @@ are lit.
 vents with nobody free to patch it; a short has cut power to the bridge and Ada resets it, the
 progress on its tag. No warning, three cautions in their short forms. On deck the deck is the
 schematic, so Z5 is empty and FLT, WPN and SNS are hidden; the console prompt names the weapons
-console once, then E OPEN and V SIT, so the hint line doesn't repeat them. The sponsor's payday
-is a news slip under the delivery.
+console once, then E OPEN and V SIT, so the hint line doesn't repeat them. The objective is spec
+round 10's, the food delivery to Shackleton Ice that the map plans, and the news slip under it is
+the game's own: the pirate that hit the ship is breaking off, so the band holds no hostile. Both
+are too long for Z3's one line, so each takes a second (a deviation, below).
 
 ### The windows the overhaul skipped
 
@@ -96,7 +98,8 @@ that can be marked, filled cyan once it is; the engines hang outside the hull an
 EVA, so they have none and say so. Enter marks the cursor's row, and the scratchpad says what that
 will do. The prize sells for 21 000 CR whole and 8 400 once a part is off, the second line in
 amber, since Ada's laser is the first part. Prisoners are shown against the free berths, and the
-cargo with the hold after all of it.
+cargo with the hold after all of it. OBJ is hidden: a bounty is paid the moment its ship is
+beaten, so nothing is held, and TURN IN under PRIZE is the yard's, for the ship itself.
 
 ![Station terminal, contracts](t6-terminal.png)
 
@@ -112,7 +115,10 @@ price for the cargo. Clear the Lanes waits for the rank of lieutenant. REACH, th
 is the travel time and delta-v from here. The delivery to Shackleton Ice is at the Moon, so it is
 due in 8 days, and its 3.8-day transfer leaves 4 days spare. Its terms show the food bought here,
 the fee and the price paid there, what that clears, half the standing lost on failure, and the
-route and the hold after it. TAKE (Enter) and SHOW ROUTE (M) are keys under the glass.
+route and the hold after it. TAKE (Enter) and SHOW ROUTE (M) are keys under the glass. Spec round
+10 makes this the late delivery the map plans, which a delivery to another body can't be on day 3,
+so T6 keeps the game's numbers until the spec settles which delivery it is (the round log has the
+note).
 
 ![The ship's book, crew](t7-book-crew.png)
 
@@ -129,6 +135,37 @@ the marine skill grown from 50 by the boarding; the light wound, which slows the
 itself; the job, and the suit in its locker with its 10:00 of air; the history as the game counts
 it; and what a marine takes on. LET GO and SEND OUT are its keys. SEND OUT is dark, since the only
 work outside in a marine's trade is fetching someone adrift, and there is none.
+
+![The ship's book, log](t8-book-log.png)
+
+**T8, BOOK on its LOG tab (L), docked at Highport after T5.** T7's frame, with the list the whole
+width, since a notice needs no page of its own. It is the game's notice log, newest first under a
+divider for each day, each notice stamped with its game time and filtered by kind on the soft keys
+under the glass: WARNINGS, IMPORTANT and INFO, each lit while it shows. The game keeps the last 50,
+and the header counts them by kind. The notices are the game's own words, with ships named in
+full: the bounty taken at 09:12 and done the moment Vex was beaten, which pays at once (7 500 CR and
++6 with the Patrol), the intercept, the light wound, the disablement, the collar, the forced
+airlock, the taking, the prisoners brought aboard, the laser stripped and stowed, and Highport's
+clearance. The band's alerts are logged too, since section 9 keeps their full text "in the book
+and in the log": each as it was raised, its code, where and who, then the action it named, dim,
+since that was the advice of the moment. They file under WARNINGS, the kind the game gives them,
+and keep the band's level as their mark, ◆ a warning and ▲ a caution; an important notice has a
+white dot, and news has no mark. The intercept, which the spec leaves to be a caution or news, is
+drawn as a caution.
+
+![Controls](t9-controls.png)
+
+**T9, the controls reference (F1), at the helm.** The book's frame again, with every action on one
+page in three columns of action, key and pad button: the posts first (deck, helm, gunnery), then
+the screens and panels (map, terminal, book, boarding, console), then what works at any post, where
+zoom and the lights sit, since the wheel and O work everywhere. Every key is the game's default
+with the spec's destinations: I opens the book on Crew, L on Log, J the terminal's Contracts docked
+and the book's undocked, K the boarding panel, and Esc the top layer and then the pause menu. Every
+pad button is the game's: the flying layer; Back held, for the boards, the burn's steering, a quick
+save and abandon ship; and the spec's HUD focus on L3, where the d-pad moves through ALR, ANN, HLM
+and OBJ and A does what a click would. In a screen or panel the pad moves the focus, as the foot
+says. An action with no pad button has a dash, so the gaps show: eleven rows, aiming the guns among
+them, since at the weapons console the guns follow the pointer.
 
 ## Round 6 critique
 
@@ -173,6 +210,9 @@ Resolved without a change:
 - **Warp reads `1×`** with the multiplication sign, where the spec writes `1x`.
 - **Countdowns are M:SS** (`IMPACT 0:03`, `CPA 0.6 KM  T−1:15`), where the spec writes seconds.
 - **Thousands take a thin space**, the style guide's rule, where the spec writes a comma.
+- **A news slip or an objective too long for Z3 takes a second line**, broken where the two lines
+  are most even, where the spec gives each one line. Z3 is 240 wide, and few of the game's notices
+  fit one line beside their tag (a payday's is 384), nor does a delivery's title beside its time.
 - **The scope's range has no AUTO word** (`5 KM`, where the spec writes `5 km (auto)`). Automatic
   is the normal state, and a dark cockpit names only what isn't normal. A range the captain has set
   with − or + reads in cyan, the style's colour for a commanded value, until the post changes.

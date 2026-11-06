@@ -96,19 +96,49 @@ function objectives(rows) {
   const { x, y, w } = ZT.inc;
   let s = '', yy = y;
   rows.forEach(r => {
-    const h = r.sub ? 42 : 26;
+    // a title too long to sit beside its time left (a delivery's, in Z3's 240) takes a second
+    // line, broken where the two are most even; the time stays on the first
+    let lines = [r.t];
+    if (tw(r.t, TB, true) > w - 34 - tw(r.left, TB, true)) {
+      const words = r.t.split(' ');
+      let best = 1, bw = Infinity;
+      for (let i = 1; i < words.length; i++) {
+        const m = Math.max(tw(words.slice(0, i).join(' '), TB, true), tw(words.slice(i).join(' '), TB, true));
+        if (m < bw) { bw = m; best = i; }
+      }
+      lines = [words.slice(0, best).join(' '), words.slice(best).join(' ')];
+    }
+    const h = 26 + (lines.length - 1) * 16 + (r.sub ? 16 : 0);
     s += rect(x, yy, w, h, { fill: 'rgba(5,7,10,0.92)', stroke: '#2A333D', sw: 1 }) + rect(x, yy, 4, h, { fill: r.nav ? C.magenta : C.kapton });
-    s += text(x + 12, yy + 17.5, r.t, { size: TB, bold: true, fill: C.white }) + text(x + w - 8, yy + 17.5, r.left, { size: TB, bold: true, fill: r.late ? C.amber : C.white, anchor: 'end' });
-    if (r.sub) s += text(x + 24, yy + 35, r.sub, { size: 12, bold: true, fill: r.nav ? C.magenta : C.dim, track: 0.4 });
+    lines.forEach((t, i) => { s += text(x + 12, yy + 17.5 + i * 16, t, { size: TB, bold: true, fill: C.white }); });
+    s += text(x + w - 8, yy + 17.5, r.left, { size: TB, bold: true, fill: r.late ? C.amber : C.white, anchor: 'end' });
+    if (r.sub) s += text(x + 24, yy + h - 7, r.sub, { size: 12, bold: true, fill: r.nav ? C.magenta : C.dim, track: 0.4 });
     yy += h + 6;
   });
   return { svg: s, y: yy };
 }
 
-// NTF: news on comm-loop slips under the objectives.
+// NTF: news on comm-loop slips under the objectives. The game's notices run long for Z3's 240
+// (a payday is 384 on one line), so a notice that doesn't fit takes a second line under its text
+// rather than losing its end.
 function news(y, items) {
   const { x, w } = ZT.inc;
-  return items.map(([tag, msg], i) => O.callout(x, y + i * 24, tag, '', msg, 'advisory', { w })).join('');
+  let s = '', yy = y;
+  items.forEach(([tag, msg]) => {
+    const tx = tw(tag, fs(10), true, 0.6) + 22, room = w - tx - 8;
+    if (tw(msg, 12) <= room) { s += O.callout(x, yy, tag, '', msg, 'advisory', { w }); yy += 24; return; }
+    // the break that makes the two lines most even, so no word is left alone on the second
+    const words = msg.split(' ');
+    let best = 1, bw = Infinity;
+    for (let i = 1; i < words.length; i++) {
+      const m = Math.max(tw(words.slice(0, i).join(' '), 12), tw(words.slice(i).join(' '), 12));
+      if (m < bw) { bw = m; best = i; }
+    }
+    s += O.callout(x, yy, tag, '', words.slice(0, best).join(' '), 'advisory', { w }) + rect(x, yy + 20, w, 15, { fill: 'rgba(5,7,10,0.92)' });
+    s += text(x + tx, yy + 29.5, words.slice(best).join(' '), { size: 12, fill: C.white });
+    yy += 39;
+  });
+  return s;
 }
 
 // HNT: the full-width key strip (Z9): caps with their verbs, centred; dimmed once learned.

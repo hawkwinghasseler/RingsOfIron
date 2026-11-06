@@ -42,11 +42,13 @@ s += alertBand({
   cautions: [['FIRE', 'HOLD', 'COLE'], ['VENTING', 'BRIDGE', 'NOBODY'], ['POWER', 'BRIDGE', 'ADA']],
 });
 
-// OBJ and NTF: the slow loop, top right
-const ob = objectives([{ t: 'DELIVERY: ICE TO FREEHOLD', left: '1D 4H' }]);
+// OBJ and NTF: the slow loop, top right. The objective is round 10's: the food delivery to
+// Shackleton Ice that the map plans (T4), with its 2D 20H left
+const ob = objectives([{ t: 'DELIVERY: FOOD TO SHACKLETON ICE', left: '2D 20H' }]);
 // NTF: a notice is prose in sentence case under its source's tag, as P4 and the ticker are (the
-// word list's feed tags: the sponsor pays)
-s += ob.svg + news(ob.y, [['SPONSOR', 'Payday: 2\u2009000 CR paid']]);
+// word list's feed tags). The pirate that hit the ship is breaking off, the game's own news
+// (HostileTraffic, INFO), so the band holds no hostile; a spawned pirate's name is its full name
+s += ob.svg + news(ob.y, [['GUNNERY', 'Pirate raider 3 is breaking off']]);
 
 // HLM: who holds the ship while the captain is on foot
 s += helmStatus(420, 736, 440, 'BEA', 'HOLDING HEADING', 'normal', 'NO ORDER');

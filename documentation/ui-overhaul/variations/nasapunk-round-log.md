@@ -285,6 +285,7 @@ and the game's numbers.
 | Boarding | T5, BRD once the ship is taken, with the salvage marked | C6, M4 with the party fighting aboard | S5, the slate's Boarding tab before the party goes |
 | The station's services | T6, the station terminal on Contracts | C7, M3 on its Market tab, a panel over the docked view | S6, the station link's Yard tab |
 | Ship and crew | T7, the ship's book on Crew | C8, M2 on Systems in the corvette's fight | S7, the slate's Crew tab, with the new station order |
+| The log and the controls | T8, the book's Log tab; T9, the controls reference | C9, M5 on its Log tab; C10, M6 on its Keyboard tab | |
 
 **New pieces in the kit.** A mark box for lists where Enter marks or leaves a row: filled cyan when
 marked (a command, so cyan), hollow and dim when not, and absent where the row can't be marked,
@@ -411,6 +412,28 @@ Version 17 took all four, with my two choices (severity as a threshold, a merged
 event's time). C9 is redrawn to it, with the raider's two gun hits on the corvette as a line of their
 own, opened, and the hold's air as one course from breach to refilled; C3's P2 row and master cue
 read BREACH. The context screens are converged at version 17.
+
+**The book's Log and the controls reference.** T8 draws the book on its Log tab after the taking
+of Vex, from the game's notices on day 3, with the band's alerts logged in their full text, as
+section 9 says, under WARNINGS with the band's level as the mark. T9 draws the controls reference
+F1 opens, every action by post and then by screen, with the game's default key and the pad's
+button, and a dash where the pad has none. Checking my own task screens against the code found four
+errors, all fixed: T5's objective kept the bounty as taken, to be turned in at Highport, but a
+bounty is paid the moment its ship is beaten (`ContractBoard`), so OBJ is hidden there; T3's news
+was a payday on day 3, but the budget is paid weekly from the start (`ServiceBudget`), so the slip
+carries the game's own news that the pirate is breaking off (`HostileTraffic`); T3's objective was
+still the ice to Freehold, which round 10 made the food delivery to Shackleton Ice; and T9 first
+put zoom and the lights under the deck and the helm, though they work at every post. Z3 is 240
+wide and holds few of the game's notices on one line, so a news slip or an objective that doesn't
+fit takes a second line, broken where the two are most even (a deviation).
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Task (round 10, TRM, MAP.2) | The late delivery can't happen on day 3: a delivery to another body is due 8 days after the day's board posts it (`ContractPostings`, `FAR_DAYS`), so the 3.8-day transfer has about 4 days spare. An urgent delivery for a shortage (`WorldEvents`) is due 3 days after the day's roll whatever the distance: rolled on day 3, it is due on day 6 at 00:00, 2d 9h away at 14:22, and the transfer arrives 1d 9h 40m late. The samples could take that one with those numbers (its giver is Shackleton Ice's owner, its standing +5). T6 keeps the ordinary delivery, and T3 and T4 round 10's numbers, until then | |
+| Task (OBJ) | OBJ's done state ("collect at the giver") has nothing to show: the game pays every contract as it ends, a bounty the moment its ship is beaten | |
+| Task (7, LOG) | T8 logs each alert as it is raised, under WARNINGS with the band's level as its mark. Is its clearing logged? The intercept is a WARNING notice with no alert of its own: as a caution, what are its code and action? The game keeps 50 notices, and a day like T8's fills 19 of them | |
+| Task (10, pad) | The pad can't aim at the weapons console: the guns follow the pointer (`PlayerGunnery`), and there only the weapons answer, so both sticks are free and the right one could aim. Nor does the pad reach the shields (9, 8), zoom, the lights, the next port (H), the map's Q, ; and /, the book's I and L, F1 or a quick load | |
+| Task (10) | Esc closes "the top layer", but the closing order puts the controls reference after screens and panels, so with F1 open over the map, Esc closes the map under it first | |
 
 ## Next
 

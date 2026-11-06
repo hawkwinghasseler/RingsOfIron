@@ -1,0 +1,152 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Task: ship's book, log</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="task.js"></script>
+<script>
+// BOOK, the ship's book (task spec, section 7), on its LOG tab: docked at Highport on day 3 after the
+// raider Vex was beaten and taken (T2, T5), as in T7, with L pressed, which opens the book on this
+// tab. The frame is T7's: CHR and ALR above, the header row, the tabs on their keys, and the list,
+// here the whole width, since a notice needs no page of its own.
+//
+// The log is the notice log (NoticeLog), newest first under a divider for each day, each notice
+// stamped with its game time, and filtered by kind on the soft keys under the glass: WARNINGS,
+// IMPORTANT and INFO, each lit green while it shows. The game keeps the last 50 notices; the header
+// counts them by kind. The texts are the game's own notices, with ships named in full (round 9:
+// Raider 'Vex', never Raider): the bounty taken and done (ContractBoard: a bounty is done the
+// moment its ship is beaten, 7 500 cr and 6 standing with the Patrol), the intercept warning
+// (HostileTraffic), the light wound (CrewMedical), the disablement (GameBootstrap), the collar
+// (PlayerDocking), the forced airlock and the taking (Boarding: Vex's four less Crew 2, who died of
+// the wound, are held), the prisoners brought aboard (Prisoners), the laser stripped and stowed
+// (Salvage, at a twentieth of its price) and Highport's clearance for the corvette's one port.
+// Thousands take the style's thin space, and a unit after a number is the word list's (CR).
+//
+// The band's alerts are logged too, as section 9 says ("the full text is always ... in the book and
+// in the log"): the WARNING notices move to the band and are only logged. Each is logged as it is
+// raised, in its full text: its code in capitals, then where and who, and the action it named,
+// dim, since it was the advice of that moment. They file under WARNINGS, the kind the game gives
+// them, and keep the band's level as their mark: ◆ a warning, ▲ a caution. The intercept warning,
+// which the spec leaves for implementation to make a caution or news, is drawn as a caution. An
+// IMPORTANT notice has a white dot; INFO has no mark. The rooms take the spec's rule (Hold).
+//
+// The screens share the wireframes' clock (DAY 3 · 14:22:05); the log gives the story's own times
+// before it: the bounty taken at Highport at 09:12, so that at T2's fight, at 12:12, 2D 21H were
+// left of its 3 days.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 6 });
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
+s += alertBand({});
+
+s += consoleBody(8, 96, 1264, 698, { plate: 'SHIP\'S BOOK', sub: 'PATROL CORVETTE' });
+
+// the log: [time, mark ('w' warning, 'c' caution, 'i' important, '' info), text or the alert's
+// [code, where and who, action]]
+const DAY3 = [
+  ['14:20:31', '', 'Docked at Highport'],
+  ['14:16:50', '', 'Highport gives clearance: port 1 is armed for you'],
+  ['13:02:15', '', 'Undocked from Raider \'Vex\''],
+  ['12:58:40', '', 'The Laser Mk1 is in the hold (sells for 2 250 CR)'],
+  ['12:58:22', '', 'The Laser Mk1 is off Raider \'Vex\'; it\'s being carried home'],
+  ['12:44:10', '', '3 prisoners brought aboard'],
+  ['12:40:05', '', 'Raider \'Vex\' is taken: 3 held'],
+  ['12:31:50', '', 'The airlock door of Raider \'Vex\' is forced open'],
+  ['12:30:12', '', 'Docked at Raider \'Vex\''],
+  ['12:29:40', '', 'Your collar has hold of Raider \'Vex\'; drawing in'],
+  ['12:16:02', 'i', 'Contract done: Raider \'Vex\' is beaten. Paid 7 500 CR, standing +6 with Terran Patrol Authority'],
+  ['12:16:02', '', 'Raider \'Vex\' is disabled: reactor down'],
+  ['12:12:02', 'w', ['MISSILE', '2 inbound, impact 14 s', 'F decoy']],
+  ['12:11:21', 'c', ['WOUNDED', 'Cole, no medic free']],
+  ['12:11:20', '', 'Cole is lightly wounded and working slower'],
+  ['12:11:20', 'c', ['FIRE', 'Hold', 'Ada on it']],
+  ['11:58:30', 'c', 'Raider \'Vex\' is moving to intercept you'],
+  ['09:20:05', '', 'Undocked from Highport'],
+  ['09:12:20', '', 'Contract taken: Bounty: Raider \'Vex\''],
+];
+// what the game keeps: the last 50, by kind (day 3's above, and days 1 and 2 below them)
+const KEPT = 50, BY = { WARNINGS: 7, IMPORTANT: 3, INFO: 40 };
+
+// ---- BOOK.H, where you are, and what the log holds ----
+s += du(16, 118, 1248, 62, {
+  id: 'hdr', b: 8,
+  content: (gx, gy, gw) => {
+    let g = parts(gx + 12, gy + 21, [['SHIP\'S BOOK', C.white, S_TITLE], ['PATROL CORVETTE', C.white, 13], ['·', C.dim, 12], ['DOCKED AT HIGHPORT', C.dim, 12]], { gap: 10 }).svg;
+    g += parts(gx + 12, gy + 39, [['KEPT', C.dim, 12], ['THE LAST ' + KEPT + ' NOTICES', C.white, 13], ['·', C.dim, 12], ['WARNINGS', C.dim, 12], [String(BY.WARNINGS), C.white, 13], ['·', C.dim, 12], ['IMPORTANT', C.dim, 12], [String(BY.IMPORTANT), C.white, 13], ['·', C.dim, 12], ['INFO', C.dim, 12], [String(BY.INFO), C.white, 13]], { gap: 8 }).svg;
+    const ck = (x, k) => softKey(x, gy + 8, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 21.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+    g += ck(gx + gw - 53 - tw('BACK TO THE DECK', S_LABEL, true, 0.6), 'ESC') + text(gx + gw - 12, gy + 22, 'BACK TO THE DECK', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+    return g;
+  },
+}).svg;
+
+// ---- the tabs, each on its key where it has one; the shown one in white ----
+s += du(16, 186, 1248, 34, {
+  id: 'tabs', b: 5,
+  content: (gx, gy, gw) => {
+    let g = '', x = gx + 10;
+    const cap = (x, k) => softKey(x, gy + 5, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 18.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+    [['', 'SHIP'], ['I', 'CREW'], ['J', 'CONTRACTS'], ['', 'CAREER'], ['L', 'LOG', true]].forEach(([k, t, on]) => {
+      if (k) { g += cap(x, k); x += tw(k, 12, true) + 20; }
+      g += text(x, gy + 19, t, { size: S_LABEL, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+      if (on) g += line(x, gy + 23, x + tw(t, 12, true, 0.8), gy + 23, C.white, 1.5);
+      x += tw(t, 12, true, 0.8) + 30;
+    });
+    g += text(gx + gw - 10, gy + 19, 'J OPENS CONTRACTS HERE ONLY UNDOCKED: DOCKED, IT OPENS THE TERMINAL', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    return g;
+  },
+}).svg;
+
+// the kind's mark: the band's level for an alert, a white dot for an important notice
+function mark(x, y, k) {
+  const cy = y - 4.6;
+  if (k === 'w') return sym.diamond(x, cy, 4.6, C.red, 1.2, C.red);
+  if (k === 'c') return path(`M${x} ${cy - 5.4} L${x + 5.8} ${cy + 4.6} L${x - 5.8} ${cy + 4.6} Z`, C.amber, 1.2, { fill: C.amber });
+  if (k === 'i') return `<circle cx="${x}" cy="${cy}" r="3.4" fill="${C.white}"/>`;
+  return '';
+}
+
+// ---- BOOK.1, the log: newest first, under its day, filtered by kind on the keys below ----
+s += du(16, 228, 1248, 558, {
+  id: 'log', b: 8, plate: 'BOOK-1  LOG  P/N 7130-15',
+  keys: { bottom: [{ t: 'WARNINGS', state: 'on' }, { t: 'IMPORTANT', state: 'on' }, { t: 'INFO', state: 'on' }] },
+  content: (gx, gy, gw, gh) => {
+    const pages = Math.ceil(KEPT / DAY3.length);
+    let g = cduHead(gx, gy, gw, 'LOG', { left: 'NEWEST FIRST · ↑ ↓ OR THE WHEEL SCROLL', page: '1/' + pages });
+    const L = gx + 14, MK = L + 6, T = L + 22, N = L + 116, R = gx + gw - 12;
+    g += text(T, gy + 48, 'TIME', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + text(N, gy + 48, 'NOTICE', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 });
+    // the key to the marks, once, at the head of the column
+    {
+      let x = R;
+      [['i', 'IMPORTANT'], ['c', 'CAUTION'], ['w', 'WARNING']].forEach(([k, t]) => {
+        g += text(x, gy + 48, t, { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+        x -= tw(t, S_LABEL, true, 0.6) + 12;
+        g += mark(x, gy + 48, k);
+        x -= 22;
+      });
+    }
+    g += line(L - 2, gy + 54, R, gy + 54, C.graticule, 1);
+    let y = gy + 74;
+    g += divider(gx, y, gw, 'DAY 3');
+    y += 22;
+    DAY3.forEach(([t, k, n]) => {
+      g += mark(MK, y, k);
+      g += text(T, y, t, { size: S_CELL, bold: true, fill: C.white });
+      if (Array.isArray(n)) {
+        // an alert in its full text: the code, where and who, and the action it named, dim
+        const [code, what, act] = n;
+        let x = N;
+        g += text(x, y, code, { size: S_CELL, bold: true, fill: C.white, track: 0.5 }); x += tw(code, S_CELL, true, 0.5) + 12;
+        g += text(x, y, what, { size: S_CELL, fill: C.white, track: 0.1 }); x += tw(what, S_CELL, false, 0.1) + 14;
+        if (act) g += text(x, y, act, { size: S_CELL, fill: C.dim, track: 0.1 });
+      } else g += text(N, y, n, { size: S_CELL, bold: k === 'i', fill: C.white, track: 0.1 });
+      y += 22;
+    });
+    return g;
+  },
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>
