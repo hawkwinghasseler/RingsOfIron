@@ -303,7 +303,11 @@ public final class CrewTasks {
         return best;
     }
 
-    static String describe(CrewTask t) {
+    /**
+     * What a crew member at {@code t} is doing, as their activity reads while they work it
+     * ("resetting a short in the reactor"); on the way there it reads "going to " and this.
+     */
+    public static String describe(CrewTask t) {
         switch (t.kind) {
             case EXTINGUISH: return "fighting fire at " + t.x + "," + t.y;
             case SEAL_BREACH: return "sealing breach at " + t.x + "," + t.y;

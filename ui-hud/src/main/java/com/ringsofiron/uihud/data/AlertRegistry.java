@@ -75,6 +75,18 @@ public final class AlertRegistry {
         public int count = 1;
         /** Crew working on it, -1 when the game cannot say. */
         public int handling = -1;
+        /**
+         * The one of them to name ("Ada"): one at the work before one on the way to it, then the
+         * soonest done; "" while nobody is on it, or when the game cannot say who.
+         */
+        public String who = "";
+        /** {@link #who} is at the work now, rather than on the way to it. */
+        public boolean atWork;
+        /**
+         * Seconds of work {@link #who} has left at their pace: what is left once at it, the whole
+         * job while on the way (the walk there is not known); NaN when the game cannot say.
+         */
+        public float workLeft = Float.NaN;
         /** Sim seconds when it was first raised in this run of it. */
         public double since;
         /** The player has acknowledged it (the master caution's key). A worse level clears this. */
@@ -116,8 +128,20 @@ public final class AlertRegistry {
             return this;
         }
 
+        /** How many crew are on it; who they are is cleared until {@link #crew} names one. */
         public Alert handling(int crew) {
             handling = crew;
+            who = "";
+            atWork = false;
+            workLeft = Float.NaN;
+            return this;
+        }
+
+        /** Names the one of the crew on it to show, whether they are at the work, and its seconds left (NaN: unknown). */
+        public Alert crew(String name, boolean atIt, float secondsLeft) {
+            who = name == null ? "" : name;
+            atWork = atIt;
+            workLeft = secondsLeft;
             return this;
         }
     }
