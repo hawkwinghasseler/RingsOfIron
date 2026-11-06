@@ -27,6 +27,15 @@ public final class YardScreens {
         return new YardShellLook();
     }
 
+    /**
+     * Has the controls card rise over the screen under it, the map or a console on its tab, with Esc
+     * or F1 closing it first (the Task spec); else it replaces the screen, one mode at a time.
+     */
+    public YardScreens controlsOver(boolean over) {
+        windows.controlsOver(over);
+        return this;
+    }
+
     /** The paint the map and the windows share, made the first time; needs GL. */
     private YardPaint paint() {
         if (paint == null) {
