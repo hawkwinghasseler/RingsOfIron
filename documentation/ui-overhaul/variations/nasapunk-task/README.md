@@ -61,7 +61,7 @@ are lit.
 ![Deck, damage control](t3-deck-damage.png)
 
 **T3, on foot in the bridge after a hit.** The fire is in the hold with Cole on it; the bridge
-vents with nobody free to patch it; a short has cut power to the bridge and Ada resets it, her
+vents with nobody free to patch it; a short has cut power to the bridge and Ada resets it, the
 progress on its tag. No warning, three cautions in their short forms. On deck the deck is the
 schematic, so Z5 is empty and FLT, WPN and SNS are hidden; the console prompt names the weapons
 console once, then E OPEN and V SIT, so the hint line doesn't repeat them. The sponsor's payday
@@ -102,8 +102,9 @@ cargo with the hold after all of it.
 
 **T6, TRM on its CONTRACTS tab, docked at Highport.** The task spec's frame: CHR and ALR stay
 above, the header row says where you are (the station, its owner, your standing, credits, the
-hold and contracts held), the tabs run under it on their keys (J, T, Y and I, the game's), and the
-body is the list on the left with the selected offer's terms on the right. Highport sells no ships,
+hold and contracts held), the tabs run under it on their keys (J, T and Y, the game's), and the
+body is the list on the left with the selected offer's terms on the right. CREW has no key: I opens
+the ship's book, whose Crew tab links here while docked. Highport sells no ships,
 so there is no SHIPYARD tab, and the row says why. The offers are the game's, sorted by pay with
 operations first: a bounty pays 7 500 and +6 over 3 days, an escort 1 500 and +4, a patrol 1 000
 and +3, and a delivery its fee, 15% of the cargo's value and at least 500, on top of the agreed
@@ -112,6 +113,22 @@ is the travel time and delta-v from here. The delivery to Shackleton Ice is at t
 due in 8 days, and its 3.8-day transfer leaves 4 days spare. Its terms show the food bought here,
 the fee and the price paid there, what that clears, half the standing lost on failure, and the
 route and the hold after it. TAKE (Enter) and SHOW ROUTE (M) are keys under the glass.
+
+![The ship's book, crew](t7-book-crew.png)
+
+**T7, BOOK on its CREW tab, docked at Highport after T5.** The terminal's frame again, with the
+ship, its berths, the week's wages and the medical stores in the header. The crew are the
+service's, so they draw no wage. Each row has the role, the condition as the game words it, the
+job now and where, and morale; with nothing else to do an engineer repairs and the rest man the
+consoles, a crewman the helm and a marine the weapons. Vex's three surviving crew are aboard as
+prisoners under the names the game gives a raider's crew, taking berths (7 of the corvette's 8,
+the captain's among them). Highport is the sponsor's, so each can be handed over for 400 CR and +1
+standing, and Crew 4, the one outlaw in three, offers to join. The orders for everyone sit under
+them: EVA, suits at battle stations, and where to hire. Cole's page has the four skills as bars,
+the marine skill grown from 50 by the boarding; the light wound, which slows the work and heals by
+itself; the job, and the suit in its locker with its 10:00 of air; the history as the game counts
+it; and what a marine takes on. LET GO and SEND OUT are its keys. SEND OUT is dark, since the only
+work outside in a marine's trade is fetching someone adrift, and there is none.
 
 ## Round 6 critique
 

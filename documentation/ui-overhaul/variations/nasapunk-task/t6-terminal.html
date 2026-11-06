@@ -13,8 +13,8 @@
 // 3, J opened it here. The screen's frame is the task spec's: CHR and ALR stay above, a header row
 // says where you are (TRM.H), the tabs run under it, and the body is the list on the left with the
 // selected item's detail on the right. Highport repairs and refits but sells no ships (the Patrol's
-// shipyard is Anvil Yards), so the terminal has four tabs, each on its key (J, T, Y and I, the
-// game's keys for them), the shown one in white. The offers are sorted by pay, operations first.
+// shipyard is Anvil Yards), so the terminal has four tabs, each on its key where it has one (J, T and
+// Y, the game's), the shown one in white. The offers are sorted by pay, operations first.
 //
 // The offers are the game's (ContractBoard, ContractPostings): a bounty pays 7 500 and +6 over 3
 // days; an escort 1 500 and +4, a patrol 1 000 and +3, each due in 2 days near Earth; a delivery
@@ -51,9 +51,9 @@ s += du(16, 186, 1248, 34, {
   content: (gx, gy, gw) => {
     let g = '', x = gx + 10;
     const cap = (x, k) => softKey(x, gy + 5, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 18.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
-    [['J', 'CONTRACTS', true], ['T', 'MARKET'], ['Y', 'YARD'], ['I', 'CREW']].forEach(([k, t, on]) => {
-      g += cap(x, k);
-      x += tw(k, 12, true) + 20;
+    // CREW has no key of its own: I opens the ship's book, whose Crew tab links here while docked
+    [['J', 'CONTRACTS', true], ['T', 'MARKET'], ['Y', 'YARD'], ['', 'CREW']].forEach(([k, t, on]) => {
+      if (k) { g += cap(x, k); x += tw(k, 12, true) + 20; }
       g += text(x, gy + 19, t, { size: S_LABEL, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
       if (on) g += line(x, gy + 23, x + tw(t, 12, true, 0.8), gy + 23, C.white, 1.5);
       x += tw(t, 12, true, 0.8) + 30;

@@ -56,7 +56,7 @@ DAMAGE is on the right. The coilgun's lead reticle rings the Raider: at 2.8 km i
 
 **S3, walkthrough F: on deck at the reactor console, condition Yellow.** A short has cut off the
 aft starboard gun, and its sparks lit a fire in the bridge, which Ada has called and is fighting;
-her speaking mark is over her, and her call, the newer, is at the ticker's foot. The SHIP line
+Ada's speaking mark is overhead, and the call, the newer, is at the ticker's foot. The SHIP line
 carries no countdown, since a spoken number goes stale while it holds. Only cautions are live, so
 MASTER CAUT is lit and MASTER WARN sits dark in its place. The Engineering face stands beside the
 live deck (the world shifted 240 left): the reactor at 2.6 of 3.0 MW and damaged, the store full,
@@ -79,7 +79,7 @@ station and console, tabs (MAP with traffic, PLAN, TARGETS), the body, and a foo
 with their key caps that shows the last key's response. The transfer is the other two variations',
 accepted: the path solid magenta with the burns on it. The cursor is on the path two days out
 and reads what is there. Nothing is wrong aboard, so the annunciator is dark and the ticker
-carries the helmsman's word on the burn she will fly. The MAP tab carries no plan numbers: their
+carries the helmsman's word on the burn to be flown. The MAP tab carries no plan numbers: their
 home is the PLAN tab.
 
 ![The slate, boarding](s5-slate-boarding.png)
@@ -92,7 +92,7 @@ corvette's hull in its own colours, half a turn round along the port side with t
 Latched, the strip and the CMD tile read LATCHED, the cluster's Velocity slot reads DOCKED with
 the Reference and Next event slots dark, and the rails offer DOCK and CARGO. The tab is the
 decision to board: the raider's state and what boarding it costs; the party, which is the ship's
-marines, so Cole alone, and what his going leaves (TAC empty, in amber); the two orders on the
+marines, so Cole alone, and what Cole's going leaves (TAC empty, in amber); the two orders on the
 footer's keys, each with what it does; and what waits for the ship to be taken. Storming forces
 every shut door, pried here since the raider's power is down, as the game's "Force a way in" does.
 
