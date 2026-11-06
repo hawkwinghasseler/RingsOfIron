@@ -253,6 +253,28 @@ class HudProvidersTest {
         assertEquals(0, k.hints.size);
     }
 
+    @Test
+    void theControlsPanelListsEveryHintByWhereItApplies() {
+        data.hints = new PlayerKeyHints(world.hints, () -> EnumSet.of(HintRegistry.Context.ANY), Action::defaultKeyName, () -> null);
+        KeyHintProvider.HelpFrame help = new KeyHintProvider.HelpFrame();
+        data.hints.collectAll(help);
+        // As the classic F1 panel has them: a section for each place, in the registry's order
+        java.util.Map<HintRegistry.Context, List<HintRegistry.Hint>> byContext = world.hints.byContext();
+        assertEquals(byContext.size(), help.sections.size);
+        int i = 0;
+        for (java.util.Map.Entry<HintRegistry.Context, List<HintRegistry.Hint>> e : byContext.entrySet()) {
+            KeyHintProvider.HelpSection s = help.sections.get(i++);
+            assertEquals(e.getKey().title, s.title);
+            assertEquals(e.getValue().size(), s.hints.size, s.title);
+            for (KeyHintProvider.KeyHint h : s.hints) assertFalse(h.label.isEmpty(), s.title);
+        }
+        assertTrue(help.sections.size > 1, "more than the one place");
+        // Asked again, it is the same list, not twice as long
+        help.clear();
+        data.hints.collectAll(help);
+        assertEquals(byContext.size(), help.sections.size);
+    }
+
     // --- Orders -------------------------------------------------------------------------
 
     final boolean[] seated = {true}, paused = {false};

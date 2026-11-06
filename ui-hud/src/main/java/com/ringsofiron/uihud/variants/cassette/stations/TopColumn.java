@@ -30,6 +30,8 @@ final class TopColumn extends YardPart {
     private final StationsFrame f;
     private final Actions actions;
     boolean strip, ann, warp, ticker;
+    /** A screen is up under the column: the strip and the annunciator hang over it whatever they say. */
+    boolean screen;
     /** The ticker's rows this frame, oldest first: a line takes two when it runs long. */
     private final Array<String[]> rows = new Array<>();
     private final Array<Line> rowLines = new Array<>();
@@ -48,6 +50,11 @@ final class TopColumn extends YardPart {
         ann = fr.alerts.annunciatorUp();
         warp = fr.warp;
         ticker = fr.alerts.lines.size > 0;
+        if (screen) {
+            // Over a screen the two stay put, and the warp strip and the ticker would only be under it
+            strip = ann = true;
+            warp = ticker = false;
+        }
         if (d.ctx.ship == null) strip = ann = false;
     }
 
