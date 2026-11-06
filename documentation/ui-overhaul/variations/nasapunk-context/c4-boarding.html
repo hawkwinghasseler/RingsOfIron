@@ -17,8 +17,11 @@
 // taking, in the game's words. P5 is not drawn: the bounty paid the moment the raider surrendered
 // (ContractBoard), and nothing else is held. The raider is still the Lock, but there is no lock
 // card: X2 names it, and its range says nothing at 40 m. Nothing is lit, so no master cue stands
-// at the bottom centre. 80 s after C6: three parts are marked and the chaingun is off, and Cole is
-// coming home. The raider has no CARGO row, since a pirate's loot never goes into its hold.
+// at the bottom centre. This is the moment of the taking (version 20), 2 s on, so the feed still
+// has its notice: Cole is coming home, and nothing is marked yet, so SALV gives the ten parts worth
+// taking and what a station would pay for them, 7 550 CR (the escape pod, which sells for nothing,
+// isn't one). C6 is 12 s on. The raider has no CARGO row, since a pirate's loot never goes into its
+// hold.
 let s = space({ px: 1180, py: -900, pr: 1100, seed: 21 });
 // The pair: the Light Raider's port on top (5..7, 4, three tiles along the hull) meets the
 // corvette's port (7..9, 5), centre to centre. Docked ships lie half a turn apart, so the raider
@@ -56,7 +59,8 @@ s += du(960, ZC.rmid.y, 308, 150, {
     // version 11: the party is the ship's marines (Cole alone), and once the craft is taken it
     // stands down and goes home
     c += lab(L, yy, 'PARTY'); words(M, yy, [['1'], ['·', C.dim], ['COMING HOME']]); yy += P;
-    c += lab(L, yy, 'SALV'); words(M, yy, [['3 PARTS MARKED'], ['·', C.dim], ['1 OFF']]); yy += P;
+    // version 20: until a part is marked, the parts worth taking and what a station would pay
+    c += lab(L, yy, 'SALV'); words(M, yy, [['10 PARTS'], ['·', C.dim], ['7 550'], ['CR', C.dim]]); yy += P;
     c += lab(L, yy, 'HELD'); words(M, yy, [['3'], ['·', C.dim], ['4 BERTHS FREE']]);
     // the two keys as buttons, 26 tall
     const btn = (bx, bw, key, t) => { c += rect(bx, gy + 108, bw, 26, { fill: '#1F2226', stroke: '#3A434D', sw: 1, r: 1.5 }) + capKey(bx + 5, gy + 112, key, 18) + text(bx + 5 + capW(key) + 8, gy + 125.5, t, { size: B, bold: true, fill: C.white, track: 0.5 }); };

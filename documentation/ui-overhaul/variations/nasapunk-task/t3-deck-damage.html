@@ -10,9 +10,11 @@
 <script>
 // On foot after a hit, on the Patrol Corvette as the game builds it (chassis.toml): two rooms, the
 // Hold aft and the Bridge forward, one door between them. The camera follows the captain, standing
-// at the weapons console. A fire in the Hold, Cole on it; a short on the Bridge's starboard conduit,
-// Ada resetting it; a breach in the Bridge's starboard hull venting the room, with nobody on it
-// (no patches left). Bea holds the helm. No warning: three cautions on the caution row.
+// at the weapons console. A fire in the Hold, three tiles burning as the game counts them
+// (Alert.count, task spec round 16), Cole on it; a short on the Bridge's starboard conduit, Ada
+// resetting it; a breach in the Bridge's starboard hull venting the room, with nobody on it (no
+// patches left). Bea holds the helm. No warning: three cautions on the caution row. FIRE stays a
+// caution, since Cole is on it and the captain is in the Bridge (round 16).
 // On deck the deck is the schematic: Z5 is empty, and FLT, WPN and SNS are hidden.
 let s = space({ px: 1400, py: 1700, pr: 900, seed: 5 });
 const K = 60, OX = 10, OY = 290, X = tx => OX + tx * K, Y = ty => OY + (6 - ty) * K;
@@ -25,7 +27,7 @@ s += corvetteDeck(OX, OY, K, {
 
 // OVL deck overlays: a tag on each hazard with its worker's progress, or NOBODY; the worker is the
 // figure standing there, and the alert band names them
-s += hazardTag(X(6.6), Y(1.4), 296, 672, 'caution', 'FIRE  MEDIUM', { progress: 0.35 });
+s += hazardTag(X(6.6), Y(1.4), 296, 672, 'caution', 'FIRE  3 TILES', { progress: 0.35 });
 s += hazardTag(X(10.5), Y(1.3), 552, 672, 'caution', 'SHORT', { progress: 0.6, w: 92 });
 s += hazardTag(X(13.5), Y(0) + 6, 796, 672, 'caution', 'BREACH  VENTING', { nobody: true });
 // INT: the weapons console opens no panel, since E and V both sit there (CON), so its prompt names

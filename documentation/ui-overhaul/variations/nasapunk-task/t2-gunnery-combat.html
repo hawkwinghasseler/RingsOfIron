@@ -15,9 +15,11 @@
 // from 3.2 km it lands about 13 s after launch; 3 s out it is 1.1 km away, and the second, a second
 // behind, 1.4 km. The spec's round 6 counts the burn in every impact time, so 0:03 is the true
 // time, not the game's coasting estimate. An earlier hit lit the Hold, where Ada fights the
-// fire, and left Cole seriously wounded and down until treated (CrewMedical). Anyone aboard can
-// treat, but Ada is at the fire, Bea at the helm and the captain at the guns, so nobody is free
-// (two cautions, each in its full text, since both fit the row: task spec round 11).
+// fire, three tiles burning as the game counts them (Alert.count, task spec round 16), and left
+// Cole seriously wounded and down until treated (CrewMedical). Anyone aboard can treat, but Ada is
+// at the fire, Bea at the helm and the captain at the guns, so nobody is free (two cautions, each
+// in its full text, since both fit the row: task spec round 11). FIRE stays a caution: Ada took it
+// on at once, and the captain is in the Bridge (round 16).
 // FLT gives way to HLM; SCH shows because FIRE and CREW are lit (section 8). The crew are the
 // game's starting crew (GameScenario: Ada, engineer; Bea, crewman and helmsman; Cole, marine).
 //
@@ -56,7 +58,7 @@ s += annunciatorPanel({ FIRE: 'caution', CREW: 'caution' });
 // (spec round 7): where the harpoons come from is drawn in the world, by their paths, and on SNS.
 s += alertBand({
   warning: { tag: 'MISSILE\n2 IN', big: 'IMPACT 0:03', line2: 'POINT DEFENSE ENGAGING', actions: [['F', 'DECOY']] },
-  cautions: [['FIRE', 'HOLD', 'ADA ON IT'], ['WOUNDED', 'COLE DOWN', 'NOBODY FREE TO TREAT']],
+  cautions: [['FIRE', 'HOLD, 3 TILES', 'ADA ON IT'], ['WOUNDED', 'COLE DOWN', 'NOBODY FREE TO TREAT']],
 });
 
 // OBJ: the bounty, which is the navigation target here, by the title the game gives it

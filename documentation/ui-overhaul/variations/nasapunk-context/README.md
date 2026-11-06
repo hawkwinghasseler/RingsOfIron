@@ -1,6 +1,6 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 17 when drawn and version 19 now,
+The context-driven functional spec (`functional-context.md`, version 17 when drawn and version 20 now,
 on branch `claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at 2x; sources are
@@ -93,17 +93,18 @@ the reactor giving 0 of its 3.0 MW, and 42 kg left of the 60 kg emergency oxygen
 
 ![Boarding, latched](c4-boarding.png)
 
-**C4, latched to a taken pirate (11.13, version 19), 80 s after C6.** Day 6: Pirate raider 3, a
-Light Raider the captain held a bounty on, surrendered, and Cole's boarding took it. Latched, the
+**C4, latched to a taken pirate (11.13, versions 19 and 20), at the moment of the taking.** Day 6:
+Pirate raider 3, a Light Raider the captain held a bounty on, surrendered, and Cole's boarding took
+it 2 s ago, so the feed still has the game's notice. Latched, the
 screen is the docked one: P1 with its helm field empty, X2 where the station panel would be, with
 the raider's state on its own row, and H4's quiet lights. P5 isn't drawn, since the bounty paid the
 moment the raider surrendered and nothing else is held. X2 has the wireframe's rows: the party,
-Cole alone, coming home; three parts marked and the chaingun off; and the three held against four
+Cole alone, coming home; nothing marked yet, so the ten parts worth taking and what a station would
+pay for them, 7 550 CR (the escape pod, worth nothing, isn't one); and the three held against four
 berths free. A pirate's loot never goes into its hold, so there is no cargo row. The raider lies
 the way the game docks two ships, half a turn apart and port to port, its small port on top meeting
 the corvette's: over the corvette's port side, upside down and nose aft. Its lock brackets and name
-stay, but there is no lock card and no range. The feed still has the taking's notice, as the
-wireframe does, though it would have had its 5 s (round 10, below).
+stay, but there is no lock card and no range.
 
 ### The windows the overhaul skipped
 
@@ -128,15 +129,15 @@ gives the arrival in place of a closest approach.
 
 ![Boarding, the party aboard](c6-boarding.png)
 
-**C6, M4, the boarding mode (10.4), 80 s before C4.** Day 6, just after the taking. The raider's
+**C6, M4, the boarding mode (10.4), 12 s after C4.** Day 6, just after the taking. The raider's
 port door was shut and powered, so Cole hacked it open, and its crew of three yielded as soon as
-Cole stepped aboard, as a surrendered crew does: the raider was taken 15 s ago, and the feed has the
-game's notice, "Pirate raider 3 is taken: 3 held". The party stands down and comes home, and the
-captain is marking what to strip. The plan is the Light Raider as the game builds it, BRIDGE and
+Cole stepped aboard, as a surrendered crew does: the raider was taken 14 s ago, and the feed's
+notice of it, which C4 shows, has had its 5 s. The party stands down and comes home, and the
+captain, who opened M4 with K, is marking what to strip. The plan is the Light Raider as the game builds it, BRIDGE and
 TANKS either side of a thin wall, with the corvette faint over its port side, who is where, the
 three held, and the parts marked to strip in cyan. The salvage is every part that can come off,
-most valuable first, at a twentieth of its price new; the game prices an escape pod at nothing, so
-it sells for 0. The prisoners come across as berths allow: four are free, so all three fit, and
+most valuable first, at a twentieth of its price new, leaving out a part worth nothing (version
+20): the escape pod, which the game doesn't price. The prisoners come across as berths allow: four are free, so all three fit, and
 BRING ABOARD is live. A pirate's loot never goes into its hold, so the cargo line says so once.
 Once taken, nothing can be sent, stormed or recalled, so the three orders are barred, with the
 game's reason once. The close keys, K or Esc, are the foot's.
@@ -252,7 +253,7 @@ Nothing is bought yet (C7 is two minutes on), so the credits are the starting 5 
 empty. P5 is compact with the delivery, H4 is compact and dark, and P1's helm field is empty at a
 berth (version 19).
 
-## Round 10 critique (version 19)
+## Round 10 critique (versions 19 and 20)
 
 Version 19 took all five of round 9's questions and the crewless Raider. X1's standing is the
 game's signed number; the Yard line counts repairs only when there are any; the infirmary has a
@@ -271,6 +272,13 @@ points went to the designer:
 - **The escape pod sells for nothing.** The game has no price for one (`Salvage.systemPrice`), so
   M4's list ends with a part worth 0, as C6 draws it. The list could leave out what sells for
   nothing, or the game could price the pod.
+
+Version 20 took both. X2 and 11.13 stand at the moment of the taking, so the feed and X2 agree:
+nothing is marked yet, and SALV gives the parts worth taking and what a station would pay for them
+("10 parts · 7,550 cr") until one is marked, then the marked and the off. M4 and X2 leave out a
+part worth nothing, so the crew never carry one home. C4 is redrawn at the taking and C6 12 s
+after it, its list without the escape pod and its feed empty, since the taking's notice has had
+its 5 s. Nothing meaningful is left: the context screens are **converged** at version 20.
 
 ## Round 9 critique (version 18)
 

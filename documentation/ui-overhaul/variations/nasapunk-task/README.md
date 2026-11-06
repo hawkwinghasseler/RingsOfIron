@@ -1,6 +1,6 @@
 # Nasa-punk × Task-driven
 
-The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 15 now, on
+The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 16 now, on
 branch `claude/project-thread-nfiuf0`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
@@ -52,9 +52,10 @@ to pass 0.6 km off in 1:15, and Bea holds the heading with no order: the launch 
 but hold position and match velocity. Warp is held by the fire aboard. Two harpoons
 inbound a second apart, the first 1.1 km out and 0:03 from impact with its burn counted, the second
 1.4 km out (the one warning, with F for a decoy), each drawn on its predicted path to the hull; a
-fire in the hold with Ada on it, and Cole seriously wounded and down with nobody free to treat,
-since anyone aboard can and all are busy (two cautions, in their full texts, since both fit the
-row). The objective is the bounty by the title the game gives it, which names the target's
+fire in the hold, three tiles burning as the game counts them (round 16), with Ada on it, and Cole
+seriously wounded and down with nobody free to treat, since anyone aboard can and all are busy (two
+cautions, in their full texts, since both fit the row). FIRE stays a caution: Ada took it on at
+once, and the captain is in the bridge. The objective is the bounty by the title the game gives it, which names the target's
 faction, so it takes a second line, broken before the faction; the target card gives the name
 whole, the class and the faction. WPN as the
 starting corvette really carries its guns: the coilgun and the laser in hand (the laser out of
@@ -67,7 +68,8 @@ are lit.
 
 ![Deck, damage control](t3-deck-damage.png)
 
-**T3, on foot in the bridge after a hit.** The fire is in the hold with Cole on it; the bridge
+**T3, on foot in the bridge after a hit.** The fire is in the hold, its tag sized as the game
+counts it, three tiles burning (round 16), with Cole on it, so FIRE stays a caution; the bridge
 vents with nobody free to patch it; a short has cut power to the bridge and Ada resets it, the
 progress on its tag. No warning, three cautions in their short forms, in the spec's order of
 severity. On deck the deck is the schematic, so Z5 is empty and FLT, WPN and SNS are hidden; the
@@ -169,7 +171,9 @@ Highport's clearance for port 2. An alert is logged once, as it was raised, in i
 then the action it named, dim, since that was the advice of the moment, with the band's level as
 its mark, ◆ a warning and ▲ a caution. When it cleared, its entry gained the time at the right,
 rather than a second entry. The game's warning notices are their alerts: Cole's serious wound is
-WOUNDED, which cleared once Ada, the fire out, began to treat Cole. There is no INTERCEPT, since
+WOUNDED, which cleared once Ada, the fire out, began to treat Cole. The fire is sized in tiles
+burning, and its entry was revised in place as it grew to T2's three, as a worsening alert's is
+(round 16). There is no INTERCEPT, since
 the Raider waits near Highport and the rails' traffic doesn't fly it. An important notice has a white dot, and news has no mark.
 
 ![Controls](t9-controls.png)

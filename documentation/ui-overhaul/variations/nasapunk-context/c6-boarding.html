@@ -11,12 +11,14 @@
 <script>
 // M4, the boarding mode (context spec, 10.4), just after the taking: today's boarding window, with
 // its orders (send, storm, recall), its parts to strip, cargo and prisoners, and the spec's
-// addition, a plan of the other ship with the party where they are. Day 6, 80 s before C4
-// (version 19's 11.13): Pirate raider 3, a Light Raider the player held a bounty on, cut thrust and
-// surrendered, and the corvette latched on. Its port door was shut and powered, so Cole hacked it
-// open (45 s, ForceMethod.HACK); the crew of three yielded as soon as Cole stepped aboard, as a
-// surrendered crew does (Boarding), and the raider is taken, 15 s ago: "Pirate raider 3 is taken:
-// 3 held". The party stands down and comes home, and the captain is marking what to strip.
+// addition, a plan of the other ship with the party where they are. Day 6, 12 s after C4, which
+// is 11.13's moment of the taking (version 20): Pirate raider 3, a Light Raider the player held a
+// bounty on, cut thrust and surrendered, and the corvette latched on. Its port door was shut and
+// powered, so Cole hacked it open (45 s, ForceMethod.HACK); the crew of three yielded as soon as
+// Cole stepped aboard, as a surrendered crew does (Boarding), and the raider was taken 14 s ago.
+// The feed's notice of it ("Pirate raider 3 is taken: 3 held", which C4 shows) has had its 5 s, so
+// the foot's feed is empty. The party stands down and comes home, and the captain, who opened M4
+// with K from X2, is marking what to strip.
 //
 // All of it is the game's. The party is the ship's marines, or its crewmen if it has none
 // (Boarding.party), so Cole alone. The raider is the game's Light Raider (ships.toml raider_light,
@@ -26,14 +28,14 @@
 // apart, port to port, so the corvette lies over the raider's port side, nose aft. The state line
 // is the game's ("Taken, 3 held", BoardingWork). The parts are every system that can come off
 // (Salvage.parts: not the cargo bay or the port), most valuable first, each at a twentieth of its
-// price new (Salvage.SALE_SHARE); the game prices an escape pod at nothing (Salvage.systemPrice),
-// so it sells for 0. A pirate's loot never goes into its hold, so there is no cargo, and the tab
+// price new (Salvage.SALE_SHARE), and leaving out a part worth nothing (version 20): the escape pod,
+// which Salvage.systemPrice doesn't price, so ten parts, 7 550 CR in all. A pirate's loot never goes into its hold, so there is no cargo, and the tab
 // says so once. The prisoners come across as berths allow (Prisoners.takeAboard): the corvette has
 // eight and four aboard. Once taken, nothing can be sent, stormed or recalled ("Pirate raider 3 is
 // taken", Boarding.refusal), so the three orders are barred, with the reason once.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 7 });
 s += controlDefs();
-s += statusStrip({ seat: 'HELM', clock: 'DAY 6 · 10:13:40', warp: '1×' });
+s += statusStrip({ seat: 'HELM', clock: 'DAY 6 · 10:15:12', warp: '1×' });
 s += consoleBody(0, 28, 1280, 772, {});
 s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M4  BOARDING', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
 
@@ -131,7 +133,7 @@ s += du(816, 268, 456, 306, {
     let g = panelHead(gx, gy, gw, 'SALVAGE', 'MOST VALUABLE FIRST');
     const parts = [
       ['REACTOR', '2 000', 'MARKED', true], ['ENGINE', '1 250'], ['ENGINE', '1 250'], ['CHAINGUN MK1', '900', 'MARKED', true],
-      ['LIFE SUPPORT', '750'], ['HELM', '400'], ['WEAPONS', '400'], ['TANK', '200'], ['TANK', '200'], ['TANK', '200'], ['ESCAPE POD', '0'],
+      ['LIFE SUPPORT', '750'], ['HELM', '400'], ['WEAPONS', '400'], ['TANK', '200'], ['TANK', '200'], ['TANK', '200'],
     ];
     const gr = grid(L + 18, gy + 50, [{ t: 'PART', w: 180 }, { t: 'SELLS FOR', w: 90, align: 'right' }, { t: '', w: 132, align: 'right' }],
       parts.map(([n, cr, st, m], i) => ({ cells: [i === 4 ? { t: n, bold: true } : n, cr, { t: st || '', c: C.cyan, size: LB, bold: true }] })), { rule: 0, rh: 19 });
@@ -169,9 +171,9 @@ s += du(816, 662, 456, 82, {
   },
 }).svg;
 
-// ---- the foot row: the one-line feed, and the keys that close the mode (version 10 puts them here) ----
+// ---- the foot row: the one-line feed, and the keys that close the mode (version 10 puts them here).
+// The feed is empty: the taking's notice has had its 5 s, and a strip order's answer is M4's own ----
 s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
-s += text(18, 767, 'BOARDING', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(100, 767, 'Pirate raider 3 is taken: 3 held', { size: B, fill: C.white, track: 0.2 });
 s += capKey(1106, 754, 'K') + text(1128, 767, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1152, 754, 'ESC') + text(1264, 767, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
 
 document.getElementById('out').innerHTML = svgPage(s);

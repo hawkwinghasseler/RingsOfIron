@@ -11,8 +11,8 @@ at 1280 x 800.
 | Variation | Folder | Spec version drawn | State |
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18, S5 at 19 | Converged in round 5; S7 to S9 drawn in round 7, and S5 to S8 redrawn for the crewless Raider |
-| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 19 | Converged in round 5, and again at versions 13 to 18 in round 7; version 19 drawn in round 7, and its two notes are with the designer |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 15 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 15 in round 7 |
+| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 20 | Converged in round 5, and again at versions 13 to 18 and at version 20 in round 7 |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 16 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 16 in round 7 |
 
 ## Round 1 (3 November 2026)
 
@@ -643,8 +643,26 @@ hold in the game's words. C10's story is unchanged. Drawing version 19 raised tw
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Context (11.13, P4) | The feed and X2 can't both be true. The feed has the taking's notice, which holds 5 s, but X2 has three parts marked and one off, which takes a minute or more: the engineers cross, a gun is 10 s of work, and its crate is carried home. C4 draws the spec's lines. The feed could have the salvage's last notice instead ("The Chaingun Mk1 is off Pirate raider 3; it's being carried home"), or X2 could stand at the taking, with nothing marked yet | |
-| Context (10.4) | The escape pod sells for nothing: the game has no price for one (`Salvage.systemPrice`), so M4's list ends with a part worth 0, which C6 draws. The list could leave out what sells for nothing, or the game could price the pod | |
+| Context (11.13, P4) | The feed and X2 can't both be true. The feed has the taking's notice, which holds 5 s, but X2 has three parts marked and one off, which takes a minute or more: the engineers cross, a gun is 10 s of work, and its crate is carried home. C4 draws the spec's lines. The feed could have the salvage's last notice instead ("The Chaingun Mk1 is off Pirate raider 3; it's being carried home"), or X2 could stand at the taking, with nothing marked yet | Version 20: X2 and 11.13 stand at the moment of the taking; until a part is marked, SALV gives the parts worth taking and their sale ("10 parts · 7,550 cr"), then the marked and the off |
+| Context (10.4) | The escape pod sells for nothing: the game has no price for one (`Salvage.systemPrice`), so M4's list ends with a part worth 0, which C6 draws. The list could leave out what sells for nothing, or the game could price the pod | Version 20: M4 and X2 leave out a part worth nothing, so the crew never carry one home |
+
+**Version 20** took both. X2 and 11.13 stand at the moment of the taking, so the feed's 5 s
+notice and X2 agree, and until a part is marked SALV gives the ten parts worth taking and their
+sale, 7 550 CR; M4 and X2 leave out a part worth nothing. C4 is redrawn at the taking, 2 s on, and
+C6 12 s after it, with the escape pod gone from its list and its feed empty, since the taking's
+notice has had its 5 s. Nothing meaningful is left in the context screens, which are converged at
+version 20.
+
+**The task spec's round 16** came from its designer's own review of the book and the deck against the game. A
+fire's size was a word the game has no measure for (`fire (medium)`); the game counts the tiles
+burning (`Alert.count`), so the samples say 3 tiles, and FIRE turns a warning when nobody has taken
+it on 5 s after it starts, or in the captain's room, not when it is large. Life support's line says
+which rooms it puts air into and why not the rest, since it reaches only through open doors and
+puts none into a room venting to space. T3's fire tag reads `FIRE  3 TILES`, T2's caution
+`FIRE  HOLD, 3 TILES  ADA ON IT`, and T8's log entry was revised in place as the fire grew to three; in all
+three someone is on the fire and the captain is in the bridge, so it stays a caution. No Nasa-punk
+task screen draws the book's Ship tab or a life support panel, so the new line isn't drawn, and
+nothing meaningful is left.
 
 ## Next
 

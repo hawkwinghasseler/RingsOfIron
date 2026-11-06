@@ -36,7 +36,10 @@
 // become their alerts (9.2's table), so Cole's serious wound ("Cole is seriously wounded and down
 // until treated") is WOUNDED, with nobody free while Ada fought the
 // fire; it cleared once Ada began to treat Cole, whose wound treatment brought down to the light
-// one T7 shows (CrewHealthSystem). The missile warning is raised at launch, already under 20 s
+// one T7 shows (CrewHealthSystem). The fire is sized in tiles burning, as the game counts them
+// (Alert.count, round 16), and its entry was revised in place as it spread to T2's three, as a
+// worsening alert's is; Ada took it on at once, so it stayed a caution. The missile warning is
+// raised at launch, already under 20 s
 // from 3.2 km, and cleared as point defense downs the second harpoon. An IMPORTANT notice has a
 // white dot; INFO has no mark. The rooms take the spec's rule (Hold). There is no INTERCEPT: the
 // Raider waits near Highport and the rails' traffic doesn't fly it (HostileTraffic), so it never moves
@@ -65,7 +68,7 @@ const DAY3 = [
   ['12:16:02', 'i', 'Contract done: Raider of the Void Raiders is beaten. Paid 7 500 CR, standing +6 with Terran Patrol Authority'],
   ['12:16:02', '', 'Raider is disabled: reactor down'],
   ['12:12:02', 'w', ['MISSILE', '2 inbound  impact 13 s', 'F decoy'], '12:12:14'],
-  ['12:11:20', 'c', ['FIRE', 'Hold', 'Ada on it'], '12:14:31'],
+  ['12:11:20', 'c', ['FIRE', 'Hold, 3 tiles', 'Ada on it'], '12:14:31'],
   ['12:11:20', 'c', ['WOUNDED', 'Cole down', 'nobody free to treat'], '12:14:50'],
   ['09:20:05', '', 'Undocked from Highport'],
   ['09:12:20', '', 'Contract taken: Bounty: Raider of the Void Raiders'],
