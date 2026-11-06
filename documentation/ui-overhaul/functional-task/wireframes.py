@@ -227,9 +227,11 @@ def gunnery_combat(out):
         ("FIRE Hold  Ada", "WOUNDED Cole  nobody"))
     ann(s, [("FIRE", "caut"), ("CREW", "caut")], shields=False)
     s.box(16, 610, 300, 150, "SCH", "Ship (shown: FIRE, CREW lit)", ["", "  [deck plan: fire in the Hold,", "   crew as dots, you at", "   the weapons console]"], kind="cond")
-    obj(s, ["Bounty: Raider 'Vex'   2d 21h"])
-    s.box(1024, 392, 240, 160, "TGT", "Raider 'Vex'  HOSTILE", [
-        "corvette, pirate   FIRING ON YOU",
+    # A bounty's title names the target's faction (ContractPostings), so the row breaks before it
+    obj(s, ["Bounty: Raider              2d 21h", "  of the Void Raiders"])
+    s.box(1024, 392, 240, 160, "TGT", "Raider  HOSTILE", [
+        "corvette, Void Raiders",
+        "FIRING ON YOU",
         "state  fighting",
         "hull   damaged (sensor est.)",
         "range  3.2 km   closing 41 m/s",
@@ -248,7 +250,7 @@ def gunnery_combat(out):
     s.box(1088, 584, 176, 176, "SNS", "Scope 5 km (auto)", ["", "", "", "", "", "", "", "1 hostile"])
     # A shot at the ship drops an approach order (HelmOrders.threat), so the helmsman holds the heading
     s.box(400, 734, 360, 26, "HLM", "Helm: Bea   holding heading", kind="cond")
-    target_lock(s, 815, 292, "Raider 'Vex'")
+    target_lock(s, 815, 292, "Raider")
     s.box(420, 230, 150, 28, "", "missile path", kind="world")
     hnt(s, "Space fire   R missile   Tab next target   V stand up   F1 controls", "note: F decoy is not repeated, the band names it")
     legend(s, 470)
@@ -280,7 +282,7 @@ def flt_modes(out):
         "flown by: flight computer (hands off)",
         "[/] warp to burn"])
     s.box(664, 176, 600, 112, "4", "CRUISE  (otherwise)", [
-        "frame Raider 'Vex' (locked target)   speed 41 m/s",
+        "frame Raider (locked target)   speed 41 m/s",
         "dv left 7,007 m/s  |------^---|  home 410 m/s",
         "[main] [RCS]  lit while firing",
         "rotation assist OFF   (shown only when off)",
@@ -391,7 +393,7 @@ def map_(out):
         "burn 1   prograde +3,083.6   radial +0.0",
         "drag a handle; Shift finer; Del delete"], kind="cond")
     s.box(16, 692, 1248, 92, "MAP.5", "PLAN TIMELINE  (now to arrival, log scale)", [
-        "now --|burn 1 1.5h ---!deadline 2.4d ---|SOI Moon 3.3d --|burn 2 3.7d -|arrive 3.8d",
+        "now --|burn 1 1.5h ---!deadline 2.4d ---|SOI Moon 3.3d -|payday 3.4d -|burn 2 3.7d -|arrive 3.8d",
         "click an event: centre the map on it      double-click: warp to it"])
     s.box(24, 592, 220, 84, "MAP.6", "Layers", [
         "[x] stations  [x] traffic",
@@ -421,7 +423,7 @@ def terminal(out):
     s.box(16, 196, 760, 588, "TRM.1", "Offers (5 today, 1 operation; 1 urgent)", [
         "type   job                            pay      standing   time    reach",
         "OPER.  Clear the Lanes (1/3)          8,000    +6         --      LOCKED: Lieutenant",
-        "BOUNTY Raider 'Vex', near Highport    5,000    +6         3d      here     ok",
+        "BOUNTY Raider of the Void Raiders     7,500    +6         3d      here     ok",
         "DELIV. 40 Food to Shackleton Ice      2,620    +5 Selene  2d 9h   3.8 d    LATE 1d 9h",
         "ESCORT Hauler Kestrel to Anvil Yards  1,500    +4         2d      2.1 h    ok  dv 3,000",
         "PATROL Deepwell Depot and back        1,000    +3         2d      2 h      ok  dv 1,860",
@@ -510,11 +512,11 @@ def boarding(out):
     s.rect(120, 230, 360, 200, fill="#dcdcd8", stroke="#555", sw=1.5)
     s.text(300, 220, "your ship (deck)", size=10, fill="#777", anchor="middle", style="italic")
     s.rect(500, 260, 300, 160, fill="#d0d0cc", stroke="#555", sw=1.5)
-    s.text(650, 250, "Raider 'Vex' (taken)", size=10, fill="#777", anchor="middle", style="italic")
+    s.text(650, 250, "Raider (taken)", size=10, fill="#777", anchor="middle", style="italic")
     s.box(540, 300, 160, 40, "", "Ada: stripping laser", ["Cole: carrying ore"], kind="world")
     chr_(s, "WARP 1x", "")
     ann(s, shields=False)
-    s.box(904, 72, 360, 684, "BRD", "Boarding: Raider 'Vex'", [
+    s.box(904, 72, 360, 684, "BRD", "Boarding: Raider", [
         "state     TAKEN (was: reactor down)",
         "link      latched, port to port",
         "cost      none (outlaw)",

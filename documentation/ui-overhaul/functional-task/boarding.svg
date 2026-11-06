@@ -5,7 +5,7 @@
 <rect x="120" y="230" width="360" height="200" rx="3" fill="#dcdcd8" stroke="#555" stroke-width="1.5"/>
 <text x="300" y="220" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="italic" fill="#777" text-anchor="middle" xml:space="preserve" style="white-space:pre">your ship (deck)</text>
 <rect x="500" y="260" width="300" height="160" rx="3" fill="#d0d0cc" stroke="#555" stroke-width="1.5"/>
-<text x="650" y="250" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="italic" fill="#777" text-anchor="middle" xml:space="preserve" style="white-space:pre">Raider 'Vex' (taken)</text>
+<text x="650" y="250" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="italic" fill="#777" text-anchor="middle" xml:space="preserve" style="white-space:pre">Raider (taken)</text>
 <rect x="540" y="300" width="160" height="40" rx="3" fill="none" stroke="#8a8a8a" stroke-width="1.2" stroke-dasharray="7 4"/>
 <text x="547" y="315" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#555" text-anchor="start" xml:space="preserve" style="white-space:pre">Ada: stripping laser</text>
 <text x="547" y="331" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="italic" fill="#666" text-anchor="start" xml:space="preserve" style="white-space:pre">Cole: carrying ore</text>
@@ -33,7 +33,7 @@
 <rect x="160" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
 <text x="181" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">EVA</text>
 <rect x="904" y="72" width="360" height="684" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
-<text x="911" y="87" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">BRD  Boarding: Raider 'Vex'</text>
+<text x="911" y="87" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">BRD  Boarding: Raider</text>
 <text x="911" y="103" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">state     TAKEN (was: reactor down)</text>
 <text x="911" y="117" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">link      latched, port to port</text>
 <text x="911" y="131" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">cost      none (outlaw)</text>
