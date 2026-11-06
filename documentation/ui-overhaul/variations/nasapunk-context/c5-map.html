@@ -9,7 +9,7 @@
 <script src="../../nasapunk/mockups/screens.js"></script>
 <script src="context.js"></script>
 <script>
-// M1, the map, as a full-screen mode (the context spec, 10.1 and 11.9, version 10), opened with M at
+// M1, the map, as a full-screen mode (the context spec, 10.1 and 11.9, version 14), opened with M at
 // the helm at the moment of C1: P1 above, then the mode's frame. The map has no tabs, so its title
 // row is the system's name alone and the number keys keep the helm orders, since the plan is flown
 // from here. The Plan panel is on the left, Target and traffic on the right, the view row across the
@@ -22,7 +22,10 @@
 // sphere of influence and the capture is an estimate in the burns list and on the timeline (dashed).
 // The planner's Hohmann transfer: 3 084 m/s from 400 km, an apoapsis at 378 000 km, the sphere in
 // 3.3 days, the capture for about 793 m/s and the station one orbit later, 4.2 days out. The Moon
-// moves 54 degrees in that time. The delivery is due in 5.2 days, so the plan makes it.
+// moves 54 degrees in that time, so the map draws it twice, as the game does (PlayerOrbitPath): where
+// it is now, with the Nav's ring on Shackleton Ice, and as a ghost, its outline and sphere, where it
+// will be at the plan's closest approach (ghostTime), labelled with that time (version 14). The
+// delivery is due in 5.2 days, so the plan makes it.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 5 });
 s += controlDefs();
 s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:33:10', warp: '1×' });
@@ -94,7 +97,7 @@ const plot = du(338, 64, 604, 548, {
     g += sp.svg;
     const [mx, my] = sp.moonNow, [ax, ay] = sp.moonAt, [ex, ey] = sp.earth, [sx, sy] = sp.soi;
     g += ring(mx, my, 12, C.magenta, 1.5) + text(mx - 18, my + 24, 'SHACKLETON ICE', { size: LB, bold: true, fill: C.magenta, anchor: 'end', track: 0.6 }) + text(mx - 18, my + 40, 'MOON · 3 STATIONS', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
-    g += text(ax + sp.rSoi * 0.7 + 6, ay - sp.rSoi * 0.7 - 4, 'MOON AT THE ENCOUNTER', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += text(ax + sp.rSoi * 0.7 + 6, ay - sp.rSoi * 0.7 - 4, 'MOON AT CPA  ·  T−4D 2H', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     // where the leg ends: the capture and the approach are drawn once the crossing plans them
     g += text(sx - 12, sy + 4, 'CAPTURE PLANNED HERE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     // the Earth's names above and right of it, clear of Freehold, opposite the Moon

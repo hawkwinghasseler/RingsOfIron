@@ -17,7 +17,8 @@
 // All of it is the game's (CrewRoster, CrewRecord, CrewMedical, Spacewalks, Prisoners): the starting
 // crew are the service's, so they draw no wage; skills are gunnery, engineering, marine and medicine
 // from 0 to 100, and Cole's marine skill has grown from 50 with the boarding and the two Cole downed; a
-// person's history counts ships beaten, boardings, downed and hours of work, or reads New; a
+// person's history counts ships beaten, boardings, downed and, from six minutes of it, hours of work,
+// or reads New (every second of work also raises engineering, so Cole, with none, is still at 50); a
 // condition is OK or unconscious with the health left, a light wound with it, or a serious or
 // critical wound with what is being done about it. The job is the game's own words for it
 // (CrewTasks): with nothing to do, an engineer is idle, since an engineer never mans a console (a
@@ -121,11 +122,12 @@ const det = du(784, 228, 480, 558, {
     g += lab(gy + 252, 'SUIT') + val(gy + 252, 'PRESSURE SUIT, IN ITS LOCKER') + text(R, gy + 252, 'AIR 10:00', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     g += divider(gx, gy + 282, gw, 'SERVICE');
     g += lab(gy + 306, 'WAGE') + val(gy + 306, 'NONE: IN THE PATROL\'S SERVICE');
-    g += lab(gy + 326, 'HISTORY') + val(gy + 326, '1 SHIP BEATEN, 1 BOARDED,');
-    g += val(gy + 344, '2 DOWNED, 0.6 H WORK', { bold: false });
-    // what the role takes on, which is also why SEND OUT is dark
-    g += lab(gy + 366, 'TAKES ON') + val(gy + 366, 'FIGHTING, THE GUNS, DOORS,');
-    g += val(gy + 384, 'BOARDING, AND A HAND CARRYING', { bold: false });
+    g += lab(gy + 326, 'HISTORY') + val(gy + 326, '1 SHIP BEATEN, 1 BOARDED, 2 DOWNED');
+    // what the role takes on, which is also why SEND OUT is dark: a marine's tasks, by the game's
+    // affinities, the strongest first (CrewRole)
+    g += lab(gy + 348, 'TAKES ON') + val(gy + 348, 'FIGHTING, THE GUNS, BOARDING, DOORS,');
+    g += val(gy + 366, 'RESCUES AND FIRES, AND A HAND CARRYING', { bold: false });
+    g += val(gy + 384, 'AND WITH THE WOUNDED', { bold: false });
     g += scratchpad(gx, gy, gw, gh, '', { prompt: 'LET GO LEAVES COLE AT HIGHPORT · NO WORK OUTSIDE FOR COLE' });
     return g;
   },

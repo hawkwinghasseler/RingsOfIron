@@ -1,0 +1,146 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Stations: the slate, crew</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="stations.js"></script>
+<script>
+// The slate's Crew tab (the stations spec, 10.4), on deck, docked at Highport on the visit of S6,
+// before the yard: the raider's crew were handed over to the Patrol on docking, so the slate has no
+// Prisoners tab, and Boarding went with the latch. I opened it on Crew (16.1). On deck the slate
+// runs the full height (10.1), and the camera's centre moves left by half its width, so the captain
+// stands in the middle of the world still in view: in the hold, where Ada is idle.
+//
+// The tab is the spec's roster: name, role, condition and morale in the list; skills, wage and
+// record on the cursor's person; the station each mans; and the new order, station assignments
+// (5.7, 20.7). Today the crew choose who mans what (ManConsoleTask, by priority and the role's
+// affinity: a marine takes the weapons console first and then the guns, a crewman the helm), and an
+// engineer mans no console at all, so Ada has no station to be given. AUTO keeps that choice; an
+// assignment replaces only which console a person mans, so it holds while nothing else needs them,
+// and a fire, a casualty or a boarding still comes first, as manning does today.
+//
+// The cursor is on Cole, and I have pressed → once: AUTO to the NOSE GUN. The page says what that
+// does with the game's own rules (GunCrews): a gunner at a mount works that gun at their own
+// gunnery, Cole's 75; the weapons console works every gun at half its gunner's (REMOTE_SKILL), 38;
+// a gun nobody works waits for the trigger. On the corvette the guns a gunner works are the nose's
+// coilgun and the aft starboard laser: the two autocannons are point defense, which keeps to itself,
+// and the launcher waits for the captain's word. So Cole at the nose leaves TAC empty and the laser
+// on the trigger. Docked, the guns hold whoever works them, so the order is for the next fight.
+//
+// Letting go is docked only (CrewHiring.dismiss: "Dock at a station to let crew go"), and the
+// response would be the game's "Cole leaves the ship". Suits at battle stations is on, the game's
+// default. The starting crew are the service's, so they draw no wage. Skills from the game: every
+// skill starts at 50, a marine's gunnery at 75 (CrewDef.marine), and the boarding and the two Cole
+// downed took Cole's marine skill to 56. Morale rose 5 points for the ship beaten and 5 more for
+// the boarding party, and it drifts back 5 points a day.
+let s = space({ planet: false, seed: 12 });
+
+// The world: the corvette's deck, the camera on the captain and moved 240 left (6.2)
+const K = 56, OX = 392 - 4.4 * K, OY = 400 - (6 - 3.5) * K, X = tx => OX + tx * K, Y = ty => OY + (6 - ty) * K;
+// Highport's docking arm, out from the port collar (the corvette's dock, chassis x 7 to 10)
+{
+  const ax = X(7.3), aw = X(9.7) - X(7.3);
+  s += rect(ax, -4, aw, Y(6) + 8, { fill: '#3E434A', stroke: '#24282C', sw: 1.5 });
+  for (let yy = Y(6) - 30; yy > 0; yy -= 30) s += line(ax + 2, yy, ax + aw - 2, yy, '#2E3237', 2);
+  s += line(ax + 10, -4, ax + 10, Y(6), '#4D535B', 1.5) + line(ax + aw - 10, -4, ax + aw - 10, Y(6), '#4D535B', 1.5);
+  s += rect(X(7.1), Y(6) - 12, X(9.9) - X(7.1), 14, { fill: '#30353B', stroke: '#1E2125', sw: 1.5 });
+}
+s += corvetteDeck(OX, OY, K, {
+  id: 's7',
+  // Ada idle in the hold; Bea at the helm; Cole still at the weapons console, the order just given
+  crew: [[4.2, 4.45], [10.25, 4.55], [10.3, 3.45]],
+  avatar: [4.4, 1.55],
+  labels: true, labelAt: { hold: [4.0, 3.0], bridge: [10.5, 2.3] },
+});
+
+// the top column, recentred left of the panel (6.3): the strip with its DOCKED lamp, and the
+// annunciator held dark in its place; nothing has been called, so the ticker is empty
+const CX = 392;
+s += statusStrip({ state: 'DOCKED', cx: CX });
+s += annunciator(CX, 44, [], {});
+
+// ---- the slate, on its Crew tab, full height on deck ----
+const P = { x: 784, y: 16, w: 480, h: 768 };
+const tabW = t => (tw(t, 12, true, 0.6) + 14) / 60;
+s += consoleFace(P.x, P.y, P.w, P.h, {
+  id: 'slate', b: 16, title: 'SLATE', titleSize: 11, plate: 'SLATE-1  CMD  P/N 6020-01',
+  // the tabs the slate has now: no Boarding (not latched) and no Prisoners (none held)
+  tabs: ['SHIP', { t: 'CREW', state: 'cur' }, 'MEDICAL', 'EVA', 'CONTRACTS', 'CAREER', 'LOG'].map(t => typeof t === 'string' ? { t, w: tabW(t) } : Object.assign(t, { w: tabW(t.t) })),
+  // the orders: the cursor's station stepped with the arrows (the slate takes them, 4); suits at
+  // battle stations, on; letting the cursor's person go, docked only, by its key alone
+  footer: [{ t: 'STATION', k: '← →' }, { t: 'SUITS', state: 'on' }, { t: 'LET GO' }, { t: 'CLOSE', k: 'ESC' }],
+  content: (gx, gy, gw, gh) => {
+    let c = '';
+    const L = gx + 14, R = gx + gw - 14, V0 = L + 92;
+    const rule = y => line(gx + 4, y, gx + gw - 4, y, C.graticule, 1);
+    const head = (y, t) => text(L, y, t, { size: 12, bold: true, fill: C.dim, track: 0.8 });
+    const val = (x, y, t, o = {}) => text(x, y, t, { size: o.size || SB, bold: o.bold !== false, fill: o.c || C.white, anchor: o.anchor || 'start', track: 0.4 });
+    const note = (x, y, t, fill = C.white) => text(x, y, t, { size: 12, bold: true, fill, track: 0.4 });
+    // the title bar's live part, on the glass: the captain's rank, the ship and the credits
+    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '2 950 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
+    c += rule(gy + 48);
+    c += head(gy + 72, 'BERTHS') + val(V0, gy + 72, '4 OF 8') + note(V0 + tw('4 OF 8', SB, true, 0.4) + 10, gy + 72, 'YOU AND 3 CREW', C.dim);
+    c += head(gy + 92, 'HIRING') + val(V0, gy + 92, '5 LOOKING FOR A BERTH') + note(V0 + tw('5 LOOKING FOR A BERTH', SB, true, 0.4) + 10, gy + 92, 'ON THE STATION LINK', C.dim);
+    c += head(gy + 112, 'SUITS') + val(V0, gy + 112, 'ON AT BATTLE STATIONS');
+    c += rule(gy + 126);
+
+    // the roster: the station column is the order, AUTO beside the station the crew chose
+    const cols = [{ t: 'NAME', w: 62 }, { t: 'ROLE', w: 92 }, { t: 'STATION', w: 128 }, { t: 'CONDITION', w: 84 }, { t: 'MORALE', w: 54, align: 'right' }];
+    const gr = grid(L, gy + 150, cols, [
+      [{ t: 'ADA', bold: true }, 'ENGINEER', { t: '—', c: C.dim }, 'OK 100%', '75%'],
+      [{ t: 'BEA', bold: true }, 'CREWMAN', { t: 'HELM', bold: true }, 'OK 100%', '75%'],
+      { cells: [{ t: 'COLE', bold: true }, 'MARINE', { t: 'NOSE GUN', bold: true }, 'OK 100%', '80%'], cursor: true },
+    ], { rule: 0, rh: 24 });
+    c += gr.svg;
+    c += text(L + 62 + 92 + tw('HELM', 13, true, 0.4) + 8, gr.rowY(1), 'AUTO', { size: 12, bold: true, fill: C.dim, track: 0.5 });
+    c += note(L, gy + 248, 'AN ENGINEER MANS NO CONSOLE: ADA TAKES ENG\'S ALERTS', C.dim);
+    c += note(L, gy + 266, 'AND REPAIRS AS THEY COME', C.dim);
+    c += rule(gy + 280);
+
+    // the cursor's person in full
+    c += val(L, gy + 304, 'COLE', { size: 15 }) + text(R, gy + 304, 'MARINE', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    c += head(gy + 328, 'SKILLS');
+    [['GUNNERY', 75], ['ENGINEERING', 50], ['MARINE', 56], ['MEDICINE', 50]].forEach(([t, v], i) => {
+      const y = gy + 328 + i * 20, bx = V0 + 104, bw = R - 34 - bx;
+      c += text(V0, y, t, { size: 12, bold: true, fill: C.white, track: 0.4 });
+      c += rect(bx, y - 8, bw, 7, { fill: '#26303A' }) + rect(bx, y - 8, bw * v / 100, 7, { fill: C.white });
+      c += val(R, y, String(v), { anchor: 'end' });
+    });
+    c += head(gy + 414, 'RECORD') + val(V0, gy + 414, '1 SHIP BEATEN, 1 BOARDED, 2 DOWNED');
+    c += head(gy + 434, 'WAGE') + val(V0, gy + 434, 'NONE: IN THE PATROL\'S SERVICE');
+    c += head(gy + 454, 'NOW') + val(V0, gy + 454, 'MANNING THE WEAPONS, IN THE BRIDGE');
+    c += rule(gy + 468);
+
+    // the order, as a selector: its positions in a row, the one set boxed in the cursor's colour;
+    // then when it holds, and what it does to the guns against AUTO
+    c += head(gy + 492, 'STATION');
+    {
+      let ox = V0;
+      ['AUTO', 'HELM', 'TAC', 'NOSE GUN', 'AFT STBD GUN'].forEach(t => {
+        const w = tw(t, 12, true, 0.5), on = t === 'NOSE GUN';
+        if (on) c += rect(ox - 5, gy + 478, w + 10, 19, { stroke: C.cyan, sw: 1.5, r: 1 });
+        c += text(ox, gy + 492, t, { size: 12, bold: true, fill: on ? C.white : C.dim, track: 0.5 });
+        ox += w + 15;
+      });
+    }
+    c += note(V0, gy + 518, 'MANNED WHILE NOTHING ELSE NEEDS COLE:');
+    c += note(V0, gy + 536, 'A FIRE, A CASUALTY OR A BOARDING COMES FIRST', C.dim);
+    c += note(L, gy + 562, 'THE NOSE GUN FIRES AT WILL, AT GUNNERY 75');
+    const ew = tw('TAC EMPTY', 12, true, 0.5) + 14;
+    c += I.box(L, gy + 572, ew, 19, 'TAC EMPTY', 'caution', { size: 12 }) + note(L + ew + 10, gy + 586, 'THE AFT STBD LASER WAITS FOR THE TRIGGER');
+    c += note(L, gy + 610, 'AUTO HAS COLE AT TAC: BOTH GUNS AT WILL, AT GUNNERY 38', C.dim);
+    c += head(gy + 640, 'LET GO') + note(V0, gy + 640, 'COLE LEAVES THE SHIP AT HIGHPORT, FOR GOOD', C.dim);
+
+    // the footer's response line: what the last key did
+    c += text(L, gy + gh - 30, 'COLE WILL MAN THE NOSE GUN', { size: 12, bold: true, fill: C.white, track: 0.5 });
+    return c;
+  },
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

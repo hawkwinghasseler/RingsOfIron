@@ -25,6 +25,7 @@ Round history is in [`../nasapunk-round-log.md`](../nasapunk-round-log.md).
 | Prompt line | Key caps with their verbs, quiet, above the band. |
 | Console page (Engineering) | A console face standing as a side panel (480 wide, full height): tabs on soft keys, the reactor and store as pointer scales, a synoptic of the power network, the systems not working in the order they come back, each with its state and what clears it (a row that comes back by itself runs its wait as a bar), and the footer's soft keys. |
 | Suit readout | The suit's own chest display (DCM): suit-grey bezel, small glass. |
+| Station assignment (new) | A selector on the slate: its positions in a row, the one set boxed in the cursor's colour, stepped with ← and →. |
 | SENSORS range | The step at the page header's right with a − and a + cap either side of it, as the game's scope has its buttons today. |
 | World labels and cues | HUD-layer symbology with halos: contact shapes, velocity markers, burn arrows carrying only their number, missile tracks, impact marks, the lead reticle, and a camera inset (OPT) on the target. On deck a crew member who speaks shows a speaking mark; the words are in the ticker. |
 
@@ -111,6 +112,23 @@ S2 names them: the cursor's mount steps through the 18 weapons on sale, and the 
 from S5 is in the hold, so it fits for nothing. The cursor's refit is set out in full, new, used
 (at half the price, coming in at 60%) or salvaged, with the quarter of its price the yard gives
 for the autocannon.
+
+![The slate, crew](s7-slate-crew.png)
+
+**S7, the slate's Crew tab (10.4), on deck, docked at Highport on S6's visit.** On deck the slate
+runs the full height, and the camera's centre moves left by half its width, so the captain stands
+in the middle of the world still in view, in the hold, where Ada is idle. Highport's docking arm
+meets the port collar, and the strip reads DOCKED. Boarding went with the latch, and the raider's
+crew were handed over on docking, so there is no Prisoners tab. The roster gives each person's
+name, role, station, condition and morale, and the cursor's person, Cole, has skills, record, wage
+and what Cole is doing now. The station column is the new order (5.7, 20.7): AUTO keeps the crew's
+own choice, so Bea's helm reads AUTO, and an engineer mans no console, so Ada has no station to
+give. I have stepped Cole from AUTO to the NOSE GUN, and the page says what that does by the
+game's rules: a gunner works a mount at their own gunnery, 75, and the weapons console works every
+gun at half its gunner's, so leaving TAC empty puts the aft starboard laser on the trigger, where
+AUTO would have both guns at will at 38. The order holds while nothing else needs Cole: a fire, a
+casualty or a boarding still comes first, as manning a console does today. Letting go is docked
+only, and the page says it is for good, since the game removes the person.
 
 ## Round 5 critique
 

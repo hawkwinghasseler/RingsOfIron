@@ -74,10 +74,10 @@ s += du(16, 228, 800, 558, {
     const ok = { t: 'OK', c: C.white, bold: true };
     const rows = [
       { cells: ['OPER', 'CLEAR THE LANES  1 OF 3', '8 000', '+6', '', '', '', { t: 'NEEDS LIEUTENANT', c: C.dim, size: 12, bold: true }], dim: true },
-      { cells: ['BOUNTY', 'RAIDER \'VEX\', NEAR HIGHPORT', '7 500', '+6', '3 D', 'HERE', '', ok] },
-      { cells: ['ESCORT', 'HAULER KESTREL TO ANVIL YARDS', '1 500', '+4', '2 D', '2.1 H', '3 000', ok] },
-      { cells: ['PATROL', 'DEEPWELL DEPOT AND BACK', '1 000', '+3', '2 D', '2 H', '1 860', ok] },
-      { cells: ['DELIV', '18 FOOD TO SHACKLETON ICE', '500+', '+3', '8 D', '3.8 D', '3 912', ok], cursor: true },
+      { cells: ['BOUNTY', 'RAIDER \'VEX\', NEAR HIGHPORT', '7 500', '+6', '3D', 'HERE', '', ok] },
+      { cells: ['ESCORT', 'HAULER KESTREL TO ANVIL YARDS', '1 500', '+4', '2D', '2:06:00', '3 000', ok] },
+      { cells: ['PATROL', 'DEEPWELL DEPOT AND BACK', '1 000', '+3', '2D', '2:00:00', '1 860', ok] },
+      { cells: ['DELIV', '18 FOOD TO SHACKLETON ICE', '500+', '+3', '8D', '3D 19H', '3 912', ok], cursor: true },
     ];
     const gr = grid(L, gy + 56, cols, rows, { rh: 26, rule: 0 });
     g += gr.svg;
@@ -104,11 +104,11 @@ const det = du(824, 228, 440, 558, {
     g += val(gy + 160, 'PLUS 52 A UNIT FOR THE FOOD: 936', { bold: false });
     g += text(V, gy + 178, '536 CR CLEAR OF WHAT THE FOOD COSTS', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
     g += lab(gy + 204, 'STANDING') + val(gy + 204, '+3') + text(V + 34, gy + 204, 'FAILED OR GIVEN UP  −1.5', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
-    g += lab(gy + 224, 'DUE') + val(gy + 224, 'DAY 11 14:22') + text(R, gy + 224, 'IN 8 D', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += lab(gy + 224, 'DUE') + val(gy + 224, 'DAY 11 14:22') + text(R, gy + 224, 'IN 8D', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     g += divider(gx, gy + 254, gw, 'ROUTE');
     g += lab(gy + 278, 'TO') + val(gy + 278, 'SHACKLETON ICE, AT THE MOON');
-    g += lab(gy + 298, 'TRANSFER') + val(gy + 298, '2 BURNS · 3 912 M/S · 3.8 D');
-    g += lab(gy + 318, 'ARRIVES') + val(gy + 318, 'DAY 7 09:40') + text(R, gy + 318, '4 D 4 H SPARE', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += lab(gy + 298, 'TRANSFER') + val(gy + 298, '2 BURNS · 3 912 M/S · 3D 19H');
+    g += lab(gy + 318, 'ARRIVES') + val(gy + 318, 'DAY 7 09:40') + text(R, gy + 318, '4D 4H SPARE', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     g += lab(gy + 338, 'AFTER IT') + val(gy + 338, '3 095 M/S LEFT') + text(R, gy + 338, 'HOME 520', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     g += divider(gx, gy + 368, gw, 'HOLD');
     g += lab(gy + 392, 'NEEDS') + val(gy + 392, '18 M³') + text(V + 52, gy + 392, '34 FREE', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 }) + text(R, gy + 392, 'FITS', { size: S_CELL, bold: true, fill: C.white, anchor: 'end', track: 0.4 });

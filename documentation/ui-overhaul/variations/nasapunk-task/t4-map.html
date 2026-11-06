@@ -45,7 +45,7 @@ const plot = du(PX, PY, PW, PH, {
     // the destination: a magenta ring on Shackleton Ice (at the Moon now), its name in magenta
     g += ring(mx, my, 12, C.magenta, 1.5) + text(mx + 18, my + 5, 'SHACKLETON ICE', { size: S_LABEL, bold: true, fill: C.magenta, track: 0.6 });
     g += text(mx + 18, my + 21, 'MOON · 3 STATIONS', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
-    g += text(ax + sp.rSoi * 0.72 + 8, ay - sp.rSoi * 0.72 - 2, 'MOON AT THE ENCOUNTER', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
+    g += text(ax + sp.rSoi * 0.72 + 8, ay - sp.rSoi * 0.72 - 2, 'MOON AT CPA', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
     g += text(ex - 14, ey + 26, 'EARTH', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 }) + text(ex - 14, ey + 42, '3 STATIONS', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     // the header: where, and the close keys
     g += text(gx + 12, gy + 22, 'EARTH SYSTEM', { size: S_TITLE, bold: true, fill: C.white, track: 0.8 });
@@ -91,7 +91,7 @@ const plan = du(RX, 306, RW, 236, {
     g += row(gy + 116, 'DEADLINE', 'DAY 6 11:00', null, 13);
     // the burns, one row each, dashed white on the map while they are a modification
     const gr = grid(gx + 10, gy + 142, [{ t: 'BURN', w: 50 }, { t: 'IN', w: 86 }, { t: 'ΔV M/S', w: 70, align: 'right' }, { t: '', w: 78, align: 'right' }], [
-      ['1', 'T-1:29:51', '3 084', 'PROGRADE'], ['2', 'T-3D 17H', '828', 'RETRO'],
+      ['1', 'T−1:29:51', '3 084', 'PROGRADE'], ['2', 'T−3D 17H', '828', 'RETRO'],
     ], { rh: 19 });
     g += gr.svg;
     return g;
@@ -123,7 +123,7 @@ s += du(16, 676, 1248, 110, {
       { h: 79.2, label: 'MOON SOI', c: C.white, shape: 'tick', lx: 966, level: 17 },
       { h: 88.8, label: 'BURN 2', c: C.white, dash: '3 2', lx: 1062, level: 22 },
       { h: 91.3, label: 'ARRIVE', c: C.white, shape: 'tick', lx: 1142, level: 22 },
-    ], { end: 91.3, t0: 8, ticks: [[24, '1 D'], [48, '2 D']] }),
+    ], { end: 91.3, t0: 8, ticks: [[24, '1D'], [48, '2D']] }),
 }).svg;
 
 document.getElementById('out').innerHTML = svgPage(s);

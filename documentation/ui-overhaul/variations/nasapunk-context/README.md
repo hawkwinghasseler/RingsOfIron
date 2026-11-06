@@ -1,6 +1,6 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 13 when drawn, on branch
+The context-driven functional spec (`functional-context.md`, version 14 when drawn, on branch
 `claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at 2x; sources are
@@ -110,8 +110,10 @@ one-line feed and the close keys. The map has no tabs, so the number keys keep t
 the panels' feet carry them as soft keys. The plan to Shackleton Ice is the game's, a leg at a time:
 burn 1, selected in cyan with its handles and its result, an apoapsis at the Moon's distance, then
 the capture at the Moon as an estimate (the dashed diamond) until the crossing into the Moon's
-sphere plans it. The path stops at that crossing, marked with a bar, and the Moon is drawn dashed
-where it will be at the encounter. The timeline runs to the contract's deadline, past the arrival,
+sphere plans it. The path stops at that crossing, marked with a bar. The Moon is drawn twice, as
+the game draws it: where it is now, with the Nav's ring on Shackleton Ice, and dashed, as a ghost
+with its sphere, where it will be at the plan's closest approach, labelled with that time (version
+14). The timeline runs to the contract's deadline, past the arrival,
 with its cursor on burn 1 and the warp-to. The Nav panel names the body the station orbits and
 gives the arrival in place of a closest approach.
 
@@ -163,7 +165,7 @@ stations to end. That is why Bea can hold the helm: crew man a console only when
 board suits them. No crew mends a cut conduit, so it is no job on the board: Power has it under the
 gun it strands, with the yard's 400 cr. The feed has the game's own notice for a light wound.
 
-## Round 7 critique (versions 10 to 13)
+## Round 7 critique (versions 10 to 14)
 
 Version 10 came from the cassette direction's round 3. It made the samples true to the game's
 geography (Shackleton Ice orbits the Moon, so the trip is planned a leg at a time and the deadline
@@ -171,7 +173,9 @@ outlasts it), set the full-screen modes' frame (tabs on their number keys, the c
 foot), and made M3 a panel over the docked view. I checked it against the game's code and sent four
 notes; version 11 took all four and added P2's Held state. Drawing C1 to it found one more, which
 version 12 took, and drawing C8 one more, which version 13 took. Every screen here is redrawn to
-version 13.
+version 13. Version 14 came from the VFD direction's check: the map's ghost of the Moon carries the
+time it stands for, and the Nav card follows H2's rule. C5 already drew both Moons and that card,
+so only the ghost's label changed, to `MOON AT CPA · T−4D 2H`.
 
 Problems in the spec, sent and taken:
 
@@ -217,7 +221,8 @@ What works:
 - The map and H2 tell the same trip in the same words: one burn, the crossing, the capture as an
   estimate, the arrival, the deadline.
 
-**Converged** at version 13: nothing meaningful is left, and the designer counts it converged too.
+**Converged** at version 13, and still at version 14, which changed only C5's label: nothing
+meaningful is left, and the designer counts it converged too.
 
 ## Round 5 critique (version 9)
 

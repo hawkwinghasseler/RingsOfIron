@@ -41,14 +41,14 @@ s += consoleFace(8, 84, 1264, 708, {
     g += sp.svg;
     const [mx, my] = sp.moonNow, [ax, ay] = sp.moonAt, [ex, ey] = sp.earth;
     g += ring(mx, my, 12, C.magenta, 1.5) + text(mx + 18, my + 5, 'SHACKLETON ICE', { size: 12, bold: true, fill: C.magenta, track: 0.6 }) + text(mx + 18, my + 21, 'MOON · 3 STATIONS', { size: 12, bold: true, fill: C.dim, track: 0.5 });
-    g += text(ax + sp.rSoi * 0.72 + 8, ay - sp.rSoi * 0.72 - 2, 'MOON AT THE ENCOUNTER', { size: 12, bold: true, fill: C.dim, track: 0.5 });
+    g += text(ax + sp.rSoi * 0.72 + 8, ay - sp.rSoi * 0.72 - 2, 'MOON AT CPA', { size: 12, bold: true, fill: C.dim, track: 0.5 });
     g += text(ex - 14, ey + 30, 'EARTH', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.6 }) + text(ex - 14, ey + 46, '3 STATIONS', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     // the cursor on the path, two days out, with what is under it
     const [cx, cy] = sp.pathAt(0.62);
     g += plotCursor(cx, cy, '');
     const rx = cx + 16, ry = cy + 24;
     g += rect(rx - 6, ry - 15, 196, 62, { fill: 'rgba(5,7,10,0.9)', stroke: '#1E3A46', sw: 1 });
-    g += text(rx, ry, 'ON THE PLAN', { size: 12, bold: true, fill: C.cyan, track: 0.6 }) + text(rx + 184, ry, 'T-2.1 D', { size: 13, bold: true, fill: C.cyan, anchor: 'end' });
+    g += text(rx, ry, 'ON THE PLAN', { size: 12, bold: true, fill: C.cyan, track: 0.6 }) + text(rx + 184, ry, 'T−2D 2H', { size: 13, bold: true, fill: C.cyan, anchor: 'end' });
     g += text(rx, ry + 18, 'FROM EARTH', { size: 12, bold: true, fill: C.dim, track: 0.5 }) + text(rx + 184, ry + 18, '213 400 KM', { size: 13, bold: true, fill: C.white, anchor: 'end' });
     g += text(rx, ry + 36, 'SPEED', { size: 12, bold: true, fill: C.dim, track: 0.5 }) + text(rx + 184, ry + 36, '1 020 M/S', { size: 13, bold: true, fill: C.white, anchor: 'end' });
     // the title of the view, and the layers that are on
@@ -56,7 +56,7 @@ s += consoleFace(8, 84, 1264, 708, {
     g += text(gx + 14, gy + 68, 'STATIONS · TRAFFIC · PIRATES', { size: 12, bold: true, fill: C.dim, track: 0.5 });
     g += scaleBar(gx + gw - 100, gy + gh - 40, 68, '100 000 KM');
     // the footer's response line: what the last key did
-    g += text(gx + 14, gy + gh - 30, 'PLAN ACCEPTED · BURN 1 T-1:29:51, BEA AT THE HELM FLIES IT', { size: 12, bold: true, fill: C.white, track: 0.5 });
+    g += text(gx + 14, gy + gh - 30, 'PLAN ACCEPTED · BURN 1 T−1:29:51, BEA AT THE HELM FLIES IT', { size: 12, bold: true, fill: C.white, track: 0.5 });
     return g;
   },
 }).svg;

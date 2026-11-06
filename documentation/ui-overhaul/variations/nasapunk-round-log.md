@@ -11,7 +11,7 @@ at 1280 x 800.
 | Variation | Folder | Spec version drawn | State |
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14 | Converged in round 5 |
-| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 13 | Converged in round 5, and again at version 13 in round 7 |
+| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 14 | Converged in round 5, and again at versions 13 and 14 in round 7 |
 | Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 9 | Converged in round 5; round 9 drawn in round 6 |
 
 ## Round 1 (3 November 2026)
@@ -284,7 +284,7 @@ and the game's numbers.
 | The map | T4, a proposed transfer waiting for EXEC, late against the deadline | C5, the accepted plan with burn 1 selected | S4, the full-screen Plot with a cursor reading the path |
 | Boarding | T5, BRD once the ship is taken, with the salvage marked | C6, M4 with the party fighting aboard | S5, the slate's Boarding tab before the party goes |
 | The station's services | T6, the station terminal on Contracts | C7, M3 on its Market tab, a panel over the docked view | S6, the station link's Yard tab |
-| Ship and crew | T7, the ship's book on Crew | C8, M2 on Systems in the corvette's fight | |
+| Ship and crew | T7, the ship's book on Crew | C8, M2 on Systems in the corvette's fight | S7, the slate's Crew tab, with the new station order |
 
 **New pieces in the kit.** A mark box for lists where Enter marks or leaves a row: filled cyan when
 marked (a command, so cyan), hollow and dim when not, and absent where the row can't be marked,
@@ -347,6 +347,25 @@ lens 24 tall with each count in its severity's colour, lit red while a new warni
 `context.js`. `systemPlot` can end a path at a sphere of influence (`leg: 'soi'`), marking the
 crossing with a bar, and draws the ship where its orbit puts it (`shipLead`). The word list adds
 SOI and the countdown over a day (`T−4D 4H`).
+
+**The slate's Crew tab, version 14 and my own day forms.** S7 draws the stations spec's Crew tab
+with its new order, station assignments, as a selector over the consoles a person can man (AUTO,
+the helm, TAC and the two guns a gunner works; the point-defense autocannons keep to themselves and
+the launcher waits for the captain), with what each does to the guns by the game's rules. The
+context spec's version 14 gave the map's ghost of the Moon the time it stands for; C5 already drew
+both Moons, so only its label changed, and S4 and T4 now give the ghost the same name, MOON AT
+CPA. A sweep of my screens against the word list found day and hour values with spaces or
+decimals (T6's `3.8 D`, S4's `T-2.1 D`) and hyphens for the minus in S4 and T4. They read `3D 19H`,
+`T−2D 2H` and so on now, and T6's travel times under a day are H:MM:SS. T7 counted 0.6 h of work
+for Cole beside an engineering skill of 50, but every second of work raises engineering, and 0.6 h
+would have taken it to about 87; Cole's record has no work now, and T7's TAKES ON line adds the
+rescues, fires and wounded a marine takes on.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Stations (10.4, 20.7) | What a station assignment does is unwritten. S7 draws it as which console a person mans while nothing else needs them, AUTO for the crew's own choice, over only the consoles a person can work: the helm, the weapons console and the guns a gunner works | |
+| Stations (10.4) | Letting go can't be undone: the game removes the person (`CrewHiring.dismiss`), who doesn't go back on the station's hiring list. Should it take two presses, as the beacon and abandon ship do? | |
+| Stations (10.4) | Two people set to one console: which gives way? A suggestion: the newer order wins, the other goes back to AUTO, and the footer says so | |
 
 ## Next
 
