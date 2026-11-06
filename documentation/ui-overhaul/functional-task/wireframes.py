@@ -513,34 +513,40 @@ def boarding(out):
     s.text(300, 220, "your ship (deck)", size=10, fill="#777", anchor="middle", style="italic")
     s.rect(500, 260, 300, 160, fill="#d0d0cc", stroke="#555", sw=1.5)
     s.text(650, 250, "Raider (taken)", size=10, fill="#777", anchor="middle", style="italic")
-    s.box(540, 300, 160, 40, "", "Ada: stripping laser", ["Cole: carrying ore"], kind="world")
+    s.box(540, 300, 160, 40, "", "Ada: stripping laser", ["Cole: waiting to carry"], kind="world")
     chr_(s, "WARP 1x", "")
     ann(s, shields=False)
+    # The Raider near Highport flies with no crew and no cargo (GameScenario), so the first order took
+    # it (Boarding.takeUndefended). Its value is 96 hull tiles and its guns, 213,000 (Difficulty):
+    # a station pays a twentieth of a part's price (Salvage.SALE_SHARE) and of the prize, and a
+    # fiftieth of what is left once anything is off (Shipyard), each gun taken off taking its price.
+    # A tile's work is 10 s at the usual rate, so a Small turret's gun takes 10 s, the Medium reactor 40 s.
     s.box(904, 72, 360, 684, "BRD", "Boarding: Raider", [
-        "state     TAKEN (was: reactor down)",
+        "state     TAKEN, nobody aboard (was: reactor down)",
         "link      latched, port to port",
         "cost      none (outlaw)",
         "",
-        "PARTY                 status",
+        "ACROSS                status",
         "Ada (engineer)        stripping the laser",
-        "Cole (marine)         carrying ore across",
+        "Cole (marine)         waiting to carry",
         "                      [Recall all]",
         "",
-        "SALVAGE    value   work    hold",
-        "laser Mk1  2,250   40 s    1 m3  [strip]",
-        "harpoon    1,100   30 s    1 m3  [marked]",
-        "reactor M  1,800   60 s    2 m3  [strip]",
+        "SALVAGE           sells  work  crate",
+        "Laser Mk1         2,250  10 s  1 m3  stripping 40%",
+        "Reactor           2,000  40 s  1 m3  [strip]",
+        "Harpoon Launcher  1,500  10 s  1 m3  marked",
+        "Engine            1,250  20 s  1 m3  [strip]",
+        "11 more, 5,500 in all       [show all]",
         "",
-        "CARGO",
-        "ore  8 m3   960 cr       [carry]",
-        "                         [take all]",
-        "hold after all of it: 18 of 40 m3",
+        "CARGO  hold empty",
+        "hold after all of it: 21 of 40 m3",
         "",
-        "PRISONERS 3     berths free 4",
-        "[bring aboard]  (all fit)",
+        "PRISONERS  none aboard",
         "",
-        "PRIZE  hand over at a shipyard:",
-        "sale 21,000 cr  /  turn in +8 standing"])
+        "PRIZE  a station within 2 km takes it in",
+        "sale 10,650 cr whole",
+        "     2,760 once the marked parts are off",
+        "or turn it in at Highport: +6 standing"])
     hnt(s, "K close   W/A/S/D walk   F1 controls")
     s.save(os.path.join(out, "boarding.svg"))
 
