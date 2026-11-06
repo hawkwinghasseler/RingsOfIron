@@ -1,6 +1,6 @@
 # Nasa-punk × Ship Stations
 
-The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn, S7 at round 15, S9 at round 16 and S8 at round 17) skinned in the
+The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn, S7 at round 15, S9 at round 16 and S8 at round 18) skinned in the
 Nasa-punk style (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
 2x; sources are the HTML files here, using `stations.js` and the shared kit in
@@ -135,7 +135,7 @@ for good.
 
 ![The slate, log](s8-slate-log.png)
 
-**S8, the slate's Log tab (10.4), on deck, docked at Highport on S7's visit (round 17).** The tab
+**S8, the slate's Log tab (10.4), on deck, docked at Highport on S7's visit (round 18).** The tab
 is what happened aboard, newest first, the last 500 lines. L opened it, and the captain has
 scrolled down to the First Play fight, ten lines below the newest. Each line is what the ticker
 carried, with its station tag and its speaker. An alert someone called is one line, the callout,
@@ -145,7 +145,8 @@ lines answering an order carry no mark, and responses, the player's own answers,
 Today's notices come in under the station 13.4 gives them, COMMS for docking and salvage, TAC for
 the Raider's disablement and CMD for the bounty, boarding progress and the prisoners, in the
 game's own words where they fit 50 characters ("Raider is taken: 3 held") and shorter ones where
-they don't (the bounty's "bounty done: Raider beaten, +7 500 CR, +6 standing"). A station speaks
+they don't (the bounty's "Raider bounty done: +7 500 CR, +6 standing", round 18's form for a
+contract's end, whose whole sentence stays on the Contracts tab). A station speaks
 in its own name ("Highport: clearance granted, port 2."); the ship's own events are SHIP's. Read
 from the bottom, the fight goes in order on First Play's day 0: the Raider in the guns' range and
 opening fire, its harpoons, both shot down 13 s later, the short on the aft starboard gun and the

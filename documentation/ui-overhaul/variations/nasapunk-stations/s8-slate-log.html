@@ -16,7 +16,7 @@
 // height and the world's centre moves left by half its width, as in S7; nothing is wrong aboard, so
 // the annunciator is dark and the ticker empty.
 //
-// What the Log holds (10.4, round 17): a line for each event, newest first. An alert as it is
+// What the Log holds (10.4, rounds 17 and 18): a line for each event, newest first. An alert as it is
 // raised is the words of its callout if one was spoken, else its own text (13.7), with its
 // severity's mark; as it clears, its record (13.7: "Fire in the bridge out after 1:42", "Missiles
 // gone after 0:13"), with the same mark, hollow. Advisories and crew lines answering an order are
@@ -27,9 +27,11 @@
 // the station, else SHIP, and a station's own message in the station's name (13.5: "Highport:
 // clearance granted, port 2."). Each is in the notice's own words where they fit 50 characters
 // ("Raider is taken: 3 held", "The airlock door of Raider is forced open", "Crew 4 (Void Raiders)
-// handed over: +400 cr", with the word list's CR), and in shorter ones where they don't: the game's
-// "Contract done: Raider of the Void Raiders is beaten. Paid 7,500 cr, standing +6 with Terran
-// Patrol Authority" (ContractBoard.end) is "bounty done: Raider beaten, +7 500 CR, +6 standing". The
+// handed over: +400 cr", with the word list's CR), and in the spec's shorter ones where they don't:
+// a contract's end names it by its target and kind, how it ended and what it paid (13.5, round 18),
+// so the game's 108 characters, "Contract done: Raider of the Void Raiders is beaten. Paid 7,500
+// cr, standing +6 with Terran Patrol Authority" (ContractBoard.end), are "Raider bounty done: +7 500
+// CR, +6 standing", the whole sentence staying on the Contracts tab, under Ended. The
 // times are First Play's day 0 (GameHudText counts days from 0), with walkthrough E at 00:06:44
 // (round 16): the fight comes minutes after the undocking, as First Play turns the raider on the
 // ship once it is 2 km clear (FirstPlay's FIGHT step, GameScenario.provokeRaider).
@@ -91,7 +93,7 @@ const LOG = [
   ['00:32:40', 'CMD', '', 'Cole: the airlock door of Raider is forced open.'],
   ['00:27:08', 'CMD', '', 'Cole: ready to go across, Captain.'],
   ['00:27:05', 'COMMS', '', 'SHIP: docked at Raider.'],
-  ['00:15:37', 'CMD', '', 'SHIP: bounty done: Raider beaten, +7 500 CR, +6 standing.'],
+  ['00:15:37', 'CMD', '', 'SHIP: Raider bounty done: +7 500 CR, +6 standing.'],
   ['00:15:37', 'TAC', 'c-', 'Raider firing on you: cleared after 9:12'],
   ['00:15:37', 'TAC', '', 'Cole: Raider is disabled: reactor down.'],
   ['00:10:05', 'ENG', 'c-', 'Fire in the bridge out after 1:42'],

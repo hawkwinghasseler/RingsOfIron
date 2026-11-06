@@ -10,7 +10,7 @@ at 1280 x 800.
 
 | Variation | Folder | Spec version drawn | State |
 |---|---|---|---|
-| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 17 | Converged in round 5; S7 to S9 drawn in round 7 |
+| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18 | Converged in round 5; S7 to S9 drawn in round 7 |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17 | Converged in round 5, and again at versions 13 to 17 in round 7 |
 | Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 9 | Converged in round 5; round 9 drawn in round 6 |
 
@@ -478,7 +478,7 @@ YOURS in hand. Drawing it raised three small points.
 | Stations (5.6, 13.5) | Comms' row says station messages come through the ticker "as COMMS lines from the station's name", but 13.5 has them spoken by SHIP with nobody at Comms ("COMMS  SHIP: docked at Highport, port 2."). S8 follows 13.5 | Round 17: a station speaks its own messages in its own name ("COMMS  Highport: clearance granted, port 2."); the ship's own Comms events, such as the latch, are SHIP's, or the crew member's at Comms (5.6, 7.2, 13.5) |
 | Stations (5.4) | Is the callout "target struck" a hit on the target, or the target striking (surrendering, as 8.3's target states use the word)? The game posts "cuts thrust and surrenders" for the one and nothing for the other. S8 calls neither | Round 17: "target struck" is gone. TAC calls out what hostiles do in the game's words ("Raider cuts thrust and surrenders", "Raider is breaking off"); the target's states are breaking off and `DisabledComponent.Reason`'s labels (5.4, 8.3). What raiders do in a fight and other ships' disablement are TAC advisories, the pirates' news CMD's (13.4, 13.5) |
 
-Round 17 took all three, and S8 is redrawn to it. Highport's clearance is now Highport's own line
+Round 17 took all three, and S8 is redrawn to it and then to round 18. Highport's clearance is now Highport's own line
 ("Highport: clearance granted, port 2."), and the Raider's disablement moves to TAC, spoken by Cole.
 Checking the fight against round 17's pirates rule found my own error: First Play's raider is a
 ship `GameScenario` places beside Highport, turned on the player by `provokeRaider` once they are
@@ -487,15 +487,18 @@ intercept and never breaks off, and fights until it is beaten. So S8 loses the i
 PIRATES caution and its record, and the hit that shorts the aft starboard gun is the chaingun's,
 not a parting shot. The bounty now has its line: the game pays it the moment the Raider is beaten
 ("Contract done: Raider of the Void Raiders is beaten. Paid 7,500 cr, standing +6 with Terran
-Patrol Authority", `ContractBoard.end`), an advisory under CMD (13.4), too long for 50 characters,
-so S8 writes it shorter. That also showed the slates' credits were wrong: S5 read 5 000 during the
+Patrol Authority", `ContractBoard.end`), an advisory under CMD (13.4), too long for 50 characters.
+Round 18 gave its form, which S8 uses: a contract's end names the contract, how it ended and what
+it paid ("Raider bounty done: +7 500 CR, +6 standing"), and the whole sentence stays on the slate's
+Contracts tab, under Ended. Round 18 also has the crews hold fire on a disabled ship
+(`GunCrews.hostile`); no screen shows a crew gun on the beaten Raider. That also showed the slates' credits were wrong: S5 read 5 000 during the
 boarding, after the bounty had paid, and S6, S7 and S8 read 2 950, a figure with no source. They
 are now the game's sum: 12 500 aboard the Raider (5 000 to start and the bounty's 7 500), and
 13 700 at Highport once the three prisoners are handed over.
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Stations (10.4, 13.4) | 10.4's example has "the Raider" breaking off after closing to 50 km. First Play's raider can do neither: it is placed beside Highport (`GameScenario`) and `HostileTraffic` doesn't fly it, so it posts no intercept and never breaks off. The example would hold for a pirate on the rails ("Pirate raider 3 is breaking off"). My S8 had the First Play raider intercept and break off, which is where the example came from; S8 no longer does | |
+| Stations (10.4, 13.4) | 10.4's example has "the Raider" breaking off after closing to 50 km. First Play's raider can do neither: it is placed beside Highport (`GameScenario`) and `HostileTraffic` doesn't fly it, so it posts no intercept and never breaks off. The example would hold for a pirate on the rails ("Pirate raider 3 is breaking off"). My S8 had the First Play raider intercept and break off, which is where the example came from; S8 no longer does | Round 18: the example is "Pirate raider 3 is breaking off", and 10.4 says First Play's Raider posts no intercept and never breaks off, fighting until it is beaten or surrenders (5.4, 10.4) |
 
 ## Next
 
