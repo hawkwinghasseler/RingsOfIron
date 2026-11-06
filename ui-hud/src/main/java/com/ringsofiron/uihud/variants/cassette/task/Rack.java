@@ -92,15 +92,16 @@ final class Rack extends YardPart {
     }
 
     /**
-     * {@code s} in at most two lines of {@code n} characters: before where the job goes ("Deliver 40
-     * Food" over "to Shackleton Ice") when {@code job}, else at a word, else where it must; past two it
-     * is cut with an ellipsis.
+     * {@code s} in at most two lines of {@code n} characters: when {@code job}, before where the job
+     * goes ("Deliver 40 Food" over "to Shackleton Ice") or before the faction a bounty names ("Bounty:
+     * Raider" over "of the Void Raiders"); else at a word, else where it must. Past two it is cut with
+     * an ellipsis.
      */
     static String[] wrap(String s, int n, boolean job) {
         if (s.length() <= n) return new String[]{s};
         int at = -1;
         if (job) {
-            for (String w : new String[]{" to ", " from "}) {
+            for (String w : new String[]{" to ", " from ", " of the "}) {
                 int k = s.indexOf(w);
                 if (k > 0 && k <= n && (at < 0 || k < at)) at = k;
             }
