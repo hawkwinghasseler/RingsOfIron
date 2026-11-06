@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 14.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 15.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -257,7 +257,7 @@ The DEFENSE page is the "HUD gauge and coverage overlay" that the combat design 
 |---|---|
 | MFD pages | CREW (who mans which station, the wounded with their timers, who is outside), CONTRACTS (held: what, time left, where) |
 | Slate tabs | Ship, Crew, Medical, EVA, Boarding (latched only), Prisoners (when held), Contracts, Career, Log (10.4) |
-| Orders | Suits at battle stations, EVA hold and orders, boarding party, let go and hire, prisoners; new: station assignments (today the crew AI chooses who mans what), battle stations, helm orders while a crew member has the helm; abandon ship |
+| Orders | Suits at battle stations, EVA hold and orders, boarding party, let go and hire, prisoners; new: station assignments (10.4; today the crew AI chooses who mans what), battle stations, helm orders while a crew member has the helm; abandon ship |
 | Alerts owned | Crew air running out; crew critically wounded; crew adrift or left behind; crew in the engines' exhaust; promotion and payday (advisory); contract done, failed or called off (advisory) |
 | Data | `CrewProvider`, `BoardingProvider`, `MissionProvider` (held), `Spacewalks`, `CrewMedical`, `AirWatch`, `NoticeLog`, budget and standing |
 
@@ -586,7 +586,7 @@ The captain's own panel, anywhere aboard. Its title bar carries the captain's ra
 | Tab | Content |
 |---|---|
 | Ship | The station board; then a **page viewer** that shows any station's page (the same pages as the MFDs, larger), read-only, with that station's orders. Clicking an annunciator tile on deck opens the slate here on the tile's home page |
-| Crew | Roster: name, role, skills, condition, morale, wage, record; the station each mans; station assignment (new); let go (docked) |
+| Crew | Roster: name, role, skills, condition, morale, wage, record; the station each mans; station assignment (new, below); let go (docked, below) |
 | Medical | The wounded: wound, bleed-out timer, who is treating them; medical stores |
 | EVA | Who is outside, tethered or adrift, their air; hold everyone in; send out, call in |
 | Boarding | When latched: the other ship's state, the boarding party (send, recall), then what can be stripped and carried over (`BoardingWindow`) |
@@ -594,6 +594,16 @@ The captain's own panel, anywhere aboard. Its title bar carries the captain's ra
 | Contracts | Held: what, time left, where; set as nav target; give up |
 | Career | Rank, sponsor, standing per faction, weekly budget and next payday, record; faction tension |
 | Log | Every alert and callout, newest first, filterable by station and severity; the last 500 |
+
+**Station assignment** (new) is the console a person mans whenever nothing else needs them. AUTO keeps today's choice, by the console's priority and the role's affinity (`ManConsoleTask`, `CrewRole`). An assignment changes only which console: a fire, a casualty or a boarding still pulls the person off first, as it does now, and they go back to their console after.
+
+- The selector offers only the consoles the person's role mans, and only those where a person changes something. A crewman can take the helm, the weapons console or a gun; a marine the weapons console or a gun. An engineer or a medic mans no console (`CrewRole` affinity 0), so they have no selector.
+- The guns offered are those a gunner works. Point defense keeps to itself and a launcher waits for the captain (`GunCrews`), so on the corvette the guns are NOSE and AFT STBD.
+- Beside each choice the tab says what it does. At a gun, that gun fires at the person's own gunnery. At the weapons console, every gun fires at half of it (`GunCrews.REMOTE_SKILL`). The tab also names any gun that would be left with nobody working it, which then waits for the trigger.
+- When two people are set to one console, the newer order wins. The other person goes back to AUTO, and the footer says so: "Bea goes back to AUTO".
+- While the player sits at a person's console, that person takes AUTO's next choice, and returns when the player stands up. If their console is destroyed, they go back to AUTO, with a line in the log.
+
+**Let go** (docked) takes a second press, as abandon ship and the tow do, because it can't be undone: the person leaves the ship and does not go back on the station's hiring list (`CrewHiring.dismiss`). The first press asks: "Let Cole go? [Enter] again: Cole leaves the ship for good."
 
 ---
 
@@ -1193,7 +1203,7 @@ For whoever builds this; nothing here is binding on the art.
 | `Visibility` | A pure function from (presence, condition, states, open panel) to the visible widgets: section 14 as code, unit-tested row by row |
 | `ShieldStatusProvider` | Shield mass, segments, trim and emitters for DEFENSE (the model has the data; the provider is new) |
 
-**New data needed.** The POWER page needs nothing new: reactor rating and output, each circuit's store, and each system's switch, circuit, short with its reclose timer, stun, health and destruction are all in interior-grid today. The tactical cluster needs nothing new either: each gun's hit chance (`HitChance`, as `FireArcOverlay` already computes it), a beam's strength (`WeaponMountComponent.beamStrength`), charging (the circuit's store against the shot's energy, `power_draw` times cooldown), firing arcs, point defense's missile targets, magazines and the salvo size are all there. What is new: an impact time with the missile's burn in it, t = (−v + √(v² + 2ad)) / a, with v its closing speed, d its range and a its closing burn (`MissileDef.closingBurn`, 30 m/s² for a harpoon), since `CombatThreats` gives the closest approach at the present speed, which runs long while a missile accelerates: 47 s at launch for a harpoon from 2.8 km that lands in about 12, and a countdown from it falls faster than the clock; a 5 km step in `RadarScope.RANGES`; collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); crew assignment per station (ai-crew's `ManConsoleTask`); hours of air at the current crew.
+**New data needed.** The POWER page needs nothing new: reactor rating and output, each circuit's store, and each system's switch, circuit, short with its reclose timer, stun, health and destruction are all in interior-grid today. The tactical cluster needs nothing new either: each gun's hit chance (`HitChance`, as `FireArcOverlay` already computes it), a beam's strength (`WeaponMountComponent.beamStrength`), charging (the circuit's store against the shot's energy, `power_draw` times cooldown), firing arcs, point defense's missile targets, magazines and the salvo size are all there. What is new: an impact time with the missile's burn in it, t = (−v + √(v² + 2ad)) / a, with v its closing speed, d its range and a its closing burn (`MissileDef.closingBurn`, 30 m/s² for a harpoon), since `CombatThreats` gives the closest approach at the present speed, which runs long while a missile accelerates: 47 s at launch for a harpoon from 2.8 km that lands in about 12, and a countdown from it falls faster than the clock; a 5 km step in `RadarScope.RANGES`; collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); a console per crew member, which the task board's choice among `ManConsoleTask`s takes ahead of affinity (10.4); hours of air at the current crew.
 
 **Order of work.** Each step leaves a playable game:
 
@@ -1217,11 +1227,19 @@ For whoever builds this; nothing here is binding on the art.
 4. **Dedicated consoles on bigger hulls** (nav table, comms, damage control, medbay)? Recommendation: yes, as data, after the overhaul; the hosting table already allows it.
 5. **Should battle stations also move the crew** (to their stations, into suits where that setting is on)? Recommendation: yes, but as a separate change to ai-crew; the UI only needs the condition.
 6. **Lighting toggle (O)** to Settings, freeing O for acknowledge? Recommendation: yes.
-7. **Two new captain's orders**: hold fire (the game has the switch, `GunCrews.holdFire`, but nothing gives it to the player, so a crewed gun keeps firing on a ship the player wants to take whole) and station assignments (today the crew AI chooses who mans what: marines take the weapons console, crewmen the helm). Recommendation: yes to both; they are small, and both are orders a captain would expect to give.
+7. **Two new captain's orders**: hold fire (the game has the switch, `GunCrews.holdFire`, but nothing gives it to the player, so a crewed gun keeps firing on a ship the player wants to take whole) and station assignments (today the crew AI chooses who mans what: marines take the weapons console, crewmen the helm). Recommendation: yes to both; they are small, and both are orders a captain would expect to give. 10.4 defines an assignment as the console a person mans when nothing else needs them, so it never keeps anyone from a fire.
 
 ---
 
 ## 21. Changelog
+
+### Round 15 (Nasa-punk artist's questions from drawing the slate's Crew tab)
+
+| Problem found | Change |
+|---|---|
+| What a station assignment does was unwritten (5.7, 10.4, 20.7) | It is the console a person mans whenever nothing else needs them; AUTO keeps today's choice; other work still pulls them off first. The selector offers only the consoles the role mans and where a person changes something, and it says what each choice does to the guns (10.4, 19, 20.7) |
+| Letting a person go can't be undone (`CrewHiring.dismiss` removes them, and they don't return to the hiring list), yet it took one press | Two presses, like abandon ship and the tow (10.4) |
+| Two people set to the same console had no rule | The newer order wins and the other goes back to AUTO, with a footer line saying so (10.4) |
 
 ### Round 14 (Nasa-punk artist's round 4 notes, checked)
 
