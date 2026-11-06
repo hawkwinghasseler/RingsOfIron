@@ -5,7 +5,7 @@ Each functional design (Ship Stations, Context-driven, Task-driven) is combined 
 | Variation | Spec version used | Round | Screens | Open criticism |
 |---|---|---|---|---|
 | [Ship Stations × Cassette](stations-cassette/README.md) | Stations round 9 | 2 | C helm, D approach, E weapons, B deck, G docked; kit sheets K, K2, K3 | 1 style, 9 functional |
-| [Context-driven × Cassette](context-cassette/README.md) | Context v7 | 2 | 01 cruise, 03 approach, 04 combat, 05 fire control, 07 deck emergency, 08 docked, 12 orders menu, 13 boarding | 3 style, 6 functional |
+| [Context-driven × Cassette](context-cassette/README.md) | Context v9 | 3 | 01 cruise, 03 approach, 04 combat, 05 fire control, 07 deck emergency, 08 docked, 09 map, 10 station, 11 ship systems, 12 orders menu, 13 boarding | 3 style, 10 functional |
 | [Task-driven × Cassette](task-cassette/README.md) | Task round 9 | 2 | 01 helm at rest, 02 gunnery, 03 deck, 04 terminal, 05 map, 06 crisis, 07 FLT modes and lamp states, 08 ship's book, 09 relations and states | None in the stills (3 for the in-game build), 3 functional |
 
 The screens the three specs share outside the flight deck (the main menu, pause, load and save, settings, the ship-lost screen and the mod-scripts question) are drawn once for all three, in [cassette/shell](../cassette/shell/README.md).
@@ -148,5 +148,33 @@ The first rounds covered flight, the deck and docking, but not the screens aroun
 
 The shell is drawn first, since all three specs share it: eight screens and a kit sheet in [cassette/shell](../cassette/shell/README.md). Two small additions came out of drawing it, flagged as new in its README: a TWICE lens when a key is bound to two actions (the game doesn't check today), and an OVERWRITE lens when a save's name is taken.
 
-Next: Context round 3 draws its full-screen modes (the map, the station, the ship's systems), then the Stations spec's panels and Task's boarding and console panels.
+Context round 3, below, draws the first full-screen modes. Next: the Stations spec's panels, then Task's boarding and console panels.
+
+## Round 3: Context-driven
+
+Context spec version 9. The designer answered all six of round 2's notes in version 8. Three screens are new: the map (09), the station's terminal (10) and the ship's systems (11), the spec's full-screen modes, built by section 9's rules. Critique and changes are in the [variation's README](context-cassette/README.md#round-3-critique).
+
+A mode fills the spec's own zones. The big console runs the full width, with the spec's 30-unit head and 27-unit foot, and there is no margin of space round it, because the spec gives a mode the whole screen. P1's caution and warning chip, which the spec makes the master alert cue while a mode is open, has a fixed window in the rail. Outside modes the window is an empty slot, so the rail never moves. The market terminal adds one thing, flagged as new: each trade's result prints on a roll under the trade keys, so the player sees this visit's trades, not only the last.
+
+The render found nine faults, fixed in the round. The biggest were the ship, lost on its own orbit line on the map (it is the own-ship cross now, on a dark knockout), and the ship plan's turrets, which were rings with a dot, the captain's mark on H4 (they have a barrel now). Three severity marks on the older sheets were still typed glyphs, and are drawn now.
+
+Four fixes to the style guide came out of this round, and apply to the other two variations:
+
+- **A mode's zones are the spec's.** Section 9.2 gave the big console its own head and foot and a space margin. It now takes the zones the spec sets, and shows the margin only where the spec leaves room.
+- **A tab carries its own key.** The keycap sits on the piano key's face (9.4), and the foot carries only the close keys.
+- **The clock on a tube page** is only for a screen that shows the time nowhere else (9.5). In a mode, P1 has it.
+- **Burn handles on the map are double chevrons** (9.9), as burns are everywhere else. They were hollow triangles, the caution shape.
+
+Notes sent to the context designer:
+
+1. Wireframe 10's commodities aren't the game's. Highport trades water, food, machinery and salvage.
+2. Wireframe 11 has Bea at the helm and also sealing the breach.
+3. Wireframe 11's P1 has no chip, though a breach is a warning.
+4. Wireframe 09's distances can't happen: Shackleton Ice orbits the Moon. Suggested: a transfer of 3,110 m/s, a capture of 850, arrival at T-3.3 d. The Ap at T-24:10 is never reached, because burn 1 comes first.
+5. The game doesn't name the player's ship, so "Red Kestrel" is PATROL CORVETTE.
+6. "Reconnect conduit" isn't a crew job (a damaged conduit is a repair), and stranding the stbd laser alone takes two cuts.
+7. The jobs held until battle stations end are the EVA ones, not "Treat light wound".
+8. The wireframes put the tab and close keys in the title row, and the spec's text puts them in the foot.
+9. M3's Market fills a fraction of the body. Does it need the whole screen?
+10. M1's panel list leaves out five of ManeuverMap's controls (Delete burn, Next target, Centre, Fit, All traffic), though the spec says M1 keeps everything.
 

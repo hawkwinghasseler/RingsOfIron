@@ -97,9 +97,10 @@ a bat toggle.
 
 ![Kit sheet: the big console's head and foot, the ledger tube, form controls, the guard, paper stocks, the optics port](K4-off-deck-kit.jpg)
 
-The parts section 9 adds, in their states: the big console's head (the nameplate, piano-key tabs with a
-blanking plate and a waiting jewel, the place on flaps, the close keys) and its one-line feed; the ledger
-tube (a drawn sort mark, the selected row in reverse, keys struck with their reason, a cut name, `--`, a
-drawn caution mark, the position meter, a headline drum) and an empty list; the barred CONTINUE; the form
+The parts section 9 adds, in their states: the big console's head (the nameplate, piano-key tabs with
+their keys, a blanking plate and a waiting jewel, the place on flaps) and its foot (the one-line feed and
+the keys that close the mode); the ledger tube (a drawn sort mark, the selected row in reverse, keys
+struck with their reason, a cut name, `--`, the position meter, a headline drum), with Highport's goods
+as on Context's sheet 10, and an empty list; the barred CONTINUE; the form
 controls; the patch panel's three states; the guard closed and lifted; the five paper stocks; and the
 optics port for the picture-in-picture views.

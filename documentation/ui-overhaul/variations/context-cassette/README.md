@@ -1,8 +1,8 @@
 # Context-driven × Cassette-futurism
 
-The **Context-driven** functional design ([functional-context.md](../../functional-context.md), version 7, branch `claude/project-thread-ukjzrp`) built in the **Yard Standard** design language ([style-cassette.md](../../style-cassette.md)).
+The **Context-driven** functional design ([functional-context.md](../../functional-context.md), version 9, branch `claude/project-thread-ukjzrp`) built in the **Yard Standard** design language ([style-cassette.md](../../style-cassette.md)).
 
-**Status: round 2.** This round's critique and what changes next are at the end. The round log for all three Cassette variations is [cassette-round-log.md](../cassette-round-log.md).
+**Status: round 3.** This round adds the full-screen modes the spec wireframes (09 Map, 10 Station, 11 Ship), built by the off-deck rules in section 9 of the style guide. This round's critique and what changes next are at the end. The round log for all three Cassette variations is [cassette-round-log.md](../cassette-round-log.md).
 
 The spec decides what is shown, where and when. This variation decides what each element is made of. Where the hardware needs something the spec doesn't say, or the spec asks for something hardware does badly, it is listed under [Adaptations](#adaptations) and was sent to the context designer.
 
@@ -19,7 +19,7 @@ The view stays as empty as the spec wants it. Nothing floats, because every unit
 
 ## The screens
 
-Eight screens, one for each of the spec's wireframes 01, 03, 04, 05, 07, 08, 12 and 13.
+Eleven screens, one for each of the spec's wireframes 01, 03, 04, 05, 07, 08, 09, 10, 11, 12 and 13.
 
 ### 01 Helm, cruise
 
@@ -57,6 +57,32 @@ The reactor is wrecked, the hold is open to vacuum, Ada is down in it and the br
 
 The **station panel** is a typed card in a holder (name and owner), the port on a drum and the standing on flaps and a drum. Below it is one row per service the station offers. Highport has no shipyard, so the rows close up without it. Market, yard and missions have keys; hiring and the infirmary are tabs in the terminal, so they have none. Credits, hold and UNDOCK sit at the foot. The intercom keeps the station's welcome bright and the autosave dim, since it is older.
 
+### The full-screen frame
+
+A full-screen mode raises the **big console** (style guide 9.2) across the whole width, in the spec's own zones: P1's rail stays at the top, the head is y 26 to 56, the body runs to 773 and the foot is the last 27 units. The coaming and the space margin don't show, because the spec gives the mode the whole screen. The head carries the engraved nameplate and the tabs as interlocked piano keys, each with its key on a keycap. The foot carries the one-line feed tube and the keys that close the mode: the mode's own key and `Esc`.
+
+While a mode is open, P2's board is drawn up into the rail and its counts show on **P1's chip**: a red lens with a drawn diamond and an amber lens with a drawn triangle, each with its count on a drum (a closed window at zero), and the `\` keycap. It is the master alert cue while a mode is up, so a new alert lights its lens, and `\` puts it out. The chip has a window of its own in the rail, between BATTLE STATIONS and the clock. On the flight sheets that window is an empty slot, so the rail never moves.
+
+### 09 Map
+
+![Map: the plan bay, the plotting tube with the transfer to the Moon, the timeline, and the target and traffic bay](09-map.jpg)
+
+The ship is in a 400 km orbit, planning the run to Shackleton Ice, which orbits the Moon. The **plotting tube** is green phosphor with amber words. Other craft's orbits are dim, the ship's orbit now is solid with its track fading behind it, and the transfer after burn 1 is dashed. The ship is the own-ship cross with its heading tick, on a dark knockout so the orbit line doesn't swallow it. Highport and Hauler Kestrel are within 31 km of it, one place at this scale, so they are one cluster label. Burn 1's handle is a double chevron at the burn point. The Moon is off the edge: one edge marker with the Nav's brackets.
+
+The **plan bay** has the orbit now and the burns on ledger tubes. The selected burn is in reverse, and its result (the orbit after it) is under the rule, with DELETE on a soft key. The totals are drums: Δv needed against what the tanks hold, and the arrival. The four orders that fly the plan are push buttons. The **timeline** runs from now to the contract's deadline, with burns as chevrons, the Moon's sphere of influence as a ring, arrival as a dot and the deadline as a flag. Names alternate above and below the axis, so close events don't collide. WARP TO acts on the selected event. The **target and traffic bay** has the Nav card, the transfer keys (ACCEPT and DISCARD barred, NONE PROPOSED on flaps), the contacts sorted by distance on a rotary, and the six layers on bat toggles. Each contact's distance is worked out from where the plot draws it. The Nav's row is selected, so SET NAV is struck with its reason.
+
+### 10 Station terminal, Market
+
+![Station: Highport's terminal in its livery, the market page, the trade printer, and the rail of credits, standing, hold and tanks](10-station.jpg)
+
+The station's mode is **Highport's equipment, not the ship's**: the console is in the Terran Patrol Authority's grey-green livery with its navy stripe, and a jack plate on its edge carries the cable from the ship. Undocking pulls the plug. Highport sells no ships, so the tabs close up to MARKET, YARD, MISSIONS and HIRE. MISSIONS has an amber jewel, because a contract is waiting to be handed in. The **market page** is a ledger tube with room for sixteen rows. The ship has ordered 24 food, which fills the hold, so BUY 1 and BUY 10 are struck and the reason is at the page's bottom left. **New:** each trade's result prints on the **trade printer** under the keys, so the player sees this visit's trades, not only the last (today's status line keeps one). The rail has credits, standing on flaps and a drum, the hold against its capacity, the tanks as sight glasses, and the infirmary.
+
+### 11 Ship, systems
+
+![Ship systems: the plan tube, the systems ledger, the damage control T-card board and the power bay](11-ship-systems.jpg)
+
+Battle stations, after a hit that holed the hold and damaged a conduit. The **plan** is a green tube. The hold is hatched red, because its air is thinning through the breach. The damaged conduit run is amber and broken, hurt turrets and thrusters are amber, and the stranded autocannon is a dashed ring in the selected row's brackets. Crew are dots with initials, and the captain is the ring, as on H4. Turrets carry a barrel, so they never read as the captain. The **systems ledger** is grouped by type, with health, power, circuit and state, and a drawn caution mark on each row that has one. SWITCH OFF acts on the selected row. **Damage control** is a **T-card board**: a column for each crew member and one for UNASSIGNED, and each job a typed card. A green tab means under way, and a barber strip means blocked (the RCS repair is an EVA job, held until battle stations end). The **power bay** has the circuit, its reactor, output against the rating on a gauge and drums, the store, and the systems the circuit can't reach, with why.
+
 ### 12 Orders menu, helm in cruise
 
 ![Orders panel: interlocked helm keys, autopilot and shield buttons, crew buttons, guarded ship buttons, the reasons tube](12-orders-menu.jpg)
@@ -84,6 +110,7 @@ How each element of the spec is built.
 | Spec element | Yard Standard object |
 |---|---|
 | P1 status strip | The header rail. Seat and warp on split flaps; day and time on drums; helm authority and warp hold in windows let flush into the rail, plain while dark, phosphor when they speak; BATTLE STATIONS, RAILS and PAUSED as lenses |
+| P1 caution and warning chip | In full-screen modes: a red lens with a drawn diamond and an amber lens with a drawn triangle, each count on a drum, and the `\` key, in a window of its own in the rail |
 | P2 caution and warning | The caution board: split-flap rows like a departure board, hung from the rail. Each row: a severity lens (◆ red, ▲ amber), code flaps (11), detail flaps (10), handling (3), a timer drum. The sixth row is a key and "+n more" on flaps |
 | Handling | Three flaps: YOU printed on yellow faces; a dot per crew member on it, or ●4; BCK when it clears by itself, with the recovery timer beside it |
 | Master alert cue | One MASTER lens with a red and an amber lamp behind it, the newest warning's code or CAUTION on ten flaps, and the `\` key. It sits on the seat's primary instrument: in H1's top row, in H3's right column, on a glareshield bracket above F2. On deck, docked or latched it stands alone at the bottom centre |
@@ -94,7 +121,7 @@ How each element of the spec is built.
 | H1 flight display | The flight pod: frame and name on flaps, the PIN latch, the master cue, speed on drums, the thruster group (notched darts round a ship drawn nose right), ASSIST OFF push-light, Δv on drums over the propellant bar |
 | H2 navigation | A tube with the row names on it in dim phosphor, so the compact face (one line, NAV or NEXT) carries its own name |
 | H3 docking display | The docking pod: port line on flaps and drums, ARMED lens, clearance on flaps; the alignment dial; the closing gauge with moving bugs, a FAST or DANGER flag and a distance counter in the face; contact time on drums; three capture lamps; HELM DOCKING lens and phase flaps; a foot strip with thrusters, assist and Δv |
-| H4 ship condition | Compact: a strip of lights, dark when nominal; the light's film shows ◆ lit red and ▲ lit amber; a blanking plate where SHIELDS would be on a hull without an emitter. Expanded: a unit rises above the strip with the plan tube and four rows, each a level bar and its reading on drums. On deck: the same rows without the plan |
+| H4 ship condition | Compact: a strip of lights, dark when nominal; the light's film shows a drawn diamond lit red and a drawn triangle lit amber; a blanking plate where SHIELDS would be on a hull without an emitter. Expanded: a unit rises above the strip with the plan tube and four rows, each a level bar and its reading on drums. On deck: the same rows without the plan |
 | H5 contact scope | A round green tube in a square pod, range on flaps between − and + keys. Missiles are a dot with a leader and a chevron; contacts beyond the range are ticks on the rim. Collapsed: a SCOPE key with the count |
 | H6 lock card | A plate on the right rail: LOCK and the name on flaps, the state on flaps, FIRING ON YOU as a red lens, range, rate and shot time on drums, the hit chance as a number and three printed windows |
 | H7 armament | A plate under the lock card: the guns' lamp, state and who fires them; missiles left across every launcher; shields with the trim on a five-jewel rose. A blanking plate for shields on a hull without an emitter |
@@ -108,6 +135,10 @@ How each element of the spec is built.
 | D1 captain vitals | The forearm suit unit: condition on flaps, bleed-out on a drum or a closed shutter, SUIT ON lens, air on drums, the air here as three printed windows, what is carried on flaps |
 | D3 hazard tags | Projected tags on the deck in red (amber for smoke), one per room and code |
 | W1 to W6 | Amber reflector-sight projection at a lighter weight than tube text, threats in red. Frame tags sit in a notch on the prograde marker; neutrals are notched darts; burns are double chevrons; the corridor's states differ by line as well as colour |
+| Mode frame | The big console in the spec's zones: an engraved nameplate and piano-key tabs, each with its keycap, in the head; the feed tube and the close keys in the foot |
+| M1 Map | Plan bay (orbit and burns ledgers, totals on drums, the four orders as push buttons); a green plotting tube; a timeline tube with WARP TO; target and traffic bay (Nav card, transfer keys, contact ledger with a sort rotary, layer bat toggles) |
+| M2 Ship, Systems | The plan tube; the systems ledger grouped by type; damage control as a T-card board; the power bay with a gauge, drums, the store and a tube for what the circuit can't reach |
+| M3 Station | The station's own console in its livery, with a jack plate for the ship's cable; a ledger page per tab; the trade printer; a rail of credits, standing, hold, tanks and infirmary |
 
 ## Adaptations
 
@@ -121,6 +152,9 @@ Places where the hardware changes the spec's geometry or behaviour.
 6. **F2's master cue stands on a bracket above the rack**, at y 602 to 636, inside the bottom-centre zone. The rack's five rows fill its 150 units.
 7. **C1 is 620 × 262** (the spec's 250, plus 5%), so the ship buttons and the three-line reasons tube fit at their sizes.
 8. **H4 on deck keeps its light strip** under the rows. The wireframe draws each row with its light. The strip is the same hardware as at the helm, so the lights don't move between screens.
+9. **A mode's tab keys are on its tabs.** Each piano key carries its key on a keycap, as the wireframes put "[1-4] tabs" in the title row. The foot carries only the close keys, which the spec's text puts there.
+10. **P1's chip has a fixed window** between BATTLE STATIONS and the clock, an empty slot outside modes, so nothing in the rail moves when a mode opens.
+11. **The map's timeline is 80 tall in a 90-unit zone**, and WARP TO is one push button beside it that acts on the selected event, instead of a warp-to on each event.
 
 ## Round 1 critique, resolved
 
@@ -161,7 +195,7 @@ What this round got wrong or left weak, in the style and in the combination.
 - **The target card.** Its "what it is doing" and "condition" lines overprinted. The hit percentage touched its windows.
 - **Number sizes.** About twenty drums were drawn at 12.5 to 14 units. They are now at the 15 that 12.4 asks for values.
 
-**Combination (sent to the designer)**
+**Combination (sent to the designer).** The designer answered all six in version 8.
 
 1. **Wireframe 03's sample can't happen.** The corvette's docking port is size S, and Highport's port 6 is M, so clearance would give port 1 or 2. At 820 m the safe speed is 12.8 m/s (`safeSpeed`), so 6.2 m/s isn't fast there. Cassette draws port 2 at 120 m, 6.2 against a safe 4.9, contact T-19 s. P4's "port 6" and X1's "port 6" change with it.
 2. **X1's "Shipyard 3 ships · 3 to hire" at Highport.** Highport has no shipyard (Anvil Yards has one), so the line would be left out, taking hiring with it. Hiring works at any non-hostile station, so it needs its own line.
@@ -170,7 +204,43 @@ What this round got wrong or left weak, in the style and in the combination.
 5. **H4's POWER line doesn't fit at 15 units.** "store 92% · 3.0 of 3.0 MW" is too long beside a bar. The capacity never changes for a ship, so "of 3.0" could move to the hover.
 6. **F2 has no room for the master cue.** P2's section puts the cue on the seat's primary instrument (H1, H3 or F2), and the rack's rows fill its 620 × 150. The zone's 40 units above the rack would hold it. Cassette's bracket stands there.
 
+## Round 3 critique
+
+What this round got wrong or left weak, in the style and in the combination.
+
+**Style (for round 4)**
+
+- **The market page is mostly empty at Highport.** It has five rows on a page of sixteen, because the page is sized for stations with more commodities and salvage. The printer fills the bay under it, but the page itself is sparse. See combination note 9.
+- **Two marks share a shape with a severity mark.** Style guide 7.2 makes a hostile ship a diamond, and 9.5 makes the warning mark a diamond, so on the contact list the raider's row starts with what reads as a warning. And 9.5's sort mark is a small triangle, the caution's shape, though it is dim and in the header. The guide should give the hostile ship and the sort mark shapes of their own.
+- **The plan tube is generous.** The corvette fills about half of it. At this scale a crew dot and its initial are clear, but the room around the hull is unused, and a bigger ship (the gunship) would use it.
+- **Not drawn yet:** M2's Crew, Cargo and Loadout tabs; M3's Yard, Shipyard, Missions and Hire; M4 Boarding; M5 Record; M6 Controls; and round 2's leftovers (warp, hover cards, a P6 prompt, the inset views, a gun seat).
+
+**Fixed during the round (found on render)**
+
+- **The ship on the map** was lost inside Highport's square and on its own orbit line. It is the own-ship cross now, on a dark knockout.
+- **Hauler 2's label** sat against the raider's. **Hauler 4** was in the contact list but not on the plot. Both are on the plot now, and the list works out every distance from where the plot draws each craft, nearest first.
+- **The timeline's deadline flag** ran into its time. The deadline is under the axis now.
+- **The burns ledger** gave the selected burn's result as one line. It is now the orbit after the burn, in full.
+- **The ship plan's console names** sat under the consoles. They are beside them now.
+- **The turrets** were rings with a dot, which is the captain's mark on H4. They have a barrel now, and no dot.
+- **The systems list's PWR and CCT headings** ran together.
+- **The tab keys** were in the foot as "1 2 3 4 TABS", far from their tabs. Each piano key carries its own now.
+- **Three severity marks were typed glyphs**: P2's lenses, H4's lights and the lock card's FIRING ON YOU. They are drawn now, as the guide asks.
+
+**Combination (sent to the designer)**
+
+1. **Wireframe 10's commodities aren't the game's.** The game trades water, food, iron ore, steel, machinery and reaction mass, plus salvaged parts. Highport trades water, food, machinery and salvage. Cassette draws those.
+2. **Wireframe 11 has Bea at the helm and also sealing the breach.** Cassette gives the breach to Cole.
+3. **Wireframe 11's P1 has no chip**, though a breach is a warning. Wireframe 09's P1 has one.
+4. **Wireframe 09's distances can't happen.** Shackleton Ice orbits the Moon, so it isn't 1,240 km away, and burn 2 at T-2 h 05 m can't be the capture. Cassette draws a transfer of 3,110 m/s, a capture of 850, arrival at T-3.3 d, and Δv 3,960 needed of 6,950. The wireframe's Ap at T-24:10 belongs to the orbit before burn 1, which comes first, so the plan never reaches it. The plan's only apsis is the periapsis at the Moon, where burn 2 is.
+5. **The game doesn't name the player's ship**, so wireframe 11's "Red Kestrel" is PATROL CORVETTE, its class.
+6. **"Reconnect conduit" isn't a crew job.** A damaged conduit is a repair, and a shorted one is a reset. The corvette's conduits are a tree, so stranding the stbd laser alone takes two cuts. Cassette strands the stbd autocannon, which one cut does.
+7. **The jobs held until battle stations end are the EVA ones** (RCS repairs and hull patches), not "Treat light wound". Cassette's blocked card is the RCS repair.
+8. **The wireframes put the tab and close keys in the title row**, and section 10's text puts them in the foot. Cassette puts each tab's key on its tab and the close keys in the foot.
+9. **M3's Market fills a fraction of the body**: five rows at Highport, as in wireframe 10. Should the Market share the body with something (the Missions offers, say), or does M3 need the whole screen? The Stations spec gives the market a 480-wide panel.
+10. **M1's panel list leaves out five of ManeuverMap's controls**: Delete burn, Next target, and the view's Centre, Fit and All traffic. The spec says M1 keeps everything ManeuverMap does, so Cassette keeps them. DELETE is on the burns ledger, SET NAV (Next target) is on the contact list, and CENTRE, FIT, ALL TRAFFIC and ZOOM are in the head.
+
 ## Files
 
-- `mockups.html`: the eight screens, drawn with the shared kit in `../../cassette/kit.js`.
+- `mockups.html`: the eleven screens, drawn with the shared kit in `../../cassette/kit.js`.
 - Render: `NODE_PATH=$(npm root -g) node ../../cassette/render.js mockups.html 1.5 jpeg`.

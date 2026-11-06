@@ -424,19 +424,23 @@ a ledger tube and a form bay in it, not two windows.
 ### 9.2 The big console
 
 A full-screen mode raises the **big console**: a wide console that rises from the coaming in 450 ms
-with a 2-unit bump while the deck drops (section 10.3). A margin of space at least 16 units wide shows
-round it and the sim keeps running, so the player is still in the cockpit. The header stays above it
-with the master caution and warning, and whatever the spec lets interrupt a mode (Context's P3 and
-X3, Task's crisis panel) still hangs in front of it.
+with a 2-unit bump while the deck drops (section 10.3). The header stays above it with the master
+caution and warning, and whatever the spec lets interrupt a mode (Context's P3 and X3, Task's crisis
+panel) still hangs in front of it.
 
-On the 1280 × 800 grid:
+The console takes the zones the spec sets for a mode. Where the spec leaves room round the mode, a
+margin of space at least 16 units wide shows round it and the sim keeps running, so the player is
+still in the cockpit. Where the spec gives the mode the whole screen, as Context does, the console runs
+edge to edge. With Context's zones, on the 1280 × 800 grid:
 
-* **Head**, y 30 to 74: the mode's **nameplate**, engraved at 20 units (MAP, SHIP, STATION, BOARDING,
-  RECORD, CONTROLS); the tabs as piano keys (9.4); where the player is, on split flaps; and the close
-  keycap at the right (the mode's own key, and `Esc`).
-* **Body**, y 80 to 750: bays on the section 6 grid, each with its engraved title.
-* **Foot**, y 754 to 786: a one-line **feed tube** for the newest message, and the keycaps for the
-  tabs and for closing.
+* **Head**, y 26 to 56, the spec's title row: the mode's **nameplate**, engraved at 20 units (MAP, SHIP,
+  STATION, BOARDING, RECORD, CONTROLS); the tabs as piano keys, each with its key (9.4); and where the
+  player is, on split flaps.
+* **Body**, y 56 to 773: bays on the section 6 grid, each with its engraved title.
+* **Foot**, y 773 to 800: a one-line **feed tube** for the newest message, and at the right the
+  keycaps that close the mode (the mode's own key, and `Esc`).
+
+Where a spec puts a mode's keys somewhere else, they go where it puts them.
 
 A station's mode is the station's equipment, not the ship's: it is in the station's livery (4.4), a
 jack plate on its edge carries the cable to the ship, and undocking pulls the plug, so its tubes go
@@ -457,8 +461,9 @@ grey-green. The console's name is on a cast plate at its top. Walking away close
 ### 9.4 Tabs are interlocked piano keys
 
 A mode's or a panel's tabs are a row of **interlocked piano keys** in its head, like the preset keys of
-an old radio: pressing one releases the others. Each key carries its tab's engraved legend and its key
-on a small keycap under it. The latched key sits 2 units lower with a safety-orange foot.
+an old radio: pressing one releases the others. Each key carries its tab's engraved legend, and its key
+on a small keycap at the left of its face, so nothing else on the screen needs to list the tab keys.
+The latched key sits 2 units lower with a safety-orange foot.
 
 * A tab the spec offers only sometimes (a shipyard, at a station without one) keeps its place as a
   **blanking plate** with two screws, so the keys never move and the player's hand learns them. The
@@ -494,8 +499,9 @@ too many columns for that context.
 * **One headline value** for the whole list (the market's credits, the plan's Δv) is a drum counter or
   a meter on the bay beside the tube, not a row.
 
-A tube's page has the same anatomy at every size: a title row in reverse video with the clock, the
-content, a rule, and the soft-key labels in boxes on the bottom row. The cursor is a solid block that
+A tube's page has the same anatomy at every size: a title row in reverse video, the content, a rule,
+and the soft-key labels in boxes on the bottom row. The title row carries the clock only on a screen
+that shows the time nowhere else (in a mode, P1 has it). The cursor is a solid block that
 blinks at 1.5 Hz. On a deck tube, pages are chosen with a **page selector** (a rotary with engraved
 positions, such as `NAV · TGT · SHIP · CREW · COMMS`), and the soft keys take `1` to `6` while the
 tube has focus.
@@ -561,14 +567,18 @@ view. Paper is always put away with one click or `Esc`.
 
 ### 9.9 The map
 
-The map is the big console's **plotting tube**: a large green vector tube with persistence. The
-predicted path is drawn in `p1-green-dim`, the track behind the ship glows and fades, bodies are their
-outlines with their names in amber, and burn handles are hollow triangles. Dragging a handle shows the
-burn's Δv on drums in the bezel's corner.
+The map is the big console's **plotting tube**: a large green vector tube with persistence. The ship's
+orbit is a solid line, a path planned after a burn is dashed, other craft's orbits are in
+`p1-green-dim`, and the track behind the ship glows and fades. Bodies are their outlines with their
+names in amber. The ship is its own cross and heading tick (7.2) on a dark knockout, so its orbit line
+never runs through it. Craft too close to part at the zoom share one cluster label with their count.
+Burn handles are double chevrons, as burns are everywhere else. Dragging a handle shows the burn's Δv on
+drums in the bezel's corner.
 
 The spec's other parts of the map are the console's other bays: the plan and the target are amber
 ledger tubes with push buttons for their actions (ACCEPT, DISCARD) and their totals on drums; the
-timeline is a long, low **strip tube** along the foot, its events as ticks with their names; layers are
+timeline is a long, low **strip tube** under the plot, its events as drawn marks on the axis with
+their names above and below it by turns; layers are
 a row of bat toggles; a sort is a rotary (`DIST · KIND`); zoom is a rocker.
 
 ### 9.10 The ship at large

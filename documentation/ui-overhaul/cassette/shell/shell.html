@@ -202,9 +202,10 @@ function pianoG(x, y, labels, sel, { kw = 100, h = 28, gap = 3, keys = null, jew
     if (l === null) { s += `<rect x="${kx}" y="${y}" width="${kw}" height="${h - 2}" rx="2" fill="#8f8b82"/>${screwG(kx + 8, y + h / 2 - 1)}${screwG(kx + kw - 8, y + h / 2 - 1)}`; return; }
     s += `<g filter="url(#shadow)"><rect x="${kx}" y="${y + (dn ? 2 : 0)}" width="${kw}" height="${h - 2}" rx="2" fill="${dn ? '#cfc4a8' : '#ece4ce'}"/></g>`;
     if (dn) s += `<rect x="${kx}" y="${y + h - 4}" width="${kw}" height="3" fill="${C.orange}"/>`;
-    s += `<text x="${kx + kw / 2}" y="${y + h / 2 + size * 0.36 + (dn ? 1.5 : 0)}" text-anchor="middle" class="legend" font-size="${size}" fill="${C.ink}">${esc(l)}</text>`;
+    const kc = keys && keys[i] ? 21 : 0, jw = i === jewel ? 12 : 0, lx = kx + kc + (kw - kc - jw) / 2 - (kc ? 2 : 0);
+    if (kc) s += keyG(kx + 6, y + (dn ? 2 : 0) + (h - 17) / 2, keys[i], { anchor: 'start' });
+    s += `<text x="${lx}" y="${y + h / 2 + size * 0.36 + (dn ? 1.5 : 0)}" text-anchor="middle" class="legend" font-size="${size}" fill="${C.ink}">${esc(l)}</text>`;
     if (i === jewel) s += lampG(kx + kw - 10, y + 8 + (dn ? 2 : 0), 2.6, 'amber', true);
-    if (keys && keys[i]) s += keyG(kx + kw / 2, y + h + 8, keys[i]);
   });
   return s;
 }
@@ -609,15 +610,15 @@ function sceneK4() {
   let s = DEFS + XDEFS + `<rect width="1280" height="800" fill="#16171a"/>`;
   s += note(40, 34, 'Off-deck kit: the parts section 9 adds', { size: 20, weight: 600, fill: '#f1ece2' });
   // the big console's head
-  s += head(40, 66, 'The big console: head and foot', 'the mode’s nameplate, piano-key tabs (a blanking plate where a service isn’t offered, a jewel where something waits), the place on flaps, the close keys');
-  s += `<rect x="40" y="96" width="820" height="70" rx="4" fill="url(#enamelG)"/><rect x="40" y="96" width="820" height="4" fill="${C.orange}"/>`;
-  s += tag(54, 132, 'STATION', { size: 20 });
-  s += pianoG(152, 110, ['MARKET', 'YARD', null, 'MISSIONS', 'HIRE'], 0, { kw: 86, h: 28, keys: ['1', '2', null, '4', '5'], jewel: 3 });
-  s += flapC(618, 116, 'HIGHPORT', { cw: 10, ch: 20, size: 14 });
-  s += keyG(722, 118, 'T', { anchor: 'start' }) + keyG(744, 118, 'ESC', { anchor: 'start' }) + tag(782, 130, 'CLOSE');
-  const ft = tubeG(894, 108, 344, 22, { r: 2, bezel: 4 });
-  s += ft.under + tt(902, 123.5, 'Bought 10 water for 120 cr', { size: 13 }) + ft.over;
-  s += note(894, 150, 'the foot: the newest message on a one-line feed tube', { fill: '#9d968a' });
+  s += head(40, 66, 'The big console: head and foot', 'the mode’s nameplate, piano-key tabs with their keys (a blanking plate where a service isn’t offered, a jewel where something waits), the place on flaps');
+  s += `<rect x="40" y="96" width="820" height="58" rx="4" fill="url(#enamelG)"/><rect x="40" y="96" width="820" height="4" fill="${C.orange}"/>`;
+  s += tag(54, 134, 'STATION', { size: 20 });
+  s += pianoG(152, 111, ['MARKET', 'YARD', null, 'MISSIONS', 'HIRE'], 0, { kw: 98, h: 30, keys: ['1', '2', null, '4', '5'], jewel: 3 });
+  s += flapC(680, 116, 'HIGHPORT', { cw: 10, ch: 20, size: 14 });
+  const ft = tubeG(894, 108, 232, 22, { r: 2, bezel: 4 });
+  s += ft.under + tt(902, 123.5, 'Bought 10 water for 168 cr', { size: 13 }) + ft.over;
+  s += keyG(1138, 111.5, 'T', { anchor: 'start' }) + keyG(1157, 111.5, 'ESC', { anchor: 'start' }) + tag(1192, 123.5, 'CLOSE', { fill: C.inkLight });
+  s += note(894, 150, 'the foot: the newest message, and the close keys', { fill: '#9d968a' });
   // the ledger tube
   s += head(40, 200, 'Ledger tube', 'sort mark drawn, selected row in reverse, a struck key with its reason, the position meter, a headline value on a drum');
   const lt = tubeG(46, 236, 520, 168, { r: 5, bezel: 6 });
@@ -626,18 +627,18 @@ function sceneK4() {
   s += row(256, [[58, 'ITEM'], [300, 'STOCK', 'end'], [370, 'BUY', 'end'], [436, 'SELL', 'end'], [500, 'HELD', 'end']], { c: 'dim' });
   s += `<path d="M376 251l4 -6l4 6z" fill="${PH.dim}"/>`;
   s += `<path d="M52 262H560" stroke="${PH.dim}" stroke-width="0.8" opacity="0.7"/>`;
-  s += `<g filter="url(#glow)"><rect x="50" y="268" width="512" height="20" fill="${PH.amber}"/></g>` + row(283, [[58, 'Water'], [300, '420', 'end'], [370, '12', 'end'], [436, '9', 'end'], [500, '0', 'end']], { c: C.crtBlack, glow: false });
-  s += row(305, [[58, 'Ice ore'], [300, '1,200', 'end'], [370, '4', 'end'], [436, '3', 'end'], [500, '12', 'end']]);
-  s += row(325, [[58, 'Machine parts'], [300, '35', 'end'], [370, '180', 'end'], [436, '140', 'end'], [500, '0', 'end']]);
-  s += row(345, [[58, 'Reactor-grade deut…'], [300, '8', 'end'], [370, '940', 'end'], [436, '--', 'end'], [500, '0', 'end']]);
-  s += `<path d="M58 365l5.5 -10l5.5 10z" fill="${PH.amber}" filter="url(#glow)"/>` + row(365, [[74, 'Medical stores'], [300, '2', 'end'], [370, '210', 'end'], [436, '160', 'end'], [500, '0', 'end']]);
+  s += `<g filter="url(#glow)"><rect x="50" y="268" width="512" height="20" fill="${PH.amber}"/></g>` + row(283, [[58, 'Water'], [300, '60', 'end'], [370, '16.8', 'end'], [436, '15.2', 'end'], [500, '0', 'end']], { c: C.crtBlack, glow: false });
+  s += row(305, [[58, 'Food'], [300, '2,350', 'end'], [370, '35.7', 'end'], [436, '32.3', 'end'], [500, '12', 'end']]);
+  s += row(325, [[58, 'Machinery'], [300, '4', 'end'], [370, '672', 'end'], [436, '608', 'end'], [500, '0', 'end']]);
+  s += row(345, [[58, 'Salvaged harpoon la…'], [300, '--', 'end'], [370, '--', 'end'], [436, '3,100', 'end'], [500, '1', 'end']]);
+  s += row(365, [[58, 'Salvaged chaingun'], [300, '--', 'end'], [370, '--', 'end'], [436, '2,400', 'end'], [500, '1', 'end']]);
   s += `<path d="M52 376H560" stroke="${PH.dim}" stroke-width="0.8" opacity="0.7"/>`;
   s += tt(58, 396, 'NONE HELD', { size: 13, c: 'dim' });
   [['BUY 1', 0], ['BUY 10', 0], ['SELL 1', 1], ['SELL ALL', 1]].forEach(([l, st], i) => { const kx = 190 + i * 92; s += `<rect x="${kx}" y="382" width="84" height="18" fill="none" stroke="${PH.amber}" stroke-width="1" opacity="${st ? 0.45 : 0.9}"/>` + tt(kx + 42, 396, l, { size: 13, anchor: 'middle', c: st ? 'dim' : 'amber' }) + (st ? `<path d="M${kx + 6} 391H${kx + 78}" stroke="${PH.amber}" stroke-width="1.4"/>` : ''); });
   s += lt.over + softKeysG(190, 412, 4, 362);
   s += posMeterG(578, 240, 160, 0, 0.55);
   s += tag(608, 252, 'CREDITS', { fill: C.inkLight }) + drumG(608, 262, '05000', { cw: 15, ch: 22, size: 16 }) + tag(690, 278, 'CR', { fill: C.inkLight });
-  s += note(608, 320, 'Rows never wrap: long names are cut', { fill: '#c9c2b4' }) + note(608, 338, 'with an ellipsis. "--" is a value that', { fill: '#c9c2b4' }) + note(608, 356, 'doesn’t apply. ▲ is drawn, not hue.', { fill: '#c9c2b4' });
+  s += note(608, 320, 'Rows never wrap: long names are cut', { fill: '#c9c2b4' }) + note(608, 338, 'with an ellipsis. "--" is a value that', { fill: '#c9c2b4' }) + note(608, 356, 'doesn’t apply here.', { fill: '#c9c2b4' });
   const et = tubeG(894, 236, 344, 56, { r: 4, bezel: 5 });
   s += et.under + tt(906, 268, 'No saves yet', { size: 15 }) + et.over + note(894, 314, 'an empty list says so in words', { fill: '#9d968a' });
   // the no-save main menu
@@ -661,7 +662,7 @@ function sceneK4() {
   s += tag(116, 782, 'GUARDED', { anchor: 'middle' }) + tag(244, 782, 'LIFTED: ARMED', { anchor: 'middle' });
   // fanfold contract
   s += `<rect x="330" y="692" width="150" height="94" fill="url(#paperG)"/><rect x="330" y="692" width="150" height="94" fill="url(#greenbar)" opacity="0.35"/><rect x="330" y="692" width="12" height="94" fill="url(#sprocketP)"/><rect x="468" y="692" width="12" height="94" fill="url(#sprocketP)"/>`;
-  s += typed(348, 712, 'CONTRACT 0417', { size: 13 }) + typed(348, 730, 'Ice to Freehold', { size: 13 }) + typed(348, 748, '12 t   by day 44', { size: 13 }) + typed(348, 766, 'Pays 3,200 cr', { size: 13 });
+  s += typed(348, 712, 'CONTRACT 0417', { size: 13 }) + typed(348, 730, 'Deliver 40 Food', { size: 13 }) + typed(348, 748, 'to Shackleton Ice', { size: 13 }) + typed(348, 766, 'Pays 1,500 cr', { size: 13 });
   // teleprinter roll
   s += `<rect x="496" y="692" width="170" height="80" fill="url(#paperG)"/><rect x="490" y="770" width="182" height="14" rx="7" fill="#1c1a18"/>`;
   s += typed(504, 710, 'D40 22:30 Docked', { size: 13 }) + typed(504, 727, 'D41 05:40 Autosave', { size: 13 }) + typed(504, 744, 'D41 06:02 Sold ore', { size: 13 }) + typed(504, 761, 'D41 06:12 Saved', { size: 13 });
