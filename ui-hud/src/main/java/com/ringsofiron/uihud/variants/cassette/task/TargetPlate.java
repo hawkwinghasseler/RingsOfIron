@@ -197,30 +197,45 @@ final class TargetPlate extends YardPart {
         p.flaps(x + cw + 3f, y, rel.name(), 8, cw, ch, 13f, Yard.FLAP_TEXT);
     }
 
-    /** The state and its reason, as the plate words them. */
+    /**
+     * The state and its reason, in the game's words (spec round 14): FIGHTING while a hostile has the
+     * ship locked and NOT ENGAGED while it has nothing locked, as the Raider near Highport until the
+     * captain fires on it; RUNNING once it breaks off; DISABLED with the game's reason; SURRENDERED, or
+     * SILENCED for a fallen base's gun platform; WRECK; DERELICT.
+     */
     static String[] state(TargetStatus t, Contact c, HudData d) {
-        String s = t.state.toLowerCase(Locale.ROOT);
+        String s = t.state;
         if (c != null) {
             switch (c.state) {
-                case WRECKED: return new String[]{"WRECKED", ""};
+                case WRECKED: return new String[]{"WRECK", ""};
                 case DISABLED: return new String[]{"DISABLED", reason(c.disabledReason)};
-                case STRUCK: return new String[]{"STRUCK", "HOLD YOUR FIRE"};
-                case SILENCED: return new String[]{"SILENCED", "HOLD YOUR FIRE"};
+                case STRUCK: return new String[]{"SURRENDERED", "HOLD YOUR FIRE"};
+                case SILENCED: return new String[]{"SILENCED", ""};
                 case RUNNING: return new String[]{"RUNNING", ""};
                 default: break;
             }
             if (c.kind == ContactProvider.Kind.DERELICT) return new String[]{"DERELICT", ""};
         }
-        if (s.contains("struck")) return new String[]{"STRUCK", "HOLD YOUR FIRE"};
-        if (s.contains("silenced")) return new String[]{"SILENCED", "HOLD YOUR FIRE"};
-        if (s.contains("running")) return new String[]{"RUNNING", ""};
-        if (t.relation == Relation.HOSTILE && (t.firingOnUs || d.ctx.combat)) return new String[]{"FIGHTING", ""};
+        // The target's own words when it has no contact: "struck", "silenced", "running", or a disabled reason
+        if (s.equals("struck")) return new String[]{"SURRENDERED", "HOLD YOUR FIRE"};
+        if (s.equals("silenced")) return new String[]{"SILENCED", ""};
+        if (s.equals("running")) return new String[]{"RUNNING", ""};
+        if (s.equals("WRECKED")) return new String[]{"WRECK", ""};
+        if (!reason(s).isEmpty()) return new String[]{"DISABLED", reason(s)};
+        if (t.relation == Relation.HOSTILE) return new String[]{t.firingOnUs ? "FIGHTING" : "NOT ENGAGED", ""};
         return new String[]{"UNDER WAY", ""};
     }
 
-    private static String reason(String r) {
-        if (r == null || r.isEmpty()) return "";
-        return r.replace('_', ' ');
+    /** A disabled ship's reason as the game labels it ({@code DisabledComponent.Reason.label}), from the reason's name; "" for none. */
+    static String reason(String r) {
+        if (r == null) return "";
+        switch (r) {
+            case "NO_POWER": return "REACTOR DOWN";
+            case "NO_CREW": return "CREW DOWN";
+            case "HULL": return "HULL BROKEN";
+            case "ABANDONED": return "ABANDONED";
+            default: return "";
+        }
     }
 
     /** Four bands, as the sensors give no more: intact, damaged, heavily damaged, crippled. */
@@ -242,7 +257,9 @@ final class TargetPlate extends YardPart {
         float ly = localY(py);
         if (shipSubject() && ly >= Y + 60f && ly < Y + 86f) {
             String[] st = state(d.targetStatus, d.contactFrame.locked(), d);
-            if (st[1].equals("HOLD YOUR FIRE")) return "Struck: firing on it lifts the surrender";
+            if (st[0].equals("SURRENDERED")) return "Surrendered: firing on it lifts the surrender";
+            if (st[0].equals("NOT ENGAGED")) return "Not engaged: it has no ship locked";
+            if (st[0].equals("SILENCED")) return "Silenced: the fallen base's guns stand down, and the crews hold their fire";
         }
         return null;
     }
