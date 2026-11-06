@@ -177,12 +177,12 @@ final class SystemsPage extends ListPage {
                 softKey("SWITCH", "RCS BLOCKS HAVE NO SWITCH: EACH FIRES WHILE ITS HULL TILE STANDS");
                 return;
             case ShipSystems.Row.GROUP:
-                if (row.allOn && row.guarded) guardedKey("ALL OFF", null);
+                if (row.allOn && row.guarded) guardedKey("ALL OFF", null, "Switch every reactor off? Press again: the ship goes dark");
                 else softKey(row.allOn ? "ALL OFF" : "ALL ON", null);
                 softKey(row.open ? "SHUT" : "OPEN", null);
                 return;
             default:
-                if (row.allOn && row.guarded) guardedKey("SWITCH OFF", null);
+                if (row.allOn && row.guarded) guardedKey("SWITCH OFF", null, "Switch the reactor off? Press again: what it feeds goes dark");
                 else softKey(row.allOn ? "SWITCH OFF" : "SWITCH ON", null);
         }
     }

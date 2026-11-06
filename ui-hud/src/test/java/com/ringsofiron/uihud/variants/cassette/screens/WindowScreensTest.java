@@ -3,6 +3,7 @@ package com.ringsofiron.uihud.variants.cassette.screens;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.providers.BoardingProvider;
 import com.ringsofiron.uihud.providers.GameOverProvider.GameOver;
 import com.ringsofiron.uihud.providers.KeyHintProvider.HelpFrame;
 import com.ringsofiron.uihud.providers.MissionProvider;
@@ -119,6 +120,7 @@ class WindowScreensTest {
         r.key(Input.Keys.ENTER);
         assertEquals(0, r.presses, "the first press only lifts the guard");
         assertTrue(r.guardUp(0));
+        assertEquals("Press SELL again: it can't be undone", r.said.peek(), "and says what the second does");
         r.key(Input.Keys.ENTER);
         assertEquals(1, r.presses, "the second gives the order");
         assertEquals(0, r.pressed);
@@ -133,6 +135,45 @@ class WindowScreensTest {
         // And down again as the page comes up afresh
         r.shown();
         assertFalse(r.guardUp(0));
+        // A key may say its own words
+        r.ask = "Let Cole go? Press again: Cole leaves the ship for good";
+        r.key(Input.Keys.ENTER);
+        assertEquals(r.ask, r.said.peek());
+    }
+
+    @Test
+    void boardingListsThePartsMostValuableFirstAndANobodyAboardCraftNeedsNoParty() {
+        Array<BoardingProvider.Part> parts = new Array<>();
+        String[] names = {"Coilgun", "Reactor", "Laser Mk1", "Harpoon Launcher"};
+        double[] values = {750, 2000, 2250, 1500};
+        for (int i = 0; i < names.length; i++) {
+            BoardingProvider.Part p = new BoardingProvider.Part();
+            p.name = names[i];
+            p.value = values[i];
+            parts.add(p);
+        }
+        parts.get(2).off = true;
+        Array<Integer> order = new Array<>();
+        BoardingPage.mostValuableFirst(parts, order);
+        assertEquals("Reactor", parts.get(order.get(0)).name);
+        assertEquals("Harpoon Launcher", parts.get(order.get(1)).name);
+        assertEquals("Coilgun", parts.get(order.get(2)).name);
+        assertEquals("Laser Mk1", parts.get(order.get(3)).name, "a part already off goes last");
+
+        BoardingProvider.BoardingBoard bb = new BoardingProvider.BoardingBoard();
+        bb.state = "Disabled: reactor down";
+        bb.disabled = true;
+        bb.salvage = true;
+        assertTrue(BoardingPage.state(bb).startsWith("Nobody aboard"));
+        bb.taken = true;
+        bb.state = "Taken";
+        assertEquals("Taken", BoardingPage.state(bb));
+        // Defended, the game's own words
+        bb.taken = false;
+        bb.salvage = false;
+        bb.defenders = 2;
+        bb.state = "Disabled: crew down";
+        assertEquals("Disabled: crew down", BoardingPage.state(bb));
     }
 
     @Test
@@ -315,7 +356,7 @@ class WindowScreensTest {
     private static final class Rows extends ListPage {
         boolean[] heads;
         boolean guarded, offer = true;
-        String refusal;
+        String refusal, ask;
         int pressed = -1, presses, shows;
         final Array<String> said = new Array<>();
 
@@ -354,7 +395,7 @@ class WindowScreensTest {
 
         @Override
         void keys() {
-            if (guarded) guardedKey("SELL", refusal);
+            if (guarded) guardedKey("SELL", refusal, ask);
             else softKey("BUY", refusal);
             softKey("NEXT", null);
         }
