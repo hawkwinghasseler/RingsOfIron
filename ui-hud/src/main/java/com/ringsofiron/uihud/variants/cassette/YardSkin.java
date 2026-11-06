@@ -39,13 +39,13 @@ public final class YardSkin implements Disposable {
     static final Color TAG = Yard.hex("F2C531"), TAG_FOOT = Yard.hex("E2B22A");
 
     /** A push button's cap: its top, its lip and its legend's ink. */
-    enum Cap {
+    public enum Cap {
         CREAM("EFE8D4", "C9BB9B", "2A2420"),
         GREEN("A7E483", "3F6A33", "10200C"),
         AMBER("FFC466", "8A5F1C", "2A1606"),
         RED("C9463A", "7A221B", "FBE9DC");
 
-        final Color top, lip, ink;
+        public final Color top, lip, ink;
 
         Cap(String top, String lip, String ink) {
             this.top = Yard.hex(top);
