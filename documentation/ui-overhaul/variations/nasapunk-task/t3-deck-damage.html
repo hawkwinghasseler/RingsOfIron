@@ -31,10 +31,12 @@ s += hazardTag(X(13.5), Y(0) + 6, 796, 672, 'caution', 'BREACH  VENTING', { nobo
 s += O.prompt(X(14.6), Y(3.6) - 13, 'WEAPONS CONSOLE', [['E', 'OPEN'], ['V', 'SIT']]);
 
 s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×', note: 'HELD: FIRE ABOARD' });
-// three cautions, and CREW advisory: morale is low after the hit, normal but worth knowing
+// three cautions, and CREW advisory: the hit left two light wounds, yours and Bea's, which slow
+// the work and are treated once the fight is over (TaskRules), worth knowing with nothing to decide
 s += annunciatorPanel({ FIRE: 'caution', AIR: 'caution', POWER: 'caution', CREW: 'advisory' });
-// PER as the suit's chest display: condition, suit and its air, the air where you stand
-s += O.dcm(16, 144, [['CONDITION', 'UNHURT', 'nominal'], ['PRESSURE SUIT', 'AIR 7:40', 'nominal'], ['HERE', 'BRIDGE: THIN', 'caution']], { w: ZT.self.w });
+// PER as the suit's chest display: condition in the game's words, suit and its air, the air where
+// you stand
+s += O.dcm(16, 144, [['CONDITION', 'LIGHT WOUND', 'nominal'], ['PRESSURE SUIT', 'AIR 7:40', 'nominal'], ['HERE', 'BRIDGE: THIN', 'caution']], { w: ZT.self.w });
 
 // ALR: no warning, so the warning row is empty and the cautions keep their row (section 9.1).
 // Three full texts don't fit the row, so each cell takes its short form (round 4)
@@ -42,13 +44,15 @@ s += alertBand({
   cautions: [['FIRE', 'HOLD', 'COLE'], ['VENTING', 'BRIDGE', 'NOBODY'], ['POWER', 'BRIDGE', 'ADA']],
 });
 
-// OBJ and NTF: the slow loop, top right. The objective is round 10's: the food delivery to
-// Shackleton Ice that the map plans (T4), with its 2D 20H left
-const ob = objectives([{ t: 'DELIVERY: FOOD TO SHACKLETON ICE', left: '2D 20H' }]);
+// OBJ and NTF: the slow loop, top right. The objective is round 11's: the urgent food delivery
+// to Shackleton Ice that the map plans (T4), by the title the game gives it (Contract.title), with
+// the 2D 9H left to Day 6 00:00. Its planned arrival is after that, so it is marked LATE; the
+// CONTRACT caution it raised has had its 10 s in the band (9.3) and lights no lamp
+const ob = objectives([{ t: 'DELIVER 40 FOOD TO SHACKLETON ICE', left: '2D 9H', late: true }]);
 // NTF: a notice is prose in sentence case under its source's tag, as P4 and the ticker are (the
-// word list's feed tags). The pirate that hit the ship is breaking off, the game's own news
-// (HostileTraffic, INFO), so the band holds no hostile; a spawned pirate's name is its full name
-s += ob.svg + news(ob.y, [['GUNNERY', 'Pirate raider 3 is breaking off']]);
+// word list's feed tags). Bea's light wound is the game's own news (CrewMedical, INFO); yours came
+// with the hit and has had its 5 s, so it is in the log
+s += ob.svg + news(ob.y, [['MEDICAL', 'Bea is lightly wounded and working slower']]);
 
 // HLM: who holds the ship while the captain is on foot
 s += helmStatus(420, 736, 440, 'BEA', 'HOLDING HEADING', 'normal', 'NO ORDER');

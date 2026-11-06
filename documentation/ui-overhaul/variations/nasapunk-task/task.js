@@ -83,7 +83,7 @@ function alertBand(o) {
     s += rect(cx, cy, 6, ch, { fill: C.amber, r: 1.5 });
     s += text(cx + 14, cy + 19.5, code, { size: 12, bold: true, fill: C.amber, track: 0.6 });
     s += text(cx + 14 + cw0 + 10, cy + 19.5, where, { size: 12, fill: C.white });
-    s += text(cx + cw - 10, cy + 19.5, who, { size: 12, bold: true, fill: who === 'NOBODY' ? C.amber : C.white, anchor: 'end', track: 0.2 });
+    s += text(cx + cw - 10, cy + 19.5, who, { size: 12, bold: true, fill: /^NOBODY/.test(who) ? C.amber : C.white, anchor: 'end', track: 0.2 });
     cx += cw + 8;
   });
   if (o.more) s += rect(nx - 1, cy - 1, 46, ch + 2, { fill: '#151719', r: 2 }) + rect(nx, cy, 44, ch, { fill: C.glass, stroke: C.amber, sw: 1.4, r: 1.5 }) + text(nx + 22, cy + 19.5, o.more, { size: 12, bold: true, fill: C.amber, anchor: 'middle', track: 0.2 });
@@ -91,27 +91,42 @@ function alertBand(o) {
 }
 
 // OBJ: contract rows on a slip with a kapton tab (magenta for the navigation target's row, which
-// carries a second line only when it has a next step).
+// carries a second line only when it has a next step). A row is normal, the navigation target, or
+// late: a late row says LATE in amber before its time left, which stays the time to the deadline.
 function objectives(rows) {
   const { x, y, w } = ZT.inc;
   let s = '', yy = y;
+  // a line cut to its room, with an ellipsis
+  const cut = (t, room) => {
+    if (tw(t, TB, true) <= room) return t;
+    while (t.length > 1 && tw(t + '…', TB, true) > room) t = t.slice(0, -1).trimEnd();
+    return t + '…';
+  };
   rows.forEach(r => {
-    // a title too long to sit beside its time left (a delivery's, in Z3's 240) takes a second
-    // line, broken where the two are most even; the time stays on the first
+    const lateW = r.late ? tw('LATE', TB, true, 0.4) + 10 : 0;
+    const room1 = w - 34 - tw(r.left, TB, true) - lateW, room2 = w - 20;
+    // a title too long to sit beside its time (a delivery's, in Z3's 240) takes a second line: it
+    // breaks before where the job goes (the game's titles say it last, after TO), else at a word,
+    // and the time stays on the first (task spec round 11). Never a third line: the second is cut
+    // with an ellipsis, and the whole title is on hover
     let lines = [r.t];
-    if (tw(r.t, TB, true) > w - 34 - tw(r.left, TB, true)) {
+    if (tw(r.t, TB, true) > room1) {
       const words = r.t.split(' ');
-      let best = 1, bw = Infinity;
-      for (let i = 1; i < words.length; i++) {
-        const m = Math.max(tw(words.slice(0, i).join(' '), TB, true), tw(words.slice(i).join(' '), TB, true));
-        if (m < bw) { bw = m; best = i; }
+      // where the job goes, else the owner's name (a bounty's target "of the Void Raiders"), else
+      // the last word that fits, so a phrase is never split when it can be kept whole
+      const fits = i => i >= 1 && tw(words.slice(0, i).join(' '), TB, true) <= room1;
+      let i = [words.lastIndexOf('TO'), words.lastIndexOf('OF')].find(fits);
+      if (i == null) {
+        i = 1;
+        while (i < words.length - 1 && tw(words.slice(0, i + 1).join(' '), TB, true) <= room1) i++;
       }
-      lines = [words.slice(0, best).join(' '), words.slice(best).join(' ')];
+      lines = [cut(words.slice(0, i).join(' '), room1), cut(words.slice(i).join(' '), room2)];
     }
     const h = 26 + (lines.length - 1) * 16 + (r.sub ? 16 : 0);
     s += rect(x, yy, w, h, { fill: 'rgba(5,7,10,0.92)', stroke: '#2A333D', sw: 1 }) + rect(x, yy, 4, h, { fill: r.nav ? C.magenta : C.kapton });
     lines.forEach((t, i) => { s += text(x + 12, yy + 17.5 + i * 16, t, { size: TB, bold: true, fill: C.white }); });
-    s += text(x + w - 8, yy + 17.5, r.left, { size: TB, bold: true, fill: r.late ? C.amber : C.white, anchor: 'end' });
+    s += text(x + w - 8, yy + 17.5, r.left, { size: TB, bold: true, fill: C.white, anchor: 'end' });
+    if (r.late) s += text(x + w - 8 - tw(r.left, TB, true) - 10, yy + 17.5, 'LATE', { size: TB, bold: true, fill: C.amber, anchor: 'end', track: 0.4 });
     if (r.sub) s += text(x + 24, yy + h - 7, r.sub, { size: 12, bold: true, fill: r.nav ? C.magenta : C.dim, track: 0.4 });
     yy += h + 6;
   });
@@ -119,8 +134,9 @@ function objectives(rows) {
 }
 
 // NTF: news on comm-loop slips under the objectives. The game's notices run long for Z3's 240
-// (a payday is 384 on one line), so a notice that doesn't fit takes a second line under its text
-// rather than losing its end.
+// (a payday is 384 on one line), so a notice that doesn't fit takes a second line under its text,
+// and one too long for two is cut with an ellipsis, the whole text on hover and in the log (task
+// spec round 11).
 function news(y, items) {
   const { x, w } = ZT.inc;
   let s = '', yy = y;
@@ -134,8 +150,18 @@ function news(y, items) {
       const m = Math.max(tw(words.slice(0, i).join(' '), 12), tw(words.slice(i).join(' '), 12));
       if (m < bw) { bw = m; best = i; }
     }
-    s += O.callout(x, yy, tag, '', words.slice(0, best).join(' '), 'advisory', { w }) + rect(x, yy + 20, w, 15, { fill: 'rgba(5,7,10,0.92)' });
-    s += text(x + tx, yy + 29.5, words.slice(best).join(' '), { size: 12, fill: C.white });
+    let l1 = words.slice(0, best).join(' '), l2 = words.slice(best).join(' ');
+    if (bw > room) {
+      // too long for two even lines: fill the first, and cut the second
+      let i = 1;
+      while (i < words.length - 1 && tw(words.slice(0, i + 1).join(' '), 12) <= room) i++;
+      l1 = words.slice(0, i).join(' ');
+      l2 = words.slice(i).join(' ');
+      while (l2.length > 1 && tw(l2 + '…', 12) > room) l2 = l2.slice(0, -1).trimEnd();
+      l2 += '…';
+    }
+    s += O.callout(x, yy, tag, '', l1, 'advisory', { w }) + rect(x, yy + 20, w, 15, { fill: 'rgba(5,7,10,0.92)' });
+    s += text(x + tx, yy + 29.5, l2, { size: 12, fill: C.white });
     yy += 39;
   });
   return s;

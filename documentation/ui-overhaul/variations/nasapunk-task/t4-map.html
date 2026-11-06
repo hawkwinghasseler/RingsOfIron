@@ -13,12 +13,16 @@
 // Ice, the destination of a held food delivery (Q made it the destination), and the computer has
 // proposed one: two burns, 3 912 m/s against 7 007 left. Not yet accepted, it is a modification:
 // the path and its burns are dashed white, PLAN's title reads MOD and EXEC's bar is lit. Enter
-// (EXEC) makes it the planned path, solid magenta; Backspace (ERASE) drops it. The proposal arrives
-// 22 h 40 m after the contract's deadline, so ARRIVES carries an amber LATE flag and the timeline
-// puts the deadline before the arrival. No burn is selected, so MAP.4 is not shown. CHR and the
-// alert band stay above (nothing is wrong, so the band is dark). The orbit's numbers live here and
-// nowhere else (the spec), under the plot's title. Numbers are the game's: Shackleton Ice orbits the Moon
-// 100 km up; the Moon is 384 400 km out and moves 50 degrees in the 3.8 days the transfer takes.
+// (EXEC) makes it the planned path, solid magenta; Backspace (ERASE) drops it. The delivery is task
+// spec round 11's: the urgent one Shackleton Ice's food shortage posts at Highport (WorldEvents),
+// given by the Selene Mining Combine and due 3 days after day 3's roll, Day 6 00:00. The proposal
+// arrives Day 7 09:40, 1 d 9 h 40 m after that, so ARRIVES carries an amber LATE flag and the
+// timeline puts the deadline before the arrival. The first payday falls on the way: the sponsor
+// pays a week after the career starts (ServiceBudget.WEEK), Day 7 00:00, and MAP.5 shows every
+// event the plan meets. No burn is selected, so MAP.4 is not shown. CHR and the alert band stay
+// above (nothing is wrong, so the band is dark). The orbit's numbers live here and nowhere else
+// (the spec), under the plot's title. Numbers are the game's: Shackleton Ice orbits the Moon 100
+// km up; the Moon is 384 400 km out and moves 50 degrees in the 3.8 days the transfer takes.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 5 });
 s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
 s += alertBand({});
@@ -70,8 +74,9 @@ s += du(RX, 118, RW, 180, {
   content: (gx, gy, gw) => head(gx, gy, gw, 'DESTINATION', 'NEUTRAL · STANDING 12')
     + text(gx + 10, gy + 50, 'SHACKLETON ICE', { size: S_DATA, bold: true, fill: C.magenta, track: 0.5 })
     + text(gx + gw - 10, gy + 50, '385 479 KM', { size: S_DATA, bold: true, fill: C.white, anchor: 'end', track: 0.3 })
-    + text(gx + 10, gy + 68, 'ICE MINE · SELENE COMBINE', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 })
-    + kv(gx + 10, gy + 92, 'SERVES', 'DELIVERY · FOOD, 18 M³', { vx: gx + 80 })
+    + text(gx + 10, gy + 68, 'ICE MINE · SELENE MINING COMBINE', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 })
+    // the contract it serves, by the title the game gives it (the time left is MAP.2's comparison)
+    + kv(gx + 10, gy + 92, 'SERVES', 'DELIVER 40 FOOD', { vx: gx + 80 })
     + kv(gx + 10, gy + 112, 'OFFERS', 'MARKET · YARD · SHIPYARD', { vx: gx + 80, bold: false })
     + text(gx + 80, gy + 129, 'CONTRACTS · HIRING', { size: 13, fill: C.white, track: 0.3 }),
 }).svg;
@@ -82,13 +87,13 @@ const plan = du(RX, 306, RW, 236, {
   content: (gx, gy, gw, gh) => {
     let g = text(gx + 10, gy + 20, 'MOD', { size: S_TITLE, bold: true, fill: C.white, track: 0.8 }) + text(gx + 52, gy + 20, 'PLAN', { size: S_TITLE, bold: true, fill: C.white, track: 0.8 });
     g += text(gx + gw - 10, gy + 20, 'PROPOSAL · 2 BURNS', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) + line(gx + 6, gy + 28, gx + gw - 6, gy + 28, C.graticule, 1);
-    // label, value (right-aligned at 178), then a third column from 188
-    const row = (y, l, v, u, sz = 16) => text(gx + 10, y, l, { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + (u ? value(gx + 178, y, v, u, { size: sz, bold: true }) : text(gx + 178, y, v, { size: sz, bold: sz > 13, fill: C.white, anchor: 'end', track: 0.3 }));
-    const third = (y, t) => text(gx + 188, y, t, { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
+    // label, value (right-aligned at 168), then a third column from 178
+    const row = (y, l, v, u, sz = 16) => text(gx + 10, y, l, { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + (u ? value(gx + 168, y, v, u, { size: sz, bold: true }) : text(gx + 168, y, v, { size: sz, bold: sz > 13, fill: C.white, anchor: 'end', track: 0.3 }));
+    const third = (y, t) => text(gx + 178, y, t, { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
     g += row(gy + 52, 'ΔV NEEDS', '3 912', 'M/S') + third(gy + 52, 'OF 7 007');
     g += row(gy + 74, 'AFTER IT', '3 095', 'M/S') + third(gy + 74, 'HOME 520');
-    g += row(gy + 96, 'ARRIVES', 'DAY 7 09:40', null, 15) + flag(gx + 188, gy + 95, 'LATE 22H 40M', C.amber, { size: 12 });
-    g += row(gy + 116, 'DEADLINE', 'DAY 6 11:00', null, 13);
+    g += row(gy + 96, 'ARRIVES', 'DAY 7 09:40', null, 15) + flag(gx + 178, gy + 95, 'LATE 1D 9H 40M', C.amber, { size: 12 });
+    g += row(gy + 116, 'DEADLINE', 'DAY 6 00:00', null, 13);
     // the burns, one row each, dashed white on the map while they are a modification
     const gr = grid(gx + 10, gy + 142, [{ t: 'BURN', w: 50 }, { t: 'IN', w: 86 }, { t: 'ΔV M/S', w: 70, align: 'right' }, { t: '', w: 78, align: 'right' }], [
       ['1', 'T−1:29:51', '3 084', 'PROGRADE'], ['2', 'T−3D 17H', '828', 'RETRO'],
@@ -112,18 +117,18 @@ s += du(RX, 550, RW, 118, {
 }).svg;
 
 // MAP.5 the plan's timeline, on a log scale: the near hours get room, and the four events of the
-// last day, crowded at the end, keep their names on leaders
+// last day, the payday among them, crowded at the end, keep their names on leaders
 s += du(16, 676, 1248, 110, {
   id: 'tl', b: 8,
   content: (gx, gy, gw, gh) => text(gx + 10, gy + 18, 'TIMELINE', { size: S_LABEL, bold: true, fill: C.white, track: 0.8 }) + text(gx + 88, gy + 18, 'NOW TO ARRIVAL · CLICK CENTRES THE MAP ON AN EVENT · DOUBLE-CLICK WARPS TO IT', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 })
     + timelineStrip(gx + 30, gy + 50, gw - 76, [
       { h: 1.5, label: 'BURN 1', c: C.white, dash: '3 2', row: 0 },
-      { h: 9.6, label: 'PAYDAY', c: C.white, shape: 'tick', row: 0 },
-      { h: 68.6, label: 'DEADLINE', c: C.amber, shape: 'flag', lx: 860, level: 12 },
-      { h: 79.2, label: 'MOON SOI', c: C.white, shape: 'tick', lx: 966, level: 17 },
-      { h: 88.8, label: 'BURN 2', c: C.white, dash: '3 2', lx: 1062, level: 22 },
-      { h: 91.3, label: 'ARRIVE', c: C.white, shape: 'tick', lx: 1142, level: 22 },
-    ], { end: 91.3, t0: 8, ticks: [[24, '1D'], [48, '2D']] }),
+      { h: 57.6, label: 'DEADLINE', c: C.amber, shape: 'flag', row: 0 },
+      { h: 79.2, label: 'MOON SOI', c: C.white, shape: 'tick', lx: 905, level: 12 },
+      { h: 81.6, label: 'PAYDAY', c: C.white, shape: 'tick', lx: 990, level: 16 },
+      { h: 88.8, label: 'BURN 2', c: C.white, dash: '3 2', lx: 1070, level: 20 },
+      { h: 91.3, label: 'ARRIVE', c: C.white, shape: 'tick', lx: 1145, level: 24 },
+    ], { end: 91.3, t0: 8, ticks: [[24, '1D'], [48, '2D'], [72, '3D']] }),
 }).svg;
 
 document.getElementById('out').innerHTML = svgPage(s);

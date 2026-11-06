@@ -12,7 +12,7 @@ at 1280 x 800.
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18 | Converged in round 5; S7 to S9 drawn in round 7 |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17 | Converged in round 5, and again at versions 13 to 17 in round 7 |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 9 | Converged in round 5; round 9 drawn in round 6 |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 12 | Converged in round 5; round 9 drawn in round 6, rounds 11 and 12 in round 7 |
 
 ## Round 1 (3 November 2026)
 
@@ -430,12 +430,38 @@ fit takes a second line, broken where the two are most even (a deviation).
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Task (round 10, TRM, MAP.2) | The late delivery can't happen on day 3: a delivery to another body is due 8 days after the day's board posts it (`ContractPostings`, `FAR_DAYS`), so the 3.8-day transfer has about 4 days spare. An urgent delivery for a shortage (`WorldEvents`) is due 3 days after the day's roll whatever the distance: rolled on day 3, it is due on day 6 at 00:00, 2d 9h away at 14:22, and the transfer arrives 1d 9h 40m late. The samples could take that one with those numbers (its giver is Shackleton Ice's owner, its standing +5). T6 keeps the ordinary delivery, and T3 and T4 round 10's numbers, until then | |
-| Task (OBJ) | OBJ's done state ("collect at the giver") has nothing to show: the game pays every contract as it ends, a bounty the moment its ship is beaten | |
-| Task (7, LOG) | T8 logs each alert as it is raised, under WARNINGS with the band's level as its mark. Is its clearing logged? The intercept is a WARNING notice with no alert of its own: as a caution, what are its code and action? The game keeps 50 notices, and a day like T8's fills 19 of them | |
-| Task (10, pad) | The pad can't aim at the weapons console: the guns follow the pointer (`PlayerGunnery`), and there only the weapons answer, so both sticks are free and the right one could aim. Nor does the pad reach the shields (9, 8), zoom, the lights, the next port (H), the map's Q, ; and /, the book's I and L, F1 or a quick load | |
-| Task (10) | Esc closes "the top layer", but the closing order puts the controls reference after screens and panels, so with F1 open over the map, Esc closes the map under it first | |
-| Task (7, Z3) | Z3 is 240 wide, and few of the game's notices fit it on one line (even "DELIVERY: ICE TO FREEHOLD 1D 4H" is 246). May a news slip or an objective take a second line? T3 breaks one where the two lines are most even | |
+| Task (round 10, TRM, MAP.2) | The late delivery can't happen on day 3: a delivery to another body is due 8 days after the day's board posts it (`ContractPostings`, `FAR_DAYS`), so the 3.8-day transfer has about 4 days spare. An urgent delivery for a shortage (`WorldEvents`) is due 3 days after the day's roll whatever the distance: rolled on day 3, it is due on day 6 at 00:00, 2d 9h away at 14:22, and the transfer arrives 1d 9h 40m late. The samples could take that one with those numbers (its giver is Shackleton Ice's owner, its standing +5). T6 keeps the ordinary delivery, and T3 and T4 round 10's numbers, until then | Round 11: the late delivery is the urgent one Shackleton Ice's food shortage posts at Highport (`WorldEvents`), for +5 with the Selene Mining Combine, due Day 6 00:00 and 1d 9h 40m late; the list's pay is net of the cargo, and its standing names a giver who isn't the sponsor. T3, T4 and T6 draw it |
+| Task (OBJ) | OBJ's done state ("collect at the giver") has nothing to show: the game pays every contract as it ends, a bounty the moment its ship is beaten | Round 11: the done state is gone; a contract leaves the tracker as it ends, and the pay is news |
+| Task (7, LOG) | T8 logs each alert as it is raised, under WARNINGS with the band's level as its mark. Is its clearing logged? The intercept is a WARNING notice with no alert of its own: as a caution, what are its code and action? The game keeps 50 notices, and a day like T8's fills 19 of them | Round 11: an alert is logged once, in full text with its level, and gains its clear time (`cleared 14:31`) rather than a second entry; filters are alerts, important and info; the log keeps 500 and is saved. The intercept is a caution, INTERCEPT, and every warning notice has a home (9.2's table) |
+| Task (10, pad) | The pad can't aim at the weapons console: the guns follow the pointer (`PlayerGunnery`), and there only the weapons answer, so both sticks are free and the right one could aim. Nor does the pad reach the shields (9, 8), zoom, the lights, the next port (H), the map's Q, ; and /, the book's I and L, F1 or a quick load | Round 11: section 10's table closes the gaps: the right stick aims, R3 back to the lock; the bumpers work the shields; Back with the right stick zooms; R3 on deck works the lights; HUD focus, the map as a screen and the pause menu cover the rest |
+| Task (10) | Esc closes "the top layer", but the closing order puts the controls reference after screens and panels, so with F1 open over the map, Esc closes the map under it first | Round 11: the controls reference opens over everything and closes first |
+| Task (7, Z3) | Z3 is 240 wide, and few of the game's notices fit it on one line (even "DELIVERY: ICE TO FREEHOLD 1D 4H" is 246). May a news slip or an objective take a second line? T3 breaks one where the two lines are most even | Round 11: an OBJ row or an NTF slip may take a second line, never a third; OBJ breaks before where the job goes, else at a word, with the time on the first line |
+
+Round 11 took all six, and round 12 followed, matching the alert list to main's alert registry
+(the HUD framework, #265). The screens are redrawn to both. T6's cursor is on the urgent delivery,
+with the designer's numbers checked against `WorldEvents.urgentDelivery`: 40 food to fill the
+hold, 25 a unit here, 78 there (half again the buyer's 52), the 500 fee, and +5 with Selene; the
+list gains the ordinary food delivery to Anvil Yards and the urgent count, and pays net. T4 plans
+the same delivery: LATE 1D 9H 40M against Day 6 00:00, and the timeline gains the first payday, on
+Day 7, which the old timeline put wrongly at 9.6 h. T3's objective is the delivery, LATE in amber
+before its time, and its news Bea's light wound, the game's words; the captain's suit display now
+reads LIGHT WOUND, as the designer's PER always had and my T3 never did. T2's wounded caution is
+round 11's (`WOUNDED  Cole down   nobody free to treat`), and its objective takes the game's title,
+which names the bounty's faction. T8 logs each alert once with its clear time, under the filters
+ALERTS, IMPORTANT and INFO, and keeps 500, saved; its intercept is INTERCEPT, and Cole's wound is
+the serious one T2 shows, so it is WOUNDED and not the light-wound notice it was. T9 takes section
+10's pad: the aim, the shields, zoom, the lights, HUD focus, the map's buttons and the pause menu.
+The OBJ break is now the spec's, so the two-line deviation is gone; a news slip past two lines is
+cut with an ellipsis. Round 12's changes (levels by id, the caution row by 9.2's order, LOCKED ON,
+air under 30% oxygen, a wound being treated as advisory) left the drawings as they were: their
+cautions are already in 9.2's order, and no screen has a hostile locked on that isn't the target.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Task (OBJ, TRM) | The game's bounty title names the target's faction: `Bounty: Raider 'Vex' of the Void Raiders` (`ContractPostings.bounties` builds the target as label + " of the " + faction), so OBJ's sample row takes two lines in Z3. The game names a rails pirate `Pirate raider 3` (`HostileSpawns`) and an ace by a callsign (`Black Sal`); 'Vex' is the spec's own. T2 and T8 draw the game's title with the spec's name | |
+| Task (TRM) | The terminal wireframe's bounty pays 5,000; the game's pays 7 500 (`BOUNTY_PAY` × (1 + tier) × `Difficulty`, which is 1 for a new ensign against a matched ship). T6 keeps 7 500 | |
+| Task (MAP.5) | The map wireframe's timeline leaves out the first payday, Day 7 00:00 (`ServiceBudget` pays a week after the career starts), which the 3.8-day transfer meets between the Moon's sphere and burn 2. MAP.5 lists paydays, so T4 shows it | |
+| Task (10, pad) | The pad still can't cut a door: B on the keyboard, while the pad's B is the missile's R (`GamepadKeys`), and section 10's gaps don't list it. T9 leaves its dash | |
 
 **The slate's Log and the gun panel.** S8 draws the slate on its Log tab, docked after the fight,
 the latch and the way home, and S9 the gun panel at the forward starboard autocannon, docked. The

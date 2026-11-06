@@ -1,7 +1,7 @@
 # Nasa-punk × Task-driven
 
-The task-driven functional spec (`functional-task.md`, round 9 when drawn, on branch
-`claude/project-thread-nfiuf0`) skinned in the Nasa-punk style
+The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 12 now, on
+branch `claude/project-thread-nfiuf0`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
 2x; sources are the HTML files here, using `task.js` and the shared kit in
@@ -50,7 +50,10 @@ to pass 0.6 km off in 1:15, and Bea holds the heading with no order: the launch 
 but hold position and match velocity. Warp is held by the fire aboard. Two harpoons
 inbound a second apart, the first 1.1 km out and 0:03 from impact with its burn counted, the second
 1.4 km out (the one warning, with F for a decoy), each drawn on its predicted path to the hull; a
-fire in the hold with Ada on it and Cole wounded with no medic free (two cautions). WPN as the
+fire in the hold with Ada on it, and Cole seriously wounded and down with nobody free to treat,
+since anyone aboard can and all are busy (two cautions, in their full texts, since both fit the
+row). The objective is the bounty by the title the game gives it, which names the target's
+faction, so it takes a second line, broken before the faction. WPN as the
 starting corvette really carries its guns: the coilgun and the laser in hand (the laser out of
 range at its 3 km), the two autocannons on point defense, the harpoon launcher at 3 of 4, then the
 decoy. One lead reticle, the coilgun's, ringing Vex: its round takes 1.05 s, and Vex moves 44 m
@@ -62,12 +65,14 @@ are lit.
 
 **T3, on foot in the bridge after a hit.** The fire is in the hold with Cole on it; the bridge
 vents with nobody free to patch it; a short has cut power to the bridge and Ada resets it, the
-progress on its tag. No warning, three cautions in their short forms. On deck the deck is the
-schematic, so Z5 is empty and FLT, WPN and SNS are hidden; the console prompt names the weapons
-console once, then E OPEN and V SIT, so the hint line doesn't repeat them. The objective is spec
-round 10's, the food delivery to Shackleton Ice that the map plans, and the news slip under it is
-the game's own: the pirate that hit the ship is breaking off, so the band holds no hostile. Both
-are too long for Z3's one line, so each takes a second (a deviation, below).
+progress on its tag. No warning, three cautions in their short forms, in the spec's order of
+severity. On deck the deck is the schematic, so Z5 is empty and FLT, WPN and SNS are hidden; the
+console prompt names the weapons console once, then E OPEN and V SIT, so the hint line doesn't
+repeat them. The hit left two light wounds, the captain's and Bea's, so CREW is lit softly as an
+advisory and the suit's display reads LIGHT WOUND; Bea's is the news slip, the game's own words,
+the captain's having had its five seconds. The objective is spec round 11's urgent food delivery to
+Shackleton Ice, by the game's title, LATE in amber before its 2D 9H, since the plan arrives after
+the deadline; the title breaks before where the job goes, the time staying on the first line.
 
 ### The windows the overhaul skipped
 
@@ -80,9 +85,11 @@ panels, drawn after the first rounds.
 Shackleton Ice, where the held food delivery goes, and the computer has proposed one: two burns,
 3 912 m/s of the 7 007 left. Not yet accepted, it is a modification, so the path and its burns are
 dashed white, PLAN's title reads MOD and EXEC's bar is lit: Enter (EXEC) makes it the planned path,
-solid magenta, and Backspace (ERASE) drops it. It arrives 22 h 40 m after the contract's
-deadline, so ARRIVES carries an amber LATE flag and the timeline puts the deadline before the
-arrival. The orbit's numbers live here and nowhere else, under the plot's title. The numbers are
+solid magenta, and Backspace (ERASE) drops it. The delivery is the urgent one Shackleton Ice's food
+shortage posts, for the Selene Mining Combine, due on Day 6 at 00:00: the transfer arrives
+1 d 9 h 40 m after that, so ARRIVES carries an amber LATE flag and the timeline puts the deadline
+before the arrival. The timeline carries the first payday too, on Day 7, a week into the career,
+among the last day's events on their leaders. The orbit's numbers live here and nowhere else, under the plot's title. The numbers are
 the game's: Shackleton Ice orbits the Moon 100 km up, and the Moon, 384 400 km out, moves 50
 degrees in the 3.8 days the transfer takes.
 
@@ -110,15 +117,17 @@ body is the list on the left with the selected offer's terms on the right. CREW 
 the ship's book, whose Crew tab links here while docked. Highport sells no ships,
 so there is no SHIPYARD tab, and the row says why. The offers are the game's, sorted by pay with
 operations first: a bounty pays 7 500 and +6 over 3 days, an escort 1 500 and +4, a patrol 1 000
-and +3, and a delivery its fee, 15% of the cargo's value and at least 500, on top of the agreed
-price for the cargo. Clear the Lanes waits for the rank of lieutenant. REACH, the spec's addition,
-is the travel time and delta-v from here. The delivery to Shackleton Ice is at the Moon, so it is
-due in 8 days, and its 3.8-day transfer leaves 4 days spare. Its terms show the food bought here,
-the fee and the price paid there, what that clears, half the standing lost on failure, and the
-route and the hold after it. TAKE (Enter) and SHOW ROUTE (M) are keys under the glass. Spec round
-10 makes this the late delivery the map plans, which a delivery to another body can't be on day 3,
-so T6 keeps the game's numbers until the spec settles which delivery it is (the round log has the
-note).
+and +3, and a delivery its fee, 15% of the cargo's value and at least 500, on top of the price the
+giver pays for the cargo. Pay is net of what the cargo costs here, and the standing names a giver
+who isn't the sponsor (spec round 11). Clear the Lanes waits for the rank of lieutenant. REACH,
+the spec's addition, is the travel time and delta-v from here. The cursor is on round 11's urgent
+delivery, the one Shackleton Ice's food shortage posts at Highport: 40 food to fill the hold,
+bought here at 25 and paid for there at 78, half again the buyer's price, with the 500 fee, for +5
+with the Selene Mining Combine and due on Day 6, 3 days after the day's roll. Its one transfer
+arrives 1 d 9 h 40 m late, which REACH says in amber, and the terms say why it was posted, who
+gives it, the cargo and its price here, the pay as fee and cargo and what that clears, the standing
+and what failing costs, the deadline as a date, the route with its arrival, and the hold, 6 m³
+short. TAKE (Enter) and SHOW ROUTE (M) are keys under the glass.
 
 ![The ship's book, crew](t7-book-crew.png)
 
@@ -139,19 +148,20 @@ work outside in a marine's trade is fetching someone adrift, and there is none.
 ![The ship's book, log](t8-book-log.png)
 
 **T8, BOOK on its LOG tab (L), docked at Highport after T5.** T7's frame, with the list the whole
-width, since a notice needs no page of its own. It is the game's notice log, newest first under a
-divider for each day, each notice stamped with its game time and filtered by kind on the soft keys
-under the glass: WARNINGS, IMPORTANT and INFO, each lit while it shows. The game keeps the last 50,
-and the header counts them by kind. The notices are the game's own words, with ships named in
-full: the bounty taken at 09:12 and done the moment Vex was beaten, which pays at once (7 500 CR and
-+6 with the Patrol), the intercept, the light wound, the disablement, the collar, the forced
-airlock, the taking, the prisoners brought aboard, the laser stripped and stowed, and Highport's
-clearance. The band's alerts are logged too, since section 9 keeps their full text "in the book
-and in the log": each as it was raised, its code, where and who, then the action it named, dim,
-since that was the advice of the moment. They file under WARNINGS, the kind the game gives them,
-and keep the band's level as their mark, ◆ a warning and ▲ a caution; an important notice has a
-white dot, and news has no mark. The intercept, which the spec leaves to be a caution or news, is
-drawn as a caution.
+width, since an entry needs no page of its own. It is the spec's log (round 11): every notice and
+every alert, newest first under a divider for each day, each stamped with its game time and
+filtered on the soft keys under the glass, ALERTS, IMPORTANT and INFO, each lit while it shows. It
+keeps the last 500 entries and is saved with the game, and the header counts what it holds by
+filter. The notices are the game's own words, with ships named in full: the bounty taken at 09:12
+and done the moment Vex was beaten, by the game's title, which names the target's faction, paid at
+once (7 500 CR and +6 with the Patrol); the disablement, the collar, the forced airlock, the
+taking, the prisoners brought aboard, the laser stripped and stowed, and Highport's clearance for
+port 2. An alert is logged once, as it was raised, in its full text: its code, what and where,
+then the action it named, dim, since that was the advice of the moment, with the band's level as
+its mark, ◆ a warning and ▲ a caution. When it cleared, its entry gained the time at the right,
+rather than a second entry. The game's warning notices are their alerts: the intercept is
+INTERCEPT, and Cole's serious wound is WOUNDED, which cleared once Ada, the fire out, began to
+treat Cole. An important notice has a white dot, and news has no mark.
 
 ![Controls](t9-controls.png)
 
@@ -160,12 +170,15 @@ page in three columns of action, key and pad button: the posts first (deck, helm
 the screens and panels (map, terminal, book, boarding, console), then what works at any post, where
 zoom and the lights sit, since the wheel and O work everywhere. Every key is the game's default
 with the spec's destinations: I opens the book on Crew, L on Log, J the terminal's Contracts docked
-and the book's undocked, K the boarding panel, and Esc the top layer and then the pause menu. Every
-pad button is the game's: the flying layer; Back held, for the boards, the burn's steering, a quick
-save and abandon ship; and the spec's HUD focus on L3, where the d-pad moves through ALR, ANN, HLM
-and OBJ and A does what a click would. In a screen or panel the pad moves the focus, as the foot
-says. An action with no pad button has a dash, so the gaps show: eleven rows, aiming the guns among
-them, since at the weapons console the guns follow the pointer.
+and the book's undocked, K the boarding panel, and Esc the top layer and then the pause menu; the
+reference opens over everything, so Esc closes it first. The pad buttons are the game's where it
+has them, and section 10's where it didn't (spec round 11): the right stick aims the guns in hand,
+R3 putting the aim back on the lock; the bumpers work the shields; Back held with the right stick
+zooms; R3 on deck works the lights; L3 puts the focus on the HUD, where the d-pad moves through its
+items and A does what a click would, which reaches the next port, the guns the trigger fires, the
+helm orders and a destination; the map's keys are its buttons, the bumpers stepping the
+destination and the triggers warp; the book's bumpers step its tabs; and the pause menu holds
+Controls and Load. One action is left with a dash: no pad button cuts a door.
 
 ## Round 6 critique
 
@@ -209,10 +222,9 @@ Resolved without a change:
 
 - **Warp reads `1×`** with the multiplication sign, where the spec writes `1x`.
 - **Countdowns are M:SS** (`IMPACT 0:03`, `CPA 0.6 KM  T−1:15`), where the spec writes seconds.
+- **The log's clearing time has seconds** (`CLEARED 12:14:31`), where the spec writes `cleared
+  14:31`: the log's own stamps carry seconds, and a missile's warning clears within its minute.
 - **Thousands take a thin space**, the style guide's rule, where the spec writes a comma.
-- **A news slip or an objective too long for Z3 takes a second line**, broken where the two lines
-  are most even, where the spec gives each one line. Z3 is 240 wide, and few of the game's notices
-  fit one line beside their tag (a payday's is 384), nor does a delivery's title beside its time.
 - **The scope's range has no AUTO word** (`5 KM`, where the spec writes `5 km (auto)`). Automatic
   is the normal state, and a dark cockpit names only what isn't normal. A range the captain has set
   with − or + reads in cyan, the style's colour for a commanded value, until the post changes.

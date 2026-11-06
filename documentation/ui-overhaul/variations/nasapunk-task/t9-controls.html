@@ -18,17 +18,23 @@
 //
 // Every key is the game's default (Action) with the task spec's destinations (section 10): I opens
 // the book on Crew, L on Log, J the terminal's Contracts docked and the book's undocked, K the
-// boarding panel, Esc the top layer and then the pause menu. Every pad button is the game's
-// (GamepadKeys): the left stick flies and walks, the right stick or the bumpers strafe and its
-// click is rotation assist, A or RT fires (A also uses), B a missile, X the decoy or a door, Y the
-// view, LT the next target, the d-pad warp, the port and undocking, Start the menu, Back tapped the
-// map, and Back held a second layer (the boards, the burn's steering, a quick save, abandon). The
-// spec adds the pad's HUD focus: L3, free in the flying layer, puts the focus on the HUD, where the
-// d-pad moves through ALR, ANN, HLM and OBJ and A does what a click would; and in a screen or panel
-// the pad moves FocusNav's focus. An action with no pad button has a dash, so the gaps show.
-// The wheel zooms and O switches the lighting at every post (GameInput), so both are under ANY
-// POST. At the weapons console only the weapons answer, and the guns in hand follow the pointer
-// (PlayerGunnery), so the pad has no way to aim them.
+// boarding panel, and Esc the top layer, one a press, then the pause menu; the controls reference
+// opens over everything, screens too, so Esc closes it first (round 11's closing order). Every pad
+// button is the game's (GamepadKeys) where the game has one: the left stick flies and walks, the
+// right stick strafes and its click is rotation assist, A or RT fires (A also uses), B a missile, X
+// the decoy or a door, Y the view, LT the next target, the d-pad warp, the port and undocking,
+// Start the menu, Back tapped the map, and Back held a second layer (the boards, the burn's
+// steering, a quick save, abandon). The rest are section 10's, which closes the pad's gaps (round
+// 11): the right stick aims the guns in hand, from the lock, and R3 puts the aim back on it; RB and
+// LB work the shields at the helm and the guns, so they no longer double the strafe; Back held with
+// the right stick zooms; R3 on deck works the lights; L3 puts the focus on the HUD, where the d-pad
+// moves through CHR, ALR, ANN, HLM, OBJ, FLT, WPN and SNS and A does what a click would, which
+// reaches the next port, the guns the trigger fires, the helm orders and a destination; the map is
+// worked as a screen, its keys its buttons, the bumpers stepping the destination and the triggers
+// warp; in the book the bumpers step the tabs; and the pause menu holds Controls and Load. The
+// wheel zooms and O switches the lighting at every post (GameInput), so both are under ANY POST.
+// One gap is left, and it is drawn as one: no pad button cuts a door (B on the keyboard; the pad's
+// B is the missile's R). An action with no pad button has a dash.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 7 });
 s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
 s += alertBand({});
@@ -61,28 +67,31 @@ const COL1 = [
   ['HELM', 'V AT THE HELM', [
     ['THRUST', ['W', 'S'], 'L STICK ↑ ↓'],
     ['TURN', ['A', 'D'], 'L STICK ← →'],
-    ['STRAFE', ['Z', 'C'], 'R STICK, LB RB'],
+    ['STRAFE', ['Z', 'C'], 'R STICK'],
     ['ROTATION ASSIST', ['X'], 'R3'],
     ['GUNS', ['SPACE'], 'A, RT'],
     ['MISSILE', ['R'], 'B'],
     ['DECOY', ['F'], 'X'],
     ['NEXT TARGET', ['TAB'], 'LT'],
+    ['SHIELDS UP / DOWN', ['9'], 'RB'],
+    ['SHIELD TRIM', ['8'], 'LB'],
     ['ARM PORT, CLEARANCE', ['G'], 'D-PAD ←'],
-    ['NEXT PORT', ['H'], null],
-    ['UNDOCK', ['U'], 'D-PAD →'],
+    ['NEXT PORT', ['H'], 'L3, FLT, A'],
+    ['UNDOCK, CAST OFF', ['U'], 'D-PAD →'],
     ['TIME WARP DOWN / UP', [',', '.'], 'D-PAD ↓ ↑'],
     ['STAND UP', ['V'], 'Y'],
   ]],
 ];
 const COL2 = [
   ['GUNNERY', 'THE CONSOLE, OR ONE GUN', [
-    ['AIM', ['MOUSE'], null],
+    ['AIM; BACK ON THE LOCK', ['MOUSE'], 'R STICK; R3'],
     ['FIRE, OR A CLICK', ['SPACE'], 'A, RT'],
+    ['THE GUNS IT FIRES', ['(A CLICK)'], 'L3, WPN, A'],
     ['MISSILE', ['R'], 'B'],
     ['DECOY', ['F'], 'X'],
     ['NEXT TARGET', ['TAB'], 'LT'],
-    ['SHIELDS UP / DOWN', ['9'], null],
-    ['SHIELD TRIM', ['8'], null],
+    ['SHIELDS UP / DOWN', ['9'], 'RB'],
+    ['SHIELD TRIM', ['8'], 'LB'],
     ['STAND UP', ['V'], 'Y'],
   ]],
   ['MAP', 'M, AT ANY POST', [
@@ -93,11 +102,11 @@ const COL2 = [
     ['RADIAL OUT / IN', ['→', '←'], 'BACK+D-PAD → ←'],
     ['LATER / EARLIER', [']', '['], 'BACK+RB LB'],
     ['DELETE THE BURN', ['DELETE'], 'BACK+R3'],
-    ['EXEC THE PLAN', ['ENTER'], 'FOCUS, A'],
-    ['ERASE IT', ['BACKSPACE'], 'FOCUS, A'],
-    ['NEXT DESTINATION', ['Q'], null],
-    ['PLAN TO IT', [';'], null],
-    ['WARP TO THE NEXT BURN', ['/'], null],
+    ['EXEC OR ERASE THE PLAN', ['ENTER', 'BKSP'], 'FOCUS, A'],
+    ['NEXT / LAST DESTINATION', ['Q', '⇧Q'], 'RB, LB'],
+    ['PLAN TO IT', [';'], 'FOCUS, A'],
+    ['WARP TO THE NEXT BURN', ['/'], 'FOCUS, A'],
+    ['TIME WARP DOWN / UP', [',', '.'], 'LT, RT'],
   ]],
 ];
 const COL3 = [
@@ -108,24 +117,25 @@ const COL3 = [
   ]],
   ['BOOK', 'AT ANY POST', [
     ['SHIP, FROM A LAMP', ['(A CLICK)'], 'L3, ANN, A'],
-    ['CREW, LOG', ['I', 'L'], null],
     ['CONTRACTS, UNDOCKED', ['J'], 'BACK+A'],
+    ['CREW, LOG', ['I', 'L'], 'THEN RB, LB'],
   ]],
   ['BOARDING', 'LATCHED, OR IN EVA REACH', [
     ['OPEN THE PANEL', ['K'], 'BACK+B'],
-    ['CAST OFF', ['U'], 'D-PAD →'],
   ]],
   ['CONSOLE', 'E AT A SYSTEM\'S CONSOLE', [
     ['THROW ITS SWITCH', ['ENTER'], 'FOCUS, A'],
     ['AT A GUN: TAKE IT', ['V'], 'Y'],
   ]],
   ['ANY POST', 'WHEREVER YOU ARE', [
+    ['FOCUS THE HUD', ['(THE POINTER)'], 'L3, D-PAD'],
     ['HELM ORDERS', ['1–6', '0'], 'L3, HLM, A'],
     ['ACKNOWLEDGE ALERTS', ['(UNBOUND)'], 'L3, ALR, A'],
     ['SET A DESTINATION', ['(A CLICK)'], 'L3, OBJ, A'],
-    ['ZOOM, LIGHTS', ['WHEEL', 'O'], null],
-    ['CONTROLS', ['F1'], null],
-    ['QUICK SAVE, LOAD', ['F5', 'F9'], 'BACK+L3 SAVES'],
+    ['ZOOM, VIEW OR MAP', ['WHEEL'], 'BACK+R STICK'],
+    ['LIGHTS', ['O'], 'R3, ON DECK'],
+    ['CONTROLS', ['F1'], 'START, CONTROLS'],
+    ['QUICK SAVE, LOAD', ['F5', 'F9'], 'BACK+L3; START'],
     ['ABANDON SHIP, TWICE', ['P'], 'BACK+START'],
     ['CLOSE, THEN PAUSE', ['ESC'], 'START'],
   ]],
@@ -139,7 +149,7 @@ s += du(16, 186, 1248, 600, {
   id: 'ref', b: 8, plate: 'CTL-1  REFERENCE  P/N 7130-20',
   content: (gx, gy, gw, gh) => {
     let g = '';
-    const cw = (gw - 20) / 3, KX = 174, PX = 268, RH = 20;
+    const cw = (gw - 20) / 3, KX = 174, PX = 268, RH = 19;
     const column = (i, sections) => {
       const x = gx + 10 + i * cw, R = x + cw - 14;
       let y = gy + 22;
@@ -147,7 +157,7 @@ s += du(16, 186, 1248, 600, {
       g += line(x - 2, y + 6, R, y + 6, C.graticule, 1);
       y += 30;
       sections.forEach(([name, where, rows], si) => {
-        if (si) y += 8;
+        if (si) y += 6;
         g += text(x, y, name, { size: S_LABEL, bold: true, fill: C.white, track: 0.8 }) + text(R, y, where, { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
         g += line(x + tw(name, S_LABEL, true, 0.8) + 8, y - 4.5, R - tw(where, S_LABEL, true, 0.5) - 8, y - 4.5, C.graticule, 1);
         y += 22;
@@ -169,7 +179,7 @@ s += du(16, 186, 1248, 600, {
     // the foot: the pad in a screen, and what a dash means
     const fy = gy + gh - 12;
     g += line(gx + 6, fy - 18, gx + gw - 6, fy - 18, C.graticule, 1);
-    g += text(gx + 10, fy, 'IN A SCREEN OR PANEL THE PAD MOVES THE FOCUS: THE D-PAD MOVES, A PRESSES, B GOES BACK, LB RB CHANGE TAB', { size: S_LABEL, bold: true, fill: C.dim, track: 0.4 });
+    g += text(gx + 10, fy, 'IN A SCREEN OR PANEL, AND IN HUD FOCUS, THE D-PAD MOVES, A PRESSES AND B GOES BACK; LB RB CHANGE TAB', { size: S_LABEL, bold: true, fill: C.dim, track: 0.4 });
     g += text(gx + gw - 10, fy, '—  NO PAD BUTTON', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.4 });
     return g;
   },
