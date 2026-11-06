@@ -165,10 +165,59 @@ class ShipConsoleTest {
         assertEquals("FIRE", jobs.get(0).code);
         assertEquals("2 CREW", SystemsPage.who(jobs.get(0)));
         assertEquals("—", SystemsPage.who(jobs.get(1)), "the game can't say");
-        assertEquals("FIRE", SystemsPage.task(jobs.get(0), null), "the catalogue's long form");
+        assertEquals("FIRE, 1 TILE", SystemsPage.task(jobs.get(0), null), "a fire by its tiles burning");
         assertEquals("BRIDGE", SystemsPage.place(jobs.get(0), null));
         assertEquals("3.0 MW", SystemsPage.watts(3.0e6));
         assertEquals("850 KW", SystemsPage.watts(850e3));
+    }
+
+    @Test
+    void aFireIsSizedInTilesAndSaysWhetherItSpreadsAgainstTenSecondsBefore() {
+        AlertRegistry alerts = new AlertRegistry();
+        FireTrend fires = new FireTrend();
+        int[] tiles = {1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2};
+        for (int t = 0; t < tiles.length; t++) {
+            alerts.begin(t);
+            alerts.raise("fire:HOLD", Level.WARNING, Category.LIFE_SUPPORT).set("FIRE", "Fire in HOLD").room("HOLD").count(tiles[t]);
+            alerts.end();
+            fires.update(alerts, t);
+            if (t == 2) {
+                assertEquals("FIRE, 3 TILES", SystemsPage.task(alerts.get("fire:HOLD"), null));
+                assertEquals("spreading", fires.trend("fire:HOLD", 3, t), "young, against its first tile");
+            }
+            if (t == 12) assertEquals("", fires.trend("fire:HOLD", 3, t), "3 tiles now and 10 s before: holding");
+            if (t == 13) assertEquals("shrinking", fires.trend("fire:HOLD", 2, t), "2 against the 3 at 3 s");
+        }
+        assertEquals("shrinking", fires.trend("fire:HOLD", 1, 14));
+        // Out, it is forgotten
+        alerts.begin(15);
+        alerts.end();
+        fires.update(alerts, 15);
+        assertEquals("", fires.trend("fire:HOLD", 2, 15));
+    }
+
+    @Test
+    void lifeSupportSaysWhichRoomsGetAirAndWhyNotTheRest() {
+        Array<String> rooms = names("BRIDGE", "HOLD");
+        assertEquals("AIR TO BRIDGE AND HOLD", SystemsPage.air(1, rooms, names("BRIDGE", "HOLD"), names()));
+        assertEquals("AIR TO THE HOLD ONLY: BRIDGE VENTING", SystemsPage.air(1, rooms, names("HOLD"), names("BRIDGE")));
+        assertEquals("AIR TO THE BRIDGE ONLY: HOLD BEHIND A SHUT DOOR", SystemsPage.air(1, rooms, names("BRIDGE"), names()));
+        assertEquals("NO AIR: BRIDGE VENTING, HOLD BEHIND A SHUT DOOR", SystemsPage.air(1, rooms, names(), names("BRIDGE")));
+        assertEquals("NO AIR: LIFE SUPPORT DOWN", SystemsPage.air(1, rooms, names(), names()));
+        assertEquals("NO LIFE SUPPORT ABOARD", SystemsPage.air(0, rooms, names(), names()));
+        Array<String> gunship = names("ENGINES", "REACTOR", "BRIDGE", "AFT", "FWD");
+        assertEquals("AIR TO ALL 5 ROOMS", SystemsPage.air(1, gunship, gunship, names()));
+        assertEquals("AIR TO ENGINES, REACTOR AND BRIDGE ONLY: AFT AND FWD BEHIND SHUT DOORS",
+                SystemsPage.air(1, gunship, names("ENGINES", "REACTOR", "BRIDGE"), names()));
+        assertEquals("O2 TANKS 72%", SystemsPage.tanks(0.72f, Double.NaN));
+        assertEquals("EMERGENCY O2 42 KG", SystemsPage.tanks(0f, 42.4));
+        assertEquals("", SystemsPage.tanks(Float.NaN, Double.NaN), "a ship with no oxygen tanks");
+    }
+
+    private static Array<String> names(String... n) {
+        Array<String> a = new Array<>();
+        a.addAll(n);
+        return a;
     }
 
     @Test
