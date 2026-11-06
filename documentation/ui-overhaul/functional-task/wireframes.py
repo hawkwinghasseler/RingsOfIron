@@ -564,14 +564,23 @@ def crisis(out):
     chr_(s, "WARP 1x", "")
     alr(s, ("SHIP DISABLED  no reactor running", "options below, or let the crew work"), ())
     ann(s, [("POWER", "warn"), ("HULL", "caut"), ("AIR", "caut")], shields=False)
-    s.box(400, 120, 480, 200, "CRS", "Options", [
-        "crew working:  Ada resetting the reactor short, ~20 s",
-        "               (breaker recloses by itself in 41 s)",
+    # A reset is 5 s of work (CrewDef.resetTime); the walk there the game doesn't know. The tow is a
+    # tenth of the ship's value (DistressBeacon.FEE_SHARE): 25,500 for the starter corvette's
+    # 255,000. Its 3 days outlast both contracts held at Day 3 (the bounty's 2d 21h, the delivery's
+    # 2d 9h), and abandoning fails them all (LoopWiring.RESCUE_COST, ContractBoard.failAll).
+    s.box(400, 120, 480, 232, "CRS", "Options", [
+        "crew working:  Ada going to the reactor's short,",
+        "               5 s to reset it there; the breaker",
+        "               recloses by itself in 38 s",
         "",
         "[wait]          let the crew work",
-        "[B][B] tow      fee 9,600 cr, -3 standing, 3 days,",
-        "                docks at Highport with ship and crew",
-        "[P][P] abandon  pod: 1 (S), 4 seats for 4 aboard",
+        "[B][B] tow      25,500 cr, -3 standing, 3 days: both",
+        "                contracts run out; docked at Highport",
+        "                as it is: crew, cargo, damage",
+        "[P][P] abandon  pod: 1 (S), 4 seats for 4 aboard;",
+        "                ship and cargo lost, both contracts",
+        "                fail, -5 standing, 3 days; a corvette",
+        "                free at Highport, credits kept",
         "",
         "air aboard: 41 min at this crew"])
     hnt(s, "F1 controls", "note: the crisis keys live in the panel, not here")
