@@ -120,6 +120,12 @@ final class TaskAlerts {
         Level level = Level.ADVISORY;
         /** The lamp it lights, and a second one (a shorted engine's alert is POWER's, and it lights DRIVE too). */
         Lamp lamp, also;
+        /**
+         * It lights its lamps and takes no place in the band, where another alert says the same thing
+         * (9.1: the same condition never shows twice): with no reactor feeding anything every system is
+         * cut off, which is the one POWER warning; a reactor down is DISABLED's cause.
+         */
+        boolean quiet;
     }
 
     /** The alerts 9.2 has that the game doesn't raise yet, from the HUD's data. */
@@ -236,6 +242,7 @@ final class TaskAlerts {
         r.level = a.level;
         r.lamp = r.also = null;
         r.id = Id.OTHER;
+        r.quiet = false;
         String id = a.id;
         CaptainStatus c = d.captainStatus;
         if (id.startsWith(OWN)) {
@@ -321,8 +328,11 @@ final class TaskAlerts {
      * A system that is not working: DRIVE's, ARMS's, SHIELD's or AIR's by its system while it is
      * damaged or stunned; POWER's for a short or a cut (a shorted engine still lights DRIVE, and a gun
      * cut off ARMS), and its advisory for a system switched off. A reactor's fault is a POWER caution
-     * while another reactor feeds the ship, a warning when none feeds anything. An airlock's or a
-     * docking port's lights nothing, since FLT's DOCK mode and COLLAR show the port.
+     * while another reactor feeds the ship, a warning when none feeds anything, and so is a reactor
+     * switched off then (the lamp table's "every reactor off"). While none feeds anything a system cut
+     * off is quiet, since the reactor's warning says it once; so is the reactor's own while the ship is
+     * disabled for want of power, which DISABLED says. An airlock's or a docking port's lights nothing,
+     * since FLT's DOCK mode and COLLAR show the port.
      */
     private boolean system(Alert a, HudData d, Row r) {
         int at = a.id.indexOf(':', 4);
@@ -336,12 +346,13 @@ final class TaskAlerts {
             case "LIFE SUP": its = Lamp.AIR; break;
             default: its = Lamp.POWER; break;
         }
-        boolean reactor = sys.equals("REACTOR");
-        Level fault = reactor && noPower(d) ? Level.WARNING : Level.CAUTION;
+        boolean reactor = sys.equals("REACTOR"), dark = noPower(d);
+        Level fault = reactor && dark ? Level.WARNING : Level.CAUTION;
+        if (reactor) r.quiet = d.alerts.get("disabled") != null && causeLamp(d.ctx.disabledReason) == Lamp.POWER;
         switch (faultOf(a)) {
             case OFF:
                 r.id = Id.POWER;
-                r.level = Level.ADVISORY;
+                r.level = reactor && dark ? Level.WARNING : Level.ADVISORY;
                 r.lamp = Lamp.POWER;
                 break;
             case NO_POWER:
@@ -349,6 +360,7 @@ final class TaskAlerts {
                 r.level = fault;
                 r.lamp = Lamp.POWER;
                 if (its == Lamp.ARMS) r.also = Lamp.ARMS;
+                if (dark) r.quiet = true;
                 break;
             case SHORTED:
                 r.id = Id.POWER;
@@ -369,14 +381,32 @@ final class TaskAlerts {
     /** What a {@code sys:} alert's system has, from the power frame (its id names the system's tile), else from its words. */
     private Fault faultOf(Alert a) {
         SystemRow r = systems.get(a.id);
-        if (r != null) return r.fault;
-        String t = a.text;
-        if (t.endsWith(": destroyed")) return Fault.DESTROYED;
-        if (t.endsWith(": disabled")) return Fault.DISABLED;
-        if (t.endsWith(": shorted")) return Fault.SHORTED;
-        if (t.endsWith(": stunned")) return Fault.STUNNED;
-        if (t.endsWith(": no power")) return Fault.NO_POWER;
+        return r != null ? r.fault : faultIn(a.text);
+    }
+
+    /** The fault a {@code sys:} alert's words name ("ENGINE in HOLD: destroyed"). */
+    static Fault faultIn(String text) {
+        if (text.endsWith(": destroyed")) return Fault.DESTROYED;
+        if (text.endsWith(": disabled")) return Fault.DISABLED;
+        if (text.endsWith(": shorted")) return Fault.SHORTED;
+        if (text.endsWith(": stunned")) return Fault.STUNNED;
+        if (text.endsWith(": no power")) return Fault.NO_POWER;
         return Fault.OFF;
+    }
+
+    /**
+     * A system's fault in the words the ship's console uses for its state, so the band, the crisis
+     * placard and the Systems tab agree (the game's "disabled" would read as the ship's DISABLED).
+     */
+    static String word(Fault f) {
+        switch (f) {
+            case DESTROYED: return "WRECKED";
+            case DISABLED: return "DAMAGED";
+            case SHORTED: return "SHORTED";
+            case STUNNED: return "STUNNED";
+            case NO_POWER: return "CUT OFF";
+            default: return "OFF";
+        }
     }
 
     /** No reactor feeds anything: every reactor off, shorted, stunned or broken. */
@@ -610,19 +640,19 @@ final class TaskAlerts {
     /** Cautions: 9.2's order (what can hurt someone, then what the ship can't do, then the job), then the oldest. */
     private static final Comparator<Row> CAUTIONS = (a, b) -> a.id != b.id ? a.id.compareTo(b.id) : Double.compare(a.a.since, b.a.since);
 
-    /** One warning on the top row, the rest of the warnings and the fresh cautions below. */
+    /** One warning on the top row, the rest of the warnings and the fresh cautions below. A quiet row takes neither. */
     private void band() {
         Row top = null;
-        for (Row r : rows) if (r.level == Level.WARNING && (top == null || sooner(r, top))) top = r;
+        for (Row r : rows) if (r.level == Level.WARNING && !r.quiet && (top == null || sooner(r, top))) top = r;
         warning = top == null ? null : top.a;
         cautions.clear();
         sorted.clear();
-        for (Row r : rows) if (r.level == Level.WARNING && r != top) sorted.add(r);
+        for (Row r : rows) if (r.level == Level.WARNING && !r.quiet && r != top) sorted.add(r);
         sorted.sort(WARNINGS);
         for (Row r : sorted) cautions.add(r.a);
         sorted.clear();
         for (Row r : rows) {
-            if (r.level != Level.CAUTION || r.a.acknowledged || age(r.a) >= CAUTION_SECONDS) continue;
+            if (r.level != Level.CAUTION || r.quiet || r.a.acknowledged || age(r.a) >= CAUTION_SECONDS) continue;
             // No caution for what a visible widget shows in full: at gunnery a mount's fault is WPN's row
             if (post == Post.GUNNERY && (r.lamp == Lamp.ARMS || r.also == Lamp.ARMS)) continue;
             sorted.add(r);
@@ -705,8 +735,8 @@ final class TaskAlerts {
         if (id.equals("hull")) return "HULL   " + percent(a.text);
         if (id.equals("oxygen")) return "OXYGEN TANKS DRY";
         if (id.equals("propellant")) return "PROPELLANT LOW";
-        if (id.startsWith("sys:REACTOR")) return "NO POWER   REACTOR " + after(a.text).toUpperCase(Locale.ROOT);
-        if (id.startsWith("sys:")) return a.code + "   " + after(a.text).toUpperCase(Locale.ROOT);
+        if (id.startsWith("sys:REACTOR")) return "NO POWER   REACTOR " + word(faultIn(a.text));
+        if (id.startsWith("sys:")) return a.code + "   " + word(faultIn(a.text));
         return a.code;
     }
 
@@ -788,12 +818,17 @@ final class TaskAlerts {
             }
         } else if (id.startsWith("sys:")) {
             l1 = a.room;
-            l2 = a.timerKind == TimerKind.RECOVERY && !Float.isNaN(a.timer) ? "BACK IN " + YardText.span(a.timer) : after(a.text);
+            l2 = a.timerKind == TimerKind.RECOVERY && !Float.isNaN(a.timer) ? "BACK IN " + YardText.span(a.timer) : word(faultIn(a.text));
         } else if (id.equals("captain:air")) {
-            // Below a warning that outranks it, or the thin air of a room no AIR caution names
+            // Below a warning that outranks it, or the thin air of a room no AIR caution names: the oxygen once it hurts, else the pressure
+            CaptainStatus c = d.captainStatus;
+            String room = a.room.isEmpty() ? c.room : a.room;
             code = "YOUR AIR";
             l1 = "NO SUIT";
-            l2 = a.room;
+            if (!Float.isNaN(c.roomOxygen) && c.roomOxygen < AIR_HURTS) l2 = room + "  " + Math.round(c.roomOxygen * 100f) + "% O2";
+            else if (!Float.isNaN(c.roomPressure)) l2 = room + "  " + Math.round(c.roomPressure * 100f) + "%";
+            else l2 = room;
+            l2 = l2.trim();
         } else if (id.equals("captain:bleeding")) {
             code = "YOU";
             l1 = "CRITICAL";

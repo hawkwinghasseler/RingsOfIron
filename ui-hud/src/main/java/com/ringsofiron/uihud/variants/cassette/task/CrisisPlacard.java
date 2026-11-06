@@ -296,7 +296,7 @@ final class CrisisPlacard extends YardPart {
         if (rows.size > 3) pairs = 2;
         for (int i = 0; i < pairs; i++) {
             SystemRow r = rows.get(i);
-            add(p, r.system + " " + word(r.fault), width, false);
+            add(p, r.system + " " + TaskAlerts.word(r.fault), width, false);
             Alert a = d.alerts.get("sys:" + r.system + ":" + r.tileX + "," + r.tileY);
             String crew = a != null && a.handling > 0 ? (a.handling == 1 ? "ONE CREW ON IT" : a.handling + " CREW ON IT") : "";
             String then;
@@ -312,16 +312,6 @@ final class CrisisPlacard extends YardPart {
             add(p, "", width, true);
             add(p, "NOTHING CLEARS IT", width, true);
             add(p, "BY ITSELF", width, true);
-        }
-    }
-
-    private static String word(Fault fault) {
-        switch (fault) {
-            case DESTROYED: return "DESTROYED";
-            case DISABLED: return "DAMAGED";
-            case SHORTED: return "SHORTED";
-            case STUNNED: return "STUNNED";
-            default: return fault.name();
         }
     }
 

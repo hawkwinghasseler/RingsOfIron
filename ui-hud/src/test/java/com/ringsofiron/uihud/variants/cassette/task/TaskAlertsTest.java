@@ -225,6 +225,74 @@ class TaskAlertsTest {
     }
 
     @Test
+    void withNoReactorFeedingAnythingTheCutOffSystemsLightTheirLampsAndLeaveTheBandToTheReactor() {
+        system("REACTOR", Fault.DESTROYED);
+        system("ENGINE", Fault.NO_POWER);
+        system("TURRET", Fault.NO_POWER);
+        SystemRow reactor = d.powerFrame.faults.get(0), engine = d.powerFrame.faults.get(1), gun = d.powerFrame.faults.get(2);
+        d.powerFrame.ratedWatts = 1e6;
+        Consumer<HudData> dark = x -> {
+            sysAlert(x, reactor, Level.WARNING, "destroyed");
+            sysAlert(x, engine, Level.CAUTION, "no power");
+            sysAlert(x, gun, Level.CAUTION, "no power");
+        };
+        frame(0.1f, dark);
+        assertEquals("sys:REACTOR:3,1", t.warning.id);
+        assertEquals("NO POWER   REACTOR WRECKED", TaskAlerts.title(t.warning, d));
+        assertEquals(0, t.cautions.size, "the reactor's warning says it once");
+        assertEquals(Level.WARNING, lamp(Lamp.POWER));
+        assertEquals(Level.CAUTION, lamp(Lamp.ARMS), "a gun cut off still lights ARMS");
+
+        // Disabled for want of power: DISABLED says it, and the reactor's row only lights POWER
+        d.ctx.disabledReason = "reactor down";
+        Consumer<HudData> disabled = x -> {
+            dark.accept(x);
+            x.alerts.raise("disabled", Level.WARNING, Category.ENGINEERING).set("DISABLED", "Ship disabled: reactor down");
+        };
+        frame(0.1f, disabled);
+        assertEquals("disabled", t.warning.id);
+        assertEquals(0, t.cautions.size);
+        assertEquals(Level.WARNING, lamp(Lamp.POWER));
+
+        // Disabled for its hull, the reactor's own warning goes below
+        d.ctx.disabledReason = "hull broken";
+        frame(0.1f, disabled);
+        assertEquals("disabled", t.warning.id);
+        assertEquals("sys:REACTOR:3,1", t.cautions.first().id);
+        assertEquals(1, t.cautions.size);
+
+        // With a reactor feeding the ship, a system cut off is a caution of its own
+        d.ctx.disabledReason = "";
+        d.powerFrame.faults.removeIndex(0);
+        d.powerFrame.addCircuit().outputWatts = 5e5;
+        d.powerFrame.outputWatts = 5e5;
+        frame(0.1f, x -> sysAlert(x, engine, Level.CAUTION, "no power"));
+        assertEquals("sys:ENGINE:3,2", t.cautions.first().id);
+        assertArrayEquals(new String[]{"ENGINE", "HOLD", "CUT OFF"}, t.lines(t.cautions.first(), d));
+    }
+
+    @Test
+    void aReactorSwitchedOffIsPowersWarningWhenNoneFeedsTheShip() {
+        system("REACTOR", Fault.OFF);
+        SystemRow reactor = d.powerFrame.faults.first();
+        d.powerFrame.ratedWatts = 1e6;
+        frame(0.1f, x -> sysAlert(x, reactor, Level.ADVISORY, "off"));
+        assertEquals("NO POWER   REACTOR OFF", TaskAlerts.title(t.warning, d));
+        assertEquals(Level.WARNING, lamp(Lamp.POWER));
+    }
+
+    @Test
+    void aSystemsFaultIsSaidInTheShipsConsolesWords() {
+        system("ENGINE", Fault.DISABLED);
+        SystemRow engine = d.powerFrame.faults.first();
+        frame(0.1f, x -> sysAlert(x, engine, Level.CAUTION, "disabled"));
+        assertArrayEquals(new String[]{"ENGINE", "HOLD", "DAMAGED"}, t.lines(t.cautions.first(), d));
+        assertEquals("ENGINE   DAMAGED", TaskAlerts.title(t.cautions.first(), d));
+        assertEquals("WRECKED", TaskAlerts.word(Fault.DESTROYED));
+        assertEquals("CUT OFF", TaskAlerts.word(TaskAlerts.faultIn("TURRET in HOLD: no power")));
+    }
+
+    @Test
     void aSystemSwitchedOffIsPowersAdvisoryAndTheHelmsFaultIsItsSystemsAlert() {
         system("TURRET", Fault.OFF);
         SystemRow gun = d.powerFrame.faults.first();
@@ -291,6 +359,8 @@ class TaskAlertsTest {
         assertEquals("captain:air", t.warning.id);
         assertEquals("YOUR AIR   BRIDGE 20% OXYGEN", TaskAlerts.title(t.warning, d));
         assertEquals(Level.WARNING, lamp(Lamp.AIR));
+        // Pushed down below a warning that outranks it, its short form keeps the oxygen
+        assertArrayEquals(new String[]{"YOUR AIR", "NO SUIT", "BRIDGE  20% O2"}, TaskAlerts.gameLines(t.warning, d));
     }
 
     @Test
