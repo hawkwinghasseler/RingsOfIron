@@ -533,8 +533,8 @@ the time until it recovers, "back 0:12".
 
 This is the gunship (five crew; its rooms are ENGINES, REACTOR and BRIDGE) at battle stations.
 Ada is down and two crew fight the fire; the other two are marines, at the weapons console and a gun,
-and a marine never seals a breach, so nobody is free for the vacuum. Ada was hit where she lies, so
-the crew keep clear of her until she has two minutes left. The reactor is stunned: the ship is dark
+and a marine never seals a breach, so nobody is free for the vacuum. Ada lies where the hit landed,
+so the crew keep clear until Ada has two minutes left. The reactor is stunned: the ship is dark
 for 12 s, but its power is due back by itself, so X3 doesn't offer a way out (section 8). Walkthrough
 11.7 shows the case where it does.
 
@@ -1506,7 +1506,7 @@ appears at the helm console as the captain walks up; D2 appears over whatever th
 
 The ship is disabled, its reactor damaged, and its hold has lost its air. X3 offers abandon ship and the tow with their
 costs. P2 lists, in its order: EMERG O2 and NO POWER, which need the captain (of the corvette's three
-crew, Ada is down, Cole tends her and Bea fights the fire alone, so nobody is free for the reactor);
+crew, Ada is down, Cole tends Ada and Bea fights the fire alone, so nobody is free for the reactor);
 VACUUM, which the crew leave until the fight ends, since Ada was hit in the HOLD; CREW CRIT, which
 they don't leave, since Ada has under two minutes; FIRE, with Bea on it; and SMOKE under "+1 more". D1 shows the captain's suit and
 its air, not yet critical. The whole corvette is in view, so D3 tags the fire, the vacuum and Ada where
