@@ -10,9 +10,9 @@ at 1280 x 800.
 
 | Variation | Folder | Spec version drawn | State |
 |---|---|---|---|
-| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18, S5 at 19 | Converged in round 5; S7 to S9 drawn in round 7, and S5 to S8 redrawn for the crewless Raider |
+| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18, S5 at 19 | Converged in round 5; S7 to S9 drawn in round 7, and S5 to S8 redrawn for the crewless Raider; converged again at round 19 |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 20 | Converged in round 5, and again at versions 13 to 18 and at version 20 in round 7 |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 16 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 16 in round 7 |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 16 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 16 in round 7; converged again at round 16 |
 
 ## Round 1 (3 November 2026)
 
