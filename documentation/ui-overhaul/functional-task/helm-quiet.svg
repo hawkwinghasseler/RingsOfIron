@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img" aria-label="Helm at rest: clock, annunciator, flight instrument, scope; nothing else">
+<title>Helm at rest: clock, annunciator, flight instrument, scope; nothing else</title>
+<rect x="0" y="0" width="1280" height="800" rx="0" fill="#e9e9e6" stroke="#9a9a9a" stroke-width="1"/>
+<text x="1270" y="11" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="normal" fill="#888" text-anchor="end" xml:space="preserve" style="white-space:pre">HELM, at rest (no target, no plan, nothing wrong)</text>
+<ellipse cx="640.0" cy="390.0" rx="300" ry="200" fill="none" stroke="#b9b9b4" stroke-width="1.2" stroke-dasharray="3 5"/>
+<text x="640.0" y="206.0" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="italic" fill="#999" text-anchor="middle" xml:space="preserve" style="white-space:pre">clear zone: no screen-fixed widgets</text>
+<polygon points="606,378 666,378 680,390 666,402 606,402" fill="#cfcfcb" stroke="#555" stroke-width="1.2"/>
+<text x="640" y="420" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="italic" fill="#666" text-anchor="middle" xml:space="preserve" style="white-space:pre">your ship</text>
+<rect x="16" y="16" width="240" height="48" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="23" y="30" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">CHR  Day 3  14:22:05</text>
+<text x="23" y="44" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">WARP 1x</text>
+<rect x="16" y="72" width="240" height="64" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="23" y="87" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">ANN  Annunciator</text>
+<rect x="22" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="43" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">HULL</text>
+<rect x="68" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="89" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">FIRE</text>
+<rect x="114" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="135" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">AIR</text>
+<rect x="160" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="181" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">POWER</text>
+<rect x="206" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="227" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">PROP</text>
+<rect x="22" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="43" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">DRIVE</text>
+<rect x="68" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="89" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">ARMS</text>
+<rect x="114" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="135" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">CREW</text>
+<rect x="160" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="181" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">EVA</text>
+<rect x="420" y="664" width="440" height="96" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="427" y="679" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">FLT  Flight: CRUISE</text>
+<text x="427" y="695" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">frame Highport (station, 3.0 km)   speed 0.4 m/s</text>
+<text x="427" y="709" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">dv left 7,007 m/s   |----------|^---|  home 410</text>
+<text x="427" y="723" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">[main] [RCS]   (indicators, dark at rest)</text>
+<rect x="1088" y="584" width="176" height="176" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="1095" y="599" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">SNS  Scope 5 km (auto)</text>
+<rect x="500" y="300" width="70" height="28" rx="3" fill="none" stroke="#8a8a8a" stroke-width="1.2" stroke-dasharray="7 4"/>
+<text x="507" y="315" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#555" text-anchor="start" xml:space="preserve" style="white-space:pre">Highport</text>
+<polygon points="720,470 732,476 720,482" fill="none" stroke="#8a8a8a" stroke-width="1.2"/>
+<text x="740" y="480" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="italic" fill="#888" text-anchor="start" xml:space="preserve" style="white-space:pre">freighter: a glyph, no label</text>
+<circle cx="640" cy="340" r="9" fill="none" stroke="#8a8a8a" stroke-width="1.2" stroke-dasharray="3 2"/>
+<text x="654" y="336" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="italic" fill="#888" text-anchor="start" xml:space="preserve" style="white-space:pre">prograde (frame-coded)</text>
+<rect x="16" y="768" width="1248" height="24" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="23" y="783" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">W/S thrust   A/D turn   M map   Q destination   F1 controls</text>
+<rect x="16" y="590" width="12" height="10" rx="3" fill="#fff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="32" y="600" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#777" text-anchor="start" xml:space="preserve" style="white-space:pre">always in this context</text>
+<rect x="170" y="590" width="12" height="10" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="186" y="600" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#777" text-anchor="start" xml:space="preserve" style="white-space:pre">only while its trigger holds</text>
+<rect x="370" y="590" width="12" height="10" rx="3" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="7 4"/>
+<text x="386" y="600" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#777" text-anchor="start" xml:space="preserve" style="white-space:pre">drawn in the world</text>
+</svg>

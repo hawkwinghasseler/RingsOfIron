@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img" aria-label="Disabled: what can still be done">
+<title>Disabled: what can still be done</title>
+<rect x="0" y="0" width="1280" height="800" rx="0" fill="#e9e9e6" stroke="#9a9a9a" stroke-width="1"/>
+<text x="1270" y="11" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="normal" fill="#888" text-anchor="end" xml:space="preserve" style="white-space:pre">CRISIS panel (ship disabled)</text>
+<ellipse cx="640.0" cy="390.0" rx="300" ry="200" fill="none" stroke="#b9b9b4" stroke-width="1.2" stroke-dasharray="3 5"/>
+<text x="640.0" y="206.0" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="italic" fill="#999" text-anchor="middle" xml:space="preserve" style="white-space:pre">clear zone: no screen-fixed widgets</text>
+<polygon points="606,508 666,508 680,520 666,532 606,532" fill="#cfcfcb" stroke="#555" stroke-width="1.2"/>
+<text x="640" y="550" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="italic" fill="#666" text-anchor="middle" xml:space="preserve" style="white-space:pre">your ship, drifting</text>
+<rect x="16" y="16" width="240" height="48" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="23" y="30" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">CHR  Day 3  14:22:05</text>
+<text x="23" y="44" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">WARP 1x</text>
+<rect x="320" y="16" width="640" height="44" rx="3" fill="#ffffff" stroke="#111" stroke-width="3"/>
+<text x="327" y="31" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">ALR  WARNING  SHIP DISABLED  no reactor running</text>
+<text x="327" y="47" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">options below, or let the crew work</text>
+<rect x="16" y="72" width="240" height="64" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="23" y="87" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">ANN  Annunciator</text>
+<rect x="22" y="92" width="42" height="17" rx="2" fill="#d6d6d0" stroke="#111" stroke-width="1.6"/>
+<text x="43" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="middle" xml:space="preserve" style="white-space:pre">HULL</text>
+<rect x="68" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="89" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">FIRE</text>
+<rect x="114" y="92" width="42" height="17" rx="2" fill="#d6d6d0" stroke="#111" stroke-width="1.6"/>
+<text x="135" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="middle" xml:space="preserve" style="white-space:pre">AIR</text>
+<rect x="160" y="92" width="42" height="17" rx="2" fill="#3a3a3a" stroke="#111" stroke-width="1.2"/>
+<text x="181" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="bold" font-style="normal" fill="#fff" text-anchor="middle" xml:space="preserve" style="white-space:pre">POWER</text>
+<rect x="206" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="227" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">PROP</text>
+<rect x="22" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="43" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">DRIVE</text>
+<rect x="68" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="89" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">ARMS</text>
+<rect x="114" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="135" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">CREW</text>
+<rect x="160" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="181" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">EVA</text>
+<rect x="400" y="120" width="480" height="232" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="407" y="135" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">CRS  Options</text>
+<text x="407" y="151" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">crew working:  Ada going to the reactor's short,</text>
+<text x="407" y="165" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">               5 s to reset it there; the breaker</text>
+<text x="407" y="179" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">               recloses by itself in 38 s</text>
+<text x="407" y="193" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre"></text>
+<text x="407" y="207" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">[wait]          let the crew work</text>
+<text x="407" y="221" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">[B][B] tow      25,500 cr, -3 standing, 3 days: both</text>
+<text x="407" y="235" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">                contracts run out; docked at Highport</text>
+<text x="407" y="249" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">                as it is: crew, cargo, damage</text>
+<text x="407" y="263" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">[P][P] abandon  pod: 1 (S), 4 seats for 4 aboard;</text>
+<text x="407" y="277" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">                ship and cargo lost, both contracts</text>
+<text x="407" y="291" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">                fail, -5 standing, 3 days; a corvette</text>
+<text x="407" y="305" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">                free at Highport, credits kept</text>
+<text x="407" y="319" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre"></text>
+<text x="407" y="333" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">air aboard: 41 min at this crew</text>
+<rect x="16" y="768" width="1248" height="24" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="23" y="783" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">F1 controls</text>
+<text x="1252" y="784" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="italic" fill="#999" text-anchor="end" xml:space="preserve" style="white-space:pre">note: the crisis keys live in the panel, not here</text>
+</svg>

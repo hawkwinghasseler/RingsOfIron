@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img" aria-label="On deck during damage control">
+<title>On deck during damage control</title>
+<rect x="0" y="0" width="1280" height="800" rx="0" fill="#e9e9e6" stroke="#9a9a9a" stroke-width="1"/>
+<text x="1270" y="11" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="normal" fill="#888" text-anchor="end" xml:space="preserve" style="white-space:pre">DECK, on foot, ship damaged</text>
+<rect x="360" y="270" width="560" height="210" rx="3" fill="#dcdcd8" stroke="#555" stroke-width="1.5"/>
+<line x1="640" y1="270" x2="640" y2="358" stroke="#555" stroke-width="2"/>
+<line x1="640" y1="392" x2="640" y2="480" stroke="#555" stroke-width="2"/>
+<text x="640" y="262" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9" font-weight="normal" font-style="normal" fill="#999" text-anchor="middle" xml:space="preserve" style="white-space:pre">door</text>
+<text x="500" y="292" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#666" text-anchor="middle" xml:space="preserve" style="white-space:pre">Hold</text>
+<text x="780" y="292" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#666" text-anchor="middle" xml:space="preserve" style="white-space:pre">Bridge</text>
+<rect x="392" y="316" width="120" height="40" rx="3" fill="none" stroke="#8a8a8a" stroke-width="1.2" stroke-dasharray="7 4"/>
+<text x="399" y="331" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#555" text-anchor="start" xml:space="preserve" style="white-space:pre">fire, 3 tiles</text>
+<text x="399" y="347" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="italic" fill="#666" text-anchor="start" xml:space="preserve" style="white-space:pre">[======    ]</text>
+<circle cx="452" cy="380" r="5" fill="#888"/>
+<text x="462" y="384" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="normal" fill="#777" text-anchor="start" xml:space="preserve" style="white-space:pre">Cole</text>
+<rect x="660" y="316" width="120" height="40" rx="3" fill="none" stroke="#8a8a8a" stroke-width="1.2" stroke-dasharray="7 4"/>
+<text x="667" y="331" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#555" text-anchor="start" xml:space="preserve" style="white-space:pre">conduit short</text>
+<text x="667" y="347" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="italic" fill="#666" text-anchor="start" xml:space="preserve" style="white-space:pre">[=======   ]</text>
+<circle cx="700" cy="372" r="5" fill="#888"/>
+<text x="710" y="376" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="normal" fill="#777" text-anchor="start" xml:space="preserve" style="white-space:pre">Ada</text>
+<rect x="796" y="352" width="112" height="40" rx="3" fill="none" stroke="#8a8a8a" stroke-width="1.2" stroke-dasharray="7 4"/>
+<text x="803" y="367" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#555" text-anchor="start" xml:space="preserve" style="white-space:pre">breach, venting</text>
+<text x="803" y="383" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="italic" fill="#666" text-anchor="start" xml:space="preserve" style="white-space:pre">nobody</text>
+<circle cx="880" cy="320" r="5" fill="#888"/>
+<text x="870" y="324" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="normal" fill="#777" text-anchor="end" xml:space="preserve" style="white-space:pre">Bea (helm)</text>
+<circle cx="700" cy="430" r="6" fill="#555"/>
+<text x="712" y="434" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="normal" fill="#555" text-anchor="start" xml:space="preserve" style="white-space:pre">you</text>
+<rect x="640" y="446" width="176" height="26" rx="3" fill="none" stroke="#8a8a8a" stroke-width="1.2" stroke-dasharray="7 4"/>
+<text x="647" y="461" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#555" text-anchor="start" xml:space="preserve" style="white-space:pre">Weapons console   V sit</text>
+<rect x="16" y="16" width="240" height="48" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="23" y="30" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">CHR  Day 3  14:22:05</text>
+<text x="23" y="44" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">WARP 1x</text>
+<text x="23" y="58" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">held: fire aboard</text>
+<text x="640.0" y="42" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="10" font-weight="normal" font-style="italic" fill="#aaa" text-anchor="middle" xml:space="preserve" style="white-space:pre">(warning row empty: the cautions keep their row)</text>
+<rect x="320.0" y="66" width="190.66666666666666" height="26" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="327.0" y="81" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">FIRE Hold  Cole</text>
+<rect x="518.6666666666666" y="66" width="190.66666666666666" height="26" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="525.6666666666666" y="81" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">VENTING Bridge  nobody</text>
+<rect x="717.3333333333333" y="66" width="190.66666666666666" height="26" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="724.3333333333333" y="81" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">POWER Bridge  Ada</text>
+<rect x="16" y="72" width="240" height="64" rx="3" fill="#ffffff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="23" y="87" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">ANN  Annunciator</text>
+<rect x="22" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="43" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">HULL</text>
+<rect x="68" y="92" width="42" height="17" rx="2" fill="#d6d6d0" stroke="#111" stroke-width="1.6"/>
+<text x="89" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="middle" xml:space="preserve" style="white-space:pre">FIRE</text>
+<rect x="114" y="92" width="42" height="17" rx="2" fill="#d6d6d0" stroke="#111" stroke-width="1.6"/>
+<text x="135" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="middle" xml:space="preserve" style="white-space:pre">AIR</text>
+<rect x="160" y="92" width="42" height="17" rx="2" fill="#d6d6d0" stroke="#111" stroke-width="1.6"/>
+<text x="181" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="middle" xml:space="preserve" style="white-space:pre">POWER</text>
+<rect x="206" y="92" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="227" y="104.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">PROP</text>
+<rect x="22" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="43" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">DRIVE</text>
+<rect x="68" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="89" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">ARMS</text>
+<rect x="114" y="113" width="42" height="17" rx="2" fill="#eeeee9" stroke="#777" stroke-width="1.1"/>
+<text x="135" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#555" text-anchor="middle" xml:space="preserve" style="white-space:pre">CREW</text>
+<rect x="160" y="113" width="42" height="17" rx="2" fill="#f6f6f3" stroke="#c4c4bf" stroke-width="1"/>
+<text x="181" y="125.5" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#b0b0aa" text-anchor="middle" xml:space="preserve" style="white-space:pre">EVA</text>
+<rect x="16" y="144" width="240" height="78" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="23" y="159" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">PER  You</text>
+<text x="23" y="175" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">health  light wound</text>
+<text x="23" y="189" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">suit    pressure   air 7:40</text>
+<text x="23" y="203" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">here    Bridge: thin</text>
+<rect x="1024" y="16" width="240" height="56" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="1031" y="31" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">OBJ  Objectives</text>
+<text x="1031" y="47" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">Deliver 40 Food        LATE  2d 9h</text>
+<text x="1031" y="61" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">  to Shackleton Ice</text>
+<rect x="1024" y="80" width="240" height="56" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="1031" y="95" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">NTF  News</text>
+<text x="1031" y="111" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">Bea is lightly wounded and working</text>
+<text x="1031" y="125" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11" font-weight="normal" font-style="normal" fill="#333" text-anchor="start" xml:space="preserve" style="white-space:pre">  slower</text>
+<rect x="420" y="734" width="440" height="26" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="427" y="749" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">HLM  Helm: Bea   holding heading</text>
+<rect x="16" y="768" width="1248" height="24" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="23" y="783" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="11.5" font-weight="bold" font-style="normal" fill="#111" text-anchor="start" xml:space="preserve" style="white-space:pre">W/A/S/D walk   O lights   F1 controls</text>
+<text x="1252" y="784" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="italic" fill="#999" text-anchor="end" xml:space="preserve" style="white-space:pre">note: E and V are not repeated, the prompt shows them</text>
+<rect x="16" y="590" width="12" height="10" rx="3" fill="#fff" stroke="#3a3a3a" stroke-width="1.5"/>
+<text x="32" y="600" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#777" text-anchor="start" xml:space="preserve" style="white-space:pre">always in this context</text>
+<rect x="170" y="590" width="12" height="10" rx="3" fill="#fbfbf8" stroke="#3a3a3a" stroke-width="1.5" stroke-dasharray="2 3"/>
+<text x="186" y="600" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#777" text-anchor="start" xml:space="preserve" style="white-space:pre">only while its trigger holds</text>
+<rect x="370" y="590" width="12" height="10" rx="3" fill="none" stroke="#8a8a8a" stroke-width="1.5" stroke-dasharray="7 4"/>
+<text x="386" y="600" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="9.5" font-weight="normal" font-style="normal" fill="#777" text-anchor="start" xml:space="preserve" style="white-space:pre">drawn in the world</text>
+</svg>
