@@ -1,6 +1,6 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 16 when drawn, on branch
+The context-driven functional spec (`functional-context.md`, version 17 when drawn, on branch
 `claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at 2x; sources are
@@ -78,14 +78,16 @@ marker at the same bearing.
 **C3, on deck, the corvette disabled at battle stations (11.7).** The reactor is damaged, so no
 power is due back by itself and X3 offers the ways out; the hold has lost its air. Ada was hit in
 the hold and lies there with Cole tending; Bea fights the fire in the bridge alone. P2 ranks EMERG
-O2 and NO POWER as needing the captain, since nobody is free for them. VACUUM comes next, held (the
-white bars): the crew keep clear of where Ada was hit until the fight ends. CREW CRIT and FIRE
+O2 and NO POWER as needing the captain, since nobody is free for them. BREACH comes next, held (the
+white bars): the crew keep clear of where Ada was hit until the fight ends. A room's air is one row
+at a time (version 17), its cause while the crew can act on it, so the hold reads BREACH, and its
+hover says the hold is at vacuum. CREW CRIT and FIRE
 follow with their one worker each, and Ada's 1:40 is under the two minutes that send the crew in
 anyway. SMOKE folds into "+1 MORE". The captain, by the helm with a light wound and suited in the
 bridge's thin air, has pressed B once: the tow is armed, its guard up and its bar running out. P1
 dims under X3. P5 isn't drawn, since in combat it shows only a fight's contract. The master cue
-stays lit at the bottom centre with the newest warning, VACUUM. D3 tags the fire, the smoke, the
-vacuum and Ada. Bottom left is H4's deck face over the DCM: the hull at 81%, the store empty and
+stays lit at the bottom centre with the newest warning, BREACH. D3 tags the fire, the smoke, the
+vacuum where people would walk into it, and Ada. Bottom left is H4's deck face over the DCM: the hull at 81%, the store empty and
 the reactor giving 0 of its 3.0 MW, and 42 kg left of the 60 kg emergency oxygen.
 
 ![Boarding, latched](c4-boarding.png)
@@ -177,21 +179,24 @@ NOTICES step, whose own words are "L opens the notice log: the fight, the bounty
 work are all there", and L opens M5 on this tab. The frame is C8's: P1 above with nothing wrong, the
 title row with the rank and the four tabs, the filters, the list, and the foot row, whose feed is
 empty since the yard's line has had its 5 s. The captain has scrolled to the fight and opened the
-line of hits that disabled the raider. The Log keeps a fight's record (version 16): beside every
-message, each condition as it is raised and as it clears, with the time it held, and each missile
-fired at the ship and how it ended. So the record says that point defense shot down two of the
-raider's three missiles and the second hit the hold, while the captain was on deck in C8 with no
-decoy to throw; that the hold vented to vacuum until the crew patched it after the fight; and that
-Ada's repair brought the forward port gun back in two and a half minutes. The texts are the game's
-own notices with P4's tags, the conditions in their long form with the room. The feed's merged
-gunnery lines stay, so the fight fits a page, and each opens to its hits: the time, the gun that
-fired and the room of the raider it hit. Severity is a mark, P2's diamond and triangle and a white
-dot for a notable message, hollow when it clears or a missile's flight ends, so a fight's record
-doesn't fill the glass with red. The two filters are controls at the top, a row of positions each
-with its count, stepped with ← and → once focused or by a click; the set one is white and
-underlined, as a tab is, an empty one is dark, and severity is a threshold. The list scrolls with ↑
-and ↓, Page Up and Page Down and the wheel, and the focus, in the cursor's cyan, is on the opened
-line.
+line of the raider's hits on the corvette. The Log keeps a fight's record (versions 16 and 17): with
+every message come each condition as it is raised and as it clears, each missile fired at the ship
+and how it ended, and the hits the ship takes from guns, merged as the feed merges its own. So the
+whole fight is on one page, and it says what caused the damage. Point defense shot down two of the
+raider's three missiles, and the second hit the hold, since the captain was on deck in C8 with no
+decoy to throw. Two hits from the raider's guns cut the conduit under the forward starboard gun and
+left the forward port one at 20%, and Ada's repair brought that one back in two and a half
+minutes. The hold's air follows P2's one row: the breach, the vacuum once the crew patched it after
+the fight, the low pressure as it refilled, and the clearing timed from the first. The texts are the
+game's own notices with P4's tags; a condition takes the catalogue's long form with its room and
+the source of what it is about. Each merged line opens to its events with their times: for the
+ship's own hits, the gun that fired and the raider's room it hit; for hits taken, the room each
+landed in and what it did. Severity is a mark, P2's diamond and triangle and a white dot for a
+notable message, hollow when it clears or a missile's flight ends, so a fight's record doesn't
+fill the glass with red. The two filters are controls at the top, a row of positions each with its
+count, stepped with ← and → once focused or by a click; the set one is white and underlined, as a
+tab is, an empty one is dark, and severity is a threshold. The list scrolls with ↑ and ↓, Page Up
+and Page Down and the wheel, and the focus, in the cursor's cyan, is on the opened line.
 
 ![Controls](c10-controls.png)
 
@@ -209,7 +214,7 @@ aims that gun alone, Fire or a click fires it, the wheel zooms and V stands up, 
 the rest are fire control's. The missile and the decoy share a row, as the strafe keys do, so each
 seat fits its columns.
 
-## Round 8 critique (version 16)
+## Round 8 critique (versions 16 and 17)
 
 Version 16 took the four questions C9 and C10 raised. The Log keeps the conditions and missiles
 that the feed leaves to P2 and P3, as they start and end, and the merged gunnery lines, each opening
@@ -229,6 +234,17 @@ record found four more questions, sent to the designer:
   where each missile ended, but the raider's gun hits on the corvette show only as the SYSTEM DOWN
   they raise, with nothing to say what did it. A merged line for hits taken, opening to where each
   landed, would close the gap.
+
+Version 17 took all four. A condition takes the source of what it is about, as C9 had them, and
+missiles go under Gunnery as warnings. The long form with the room and "cleared after" is the
+format, and P4's example now uses it. P2 shows a room's air as one row, the first of BREACH,
+VACUUM and PRESS LOW that holds, so one hole never takes three rows, and the Log follows that
+course; C3's row and master cue read BREACH now. The Log takes the hits from guns as notable merged
+lines, which needs the game's hit event to name the shooter. The severity threshold and a merged
+line's first-event time, my choices, are in too. C9 and C3 are redrawn to it.
+
+**Converged** at version 17: nothing meaningful is left in the windows the overhaul skipped, and
+the HUD screens stay converged from round 7.
 
 ## Round 7 critique (versions 10 to 15)
 

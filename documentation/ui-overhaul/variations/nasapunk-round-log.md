@@ -395,17 +395,22 @@ after a number, as prose does, and the arrow keys' caps are drawn (`arrowKey` an
 Version 16 took all four, and C9 and C10 are redrawn to it. C9's Log now holds the fight's whole
 record: the raider's three missiles (two shot down, one into the hold), the breach, the hold's
 pressure and vacuum and the two guns down, each as it was raised and as it cleared, with the time
-it held, and the line of hits that disabled the raider opened to its four hits. Its filters are a
-row of positions each at the top of the tab, and severity has CAUTION now that cautions are in the
-record. C10 gives the gun seat its own section under fire control's. Drawing the record found four
+it held, and the line of hits that disabled the raider opened to its four hits. Its two filters sit
+at the top of the tab, each a row of positions with their counts, and severity has CAUTION now that
+cautions are in the record. C10 gives the gun seat its own section under fire control's. Drawing the record found four
 more questions.
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Context (P4) | P4 gives no source for a condition or a missile. C9 puts the hull, the air and a system down under Engineering, as its repairs are, and a missile under Gunnery, as point defense is | |
-| Context (P2, P4) | P2 says the long form is the Log's wording; P4's example uses the short code ("VACUUM HOLD cleared, 2:10"). C9 writes "Hull breach: HOLD" and "Hull breach: HOLD, cleared after 11:04" | |
-| Context (P2) | A room that goes from low pressure to vacuum and back: P2's example has no PRESS LOW row beside a VACUUM one. C9 takes the vacuum to stand in for the low pressure while it holds, and logs four entries | |
-| Context (10.5, P4) | The hits the ship takes from guns aren't in the record: the raider's gun hits show only as the SYSTEM DOWN they raise. Should the Log take a merged line for hits taken, opening to where each landed? | |
+| Context (P4) | P4 gives no source for a condition or a missile. C9 puts the hull, the air and a system down under Engineering, as its repairs are, and a missile under Gunnery, as point defense is | Version 17: as drawn, and the rest by what each is about (a wound under Crew, shields under Shields, boarders under Boarding, the orbit and the approach under Helm); missiles are warnings |
+| Context (P2, P4) | P2 says the long form is the Log's wording; P4's example uses the short code ("VACUUM HOLD cleared, 2:10"). C9 writes "Hull breach: HOLD" and "Hull breach: HOLD, cleared after 11:04" | Version 17: the long form, in C9's format, which P4's example now uses |
+| Context (P2) | A room that goes from low pressure to vacuum and back: P2's example has no PRESS LOW row beside a VACUUM one. C9 takes the vacuum to stand in for the low pressure while it holds, and logs four entries | Version 17: a room's air is one row, the first that holds of BREACH, VACUUM (sealed, still airless) and PRESS LOW (refilling), and the Log follows that course with the clearing timed from the first; C9 and C3 are redrawn to it |
+| Context (10.5, P4) | The hits the ship takes from guns aren't in the record: the raider's gun hits show only as the SYSTEM DOWN they raise. Should the Log take a merged line for hits taken, opening to where each landed? | Version 17: yes, "Gunnery: 2 hits from Raider", notable, opening to where each landed and what it did; the game's hit event gains its shooter |
+
+Version 17 took all four, with my two choices (severity as a threshold, a merged line at its first
+event's time). C9 is redrawn to it, with the raider's two gun hits on the corvette as a line of their
+own, opened, and the hold's air as one course from breach to refilled; C3's P2 row and master cue
+read BREACH. The context screens are converged at version 17.
 
 ## Next
 

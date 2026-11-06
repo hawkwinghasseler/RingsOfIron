@@ -49,12 +49,14 @@ s += `<g opacity="0.4">` + statusStrip({ seat: 'DECK', authority: 'HELM: NOBODY'
 
 // P2 in its order (version 11): what needs you, then what the crew hold back from, then what they
 // are on. Nobody is free for the oxygen or the reactor: Ada is down, Cole tends Ada and Bea fights
-// the fire alone. The hold's air waits (‖), since Ada was hit there; Ada doesn't, with 1:40 left.
-// SMOKE goes under "+1 more"
+// the fire alone. The hold's breach waits (‖), since Ada was hit there; Ada doesn't, with 1:40 left.
+// The hold's air is one row, its cause (version 17): BREACH while the breach is open, its hover
+// saying the hold is at vacuum, while D3 tags the vacuum where people would walk into it. SMOKE goes
+// under "+1 more"
 s += cwPanel([
   ['warning', 'EMERG O2', '', 'you'],
   ['warning', 'NO POWER', 'DAMAGED', 'you'],
-  ['warning', 'VACUUM', 'HOLD', 'held'],
+  ['warning', 'BREACH', 'HOLD', 'held'],
   ['warning', 'CREW CRIT', 'ADA', 1, '1:40'],
   ['warning', 'FIRE', 'BRIDGE', 1],
 ], { more: ['SMOKE'] });
@@ -114,7 +116,7 @@ s += du(12, 558, 308, 134, {
 }
 
 // the master alert cue, standing alone at the centre of the bottom-centre zone: the newest warning
-s += masterCue(640, 676, { sev: 'warning', code: 'VACUUM' });
+s += masterCue(640, 676, { sev: 'warning', code: 'BREACH' });
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>
