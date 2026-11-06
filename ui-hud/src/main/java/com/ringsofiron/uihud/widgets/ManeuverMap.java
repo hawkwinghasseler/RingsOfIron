@@ -16,12 +16,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.FloatArray;
-import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.providers.ManeuverPlannerProvider;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
 import com.ringsofiron.uihud.providers.TrafficMapProvider;
-
-import java.util.Locale;
 
 /**
  * The full-screen map (M): the game's {@link OrbitMap} at any zoom, with the apsides, changes of sphere
@@ -36,6 +33,11 @@ import java.util.Locale;
  * zooms about the pointer. A click on a contact makes it the navigation target ({@link #setPickListener}).
  * The panel's buttons warp to the next burn, give the helm the order to fly the
  * burns, start the transfer autopilot, and plan, accept or discard a transfer to the navigation target.
+ *
+ * <p>A HUD variant can give it its own look ({@link #setPainter}: everything on the canvas, the
+ * backdrop, the burn handles, the scale bar and the title), show the side panel's contents in its own
+ * panels instead ({@link #setOwnPanel}), and keep the canvas clear of them ({@link #setCanvasInsets}).
+ * The zoom, the panning, the burn handles and the picks stay as they are.
  */
 public class ManeuverMap extends Table {
     /** How far from a burn its handles sit, pixels, and how near a press must land to take one. */
@@ -54,18 +56,14 @@ public class ManeuverMap extends Table {
     /** What the view is centred on, with any panning added. */
     public enum Focus { BODY, SHIP, TARGET, ENCOUNTER }
 
-    private static final Color BACKDROP = new Color(0.01f, 0.02f, 0.04f, 1f);
-    private static final Color PROGRADE = new Color(0.75f, 1f, 0.3f, 1f);
-    private static final Color RADIAL = new Color(0.4f, 0.8f, 1f, 1f);
-    private static final Color SCALE_BAR = new Color(0.55f, 0.65f, 0.75f, 0.8f);
+    private static final String INSTRUCTIONS = "[M] close   [wheel] zoom   [drag] pan   [click the path] plan a burn";
 
-    private final TextureRegion white;
-    private final BitmapFont font;
     private final OrbitMap map;
+    private MapPainter painter;
     private final TrafficLayer traffic;
     private java.util.function.Consumer<String> pickListener;
     private final Label orbitInfo, burnInfo, planInfo, hint;
-    private final Table burnButtons, proposalButtons;
+    private final Table panel, burnButtons, proposalButtons;
     private final TextButton focusButton, planButton;
     private ManeuverPlannerProvider planner;
     private float sinceRefresh = REFRESH_INTERVAL;
@@ -83,14 +81,16 @@ public class ManeuverMap extends Table {
     private final double[] burn = new double[2];
 
     public ManeuverMap(Skin skin) {
-        white = skin.getRegion("white");
-        font = skin.getFont("default-font");
+        TextureRegion white = skin.getRegion("white");
+        BitmapFont font = skin.getFont("default-font");
         map = new OrbitMap(white);
         map.setFont(font);
         map.setShowMarks(true);
         // Clear of the title at the top, with room for the apsides' labels
         map.setFitMargin(48f);
         traffic = new TrafficLayer(white, font);
+        painter = map.getPainter();
+        traffic.setPainter(painter);
 
         orbitInfo = info(skin);
         burnInfo = info(skin);
@@ -98,7 +98,7 @@ public class ManeuverMap extends Table {
         hint = new Label("", skin, "dim");
         hint.setWrap(true);
 
-        Table panel = new Table();
+        panel = new Table();
         panel.setBackground(skin.getDrawable("panel"));
         panel.pad(10f);
         panel.top().left();
@@ -215,6 +215,21 @@ public class ManeuverMap extends Table {
         pickListener = listener;
     }
 
+    /**
+     * Makes the contact with {@code id} the navigation target, as a click on it does: for a HUD
+     * variant's list of the traffic. Nothing when the game takes no picks or the id is empty.
+     */
+    public void pick(String id) {
+        if (pickListener == null || id == null || id.isEmpty()) return;
+        pickListener.accept(id);
+        refresh();
+    }
+
+    /** Whether a contact can be made the navigation target ({@link #pick}): the game takes picks. */
+    public boolean takesPicks() {
+        return pickListener != null;
+    }
+
     /** Whether the traffic is drawn: there is some, around the body the orbits are drawn around. */
     boolean showsTraffic() {
         return traffic.matches(map.getPath().bodyName);
@@ -227,6 +242,49 @@ public class ManeuverMap extends Table {
 
     public OrbitMap getMap() {
         return map;
+    }
+
+    /**
+     * Shows or hides the side panel (orbit, burn, fly it, target, view): a HUD variant that shows the
+     * map's panels itself ({@code ClassicWindow.MAP}) hides it, and the orbit canvas takes the whole
+     * screen under the variant's panels.
+     */
+    public void setOwnPanel(boolean shown) {
+        if (panel.isVisible() == shown) return;
+        panel.setVisible(shown);
+        com.badlogic.gdx.scenes.scene2d.ui.Cell<?> cell = getCell(panel);
+        if (shown) cell.width(PANEL_WIDTH).pad(44f, 0f, 10f, 10f);
+        else cell.width(0f).pad(0f);
+        invalidate();
+    }
+
+    /** Whether the side panel shows ({@link #setOwnPanel}). */
+    public boolean hasOwnPanel() {
+        return panel.isVisible();
+    }
+
+    /**
+     * Draws the map with {@code painter}, a HUD variant's look, from the orbits to the title; null goes
+     * back to the classic look. Where everything goes, and the mouse, stay the map's.
+     */
+    public void setPainter(MapPainter painter) {
+        map.setPainter(painter);
+        this.painter = map.getPainter();
+        traffic.setPainter(this.painter);
+    }
+
+    public MapPainter getPainter() {
+        return painter;
+    }
+
+    /**
+     * Keeps the canvas clear of a HUD variant's panels over it, UI units in from each edge of the
+     * screen: the orbits fit, centre and zoom in what is left, and the scale bar and title sit there.
+     * All 0 by default; the HUD sets them back when the variant changes.
+     */
+    public void setCanvasInsets(float left, float top, float right, float bottom) {
+        getCell(map).pad(top, left, bottom, right);
+        invalidate();
     }
 
     public Focus getFocus() {
@@ -556,13 +614,13 @@ public class ManeuverMap extends Table {
     @Override
     public void draw(Batch batch, float parentAlpha) {
         Color old = batch.getColor().cpy();
-        batch.setColor(BACKDROP.r, BACKDROP.g, BACKDROP.b, BACKDROP.a * parentAlpha);
-        batch.draw(white, getX(), getY(), getWidth(), getHeight());
+        painter.backdrop(batch, getX(), getY(), getWidth(), getHeight(), parentAlpha);
         batch.setColor(old);
         super.draw(batch, parentAlpha);
+        // The canvas: the screen less the side panel, or less the variant's panels' insets
+        float left = getX() + map.getX(), bottom = getY() + map.getY(), top = bottom + map.getHeight();
         if (!map.hasPath()) {
-            font.setColor(HudSkin.HUD_DIM);
-            font.draw(batch, "No orbit to show", getX() + map.getX() + map.getWidth() / 2f - 50f, getY() + getHeight() / 2f);
+            painter.noOrbit(batch, left + map.getWidth() / 2f, bottom + map.getHeight() / 2f, parentAlpha);
             return;
         }
         boolean showTraffic = showsTraffic();
@@ -570,26 +628,21 @@ public class ManeuverMap extends Table {
             // Over the orbits, inside the map's part of the screen
             batch.flush();
             if (map.clipBegin()) {
-                traffic.draw(batch, parentAlpha, map, getX() + map.getX(), getY() + map.getY(), map.getWidth(), map.getHeight());
+                traffic.draw(batch, parentAlpha, map, left, bottom, map.getWidth(), map.getHeight());
                 batch.flush();
                 map.clipEnd();
             }
         }
         handles(batch, parentAlpha);
         float barY = scaleBar(batch, parentAlpha);
-        if (showTraffic) traffic.drawRegions(batch, parentAlpha, getX() + map.getX() + 20f, barY + TrafficLayer.LINE * traffic.regionLines());
-        String counts = showTraffic ? traffic.counts() : "";
-        font.setColor(HudSkin.HUD_CYAN.r, HudSkin.HUD_CYAN.g, HudSkin.HUD_CYAN.b, parentAlpha);
-        font.draw(batch, "MAP  " + map.getPath().bodyName.toUpperCase(Locale.ROOT) + (counts.isEmpty() ? "" : "   " + counts),
-                getX() + 16f, getY() + getHeight() - 14f);
-        font.setColor(HudSkin.HUD_DIM.r, HudSkin.HUD_DIM.g, HudSkin.HUD_DIM.b, parentAlpha);
-        font.draw(batch, "[M] close   [wheel] zoom   [drag] pan   [click the path] plan a burn"
-                        + (pickListener == null ? "" : "   [click a contact] navigation target"),
-                getX() + 16f, getY() + getHeight() - 32f);
+        if (showTraffic) traffic.drawRegions(batch, parentAlpha, left + 20f, barY + painter.lineHeight() * traffic.regionLines());
+        painter.title(batch, map.getPath().bodyName, showTraffic ? traffic.counts() : "", left, top, parentAlpha);
+        painter.instructions(batch, INSTRUCTIONS + (pickListener == null ? "" : "   [click a contact] navigation target"),
+                left, top, parentAlpha);
         batch.setColor(old);
     }
 
-    /** The selected burn's four handles, and a line out to the one being dragged. */
+    /** The selected burn's four handles, the one being dragged drawn out to the pointer. */
     private void handles(Batch batch, float alpha) {
         float[] at = nodeScreen(map.getPath().selectedNode);
         if (at == null) return;
@@ -601,51 +654,16 @@ public class ManeuverMap extends Table {
                 float out = (dragX - at[0]) * d[0] + (dragY - at[1]) * d[1];
                 reach = Math.max(12f, out);
             }
-            float hx = at[0] + d[0] * reach, hy = at[1] + d[1] * reach;
-            Color c = h < 2 ? PROGRADE : RADIAL;
-            float a = alpha * (h == dragHandle || h == hoverHandle ? 1f : 0.75f);
-            batch.setColor(c.r, c.g, c.b, 0.35f * a);
-            line(batch, at[0] + d[0] * 8f, at[1] + d[1] * 8f, hx, hy, 1.5f);
-            batch.setColor(c.r, c.g, c.b, a);
-            ring(batch, hx, hy, 7f);
-            if (h % 2 == 0) {
-                // Prograde and radial out: a dot in the ring; retrograde and radial in: a cross
-                batch.draw(white, hx - 2f, hy - 2f, 4f, 4f);
-            } else {
-                batch.draw(white, hx - 5f, hy - 0.75f, 5f, 0.75f, 10f, 1.5f, 1f, 1f, 45f);
-                batch.draw(white, hx - 5f, hy - 0.75f, 5f, 0.75f, 10f, 1.5f, 1f, 1f, -45f);
-            }
+            painter.handle(batch, h, at[0], at[1], d[0], d[1], reach, h == dragHandle || h == hoverHandle, alpha);
         }
     }
 
-    /** A bar of a round length in the bottom left, labelled; returns the top of what it drew, stage y. */
+    /** A bar of a round length in the canvas's bottom left, labelled; returns the top of what it drew, stage y. */
     private float scaleBar(Batch batch, float alpha) {
         double mpp = metersPerPixel();
         float x = getX() + map.getX() + 20f, y = getY() + map.getY() + 20f;
         if (!(mpp > 0)) return y;
         double length = TrafficLayer.niceStep(160 * mpp);
-        float px = (float) (length / mpp);
-        batch.setColor(SCALE_BAR.r, SCALE_BAR.g, SCALE_BAR.b, SCALE_BAR.a * alpha);
-        batch.draw(white, x, y, px, 1.5f);
-        batch.draw(white, x, y, 1.5f, 6f);
-        batch.draw(white, x + px - 1.5f, y, 1.5f, 6f);
-        font.setColor(SCALE_BAR.r, SCALE_BAR.g, SCALE_BAR.b, alpha);
-        font.draw(batch, TrafficLayer.formatDistance(length), x, y + 22f);
-        return y + 44f;
-    }
-
-    private void ring(Batch batch, float x, float y, float r) {
-        int n = 20;
-        for (int i = 0; i < n; i++) {
-            float a0 = MathUtils.PI2 * i / n, a1 = MathUtils.PI2 * (i + 1) / n;
-            line(batch, x + MathUtils.cos(a0) * r, y + MathUtils.sin(a0) * r, x + MathUtils.cos(a1) * r, y + MathUtils.sin(a1) * r, 1.5f);
-        }
-    }
-
-    private void line(Batch batch, float x0, float y0, float x1, float y1, float width) {
-        float dx = x1 - x0, dy = y1 - y0;
-        float len = (float) Math.sqrt(dx * dx + dy * dy);
-        if (len < 1e-3f) return;
-        batch.draw(white, x0, y0 - width / 2f, 0f, width / 2f, len, width, 1f, 1f, MathUtils.atan2(dy, dx) * MathUtils.radiansToDegrees);
+        return painter.scaleBar(batch, x, y, (float) (length / mpp), TrafficLayer.formatDistance(length), alpha);
     }
 }

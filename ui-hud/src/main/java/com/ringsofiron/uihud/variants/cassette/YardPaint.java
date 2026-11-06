@@ -897,29 +897,42 @@ public final class YardPaint implements Disposable {
         }
     }
 
-    /** Fills a convex polygon, by rows. */
+    /** Fills a convex polygon exactly, its corners in order round it, as a fan from its first corner. */
     public void fillConvex(float[] pts, Color c, float a) {
         int n = pts.length / 2;
-        float minY = Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
-        for (int i = 0; i < n; i++) {
-            minY = Math.min(minY, pts[2 * i + 1]);
-            maxY = Math.max(maxY, pts[2 * i + 1]);
+        if (n < 3) return;
+        float col = bits(c, a);
+        // Two triangles of the fan at a time, as one quad; the last may be a triangle, its fourth corner its third
+        for (int i = 1; i + 1 < n; i += 2) {
+            int k = Math.min(i + 2, n - 1);
+            corners(pts[0], pts[1], pts[2 * i], pts[2 * i + 1], pts[2 * i + 2], pts[2 * i + 3], pts[2 * k], pts[2 * k + 1],
+                    col, col, col, col);
         }
-        float step = Math.max(0.5f, (maxY - minY) / 24f);
-        for (float y = minY; y < maxY; y += step) {
-            float yc = Math.min(maxY, y + step / 2f), lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
-            for (int i = 0; i < n; i++) {
-                int j = (i + 1) % n;
-                float ax = pts[2 * i], ay = pts[2 * i + 1], bx = pts[2 * j], by = pts[2 * j + 1];
-                if ((ay <= yc && by >= yc) || (by <= yc && ay >= yc)) {
-                    float t = Math.abs(by - ay) < 1e-4f ? 0f : (yc - ay) / (by - ay);
-                    float xx = ax + (bx - ax) * t;
-                    lo = Math.min(lo, Math.min(xx, Math.abs(by - ay) < 1e-4f ? Math.min(ax, bx) : xx));
-                    hi = Math.max(hi, Math.max(xx, Math.abs(by - ay) < 1e-4f ? Math.max(ax, bx) : xx));
-                }
-            }
-            if (hi > lo) rect(lo, y, hi - lo, Math.min(step + 0.2f, maxY - y), c, a);
-        }
+    }
+
+    /**
+     * A quad, its four corners in order round it ({@code pts}, design units), shaded corner to corner:
+     * {@code c1} at the first through {@code c4} at the last.
+     */
+    public void quad(float[] pts, Color c1, Color c2, Color c3, Color c4, float a) {
+        corners(pts[0], pts[1], pts[2], pts[3], pts[4], pts[5], pts[6], pts[7], bits(c1, a), bits(c2, a), bits(c3, a), bits(c4, a));
+    }
+
+    private float bits(Color c, float a) {
+        return Color.toFloatBits(c.r, c.g, c.b, c.a * a * alpha);
+    }
+
+    /** One quad of the white texel, from design corners, each with its colour's bits. */
+    private void corners(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4,
+                         float c1, float c2, float c3, float c4) {
+        // The middle of the white region at every corner, so nothing round it bleeds in
+        float u = (whiteRegion.getU() + whiteRegion.getU2()) / 2f, v = (whiteRegion.getV() + whiteRegion.getV2()) / 2f;
+        int i = 0;
+        verts[i++] = sx(x1); verts[i++] = sy(y1); verts[i++] = c1; verts[i++] = u; verts[i++] = v;
+        verts[i++] = sx(x2); verts[i++] = sy(y2); verts[i++] = c2; verts[i++] = u; verts[i++] = v;
+        verts[i++] = sx(x3); verts[i++] = sy(y3); verts[i++] = c3; verts[i++] = u; verts[i++] = v;
+        verts[i++] = sx(x4); verts[i++] = sy(y4); verts[i++] = c4; verts[i++] = u; verts[i] = v;
+        batch.draw(whiteRegion.getTexture(), verts, 0, 20);
     }
 
     @Override

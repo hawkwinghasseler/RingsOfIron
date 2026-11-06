@@ -5,13 +5,17 @@ import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.ContactProvider.Contact;
 import com.ringsofiron.uihud.providers.TargetStatusProvider.Relation;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
+import com.ringsofiron.uihud.variants.ShellLook;
 import com.ringsofiron.uihud.variants.cassette.Yard;
 import com.ringsofiron.uihud.variants.cassette.YardCanvas;
 import com.ringsofiron.uihud.variants.cassette.YardPaint;
 import com.ringsofiron.uihud.variants.cassette.YardPart;
+import com.ringsofiron.uihud.variants.cassette.YardScreens;
 import com.ringsofiron.uihud.variants.cassette.task.TaskAlerts.Post;
+import com.ringsofiron.uihud.widgets.MapPainter;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -24,16 +28,26 @@ import java.util.Set;
  * <p>The whole HUD is one actor ({@link YardCanvas}) painting every unit from one texture page; the
  * units are drawn from their mockups' coordinates and placed each frame by {@link TaskLayout}. The
  * classic HUD keeps only its world overlays: the contact markers and the missile paths.
+ *
+ * <p>The screens (spec section 7) are the Yard Standard's, the same under the three Cassette HUDs
+ * ({@link YardScreens}): the menus, the map with its bays, and the game's windows as consoles. They
+ * start under the visor, so the master unit and the visor stay above them (Z1 and Z2). Those two and the
+ * crisis panel, shown everywhere, are on a canvas of their own in the screen layer, over the map and the
+ * consoles; the telex of the ship lost or the career over has the whole screen.
  */
 public class CassetteTaskHud implements HudVariant {
     /** Hostiles within this many metres keep the scope up while docked. */
     static final float DOCKED_SCOPE_RANGE = 50_000f;
+    /** Where a screen starts: under the visor, which is 104 deep with its chassis. */
+    static final float SCREEN_TOP = 112f;
 
     private HudVariantHost host;
     private final TaskFrame frame = new TaskFrame();
     private final TaskLayout layout = new TaskLayout();
     private YardPaint paint;
     private YardCanvas canvas;
+    /** The units over the screens: the master unit, the visor and the crisis panel. */
+    private YardCanvas over;
     private MasterUnit master;
     private Visor visor;
     private Rack rack;
@@ -49,6 +63,8 @@ public class CassetteTaskHud implements HudVariant {
     private CrisisPlacard crisis;
     private PromptStrip prompt;
     private Post lastPost;
+    /** The menus, the map and the windows in the Yard Standard. */
+    private final YardScreens screens = new YardScreens();
 
     @Override
     public void attach(HudVariantHost host) {
@@ -56,6 +72,7 @@ public class CassetteTaskHud implements HudVariant {
         paint = new YardPaint();
         paint.fonts.setScale(host.uiScale());
         canvas = new YardCanvas(paint);
+        over = new YardCanvas(paint);
         master = new MasterUnit(frame);
         visor = new Visor(frame);
         rack = new Rack(frame);
@@ -70,20 +87,28 @@ public class CassetteTaskHud implements HudVariant {
         sill = new KeySill(frame);
         crisis = new CrisisPlacard(frame);
         prompt = new PromptStrip(frame);
-        // Painted in this order: the sill under the pods standing on it, the visor and the placard last
-        for (YardPart p : new YardPart[]{sill, schematic, suit, master, rack, target, scope, guns, defence, flight, helm, prompt, visor, crisis}) {
+        // Painted in this order: the sill under the pods standing on it; over everything, screens included,
+        // the master unit, then the visor and the placard
+        for (YardPart p : new YardPart[]{sill, schematic, suit, rack, target, scope, guns, defence, flight, helm, prompt}) {
             canvas.add(p);
         }
+        for (YardPart p : new YardPart[]{master, visor, crisis}) over.add(p);
         host.layer().addActor(canvas);
         canvas.setBounds(0f, 0f, host.width(), host.height());
+        screens.attach(host, SCREEN_TOP);
+        host.screenLayer().addActor(over);
+        over.setBounds(0f, 0f, host.width(), host.height());
     }
 
     @Override
     public void update(float delta) {
+        screens.update(delta);
         HudData d = host.data();
         UiHud hud = host.hud();
         boolean map = hud.isMapOpen();
-        frame.read(d, map || hud.openWindow() != null);
+        boolean telex = screens.showing(ClassicWindow.GAME_OVER);
+        // A screen covers zones 3 to 9: the map, a console in a window's place, the deck console's window, the telex
+        frame.read(d, map || hud.windowOpen() || telex);
         frame.time += delta;
         frame.alerts.update(d, delta, frame.gunnery());
         if (frame.post != lastPost) {
@@ -94,6 +119,9 @@ public class CassetteTaskHud implements HudVariant {
         visible(d, map, delta);
         place(d);
         canvas.setBounds(0f, 0f, host.width(), host.height());
+        over.setBounds(0f, 0f, host.width(), host.height());
+        // The ship lost or the career over: the telex has the whole screen
+        over.setVisible(!telex);
     }
 
     /** Spec section 8: what each post shows, and how docking, combat, the rails warp and a crisis change it. */
@@ -232,13 +260,56 @@ public class CassetteTaskHud implements HudVariant {
     public void resize(int width, int height, float uiScale) {
         if (paint != null) paint.fonts.setScale(uiScale);
         if (canvas != null && host != null) canvas.setBounds(0f, 0f, host.width(), host.height());
+        if (over != null && host != null) over.setBounds(0f, 0f, host.width(), host.height());
+        screens.resize(uiScale);
     }
 
     @Override
     public void detach() {
+        screens.dispose();
+        if (over != null) over.remove();
         if (paint != null) paint.dispose();
         paint = null;
         canvas = null;
+        over = null;
+    }
+
+    // --- The screens: the Yard Standard's menus, map and windows --------------------------------------
+
+    @Override
+    public boolean replaces(ClassicWindow window) {
+        return screens.replaces(window);
+    }
+
+    @Override
+    public boolean open(ClassicWindow window) {
+        return screens.open(window);
+    }
+
+    @Override
+    public boolean showing(ClassicWindow window) {
+        return screens.showing(window);
+    }
+
+    @Override
+    public void close(ClassicWindow window) {
+        screens.close(window);
+    }
+
+    /** A key while a console shows goes to it. */
+    @Override
+    public boolean keyDown(int keycode) {
+        return screens.keyDown(keycode);
+    }
+
+    @Override
+    public ShellLook shellLook() {
+        return screens.shellLook();
+    }
+
+    @Override
+    public MapPainter mapPainter() {
+        return screens.mapPainter();
     }
 
     /** The world overlays stay: contact markers and missile paths. Everything else is the Yard's. */

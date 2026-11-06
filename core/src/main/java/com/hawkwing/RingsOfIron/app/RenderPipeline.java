@@ -34,7 +34,10 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
+import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.text.HudText;
+import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.HudVariant;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -90,6 +93,9 @@ public final class RenderPipeline {
     private final Vector2 followAt = new Vector2();
     private final Vector2 tmp = new Vector2();
     private final Rectangle panelRect = new Rectangle();
+    /** The HUD variant's panels this frame, which the bubbles keep off. */
+    private final Array<Rectangle> variantPanels = new Array<>();
+    private final Insets.Room insetRoom = new Insets.Room();
 
     /** The developer overlays and selection, the status column and the panels: set before the first frame. */
     DevTools dev;
@@ -134,8 +140,12 @@ public final class RenderPipeline {
         pass("world overlays", delta -> dev.drawOverlays(delta, true));
         pass("selection", delta -> dev.drawSelection());
         pass("picture in picture", delta -> {
-            if (session.hud.getViewMode().getMode() == ViewMode.EXTERIOR) drawPictureInPicture(delta);
-            else pip.clear();
+            if (session.hud.getViewMode().getMode() == ViewMode.EXTERIOR) {
+                drawPictureInPicture(delta);
+            } else {
+                pip.clear();
+                session.hud.getData().insets.clear();
+            }
         });
         // The status column before the HUD, so an open HUD window (the crew roster, the yard) covers it
         // rather than having the helm's order written across its rows (round 9, real window)
@@ -308,17 +318,48 @@ public final class RenderPipeline {
 
     /**
      * The bubbles for the player's ship, the locked target and the navigation target, as they need
-     * them, clear of the HUD's panels and the status column.
+     * them, clear of the HUD's panels and the status column. Under a HUD variant they keep clear of
+     * its panels and of the classic ones it keeps; one that draws the bubbles' rims itself
+     * ({@link HudVariant#drawsInsets}) reads where they are from the HUD's data.
      */
     private void drawPictureInPicture(float delta) {
+        Insets insets = session.hud.getData().insets;
+        insets.clear();
         if (world.getCrash() != null) return;
+        HudVariant variant = session.hud.getVariant();
         float uiW = viewports.getUiViewport().getWorldWidth(), uiH = viewports.getUiViewport().getWorldHeight();
-        float statusBottom = text.hudText().statusBottom();
-        pip.keepClear(panelRect.set(uiW - HudText.STATUS_WIDTH - 10f, statusBottom, HudText.STATUS_WIDTH + 10f, uiH - statusBottom));
-        keepClear(session.hud.getFlightPanel().getParent());
+        if (variant == null || session.hud.keepsClassic(ClassicPart.STATUS_COLUMN)) {
+            float statusBottom = text.hudText().statusBottom();
+            pip.keepClear(panelRect.set(uiW - HudText.STATUS_WIDTH - 10f, statusBottom, HudText.STATUS_WIDTH + 10f, uiH - statusBottom));
+        }
+        // The flight panel's column stands while any of its panels is kept; the others hide with their panel
+        if (variant == null || session.hud.keepsClassic(ClassicPart.FLIGHT_PANEL) || session.hud.keepsClassic(ClassicPart.GAUGES)
+                || session.hud.keepsClassic(ClassicPart.RADAR)) {
+            keepClear(session.hud.getFlightPanel().getParent());
+        }
         keepClear(session.hud.getMinimapPanel());
         keepClear(session.hud.getOrbitMap().getParent());
-        pip.draw(viewports, session.game.player, session.gun.getTarget(), world.nav.target.entity(), delta);
+        Entity target = session.gun.getTarget(), nav = world.nav.target.entity();
+        boolean own = true;
+        if (variant != null) {
+            variantPanels.clear();
+            variant.panels(variantPanels);
+            for (Rectangle r : variantPanels) pip.keepClear(r);
+            own = variant.wantsInset(Insets.Role.OWN);
+            if (!variant.wantsInset(Insets.Role.LOCK)) target = null;
+            if (!variant.wantsInset(Insets.Role.NAV)) nav = null;
+        }
+        // A variant that draws the rims itself gives the room they take; else the classic name's
+        boolean rims = variant != null && variant.drawsInsets();
+        pip.setChrome(!rims);
+        if (rims) {
+            variant.insetRoom(insetRoom.set(0f, 0f, 0f));
+            pip.setRoom(insetRoom.side, insetRoom.above, insetRoom.below);
+        } else {
+            pip.setRoom(0f, 0f, PictureInPicture.LABEL_ROOM);
+        }
+        pip.draw(viewports, session.game.player, own, target, nav, delta);
+        pip.report(insets, viewports);
     }
 
     /** Keeps the bubbles off {@code panel} while it shows. */
