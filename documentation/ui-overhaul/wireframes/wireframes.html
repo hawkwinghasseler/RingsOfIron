@@ -358,9 +358,9 @@ const layouts = {
       '^Call a tow · [B] twice · 3,400 cr, 3 standing']);
     box('P2', 'Caution and warning (stays lit under X3)', 12, 38, 308, 150, 'cond tight', [
       '^◆ EMERG O2               YOU',
-      '^◆ VACUUM      HOLD       YOU',
       '^◆ NO POWER    damaged    YOU',
-      '^◆ CREW CRIT   Ada        ●   3:40',
+      '^◆ VACUUM      HOLD       ‖',
+      '^◆ CREW CRIT   Ada        ●   1:40',
       '^◆ FIRE        BRIDGE     ●',
       '^+ 1 more: SMOKE']);
     box('P4', 'Message feed (routine messages wait in combat)', 960, 38, 308, 40, 'slot');
@@ -407,7 +407,7 @@ const layouts = {
     box('X2', 'Boarding panel (H6 gives way: the Raider is the Lock)', 960, 194, 308, 0, 'full', [
       'BOARD  Raider · latched',
       '       taken: crew surrendered',
-      'PARTY  2 aboard · holding',
+      'PARTY  1 · coming home',
       'SALV   3 parts marked · 1 off',
       'CARGO  2 lots coming across',
       '       prisoners to bring aboard',
@@ -484,16 +484,15 @@ const layouts = {
     wtext(380, 720, 'the docked view stays in sight below the panel; the HUD hides as for a full-screen mode');
     box('M3', 'Station (a panel, 1,120 wide, as tall as its tab)', 80, 60, 1120, 34, 'mode',
       ['HIGHPORT     [1] Market   [2] Yard   [3] Missions   [4] Hire']);
-    box('', 'Market', 80, 94, 800, 190, 'mode', [
+    box('', 'Market', 80, 94, 800, 166, 'mode', [
       'COMMODITY               STOCK     BUY    SELL  HELD   ON ORDER',
       '^Water                     420   14 cr   12 cr     0   –      [Buy 1] [Buy 10] [Sell 1] [Sell all]',
       '^Food                    2,600   36 cr   32 cr    12   –      [Buy 1] [Buy 10] [Sell 1] [Sell all]',
-      '^Machinery                  20  680 cr  620 cr     0   +2     [Buy 1] [Buy 10]',
-      '^Salvaged autocannon mk1     –       –  600 cr     1   –                       [Sell 1] [Sell all]',
+      '^Machinery                  20  680 cr  620 cr     0   –      [Buy 1] [Buy 10]',
       '',
       'FOR YOUR CONTRACTS',
       'Deliver 40 Food → Shackleton Ice · 12 of 40 aboard · 5.2 d left']);
-    box('', 'Rail', 880, 94, 320, 190, 'mode', [
+    box('', 'Rail', 880, 94, 320, 166, 'mode', [
       'Credits      5,000 cr',
       'Standing     Trusted (+42)',
       'Hold         12 / 40 m³',
@@ -502,7 +501,7 @@ const layouts = {
       '',
       'Infirmary    treating 1',
       '             bill 150 cr']);
-    box('', 'foot: the one-line feed and the close keys', 80, 284, 1120, 26, 'mode',
+    box('', 'foot: the one-line feed and the close keys', 80, 260, 1120, 26, 'mode',
       ['Station: clearance granted' + ' '.repeat(62) + '[T] close · [Esc]']);
   }],
   '11': ['Ship, systems tab (full-screen mode)', () => {
@@ -512,27 +511,31 @@ const layouts = {
     box('', 'Systems', 760, 60, 520, 440, 'mode', [
       'SYSTEM                 HEALTH  POWER   STATE',
       '^Reactor M               100%   –       on        [off]',
-      'Main engine             100%   ok      on',
-      'RCS ×4                  1 dmg  ok      on',
+      'Engines ×2              100%   ok      on',
+      'RCS ×8                  –      ok      7 on · 1 stopped',
       '^Coilgun (NOSE)          100%   ok      on        [off]',
-      'Autocannon (FWD PORT)    40%   ok      damaged',
-      'Autocannon (FWD STBD)   100%   ok      on',
+      'Autocannon (FWD PORT)    20%   ok      damaged',
+      'Autocannon (FWD STBD)   100%   none    cut off',
       'Harpoon (AFT PORT)      100%   ok      on',
-      'Laser (AFT STBD)        100%   none    cut off',
+      'Laser (AFT STBD)        100%   ok      on',
       'Life support            100%   ok      on',
       '...']);
     box('', 'Damage control', 0, 500, 760, 274, 'mode', [
       'TASK                            WHERE        WHO',
-      'Seal breach                     HOLD         Cole',
-      'Repair autocannon (FWD PORT)    BRIDGE       unassigned',
-      'Repair conduit ×2               HOLD         Ada',
-      'Repair RCS thruster             outside      after battle stations']);
+      'Repair autocannon (FWD PORT)    BRIDGE       Ada',
+      'Seal breach                     HOLD         waits: under fire',
+      'Repair RCS thruster             outside      waits: battle stations',
+      '',
+      '~Under fire: within 2 tiles of where crew were hit this fight (Cole, a light',
+      '~wound in the HOLD). A cut conduit is no crew job: only a yard repairs it,',
+      '~so it shows under Power.']);
     box('', 'Power', 760, 500, 520, 274, 'mode', [
       'CIRCUIT 1   reactor M · 3.0 of 3.0 MW',
       '            store ▮▮▮▮▮▮▮▮▯▯ 80%',
-      'CUT OFF     Laser (AFT STBD): no reactor reaches it',
+      'CUT OFF     Autocannon (FWD STBD): no reactor reaches it',
       '',
-      'Two cut conduits in the HOLD strand the laser']);
+      'One cut conduit in the BRIDGE strands it. The crew can',
+      'only reset a short; a yard repairs a cut (400 cr).']);
     box('', 'foot: the one-line feed and the close keys', 0, 774, W, 26, 'mode',
       ['Crew: Ada back inside' + ' '.repeat(89) + '[I] close · [Esc]']);
   }],

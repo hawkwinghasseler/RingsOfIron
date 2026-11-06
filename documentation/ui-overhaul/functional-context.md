@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 10.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 11.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -516,7 +516,7 @@ In full-screen modes it collapses to the chip in P1.
 | Severity | 1 | ◆ warning, ▲ caution. The styles draw them; the shape is the colour-free channel |
 | Code | 11 | The catalogue's short form, in whole words where they fit. The long form is the hover text and the Log's wording |
 | Detail | 10 | Where, who or why: a room (section 5.5), with more rooms as "+n" ("REACTOR +1"); a name, cut to 10; a cause ("stunned"); an amount only when nothing else on screen shows it ("3 aboard") |
-| Handling | 3 | YOU when it needs the captain; a dot per crew member on it, up to three ("●●"), and from four "●4"; blank when the code has no handling |
+| Handling | 3 | YOU when it needs the captain; a dot per crew member on it, up to three ("●●"), and from four "●4"; ‖ while the crew hold back from it (Held, below); blank when the code has no handling |
 | Timer | 5 | The time to harm, when the condition has one: "3:20", "12:05"; from an hour, "2 h" |
 
 A condition that clears by itself has no harm timer: its handling and timer fields read together as
@@ -524,23 +524,27 @@ the time until it recovers, "back 0:12".
 
 ```
 ◆ VACUUM      ENGINES    YOU
-◆ CREW CRIT   Ada        ●   3:40
+◆ CREW CRIT   Ada        ‖   3:40
 ◆ FIRE        BRIDGE     ●●
 ◆ NO POWER    stunned    back 0:12
 ▲ SMOKE       BRIDGE
 + 1 more: O2 LOW
 ```
 
-This is the gunship (five crew; its rooms are ENGINES, REACTOR and BRIDGE). It is dead for 12 s, but
-its power is due back by itself, so X3 doesn't offer a way out (section 8). Walkthrough 11.7 shows
-the case where it does.
+This is the gunship (five crew; its rooms are ENGINES, REACTOR and BRIDGE) at battle stations.
+Ada is down and two crew fight the fire; the other two are marines, at the weapons console and a gun,
+and a marine never seals a breach, so nobody is free for the vacuum. Ada was hit where she lies, so
+the crew keep clear of her until she has two minutes left. The reactor is stunned: the ship is dark
+for 12 s, but its power is due back by itself, so X3 doesn't offer a way out (section 8). Walkthrough
+11.7 shows the case where it does.
 
-**Handling** has three states. The art directions draw them as they like (a figure and a count, a
+**Handling** has four states. The art directions draw them as they like (a figure and a count, a
 dot per crew member, a flag for nobody); the text forms above are the budget they must fit.
 
 | State | Short form | Means |
 |---|---|---|
 | Needs you | YOU | Nobody aboard is working on it, or it is something only the captain can act on (the orbit, a collision, the plan) |
+| Held | ‖ | The crew leave it for now, as the game's crews do (`TaskRules.waitsOutFire`): at battle stations, work within 2 tiles of where a crew member was hit this fight waits for the fight to end, and so does work outside the hull. Repairs and short resets on what the ship fights and flies with (reactor and power conduits, engines, helm, weapons console, guns, shield emitter) and a casualty with two minutes or less to live never wait. The hover says which, and that standing down from battle stations lifts it |
 | Crew on it (n) | ● per crew member | n crew have claimed the task on the ship's task board |
 | Clears by itself | back 0:12 | It wears off on a timer: a stun, a short's automatic reset, an emitter's trip |
 
@@ -549,8 +553,8 @@ impact, collision, a burn with crew outside, a pirate's take. A **recovery** tim
 condition clearing itself. Only harm timers rank rows, and only they count as time-critical for
 flashing (section 5.3).
 
-**Ordering.** Warnings before cautions. Within each severity: rows that need the captain, then rows
-crew are on, then rows that clear by themselves. Within each of those, rows with a harm timer come
+**Ordering.** Warnings before cautions. Within each severity: rows that need the captain, then held
+rows, then rows crew are on, then rows that clear by themselves. Within each of those, rows with a harm timer come
 first, soonest first, then the rest, newest first. Advisories never appear here (they go to the strip
 or the feed).
 
@@ -1208,15 +1212,16 @@ your home station. J opens its mission board".
 **Zone.** Right middle, 308 x up to 150, under any lock card.
 
 **Content.** The other ship's name, latched or by EVA, and its state (disabled and why, surrendered,
-being boarded, taken); the boarding party: how many, crossing, fighting or holding, or why none can
-go; salvage: parts marked and how many are off; cargo coming across; prisoners to bring aboard.
+being boarded, taken); the boarding party (the ship's marines, or its crewmen if it has none, as
+`Boarding.party` picks them): how many, and crossing, fighting or coming home (once the craft is
+taken the party stands down and goes home), or why none can go; salvage: parts marked and how many are off; cargo coming across; prisoners to bring aboard.
 "[K] Boarding" opens M4, where the orders are; while latched, "[U] Cast off" undocks from it (at the
 helm, as undocking from a station is).
 
 ```
 BOARD  Raider · latched
        taken: crew surrendered
-PARTY  2 aboard · holding
+PARTY  1 · coming home
 SALV   3 parts marked · 1 off
 CARGO  2 lots coming across
        prisoners to bring aboard
@@ -1366,7 +1371,7 @@ time).
 
 | Tab | Content |
 |---|---|
-| Systems | The ship's plan at large scale, every system coloured by state; a list grouped by type with health, powered, on or off (switch), stunned, circuit; power: each circuit's reactors, output against rating, store, and the systems it can't reach; **damage control board**: every hazard and repair task with who has it, or "unassigned" |
+| Systems | The ship's plan at large scale, every system coloured by state; a list grouped by type with health, powered, on or off (switch), stunned, circuit; power: each circuit's reactors, output against rating, store, and the systems it can't reach; **damage control board**: every hazard and repair task with who has it, or "unassigned". These are the crew's jobs as the game posts them (`ShipHazardScanSystem`): seal a breach, patch a leak, reset a short, isolate a tank, put out a fire, repair a damaged system, treat or stabilise the wounded, and EVA work on the hull (an RCS block, a hull tile, a jammed collar), which waits at battle stations unless someone is sent out. A job that waits says why, as P2's Held does: "waits: under fire" or "waits: battle stations". A cut conduit is no crew job: only a yard repairs it, so it shows under power, with the yard's price |
 | Crew | Today's `CrewWindow` roster (role, skills, condition, morale, wage, history), sortable; EVA orders (send out, call in, let out); suits at battle stations; prisoners and what can be done with them here |
 | Cargo | Hold contents (commodity, units, volume), capacity; salvaged parts aboard |
 | Loadout | Hardpoints and what each carries; field refit (today Y away from a yard); furnishings aboard; ship figures (mass, full Δv, berths) |
@@ -1374,7 +1379,7 @@ time).
 ### 10.3 M3 Station
 
 Docked only. M3 is the one mode that doesn't take the whole screen: a panel 1,120 wide and as tall as
-its tab needs, up to the full height, over the docked view (the Market at Highport is four rows; the
+its tab needs, up to the full height, over the docked view (the Market at Highport is three rows; the
 Yard can run long and scrolls). Tabs: **Market** (T), **Yard** (Y), **Shipyard**, **Missions** (J), **Hire**, each only
 where the station offers it: Shipyard where a faction sells ships (Anvil Yards, Shackleton Ice; not
 Highport), Hire at any station that isn't hostile. A right rail
@@ -1500,9 +1505,10 @@ appears at the helm console as the captain walks up; D2 appears over whatever th
 ![Deck, emergency](wireframes/07-deck-emergency.png)
 
 The ship is disabled, its reactor damaged, and its hold has lost its air. X3 offers abandon ship and the tow with their
-costs. P2 lists, in its order: EMERG O2, VACUUM and NO POWER, which nobody is free to handle (of the
-corvette's three crew, Ada is down, Cole tends her and Bea fights the fire alone); CREW CRIT and FIRE,
-with the crew on them; and SMOKE under "+1 more". D1 shows the captain's suit and
+costs. P2 lists, in its order: EMERG O2 and NO POWER, which need the captain (of the corvette's three
+crew, Ada is down, Cole tends her and Bea fights the fire alone, so nobody is free for the reactor);
+VACUUM, which the crew leave until the fight ends, since Ada was hit in the HOLD; CREW CRIT, which
+they don't leave, since Ada has under two minutes; FIRE, with Bea on it; and SMOKE under "+1 more". D1 shows the captain's suit and
 its air, not yet critical. The whole corvette is in view, so D3 tags the fire, the vacuum and Ada where
 they are; on a bigger ship the far ones would be pointers at the edge. The master alert cue
 stands alone at the bottom centre.
@@ -1526,17 +1532,23 @@ runs to the contract's deadline. The map has no tabs, so the number keys keep th
 
 ![Station](wireframes/10-station.png)
 
-M3 as a panel over the docked view, as tall as its tab. Highport's Market is four rows (it trades
-water, food and machinery, and buys salvage), with the delivery this market can supply under the
-table. The tabs carry their numbers, and T closes the panel from the Market.
+M3 as a panel over the docked view, as tall as its tab. Highport's Market is three rows (water, food
+and machinery; each salvaged part aboard would add a sell-only row, but on day 0 nothing has been
+salvaged), with the delivery this market can supply under the table: 28 more Food fill the hold. The tabs carry their numbers, and T closes the panel from the Market.
 
 ### 11.11 Ship, systems
 
 ![Ship systems](wireframes/11-ship-systems.png)
 
-Battle stations, with a breach in the HOLD that Cole seals while Bea holds the heading, the FWD PORT
-autocannon damaged, and the laser cut off by two cut conduits. The RCS repair is outside, so it waits
-for battle stations to end. P1's chip counts the breach and the two guns out of action (SYSTEM DOWN).
+Battle stations, the crew doing what the game's crews would. Cole, the marine, took a light wound in
+the HOLD, so the crew keep clear of it until the fight ends and the breach there waits (a marine
+never seals one anyway); Cole mans the weapons console. Ada, the engineer, repairs the FWD PORT
+autocannon, which damage has taken under the 30% where a system stops working; a gun's repair never
+waits. Bea, the crewman, has nothing else to take, so Bea flies. One cut conduit in the BRIDGE
+strands the FWD STBD autocannon: the crew can only reset a short, and a cut waits for a yard, so it
+shows under Power with the yard's price rather than on the board. The RCS repair is outside, so it
+waits for battle stations to end unless someone is sent out. P1's chip counts the breach and the two
+guns out of action (SYSTEM DOWN).
 
 ### 11.12 Orders menu
 
@@ -1594,7 +1606,7 @@ designs from the other two threads may differ; this section applies to skinning 
 | Allegiance | own, friendly (sponsor and allies), neutral, hostile, beaten (disabled, surrendered, wreck), unknown or stale |
 | Selection | lock, nav, objective, hover, focus (pad), selected |
 | Path | actual, planned, predicted (missile), corridor-safe, corridor-fast, corridor-danger |
-| Handling | needs you, crew on it, clears by itself |
+| Handling | needs you, held, crew on it, clears by itself |
 | Control | idle, hover, focus, pressed, disabled, active (toggle on) |
 | Data | live, stale (last known), unavailable ("--") |
 | Hit chance | good, fair, poor. The art directions choose its colours, and should keep them apart from the severity colours; the colour-free channel is a word or a shape (pips, fill). Today's green, yellow and red clash with severity in every style |
@@ -1648,7 +1660,7 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 | Provider | New or changed | Data |
 |---|---|---|
 | `UiContextProvider` | New | Seat (helm, fire control, gun and which, deck); situation flags with their reasons; helm authority (who, order, autopilot, held reason); battle stations; warp hold reason |
-| `ConditionProvider` | New | The P2 catalogue as structured rows: code, severity, detail, location tiles, handling (assigned crew count), timer and its kind (harm or recovery) |
+| `ConditionProvider` | New | The P2 catalogue as structured rows: code, severity, detail, location tiles, handling (assigned crew count, or held and why: under fire or outside), timer and its kind (harm or recovery) |
 | `MessageProvider` | Change `NoticeLog` | Each notice with a source and a kind split into event or condition; conditions stop posting as notices |
 | `ShieldStatusProvider` | New | Whether the ship has an emitter at all; stock, capacity, cloud, scattered, adrift, stowed, raised, lowered for dock, trim, sector thickness (8), emitters (holding, heat, trip) |
 | `PowerStatusProvider` | New | Per circuit: reactors, rated and actual output, store and refill; systems switched on but cut off from every reactor; shorts with their reset time (`DamageStates.AUTO_RESET`, 45 s) and stuns with theirs |
@@ -1738,4 +1750,5 @@ largest scale, and the centre stays clear.
 | 7 | 3 (VFD critique) | "Point defense" spelled as the game spells it (`point_defense`), so the three designs share one string. H7's missile row is the total across launchers, ready while any can fire; F2 splits it by launcher |
 | 8 | 2 and 4 (cassette and NASA-punk critiques) | Sample data true to the game: the corvette's S port is cleared to Highport's port 2, coming in at 120 m too fast for the 4.9 m/s safe speed there; Highport sells no ships, so X1 lists hiring on its own line, and M3 shows Shipyard and Hire only where they are offered; F1's kiter moves along the line of sight. F4 names each missile's shooter instead of a bearing with no reference. Section 12.4 says which numbers are values drawn at 15. H4's power line shows the output and adds the rating only when damage holds the output under it. At fire control the master alert cue sits above the rack. H5's 5 km step is justified by fights that reach 5 km. W5 notes that the lead reticle sits inside the lock mark at fight zooms |
 | 9 | 3 (VFD critique) | H6's example closes at 12 m/s (pilots close at 80 m/s at most), and wireframe 04's H1 reads the kiter's 12 m/s in the LOCK frame, matching F1 |
-| 10 | 3 (cassette critique) | Sample data true to the game's geography and ships: Shackleton Ice orbits the Moon, so from Highport's orbit it is 384,000 km away, and the planner's trip is 3,084 m/s out, about 793 to capture and 4.2 days; the corvette's 2,000 kg of propellant give about 8,750 m/s with an empty hold, so with the delivery's 20 t of food aboard H1 reads 5,606 at 72% (the gunship's 4,000 kg give it 6,831); the delivery's deadline (5.2 d) outlasts the trip; the market at Highport (an agricultural dome) trades water, food, machinery and salvage; Gateway, which the game doesn't have, becomes Anvil Yards; the ship is named by its class. H2 leaves out an apsis past the next burn, and for a Nav around another body names the body and gives the arrival in place of closing and the closest approach. A trip to another body is shown as the game plans it, a leg at a time: one burn before the crossing, then the capture as an estimated event, which H2, M1's burns list and the timeline show and section 14's NavigationProvider keeps. Mode tabs carry their keys (their numbers, which take the helm orders' keys only while a mode with tabs is open) and the foot the close keys. M1 lists all of today's map controls (Delete burn, Next target, Centre, Fit, All traffic). M3 becomes a panel as tall as its tab, and its Market lists the held deliveries it can supply. Wireframe 01's scope shows at 50 km, since the ship has just left Highport, which the map at the same moment lists 3 km off. Wireframe 11: Bea flies and Cole seals the breach, the P1 chip counts the breach and the two guns out of action, conduits are repaired (two cuts strand the laser), and the job held for battle stations is the EVA one |
+| 10 | 3 (cassette critique) | Sample data true to the game's geography and ships: Shackleton Ice orbits the Moon, so from Highport's orbit it is 384,000 km away, and the planner's trip is 3,084 m/s out, about 793 to capture and 4.2 days; the corvette's 2,000 kg of propellant give about 8,750 m/s with an empty hold, so with the delivery's 20 t of food aboard H1 reads 5,606 at 72% (the gunship's 4,000 kg give it 6,831); the delivery's deadline (5.2 d) outlasts the trip; the market at Highport (an agricultural dome) trades water, food, machinery and salvage; Gateway, which the game doesn't have, becomes Anvil Yards; the ship is named by its class. H2 leaves out an apsis past the next burn, and for a Nav around another body names the body and gives the arrival in place of closing and the closest approach. A trip to another body is shown as the game plans it, a leg at a time: one burn before the crossing, then the capture as an estimated event, which H2, M1's burns list and the timeline show and section 14's NavigationProvider keeps. Mode tabs carry their keys (their numbers, which take the helm orders' keys only while a mode with tabs is open) and the foot the close keys. M1 lists all of today's map controls (Delete burn, Next target, Centre, Fit, All traffic). M3 becomes a panel as tall as its tab, and its Market lists the held deliveries it can supply. Wireframe 01's scope shows at 50 km, since the ship has just left Highport, which the map at the same moment lists 3 km off. Wireframe 11: Bea flies and Cole seals the breach, the P1 chip counts the breach and the two guns out of action, and the job held for battle stations is the EVA one |
+| 11 | 4 (NASA-punk critique) | Samples the game can't produce, checked against its code. Wireframe 11's crew do what the game's crews would: Cole is a marine, who never seals, and mans the weapons console; Cole's light wound in the HOLD keeps the crew clear of the breach until the fight ends; Ada repairs the gun, whose repair never waits; Bea, with nothing else to take, flies. A cut conduit is yard work, not a crew job, so version 10's "Repair conduit ×2" is gone and the power panel gives the yard's price. The cut that strands a gun is one conduit under the FWD STBD autocannon, since the laser's tile is the only link from the aft systems to the reactor. The damaged autocannon is at 20%, under the 30% where a system stops working. The systems list shows two engines and eight RCS blocks, one stopped. P2 gains a fourth handling state, Held (‖), for the game's rule that crews keep clear of where crew were hit and stay inside at battle stations; the P2 sample and wireframe 07 use it, and Ada's bleed-out in 07 is under the two minutes that send the crew in anyway. The P2 sample says why nobody is free for the vacuum: the gunship's other two crew are marines, who never seal. X2's party is the ship's marines (Cole alone) and goes home once the craft is taken. Wireframe 10 has no salvage on day 0 and nothing on order, so the delivery's 40 Food fit the 40 m³ hold |
