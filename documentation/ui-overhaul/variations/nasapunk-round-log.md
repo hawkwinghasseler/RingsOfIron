@@ -334,6 +334,14 @@ home, C5's leg-at-a-time plan, C7's panel, C8's board and its caution chip. The 
 |---|---|---|
 | Context (wireframe 11) | The systems list gives the RCS blocks' power as "ok", but the game's blocks draw none: one works while the hull tile it is bolted to stands (`RcsThruster`), and fires unless out of propellant (`RcsThrust`) | Version 13: a dash, and the list dashes any value the game doesn't have. The designer counts Context × Nasa-punk converged |
 
+**The yard, the ship's book and the source comments.** S6's yard listed the nose gun at 24%, but
+the crew mend a damaged system in seconds (a tenth of full health a second), so a yard never sees
+one. The first row is now the bow's starboard hull tile, which a field repair frames back up only
+to 20%, and the bill is about 920 CR. T7 had Ada repairing an engine with nothing damaged; an
+engineer never mans a console, so with nothing to do Ada is idle, in the game's word. Comments in
+four stations screens, one task screen and one context screen gave crew gendered pronouns; they
+name the crew now.
+
 **New pieces in the kit.** P2's held mark (two white bars) and P1's caution chip (`cwChip`: a push
 lens 24 tall with each count in its severity's colour, lit red while a new warning waits) in
 `context.js`. `systemPlot` can end a path at a sphere of influence (`leg: 'soi'`), marking the

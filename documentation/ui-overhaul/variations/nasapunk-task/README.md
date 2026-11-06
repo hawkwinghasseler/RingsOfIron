@@ -119,8 +119,8 @@ route and the hold after it. TAKE (Enter) and SHOW ROUTE (M) are keys under the 
 **T7, BOOK on its CREW tab, docked at Highport after T5.** The terminal's frame again, with the
 ship, its berths, the week's wages and the medical stores in the header. The crew are the
 service's, so they draw no wage. Each row has the role, the condition as the game words it, the
-job now and where, and morale; with nothing else to do an engineer repairs and the rest man the
-consoles, a crewman the helm and a marine the weapons. Vex's three surviving crew are aboard as
+job now and where, in the game's words, and morale. With nothing to do, Ada is idle, since an
+engineer never mans a console, and the rest man them, a crewman the helm and a marine the weapons. Vex's three surviving crew are aboard as
 prisoners under the names the game gives a raider's crew, taking berths (7 of the corvette's 8,
 the captain's among them). Highport is the sponsor's, so each can be handed over for 400 CR and +1
 standing, and Crew 4, the one outlaw in three, offers to join. The orders for everyone sit under

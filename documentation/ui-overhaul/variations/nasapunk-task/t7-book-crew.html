@@ -16,12 +16,14 @@
 //
 // All of it is the game's (CrewRoster, CrewRecord, CrewMedical, Spacewalks, Prisoners): the starting
 // crew are the service's, so they draw no wage; skills are gunnery, engineering, marine and medicine
-// from 0 to 100, and Cole's marine skill has grown from 50 with the boarding and the two he downed; a
+// from 0 to 100, and Cole's marine skill has grown from 50 with the boarding and the two Cole downed; a
 // person's history counts ships beaten, boardings, downed and hours of work, or reads New; a
 // condition is OK or unconscious with the health left, a light wound with it, or a serious or
-// critical wound with what is being done about it. With nothing else to do, an engineer repairs
-// and the rest man the consoles (a crewman the helm, a marine the weapons), and a suit goes back to
-// its locker, which fills it. Prisoners take berths (4 aboard and 3 held of the corvette's 8). A
+// critical wound with what is being done about it. The job is the game's own words for it
+// (CrewTasks): with nothing to do, an engineer is idle, since an engineer never mans a console (a
+// damaged system is mended in seconds, and the rest of the damage is the yard's), and the rest man
+// the consoles (a crewman the helm, a marine the weapons); a suit goes back to its locker, which
+// fills it. Prisoners take berths (4 aboard and 3 held of the corvette's 8). A
 // raider's crew are named Crew 1 to 4 by the game, and Crew 2 died of the wound; at one of the
 // sponsor's stations a prisoner the sponsor wants is handed over for 400 CR and +1 standing; and one
 // outlaw in three offers to join, by a hash of the name and role, which picks Crew 4. Send out
@@ -71,7 +73,7 @@ const list = du(16, 228, 760, 558, {
     const L = gx + 14;
     const cols = [{ t: 'NAME', w: 78 }, { t: 'ROLE', w: 96 }, { t: 'CONDITION', w: 150 }, { t: 'JOB NOW', w: 214 }, { t: 'WHERE', w: 70 }, { t: 'MORALE', w: 66, align: 'right' }];
     const gr = grid(L, gy + 54, cols, [
-      [{ t: 'ADA', bold: true }, 'ENGINEER', 'OK 100%', 'REPAIRING AN ENGINE', 'HOLD', '72%'],
+      [{ t: 'ADA', bold: true }, 'ENGINEER', 'OK 100%', 'IDLE', 'HOLD', '72%'],
       [{ t: 'BEA', bold: true }, 'CREWMAN', 'OK 100%', 'MANNING THE HELM', 'BRIDGE', '70%'],
       { cells: [{ t: 'COLE', bold: true }, 'MARINE', 'LIGHT WOUND 64%', 'MANNING THE WEAPONS', 'BRIDGE', '78%'], cursor: true },
     ], { rule: 0, rh: 24 });

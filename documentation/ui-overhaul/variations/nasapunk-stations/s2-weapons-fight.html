@@ -127,7 +127,7 @@ s += mfd(Z.mfdR.x, Z.mfdR.y, 5, [{ t: 'DAMAGE', state: 'cur' }, 'POWER', 'ATMOS'
 });
 
 // TAC is yours and has the MISSILE warning: the lens lights red and keeps the YOU chip. Bea flies
-// the plan, so she holds NAV too; nobody is needed at Engineering or works Comms.
+// the plan, so Bea holds NAV too; nobody is needed at Engineering or works Comms.
 s += stationBoard([[1, 'HELM', 'BEA', 'crew'], [2, 'NAV', 'BEA', 'crew'], [3, 'TAC', '', 'you', 'warning'], [4, 'ENG', '--', 'empty'], [5, 'COMMS', '--', 'empty'], [6, 'CMD', '', 'none']], { day: 'DAY 3', time: '15:02:44' });
 
 document.getElementById('out').innerHTML = svgPage(`<defs><filter id="mono"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="1.6"/><feFuncG type="linear" slope="1.6"/><feFuncB type="linear" slope="1.6"/></feComponentTransfer></filter></defs>` + s);

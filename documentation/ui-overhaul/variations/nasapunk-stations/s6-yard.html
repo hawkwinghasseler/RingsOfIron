@@ -13,8 +13,11 @@
 // (10.1): it hides the band and brings its own annunciator and ticker. Docked at Highport after the
 // raider fight of S2 and S3, with the raider's chaingun salvaged in the hold (S5's boarding). The
 // player has pressed REPAIR ALL, so the footer shows the game's response and the work is under
-// way, the nose gun first. The live parts of the title bar (the station and its owner, credits,
-// the hold) are on the glass; the bezel carries only the panel's name.
+// way. What reaches a yard is what the crew can't make whole: they mend a damaged system in seconds
+// (a repair restores a tenth of full health a second), so S3's nose gun is long mended, and a field
+// repair frames a wrecked hull tile back up only to 20% (RcsThruster.FIELD_REPAIR), so the bow's
+// starboard tile, holed in the fight, comes first. The live parts of the title bar (the station and
+// its owner, credits, the hold) are on the glass; the bezel carries only the panel's name.
 //
 // All of it is the game's (StationYard, YardWork): repairs are priced by the damage, 400 a hull tile,
 // 150 a wall, 3 000 a system and 400 a conduit for each whole point lost, and the yard restocks the
@@ -45,14 +48,14 @@ s += consoleFace(8, 84, 1264, 708, {
     // ---- repairs, under way ----
     g += head(L, gy + 88, 'REPAIRS') + note(M - 30, gy + 88, 'UNDER WAY · PRICED BY THE DAMAGE', { anchor: 'end' });
     const rep = grid(L, gy + 112, [{ t: 'WHAT', w: 150 }, { t: 'WHERE', w: 140 }, { t: 'HEALTH', w: 56, align: 'right' }, { t: 'CR', w: 60, align: 'right' }, { t: '', w: 110, align: 'right' }], [
-      [{ t: 'NOSE GUN', bold: true }, 'COILGUN MK1', '24%', '2 280', { t: 'REPAIRING 30%', c: C.green, size: 12, bold: true }],
+      [{ t: 'HULL', bold: true }, 'BOW, STBD SIDE', '20%', '320', { t: 'REPAIRING', c: C.green, size: 12, bold: true }],
       [{ t: 'HULL', bold: true }, 'AFT, PORT SIDE', '45%', '220', ''],
       [{ t: 'HULL', bold: true }, 'AFT, PORT SIDE', '70%', '120', ''],
       [{ t: 'CONDUIT', bold: true }, 'BRIDGE', '50%', '200', ''],
       [{ t: 'WALL', bold: true }, 'BRIDGE', '60%', '60', ''],
     ], { rule: 0, rh: 22 });
     g += rep.svg;
-    g += note(L, gy + 252, 'ABOUT 2 880 CR, PAID AS THE WORK IS DONE');
+    g += note(L, gy + 252, 'ABOUT 920 CR, PAID AS THE WORK IS DONE');
     g += note(L, gy + 270, 'THE HULL PATCHES AND MEDICAL STORES ARE RESTOCKED WITH IT, FREE');
 
     // ---- tanks ----
@@ -95,7 +98,7 @@ s += consoleFace(8, 84, 1264, 708, {
     g += row(gy + 424, 'HOLD', '13 OF 40 M³ ONCE THE CRATE IS OUT', '');
 
     // the footer's response line: what the last key did
-    g += text(L, gy + gh - 30, 'REPAIRS ORDERED: ABOUT 2 880 CR, PAID AS THE WORK IS DONE', { size: 12, bold: true, fill: C.white, track: 0.5 });
+    g += text(L, gy + gh - 30, 'REPAIRS ORDERED: ABOUT 920 CR, PAID AS THE WORK IS DONE', { size: 12, bold: true, fill: C.white, track: 0.5 });
     return g;
   },
 }).svg;

@@ -101,8 +101,10 @@ every shut door, pried here since the raider's power is down, as the game's "For
 **S6, the station link's Yard tab, full screen (10.1 and 10.3), at Highport after the raider
 fight.** It hides the band and brings its own annunciator; the live part of the title bar (the
 station, its owner, credits and the hold) is on the glass. REPAIR ALL has been pressed, so it is
-lit and the footer shows the game's answer. The repairs are S3's damage, the nose gun at 24% first,
-each priced as the game prices it (400 a hull tile, 150 a wall, 3 000 a system and 400 a conduit
+lit and the footer shows the game's answer. The repairs are what the crew can't make whole: they
+mend a damaged system in seconds, so S3's nose gun is long mended, and a field repair frames a
+wrecked hull tile back up only to 20%, so the bow's starboard tile comes first. Each is priced as
+the game prices it (400 a hull tile, 150 a wall, 3 000 a system and 400 a conduit
 for each whole point lost), with the hull patches and medical stores restocked free. The tanks
 need 520 kg of propellant at 0.5 a kilogram. The refits are a row per mount, named by position as
 S2 names them: the cursor's mount steps through the 18 weapons on sale, and the raider's chaingun

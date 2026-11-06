@@ -205,7 +205,7 @@ Found in my own screens and fixed this round:
   "1 TO 4 CHANGE TAB", which the tabs' caps already say. The close keys are the foot's now, as caps.
 - **C7's HELD and ON ORDER headings stood 6 units apart.** The columns are spread so each stands at
   least 13 clear of the one before it.
-- **Comments in C3's source named Ada "her".** The crew are named, never gendered.
+- **Comments in C3's source gave Ada a gendered pronoun.** The crew are named, never gendered.
 
 
 What works:
