@@ -303,7 +303,8 @@ final class Schematic extends YardPart {
                 if (t != null && t.isHullBreach() && near(g, c, xx, yy)) breach++;
             }
         }
-        if (fire > 0) n = add(s, n, "fire");
+        // Sized as the game counts it, in tiles burning (v16)
+        if (fire > 0) n = add(s, n, fire == 1 ? "fire, 1 tile" : "fire, " + fire + " tiles");
         if (breach > 0) n = add(s, n, breach == 1 ? "a breach" : breach + " breaches");
         for (int i = 0; i < f.data.powerFrame.faults.size; i++) {
             SystemRow r = f.data.powerFrame.faults.get(i);

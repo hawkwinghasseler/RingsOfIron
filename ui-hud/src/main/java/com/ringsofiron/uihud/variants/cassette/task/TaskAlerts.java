@@ -6,7 +6,6 @@ import com.badlogic.gdx.utils.ObjectFloatMap;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
-import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.uihud.data.AlertRegistry;
 import com.ringsofiron.uihud.data.AlertRegistry.Alert;
 import com.ringsofiron.uihud.data.AlertRegistry.Category;
@@ -75,8 +74,8 @@ final class TaskAlerts {
     static final float MISSILE_SOON = 20f;
     /** Crew outside with a burn due within this many seconds is EVA BURN. */
     static final float BURN_SOON = 30f;
-    /** Burning tiles that make a fire large, as the other Task variants count it; one large tile does too. */
-    static final int LARGE_FIRE = 6;
+    /** Sim seconds a fire may burn with nobody on it before it is a warning (v16). */
+    static final float FIRE_UNANSWERED = 5f;
     /** Oxygen below this share of cabin air hurts someone without a suit ({@code CrewDef.asphyxiationThreshold}). */
     static final float AIR_HURTS = 0.3f;
     /** A suit's air in bad air: SUIT AIR under 4 minutes ({@code AirWatch.WARN_AT}), CAPTAIN AIR under a minute. */
@@ -194,8 +193,9 @@ final class TaskAlerts {
         }
         for (Row r : rows) {
             boolean isNew = age(r.a) < NEW_SECONDS && !r.a.acknowledged;
-            if (r.lamp != null) light(r.lamp, r.level, isNew, r.a.text);
-            if (r.also != null) light(r.also, r.level, isNew, r.a.text);
+            String says = hover(r.a);
+            if (r.lamp != null) light(r.lamp, r.level, isNew, says);
+            if (r.also != null) light(r.also, r.level, isNew, says);
         }
         advisories(d);
         for (int i = 0; i < level.length; i++) why[i] = whyText[i].length() == 0 ? null : whyText[i].toString();
@@ -284,10 +284,12 @@ final class TaskAlerts {
             }
             r.level = Level.WARNING;
         } else if (id.startsWith("fire:")) {
-            boolean large = a.count >= LARGE_FIRE || fireSize(d, a) == Tile.FireSize.LARGE;
+            // A caution for its first 5 s and while someone is on it, outside the captain's room (v16);
+            // where the game can't say who is on it, nobody is known to be
+            boolean unanswered = a.handling <= 0 && d.ctx.simSeconds - a.since >= FIRE_UNANSWERED;
             boolean here = c.present && !c.room.isEmpty() && c.room.equals(a.room);
             r.id = Id.FIRE;
-            r.level = large || here ? Level.WARNING : Level.CAUTION;
+            r.level = unanswered || here ? Level.WARNING : Level.CAUTION;
         } else if (id.startsWith("breach:")) {
             r.id = Id.VENTING;
             r.level = Level.CAUTION;
@@ -421,14 +423,6 @@ final class TaskAlerts {
         if (r.contains("hull") || r.contains("wreck")) return Lamp.HULL;
         if (r.contains("crew")) return Lamp.CREW;
         return Lamp.POWER;
-    }
-
-    /** The fire's size at the alert's tile, NONE when the HUD can't tell. */
-    private static Tile.FireSize fireSize(HudData d, Alert a) {
-        Entity ship = d.ctx.ship;
-        ShipGridComponent g = ship == null || a.tileX < 0 ? null : ship.getComponent(ShipGridComponent.class);
-        Tile t = g == null ? null : g.getTile(a.tileX, a.tileY);
-        return t == null ? Tile.FireSize.NONE : t.fireSize();
     }
 
     /** A crew member's condition in the roster ("Critical wound, being treated"), or null. */
@@ -729,7 +723,7 @@ final class TaskAlerts {
             return "CREW OUTSIDE" + (who.isEmpty() ? "" : "   " + who);
         }
         if (id.equals(OWN + "ARMS")) return "NO GUNS WORKING";
-        if (id.startsWith("fire:")) return "FIRE   " + a.room;
+        if (id.startsWith("fire:")) return "FIRE   " + a.room + ", " + tiles(a.count);
         if (id.startsWith("breach:")) return "HULL BREACH   " + a.room;
         if (id.startsWith("air:")) return a.room + " IN VACUUM";
         if (id.equals("hull")) return "HULL   " + percent(a.text);
@@ -783,7 +777,12 @@ final class TaskAlerts {
         if (id.equals("missile")) {
             l1 = String.valueOf(a.count);
             l2 = Float.isNaN(a.timer) ? "INBOUND" : YardText.span(a.timer);
-        } else if (id.startsWith("fire:") || id.startsWith("smoke:")) {
+        } else if (id.startsWith("fire:")) {
+            // Sized as the game counts it, then who is on it: "3 TILES · 1 CREW" (v16)
+            l1 = a.room;
+            String on = crew(a);
+            l2 = on.isEmpty() ? tiles(a.count) : tiles(a.count) + " · " + on;
+        } else if (id.startsWith("smoke:")) {
             l1 = a.room;
             l2 = who(a);
         } else if (id.startsWith("breach:")) {
@@ -853,6 +852,26 @@ final class TaskAlerts {
     private static String[] fitted(String code, String l1, String l2) {
         int room1 = Math.max(0, 19 - code.length() - 1);
         return new String[]{code, YardText.fit(l1, room1), YardText.fit(l2, 19)};
+    }
+
+    /** What a lamp's hover says of an alert: its own line, or a fire by its tiles and who is on it ("FIRE: HOLD, 3 tiles, 1 crew on it"). */
+    static String hover(Alert a) {
+        if (!a.id.startsWith("fire:")) return a.text;
+        String on = a.handling > 0 ? (a.handling == 1 ? ", 1 crew on it" : ", " + a.handling + " crew on it")
+                : a.handling == 0 ? ", nobody on it" : "";
+        return "FIRE: " + a.room + ", " + tiles(a.count).toLowerCase(Locale.ROOT) + on;
+    }
+
+    /** A fire's size as the game counts it, in tiles burning: "1 TILE", "3 TILES". */
+    static String tiles(int count) {
+        int n = Math.max(1, count);
+        return n == 1 ? "1 TILE" : n + " TILES";
+    }
+
+    /** Who is on a fire, short, after its tiles: "1 CREW", "NOBODY", or "" where the game can't say. */
+    private static String crew(Alert a) {
+        if (a.handling > 0) return a.handling + " CREW";
+        return a.handling == 0 ? "NOBODY" : "";
     }
 
     private static String who(Alert a) {

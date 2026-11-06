@@ -32,8 +32,13 @@ class TaskAlertsTest {
     private final TaskAlerts t = new TaskAlerts();
     private Post post = Post.DECK;
 
+    /** Sim seconds, run on by each frame. */
+    private double now;
+
     private void frame(float dt, Consumer<HudData> raises) {
-        d.alerts.begin(0);
+        now += dt;
+        d.ctx.simSeconds = now;
+        d.alerts.begin(now);
         raises.accept(d);
         d.alerts.end();
         t.update(d, dt, post);
@@ -107,22 +112,41 @@ class TaskAlertsTest {
     }
 
     @Test
-    void aSmallFireIsACautionAndALargeOneOrOneWhereYouStandAWarning() {
-        frame(0.1f, x -> fire(x, 2));
+    void aFireIsACautionUntilNobodyHasTakenItOnFiveSecondsInOrOneWhereYouStand() {
+        frame(0.1f, x -> fire(x, 2).handling(0));
         assertEquals(Level.CAUTION, lamp(Lamp.FIRE));
         assertNull(t.warning);
         assertEquals("fire:HOLD", t.cautions.first().id);
         assertTrue(t.schematicWanted());
+        assertArrayEquals(new String[]{"FIRE", "HOLD", "2 TILES · NOBODY"}, t.lines(t.cautions.first(), d));
+        assertEquals("FIRE: HOLD, 2 tiles, nobody on it", t.why[Lamp.FIRE.ordinal()], "sized in tiles, as the game counts it");
 
-        frame(0.1f, x -> fire(x, TaskAlerts.LARGE_FIRE));
+        // Nobody on it 5 s after it started: a warning
+        for (int i = 0; i < 52; i++) frame(0.1f, x -> fire(x, 3).handling(0));
         assertEquals(Level.WARNING, lamp(Lamp.FIRE));
         assertEquals("fire:HOLD", t.warning.id);
         assertTrue(t.masterWarning);
+        assertEquals("FIRE   HOLD, 3 TILES", TaskAlerts.title(t.warning, d));
+
+        // Someone takes it on: a caution again
+        frame(0.1f, x -> fire(x, 3).handling(1));
+        assertEquals(Level.CAUTION, lamp(Lamp.FIRE));
+        assertArrayEquals(new String[]{"FIRE", "HOLD", "3 TILES · 1 CREW"}, t.lines(t.cautions.first(), d));
+        assertEquals("FIRE: HOLD, 3 tiles, 1 crew on it", t.why[Lamp.FIRE.ordinal()]);
 
         d.captainStatus.present = true;
         d.captainStatus.room = "HOLD";
-        frame(0.1f, x -> fire(x, 1));
+        frame(0.1f, x -> fire(x, 1).handling(1));
         assertEquals("fire:HOLD", t.warning.id, "a fire in the captain's room");
+    }
+
+    @Test
+    void aFireNobodyCanBeSaidToBeOnIsAWarningAfterFiveSeconds() {
+        // Raised at 0.1 s: 4.7 s old after 48 frames, 5.1 s after 52
+        for (int i = 0; i < 48; i++) frame(0.1f, x -> fire(x, 1));
+        assertNull(t.warning, "under 5 s old");
+        for (int i = 0; i < 4; i++) frame(0.1f, x -> fire(x, 1));
+        assertEquals("fire:HOLD", t.warning.id);
     }
 
     @Test
@@ -138,18 +162,20 @@ class TaskAlertsTest {
 
     @Test
     void aCautionThatWorsensComesBack() {
-        for (int i = 0; i < 110; i++) frame(0.1f, x -> fire(x, 2));
-        assertFalse(t.bandUp(), "the small fire has left for its lamp");
-        frame(0.1f, x -> fire(x, TaskAlerts.LARGE_FIRE));
-        assertEquals("fire:HOLD", t.warning.id);
+        for (int i = 0; i < 110; i++) frame(0.1f, x -> fire(x, 2).handling(1));
+        assertFalse(t.bandUp(), "the fire the crew are on has left for its lamp");
+        frame(0.1f, x -> fire(x, 2).handling(0));
+        assertEquals("fire:HOLD", t.warning.id, "nobody on it any more, long past its first 5 s");
         assertTrue(t.warningNew);
     }
 
     @Test
     void theSoonestHarmTakesTheWarningRowAndTheOtherWarningsGoBelow() {
-        frame(0.1f, x -> fire(x, TaskAlerts.LARGE_FIRE));
+        d.captainStatus.present = true;
+        d.captainStatus.room = "HOLD";
+        frame(0.1f, x -> fire(x, 6));
         frame(0.1f, x -> {
-            fire(x, TaskAlerts.LARGE_FIRE);
+            fire(x, 6);
             x.alerts.raise("missile", Level.WARNING, Category.TACTICAL).set("MISSILE", "Missile inbound").timer(14f, TimerKind.HARM);
         });
         assertEquals("missile", t.warning.id);
