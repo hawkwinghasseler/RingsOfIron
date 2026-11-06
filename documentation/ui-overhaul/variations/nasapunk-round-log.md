@@ -12,7 +12,7 @@ at 1280 x 800.
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18 | Converged in round 5; S7 to S9 drawn in round 7 |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17 | Converged in round 5, and again at versions 13 to 17 in round 7 |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 12 | Converged in round 5; round 9 drawn in round 6, rounds 11 and 12 in round 7 |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 13 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 13 in round 7 |
 
 ## Round 1 (3 November 2026)
 
@@ -286,7 +286,7 @@ and the game's numbers.
 | The station's services | T6, the station terminal on Contracts | C7, M3 on its Market tab, a panel over the docked view | S6, the station link's Yard tab |
 | Ship and crew | T7, the ship's book on Crew | C8, M2 on Systems in the corvette's fight | S7, the slate's Crew tab, with the new station order |
 | The log and the controls | T8, the book's Log tab; T9, the controls reference | C9, M5 on its Log tab; C10, M6 on its Keyboard tab | S8, the slate's Log tab |
-| The consoles | | | S9, the gun panel at a point-defense mount |
+| The consoles | T10, CON at the same mount, anchored below it | | S9, the gun panel at a point-defense mount |
 
 **New pieces in the kit.** A mark box for lists where Enter marks or leaves a row: filled cyan when
 marked (a command, so cyan), hollow and dim when not, and absent where the row can't be marked,
@@ -458,10 +458,36 @@ cautions are already in 9.2's order, and no screen has a hostile locked on that 
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Task (OBJ, TRM) | The game's bounty title names the target's faction: `Bounty: Raider 'Vex' of the Void Raiders` (`ContractPostings.bounties` builds the target as label + " of the " + faction), so OBJ's sample row takes two lines in Z3. The game names a rails pirate `Pirate raider 3` (`HostileSpawns`) and an ace by a callsign (`Black Sal`); 'Vex' is the spec's own. T2 and T8 draw the game's title with the spec's name | |
-| Task (TRM) | The terminal wireframe's bounty pays 5,000; the game's pays 7 500 (`BOUNTY_PAY` × (1 + tier) × `Difficulty`, which is 1 for a new ensign against a matched ship). T6 keeps 7 500 | |
-| Task (MAP.5) | The map wireframe's timeline leaves out the first payday, Day 7 00:00 (`ServiceBudget` pays a week after the career starts), which the 3.8-day transfer meets between the Moon's sphere and burn 2. MAP.5 lists paydays, so T4 shows it | |
-| Task (10, pad) | The pad still can't cut a door: B on the keyboard, while the pad's B is the missile's R (`GamepadKeys`), and section 10's gaps don't list it. T9 leaves its dash | |
+| Task (OBJ, TRM) | The game's bounty title names the target's faction: `Bounty: Raider 'Vex' of the Void Raiders` (`ContractPostings.bounties` builds the target as label + " of the " + faction), so OBJ's sample row takes two lines in Z3. The game names a rails pirate `Pirate raider 3` (`HostileSpawns`) and an ace by a callsign (`Black Sal`); 'Vex' is the spec's own. T2 and T8 draw the game's title with the spec's name | Round 13: the pirate corvette near Highport is `Raider`, of the Void Raiders, in the bounty, TGT, HLM and BRD; the alert samples use `Pirate raider 3`; OBJ breaks the bounty before `of the Void Raiders` |
+| Task (TRM) | The terminal wireframe's bounty pays 5,000; the game's pays 7 500 (`BOUNTY_PAY` × (1 + tier) × `Difficulty`, which is 1 for a new ensign against a matched ship). T6 keeps 7 500 | Round 13: 7,500, +6, 3 days |
+| Task (MAP.5) | The map wireframe's timeline leaves out the first payday, Day 7 00:00 (`ServiceBudget` pays a week after the career starts), which the 3.8-day transfer meets between the Moon's sphere and burn 2. MAP.5 lists paydays, so T4 shows it | Round 13: the payday at 3.4 days, between the Moon's sphere and burn 2 |
+| Task (10, pad) | The pad still can't cut a door: B on the keyboard, while the pad's B is the missile's R (`GamepadKeys`), and section 10's gaps don't list it. T9 leaves its dash | Round 13: it could already: Back with R2 sends B (`GamepadKeys`), which cuts a door, calls the tow and selects the next burn; section 10 names it |
+
+Round 13 took all four, and T2 and T5 to T9 are redrawn to it. The Raider is the Raider in the
+world, on the target card (`CORVETTE, VOID RAIDERS` under the name, which TGT never shortens), on
+the boarding panel, in the prisoners' heading and through the log, and the terminal's bounty row is
+the game's title. The log loses its INTERCEPT: the Raider waits near Highport, and the rails'
+traffic doesn't fly it, so it never moves to intercept (the stations spec says the same of it in
+10.4), which takes the alert count to 8. T9's door cut is Back with RT, and B's other work is
+there too: the tow, stranded, joins Abandon ship under ANY POST, and the console rows move under
+the deck's, where they are used, so the third column fits again. T4 already had the payday.
+
+**T10, the console panel at a gun.** The consoles row was the stations variation's alone (S9), so
+the task variation now draws CON at the same mount, the starboard autocannon, docked at Highport
+as in T7. It is anchored below the mount, where the hull meets space, on a leader, so the middle of
+the screen stays the world's. It is the INT prompt's plate grown: the name engraved beside the
+kapton strip, health, power and state on a glass, and the keys as caps, Enter under a toggle that
+shows where the switch stands and V to take the gun. While it is open the prompt stands down, since
+the panel carries its keys (a deviation in the README). Drawing it found two faults in screens
+already drawn. T3's weapons console prompt offered E OPEN, but the spec has E and V both sit at
+the helm and the weapons console, so it now reads V SIT, as the spec's `Helm   V sit` does. And T7
+had Ada idle in the hold while Crew 3, a prisoner, lay seriously wounded and untreated: a ship's
+crew treat the prisoners they hold (`CrewHealthSystem`), so Ada is treating a patient, the game's
+words for it, and Crew 3's wound is being treated (`CrewMedical.condition`).
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Task (CON) | A point-defense gun's panel could say what taking it costs: while the captain sits at a mount, that mount is in hand and hunts no missile (`PlayerGunnery.inHand`), so its side has only the other autocannon, which can't see across the hull. The stations spec's gun panel says so (10.2); CON lists only the switch and `V  take the gun` | |
 
 **The slate's Log and the gun panel.** S8 draws the slate on its Log tab, docked after the fight,
 the latch and the way home, and S9 the gun panel at the forward starboard autocannon, docked. The

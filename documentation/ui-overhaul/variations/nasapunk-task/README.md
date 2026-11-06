@@ -1,6 +1,6 @@
 # Nasa-punk × Task-driven
 
-The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 12 now, on
+The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 13 now, on
 branch `claude/project-thread-nfiuf0`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
@@ -46,7 +46,8 @@ only, since nothing is targeted, and Highport carries its name.
 
 ![Gunnery in combat](t2-gunnery-combat.png)
 
-**T2, the weapons console in a fight with the raider Vex.** Vex is 3.2 km off, closing at 41 m/s
+**T2, the weapons console in a fight with the Raider.** The pirate corvette the game places near
+Highport, by its own name (round 13), is 3.2 km off, closing at 41 m/s
 to pass 0.6 km off in 1:15, and Bea holds the heading with no order: the launch dropped any order
 but hold position and match velocity. Warp is held by the fire aboard. Two harpoons
 inbound a second apart, the first 1.1 km out and 0:03 from impact with its burn counted, the second
@@ -54,11 +55,13 @@ inbound a second apart, the first 1.1 km out and 0:03 from impact with its burn 
 fire in the hold with Ada on it, and Cole seriously wounded and down with nobody free to treat,
 since anyone aboard can and all are busy (two cautions, in their full texts, since both fit the
 row). The objective is the bounty by the title the game gives it, which names the target's
-faction, so it takes a second line, broken before the faction. WPN as the
+faction, so it takes a second line, broken before the faction; the target card gives the name
+whole, the class and the faction. WPN as the
 starting corvette really carries its guns: the coilgun and the laser in hand (the laser out of
 range at its 3 km), the two autocannons on point defense, the harpoon launcher at 3 of 4, then the
-decoy. One lead reticle, the coilgun's, ringing Vex: its round takes 1.05 s, and Vex moves 44 m
-in that time. The point-defense ring at 4 km. The scope's automatic range is 5 km, which holds Vex
+decoy. One lead reticle, the coilgun's, ringing the Raider: its round takes 1.05 s, and the
+Raider moves 44 m in that time. The point-defense ring at 4 km. The scope's automatic range is 5 km,
+which holds the Raider
 and both harpoons; a freighter 7 km off is a tick on the rim. SCH shows, because FIRE and CREW
 are lit.
 
@@ -96,7 +99,7 @@ degrees in the 3.8 days the transfer takes.
 
 ![Boarding, taken](t5-boarding.png)
 
-**T5, BRD in its third phase: taken (section 7).** The party took the raider Vex and went home,
+**T5, BRD in its third phase: taken (section 7).** The party took the Raider and went home,
 and the salvage is under way. The panel runs down the right side so the deck stays in sight, and
 the raider lies the way the game docks two ships, half a turn round over the corvette's port side.
 On its deck the workers carry their work tags (Ada stripping the laser, Cole carrying the ore
@@ -137,7 +140,7 @@ ship, its berths, the week's wages and the medical stores in the header. The cre
 service's, so they draw no wage. Each row has the role, the condition as the game words it, the
 job now and where, in the game's words, and morale. An engineer never mans a console, so Ada is
 treating a patient, Crew 3, since a ship's crew care for the prisoners they hold, and the rest man
-them, a crewman the helm and a marine the weapons. Vex's three surviving crew are aboard as
+them, a crewman the helm and a marine the weapons. The Raider's three surviving crew are aboard as
 prisoners under the names the game gives a raider's crew, taking berths (7 of the corvette's 8,
 the captain's among them). Highport is the sponsor's, so each can be handed over for 400 CR and +1
 standing, and Crew 4, the one outlaw in three, offers to join. The orders for everyone sit under
@@ -155,21 +158,22 @@ every alert, newest first under a divider for each day, each stamped with its ga
 filtered on the soft keys under the glass, ALERTS, IMPORTANT and INFO, each lit while it shows. It
 keeps the last 500 entries and is saved with the game, and the header counts what it holds by
 filter. The notices are the game's own words, with ships named in full: the bounty taken at 09:12
-and done the moment Vex was beaten, by the game's title, which names the target's faction, paid at
+and done the moment the Raider was beaten, by the game's title, which names the target's faction, paid at
 once (7 500 CR and +6 with the Patrol); the disablement, the collar, the forced airlock, the
 taking, the prisoners brought aboard, the laser stripped and stowed, and Highport's clearance for
 port 2. An alert is logged once, as it was raised, in its full text: its code, what and where,
 then the action it named, dim, since that was the advice of the moment, with the band's level as
 its mark, ◆ a warning and ▲ a caution. When it cleared, its entry gained the time at the right,
-rather than a second entry. The game's warning notices are their alerts: the intercept is
-INTERCEPT, and Cole's serious wound is WOUNDED, which cleared once Ada, the fire out, began to
-treat Cole. An important notice has a white dot, and news has no mark.
+rather than a second entry. The game's warning notices are their alerts: Cole's serious wound is
+WOUNDED, which cleared once Ada, the fire out, began to treat Cole. There is no INTERCEPT, since
+the Raider waits near Highport and the rails' traffic doesn't fly it. An important notice has a white dot, and news has no mark.
 
 ![Controls](t9-controls.png)
 
 **T9, the controls reference (F1), at the helm.** The book's frame again, with every action on one
-page in three columns of action, key and pad button: the posts first (deck, helm, gunnery), then
-the screens and panels (map, terminal, book, boarding, console), then what works at any post, where
+page in three columns of action, key and pad button: the posts first (deck, with its console
+panels, helm, gunnery), then the screens and panels (map, terminal, book, boarding), then what
+works at any post, where
 zoom and the lights sit, since the wheel and O work everywhere. Every key is the game's default
 with the spec's destinations: I opens the book on Crew, L on Log, J the terminal's Contracts docked
 and the book's undocked, K the boarding panel, and Esc the top layer and then the pause menu; the
@@ -180,7 +184,8 @@ zooms; R3 on deck works the lights; L3 puts the focus on the HUD, where the d-pa
 items and A does what a click would, which reaches the next port, the guns the trigger fires, the
 helm orders and a destination; the map's keys are its buttons, the bumpers stepping the
 destination and the triggers warp; the book's bumpers step its tabs; and the pause menu holds
-Controls and Load. One action is left with a dash: no pad button cuts a door.
+Controls and Load. B, which cuts a door on deck, calls the tow when stranded and selects the next
+burn on the map, is Back with RT (round 13), so every action has a pad button.
 
 ![Console panel at a gun](t10-console-gun.png)
 

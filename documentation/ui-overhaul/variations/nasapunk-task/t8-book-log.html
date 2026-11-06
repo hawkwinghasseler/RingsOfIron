@@ -10,7 +10,7 @@
 <script src="task.js"></script>
 <script>
 // BOOK, the ship's book (task spec, section 7), on its LOG tab: docked at Highport on day 3 after the
-// raider Vex was beaten and taken (T2, T5), as in T7, with L pressed, which opens the book on this
+// Raider was beaten and taken (T2, T5), as in T7, with L pressed, which opens the book on this
 // tab. The frame is T7's: CHR and ALR above, the header row, the tabs on their keys, and the list,
 // here the whole width, since an entry needs no page of its own.
 //
@@ -20,9 +20,9 @@
 // with the game (the game's NoticeLog keeps 50 and saves none); the header counts what it holds by
 // filter, four days at about 20 a day. The notices are the game's own words, with ships named in
 // full (round 9): the bounty taken and done, by the title the game gives it, which names the
-// target's faction (ContractPostings: "Raider 'Vex' of the Void Raiders"), done the moment its ship
+// target's faction (ContractPostings: "Raider of the Void Raiders"), done the moment its ship
 // is beaten and paid at once, 7 500 CR and +6 with the Patrol; the disablement (GameBootstrap); the
-// collar (PlayerDocking); the forced airlock and the taking (Boarding: Vex's four less Crew 2, who
+// collar (PlayerDocking); the forced airlock and the taking (Boarding: the Raider's four less Crew 2, who
 // died of the wound, are held); the prisoners brought aboard (Prisoners); the laser stripped and
 // stowed (Salvage, at a twentieth of its price); and Highport's clearance, port 2 for the
 // corvette's S port. Thousands take the style's thin space, and a unit after a number is the word
@@ -32,12 +32,14 @@
 // what and where, and the action it named, dim, since it was the advice of that moment; it keeps
 // the band's level as its mark, ◆ a warning, ▲ a caution. When it clears, its entry gains the time
 // at the right, in the log's own stamps, rather than a second entry. The game's WARNING notices
-// become their alerts (9.2's table), so the intercept is INTERCEPT, and Cole's serious wound ("Cole
-// is seriously wounded and down until treated") is WOUNDED, with nobody free while Ada fought the
+// become their alerts (9.2's table), so Cole's serious wound ("Cole is seriously wounded and down
+// until treated") is WOUNDED, with nobody free while Ada fought the
 // fire; it cleared once Ada began to treat Cole, whose wound treatment brought down to the light
 // one T7 shows (CrewHealthSystem). The missile warning is raised at launch, already under 20 s
 // from 3.2 km, and cleared as point defense downs the second harpoon. An IMPORTANT notice has a
-// white dot; INFO has no mark. The rooms take the spec's rule (Hold).
+// white dot; INFO has no mark. The rooms take the spec's rule (Hold). There is no INTERCEPT: the
+// Raider waits near Highport and the rails' traffic doesn't fly it (HostileTraffic), so it never moves
+// to intercept (round 13 gives that alert a lane pirate's name, Pirate raider 3).
 //
 // The screens share the wireframes' clock (DAY 3 · 14:22:05); the log gives the story's own times
 // before it: the bounty taken at Highport at 09:12, so that at T2's fight, at 12:12, 2D 21H were
@@ -53,25 +55,24 @@ s += consoleBody(8, 96, 1264, 698, { plate: 'SHIP\'S BOOK', sub: 'PATROL CORVETT
 const DAY3 = [
   ['14:20:31', '', 'Docked at Highport'],
   ['14:16:50', '', 'Highport gives clearance: port 2 is armed for you'],
-  ['13:02:15', '', 'Undocked from Raider \'Vex\''],
+  ['13:02:15', '', 'Undocked from Raider'],
   ['12:58:40', '', 'The Laser Mk1 is in the hold (sells for 2 250 CR)'],
-  ['12:58:22', '', 'The Laser Mk1 is off Raider \'Vex\'; it\'s being carried home'],
+  ['12:58:22', '', 'The Laser Mk1 is off Raider; it\'s being carried home'],
   ['12:44:10', '', '3 prisoners brought aboard'],
-  ['12:40:05', '', 'Raider \'Vex\' is taken: 3 held'],
-  ['12:31:50', '', 'The airlock door of Raider \'Vex\' is forced open'],
-  ['12:30:12', '', 'Docked at Raider \'Vex\''],
-  ['12:29:40', '', 'Your collar has hold of Raider \'Vex\'; drawing in'],
-  ['12:16:02', 'i', 'Contract done: Raider \'Vex\' of the Void Raiders is beaten. Paid 7 500 CR, standing +6 with Terran Patrol Authority'],
-  ['12:16:02', '', 'Raider \'Vex\' is disabled: reactor down'],
+  ['12:40:05', '', 'Raider is taken: 3 held'],
+  ['12:31:50', '', 'The airlock door of Raider is forced open'],
+  ['12:30:12', '', 'Docked at Raider'],
+  ['12:29:40', '', 'Your collar has hold of Raider; drawing in'],
+  ['12:16:02', 'i', 'Contract done: Raider of the Void Raiders is beaten. Paid 7 500 CR, standing +6 with Terran Patrol Authority'],
+  ['12:16:02', '', 'Raider is disabled: reactor down'],
   ['12:12:02', 'w', ['MISSILE', '2 inbound  impact 13 s', 'F decoy'], '12:12:14'],
   ['12:11:20', 'c', ['FIRE', 'Hold', 'Ada on it'], '12:14:31'],
   ['12:11:20', 'c', ['WOUNDED', 'Cole down', 'nobody free to treat'], '12:14:50'],
-  ['11:58:30', 'c', ['INTERCEPT', 'Raider \'Vex\' coming for you', 'M to see its path'], '12:07:40'],
   ['09:20:05', '', 'Undocked from Highport'],
-  ['09:12:20', '', 'Contract taken: Bounty: Raider \'Vex\' of the Void Raiders'],
+  ['09:12:20', '', 'Contract taken: Bounty: Raider of the Void Raiders'],
 ];
 // what the log holds: four days, day 3's above and days 0 to 2 below them, by filter
-const BY = { ALERTS: 9, IMPORTANT: 4, INFO: 61 }, HELD = BY.ALERTS + BY.IMPORTANT + BY.INFO;
+const BY = { ALERTS: 8, IMPORTANT: 4, INFO: 61 }, HELD = BY.ALERTS + BY.IMPORTANT + BY.INFO;
 
 // ---- BOOK.H, where you are, and what the log holds ----
 s += du(16, 118, 1248, 62, {

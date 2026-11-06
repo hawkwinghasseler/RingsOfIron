@@ -33,8 +33,9 @@
 // worked as a screen, its keys its buttons, the bumpers stepping the destination and the triggers
 // warp; in the book the bumpers step the tabs; and the pause menu holds Controls and Load. The
 // wheel zooms and O switches the lighting at every post (GameInput), so both are under ANY POST.
-// One gap is left, and it is drawn as one: no pad button cuts a door (B on the keyboard; the pad's
-// B is the missile's R). An action with no pad button has a dash.
+// Every action has a pad button now: B, which cuts a door on deck, calls the tow when stranded and
+// selects the next burn on the map, is Back with RT on the pad (GamepadKeys' Back layer; task spec
+// round 13), since the pad's own B is the missile's R.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 7 });
 s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
 s += alertBand({});
@@ -62,7 +63,11 @@ const COL1 = [
     ['USE: CONSOLE, LOCKER', ['E'], 'A'],
     ['SIT AT THE CONSOLE', ['V'], 'Y'],
     ['FORCE A SHUT DOOR', ['F'], 'X'],
-    ['CUT A SHUT DOOR', ['B'], null],
+    ['CUT A SHUT DOOR', ['B'], 'BACK+RT'],
+  ]],
+  ['CONSOLE', 'E AT A SYSTEM\'S CONSOLE', [
+    ['THROW ITS SWITCH', ['ENTER'], 'FOCUS, A'],
+    ['AT A GUN: TAKE IT', ['V'], 'Y'],
   ]],
   ['HELM', 'V AT THE HELM', [
     ['THRUST', ['W', 'S'], 'L STICK ↑ ↓'],
@@ -123,10 +128,6 @@ const COL3 = [
   ['BOARDING', 'LATCHED, OR IN EVA REACH', [
     ['OPEN THE PANEL', ['K'], 'BACK+B'],
   ]],
-  ['CONSOLE', 'E AT A SYSTEM\'S CONSOLE', [
-    ['THROW ITS SWITCH', ['ENTER'], 'FOCUS, A'],
-    ['AT A GUN: TAKE IT', ['V'], 'Y'],
-  ]],
   ['ANY POST', 'WHEREVER YOU ARE', [
     ['FOCUS THE HUD', ['(THE POINTER)'], 'L3, D-PAD'],
     ['HELM ORDERS', ['1–6', '0'], 'L3, HLM, A'],
@@ -137,6 +138,7 @@ const COL3 = [
     ['CONTROLS', ['F1'], 'START, CONTROLS'],
     ['QUICK SAVE, LOAD', ['F5', 'F9'], 'BACK+L3; START'],
     ['ABANDON SHIP, TWICE', ['P'], 'BACK+START'],
+    ['CALL THE TOW, TWICE', ['B'], 'BACK+RT'],
     ['CLOSE, THEN PAUSE', ['ESC'], 'START'],
   ]],
 ];
@@ -176,11 +178,10 @@ s += du(16, 186, 1248, 600, {
     column(0, COL1);
     column(1, COL2);
     column(2, COL3);
-    // the foot: the pad in a screen, and what a dash means
+    // the foot: the pad in a screen
     const fy = gy + gh - 12;
     g += line(gx + 6, fy - 18, gx + gw - 6, fy - 18, C.graticule, 1);
     g += text(gx + 10, fy, 'IN A SCREEN OR PANEL, AND IN HUD FOCUS, THE D-PAD MOVES, A PRESSES AND B GOES BACK; LB RB CHANGE TAB', { size: S_LABEL, bold: true, fill: C.dim, track: 0.4 });
-    g += text(gx + gw - 10, fy, '—  NO PAD BUTTON', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.4 });
     return g;
   },
 }).svg;

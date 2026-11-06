@@ -8,7 +8,8 @@
 <script src="../../nasapunk/mockups/kit.js"></script>
 <script src="task.js"></script>
 <script>
-// Seated at the weapons console in a fight with the raider 'Vex', 3.2 km off and passing. Bea, the
+// Seated at the weapons console in a fight with the Raider, the pirate corvette near Highport
+// (GameScenario names it so; task spec round 13), 3.2 km off and passing. Bea, the
 // helmsman, holds the heading. Two harpoons inbound, a second apart, the first in 3 s (the one warning). A
 // harpoon closes at 30 m/s² (MissileDef.closingBurn; weapons.toml leaves the harpoon's at that), so
 // from 3.2 km it lands about 13 s after launch; 3 s out it is 1.1 km away, and the second, a second
@@ -32,9 +33,9 @@ s += text(SX - 214, SY + 196, 'PD 4 KM', { size: 12, bold: true, fill: C.cyan, t
 s += hull(SX, SY, HDG, 0.9);
 // the raider, locked: name in the world, everything else on the target card
 const TX = 826, TY = 262;
-s += raiderHull(TX, TY, 240, 0.42) + W.contact('hostile', TX, TY, { locked: true, label: ["RAIDER 'VEX'"], lx: 26, ly: 4 });
-// one lead reticle: the coilgun is the only gun in hand that needs lead (the laser is a beam). Vex
-// closes at 41 m/s and passes 0.6 km off (7.6 m/s across), and the round takes 1.05 s, so the lead
+s += raiderHull(TX, TY, 240, 0.42) + W.contact('hostile', TX, TY, { locked: true, label: ['RAIDER'], lx: 26, ly: 4 });
+// one lead reticle: the coilgun is the only gun in hand that needs lead (the laser is a beam). The
+// Raider closes at 41 m/s and passes 0.6 km off (7.6 m/s across), and the round takes 1.05 s, so the lead
 // is 44 m, 3 units at this zoom (70.6 a km): the reticle rings the target inside its brackets
 const RX = TX - 3.04 * 0.824 + 0.56 * 0.567, RY = TY + 3.04 * 0.567 + 0.56 * 0.824;
 s += W.hitLane(SX + 18, SY - 18, RX, RY) + W.reticle(RX, RY);
@@ -59,19 +60,20 @@ s += alertBand({
 });
 
 // OBJ: the bounty, which is the navigation target here, by the title the game gives it
-// (Contract.title), whose target names its faction (ContractPostings.bounties: "Raider 'Vex' of the
-// Void Raiders"). Too long for one line beside its time, it breaks before the faction; it has no
-// next step, so no line under it
-s += objectives([{ t: "BOUNTY: RAIDER 'VEX' OF THE VOID RAIDERS", left: '2D 21H', nav: true }]).svg;
+// (Contract.title), whose target names its faction (ContractPostings.bounties: "Raider of the Void
+// Raiders"). Too long for one line beside its time, it breaks before the faction, as round 13 has
+// it; it has no next step, so no line under it
+s += objectives([{ t: 'BOUNTY: RAIDER OF THE VOID RAIDERS', left: '2D 21H', nav: true }]).svg;
 
-// TGT: what the world can't show about the raider
+// TGT: what the world can't show about the Raider, by its whole name (TGT never shortens one), its
+// class and its faction (round 13)
 s += du(1024, 328, 240, 200, {
   id: 'tgt', b: 8, title: 'TARGET',
   content: (gx, gy, gw) => {
     let c = '';
     const L = gx + 8, R = gx + gw - 8;
-    c += sym.diamond(L + 6, gy + 14, 6, C.red, 1.5, C.red) + text(L + 18, gy + 19, "RAIDER 'VEX'", { size: 14, bold: true, fill: C.red, track: 0.4 });
-    c += text(L + 18, gy + 37, 'CORVETTE  ·  PIRATE', { size: 12, bold: true, fill: C.dim, track: 0.3 });
+    c += sym.diamond(L + 6, gy + 14, 6, C.red, 1.5, C.red) + text(L + 18, gy + 19, 'RAIDER', { size: 14, bold: true, fill: C.red, track: 0.4 });
+    c += text(L + 18, gy + 37, 'CORVETTE, VOID RAIDERS', { size: 12, bold: true, fill: C.dim, track: 0.3 });
     c += I.box(L, gy + 45, tw('FIRING ON YOU', 12, true, 0.5) + 14, 18, 'FIRING ON YOU', 'warning', { size: 12, fill: true });
     c += text(R, gy + 59, 'FIGHTING', { size: 12, bold: true, fill: C.white, anchor: 'end', track: 0.3 });
     // hull as a sensor estimate in four bands: four cells, as many lit as the band leaves, and the

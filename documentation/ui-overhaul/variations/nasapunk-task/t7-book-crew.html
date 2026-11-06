@@ -10,7 +10,7 @@
 <script src="task.js"></script>
 <script>
 // BOOK, the ship's book (task spec, section 7), on its CREW tab: docked at Highport on day 3 with the
-// raider Vex taken (T5) and its three crew brought aboard as prisoners. I opened it here. The frame is
+// Raider taken (T5) and its three crew brought aboard as prisoners. I opened it here. The frame is
 // the terminal's (T6): CHR and ALR above, the header row, the tabs on their keys, the list on the left
 // and the selected person in full on the right.
 //
@@ -81,7 +81,7 @@ const list = du(16, 228, 760, 558, {
     ], { rule: 0, rh: 24 });
     g += gr.svg;
     // the prisoners: theirs, and what can be done with them here
-    g += divider(gx, gy + 170, gw, 'PRISONERS  ·  THE RAIDER VEX\'S CREW');
+    g += divider(gx, gy + 170, gw, 'PRISONERS  ·  THE RAIDER\'S CREW');
     const pr = grid(L, gy + 196, [{ t: 'NAME', w: 92 }, { t: 'FACTION, ROLE', w: 180 }, { t: 'CONDITION', w: 236 }, { t: 'HERE', w: 210, align: 'right' }], [
       [{ t: 'CREW 1', bold: true }, 'VOID RAIDERS, CREWMAN', 'OK 100%', 'HAND OVER'],
       [{ t: 'CREW 3', bold: true }, 'VOID RAIDERS, ENGINEER', 'SERIOUS WOUND, BEING TREATED', 'HAND OVER'],

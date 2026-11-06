@@ -9,8 +9,8 @@
 <script src="../../nasapunk/mockups/screens.js"></script>
 <script src="task.js"></script>
 <script>
-// BRD, the boarding panel (task spec, section 7), in its third phase: taken. Latched to the raider
-// 'Vex', port to port, the party has taken it and gone home, and the salvage is under way: Ada
+// BRD, the boarding panel (task spec, section 7), in its third phase: taken. Latched to the Raider
+// (the game's name for it), port to port, the party has taken it and gone home, and the salvage is under way: Ada
 // strips the laser, Cole carries the ore across. The panel runs down the right side so the deck
 // stays in sight, and on the latched ship's deck the workers carry their work tags (OVL's deck set)
 // and the marked parts their cyan outlines.
@@ -58,7 +58,7 @@ s += workTag(RX(4.0), RY(1.5), 560, 192, '3 HELD', 'PRISONERS');
 // ---- the fixed zones ----
 s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
 s += annunciatorPanel({});
-// OBJ is hidden: the bounty was paid the moment Vex was beaten (ContractBoard), and nothing else
+// OBJ is hidden: the bounty was paid the moment the Raider was beaten (ContractBoard), and nothing else
 // is held. TURN IN under PRIZE is the yard's (Shipyard), for the ship itself.
 
 // ---- BRD, down the right side ----
@@ -71,7 +71,7 @@ s += du(896, 72, 376, 688, {
     const val = (x, y, t, o = {}) => text(x, y, t, { size: o.size || S_CELL, bold: o.bold !== false, fill: o.c || C.white, anchor: o.anchor || 'start', track: 0.4 });
     g += cduHead(gx, gy, gw, 'BOARDING');
     // the ship and how it stands
-    g += lab(gy + 48, 'SHIP') + val(V, gy + 48, 'RAIDER \'VEX\'', { size: S_DATA });
+    g += lab(gy + 48, 'SHIP') + val(V, gy + 48, 'RAIDER', { size: S_DATA });
     g += lab(gy + 68, 'STATE') + val(V, gy + 68, 'TAKEN', { c: C.green }) + val(V + tw('TAKEN', S_CELL, true, 0.4) + 6, gy + 68, '· 3 HELD');
     g += lab(gy + 86, 'LINK') + val(V, gy + 86, 'LATCHED, PORT TO PORT');
     g += lab(gy + 104, 'COST') + val(V, gy + 104, 'NONE: OUTLAWS');
