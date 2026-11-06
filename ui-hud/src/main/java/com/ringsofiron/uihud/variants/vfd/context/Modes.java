@@ -26,7 +26,8 @@ import java.util.Locale;
  * <p>One mode shows at a time, and opening another replaces it. A mode tells the game which window it
  * stands for by the tab showing ({@link #showing}), so the windows' keys, Esc and the game's own
  * checks work as they do for the classic windows: T, Y and J turn the terminal to their tab and close
- * it from there, I opens the ship at its last tab, L the record's Log. While a mode with tabs shows,
+ * it from there, I opens the ship at its last tab, L the record's Log, and J away from a station's
+ * board the record's Contracts. While a mode with tabs shows,
  * the digits are its tabs; the arrows, Enter and the page keys are its lists and soft keys.
  *
  * <p>It draws in its own actor in the host's screen layer, over the classic windows and the map, and
@@ -49,7 +50,8 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
     final StationMode station = new StationMode();
     final ShipMode ship = new ShipMode();
     final BoardingMode boarding = new BoardingMode();
-    private final Mode[] all = {station, ship, boarding};
+    final RecordMode record = new RecordMode();
+    private final Mode[] all = {station, ship, boarding, record};
     Mode current;
     private float sinceRefresh;
     float time;
@@ -114,6 +116,7 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
             case MISSIONS:
             case CREW:
             case BOARDING:
+            case LOG:
                 return true;
             default:
                 return false;
@@ -125,8 +128,10 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
         switch (w) {
             case TRADE:
             case SHIPYARD:
-            case MISSIONS:
                 return station;
+            case MISSIONS:
+                // The station's board in its terminal; with no board here, the contracts held, in the record
+                return boards.missions.stationName.isEmpty() ? record : station;
             case YARD:
                 // A station's yard in its terminal; away from one, the crew's field refit in the Loadout
                 return boards.yard.field ? ship : station;
@@ -134,6 +139,8 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
                 return ship;
             case BOARDING:
                 return boarding;
+            case LOG:
+                return record;
             default:
                 return null;
         }
@@ -144,7 +151,11 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
         if (d == null) return false;
         boards.refresh(d);
         sinceRefresh = 0f;
-        Mode m = modeFor(w);
+        return open(modeFor(w), w, d);
+    }
+
+    /** Opens mode {@code m} at its tab for {@code w}, the boards just read. */
+    private boolean open(Mode m, ClassicWindow w, HudData d) {
         if (m == null || !m.available(boards, d)) return false;
         if (!m.open(w, boards, d)) return false;
         if (current != m) {
@@ -175,8 +186,19 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
         return current != null;
     }
 
-    /** A key the HUD didn't use, while a mode shows: true when the mode used it. */
+    /**
+     * A key the HUD didn't use: true when a mode used it. With no board here and no contract held the
+     * game has no mission window to open, so J opens the captain's record at its Contracts, from
+     * anywhere; the record itself closes them on J.
+     */
     boolean keyDown(int keycode) {
+        if (keycode == Keys.J && current != record && !available(ClassicWindow.MISSIONS)) {
+            HudData d = data();
+            if (d == null) return false;
+            boards.refresh(d);
+            sinceRefresh = 0f;
+            return open(record, ClassicWindow.MISSIONS, d);
+        }
         if (current == null) return false;
         return current.key(keycode);
     }

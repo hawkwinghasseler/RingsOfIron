@@ -8,6 +8,7 @@ import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.components.InteractableConsoleComponent;
 import com.ringsofiron.uihud.providers.BoardingProvider;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider;
+import com.ringsofiron.uihud.providers.CareerProvider;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
 import com.ringsofiron.uihud.providers.ContactProvider;
 import com.ringsofiron.uihud.providers.ContactProvider.ContactFrame;
@@ -106,6 +107,8 @@ public final class HudData {
     public BoardingProvider boarding;
     /** The crew roster ({@code ClassicWindow.CREW}). */
     public CrewProvider crew;
+    /** The captain's career, for a captain's record; read by the screen that shows it, not each frame. */
+    public CareerProvider career;
     /** The orbit, the plan's paths and the bodies, as the map draws them ({@code ClassicWindow.MAP}). */
     public OrbitPathProvider orbitPath;
     /** What the map's panel does: the burns, transfers, warp, the helm's and the autopilot's orders. */

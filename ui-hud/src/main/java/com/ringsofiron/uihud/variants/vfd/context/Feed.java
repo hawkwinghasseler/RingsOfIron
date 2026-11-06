@@ -115,11 +115,16 @@ final class Feed {
             for (String s : SOURCES) if (s.equalsIgnoreCase(head)) return s.toUpperCase(Locale.ROOT);
         }
         String s = text.toLowerCase(Locale.ROOT);
+        // A contract names what it is about ("Contract done: Bounty: Raider"): it is the board's news, not a fight's
+        if (s.startsWith("contract")) return "STATION";
+        if (s.startsWith("budget") || s.startsWith("promoted")) return "SPONSOR";
         if (s.startsWith("helm") || has(s, "autopilot", "helmsman", "burn", "course", "arriv", "orbit", "navigation", "nav target")) return "HELM";
         if (has(s, "shield")) return "SHIELDS";
         if (has(s, "missile", "target", "decoy", "hostile", "raider", "pirate", "point defense", "hit", "struck", "gun",
                 "harpoon", "salvo", "disabled", "destroyed", "surrender")) return "GUNNERY";
-        if (has(s, "board", "prisoner", "salvag", "cast off", "latch") && !has(s, "mission board")) return "BOARDING";
+        // The job board is the station's; boarding a ship, the prisoners and the salvage are a boarding's
+        if (has(s, "the board", "its board", "mission board", "job board")) return "STATION";
+        if (has(s, "board", "prisoner", "salvag", "cast off", "latch")) return "BOARDING";
         if (has(s, "wound", "bleed", "casualt", "medic", "treat", "infirmary")) return "MEDICAL";
         if (has(s, "fire", "breach", "reactor", "power", "short", "repair", "hull", "vent", "smoke", "pressure", "oxygen",
                 "patch", "conduit", "tank")) return "ENGINEERING";

@@ -3,8 +3,8 @@
 # mockups (documentation/ui-overhaul/vfd): docked at Highport, the station's terminal on each of its
 # tabs (the market with a trade, the yard and a hardpoint's weapons on offer, the missions with an
 # offer taken, the hire); under Context, the ship on each of its tabs, with trouble aboard, the field
-# refit away from the station, and boarding the raider. Keyboard only. Needs Xvfb, xdotool and
-# ImageMagick's import.
+# refit away from the station, the captain's record on each of its tabs, docked and away, and boarding
+# the raider. Keyboard only. Needs Xvfb, xdotool and ImageMagick's import.
 #   tools/playtest/windows-vfd.sh <context|stations|task> [out-dir] [WxH] [ui-scale]
 #   (default build/playtest-windows-vfd-<spec>, 1920x1200, the automatic scale)
 # Run from the repository root.
@@ -61,10 +61,26 @@ if [ "$SPEC" = context ]; then
   key 1; pause 1; shot w09-trouble
   pause 6; shot w09-trouble-later
   key i; pause 0.6
+  # The captain's record (M5), on the slate: L opens it at the Log, the trouble in it; ↑ reaches the
+  # filters and → steps the source; the digits are its tabs: the Career, the Standing, the Contracts
+  # with the one taken; L turns to the Log from there, and closes it from the Log
+  key l; pause 1.2; shot w12-log
+  key Up; pause 0.3; key Up; pause 0.3; key Right; key Right; key Right; key Right; pause 0.6; shot w12-log-filter
+  key Left; key Left; key Left; key Left; pause 0.3; key Down; key Down; pause 0.3
+  key 1; pause 1; shot w13-career
+  key 2; pause 1; shot w14-standing
+  key 3; pause 1; shot w15-contracts
+  key l; pause 0.8; shot w15-to-log
+  key l; pause 0.8; shot w15-closed
   # Away from the station: Y is the crew's field refit, in the Loadout, and closes it from there
   key u; pause 5; cmd away 600; pause 3
   key y; pause 1.2; shot w10-field-refit
   key y; pause 0.8; shot w10-closed
+  # Away from the station there is no board: J opens the record at the Contracts; Enter sets the
+  # contract's next place as the nav target; J closes it
+  key j; pause 1.2; shot w16-contracts-away
+  key Return; pause 1; shot w16-nav-set
+  key j; pause 0.8; shot w16-closed
   # Boarding (M4): the raider's reactor knocked out and the ship latched on to it. K opens it; Enter
   # strips the part in focus (the walk is on its key), a second one two rows down; ← walks the keys
   cmd disable raider; pause 3; cmd latch; pause 4

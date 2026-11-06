@@ -24,6 +24,10 @@ public interface KeyHintProvider {
     /** One place's keys on the controls panel: "At the helm", then its hints. */
     final class HelpSection {
         public String title = "";
+        /** It holds where the player is now (at the helm, on deck), other than anywhere: a panel lists these first. */
+        public boolean here;
+        /** The gamepad's buttons rather than keys. */
+        public boolean gamepad;
         public final Array<KeyHint> hints = new Array<>();
         private final Array<KeyHint> pool = new Array<>();
 
@@ -39,6 +43,7 @@ public interface KeyHintProvider {
 
         void clear() {
             title = "";
+            here = gamepad = false;
             pool.addAll(hints);
             hints.clear();
         }

@@ -77,9 +77,25 @@ public final class Fmt {
         return Long.toString((long) Math.ceil(seconds - 1e-6));
     }
 
-    /** The career's day, from 1. */
+    /** The career's day, from 0, as the game's own clock and its saves count it ("Day 0 00:00:33"). */
     public static int day(double simSeconds) {
-        return (int) Math.floor(Math.max(0, simSeconds) / 86_400.0) + 1;
+        return (int) Math.floor(Math.max(0, simSeconds) / 86_400.0);
+    }
+
+    /** A span to go, as the slate puts it: "3D 9H", "4H 05M", "12M", "40S"; "" for NaN or less than nothing. */
+    public static String span(double seconds) {
+        if (Double.isNaN(seconds) || seconds < 0) return "";
+        long s = (long) Math.ceil(seconds - 1e-6);
+        if (s >= 86_400) return String.format(Locale.ROOT, "%dD %dH", s / 86_400, s % 86_400 / 3600);
+        if (s >= 3600) return String.format(Locale.ROOT, "%dH %02dM", s / 3600, s % 3600 / 60);
+        if (s >= 60) return String.format(Locale.ROOT, "%dM", s / 60);
+        return String.format(Locale.ROOT, "%dS", s);
+    }
+
+    /** A moment of the career: "DAY 3, 14:05". */
+    public static String when(double simSeconds) {
+        long s = (long) Math.floor(Math.max(0, simSeconds));
+        return String.format(Locale.ROOT, "DAY %d, %02d:%02d", day(simSeconds), s % 86_400 / 3600, s % 3600 / 60);
     }
 
     /** The time of day, hh:mm:ss. */

@@ -53,9 +53,9 @@ class FmtTest {
     @Test
     void theChronometerReadsTheCareersDayAndTime() {
         double t = 3 * 86_400 + 14 * 3_600 + 22 * 60 + 5;
-        assertEquals(4, Fmt.day(t));
+        assertEquals(3, Fmt.day(t));
         assertEquals("14:22:05", Fmt.clock(t));
-        assertEquals(1, Fmt.day(0));
+        assertEquals(0, Fmt.day(0));
     }
 
     @Test

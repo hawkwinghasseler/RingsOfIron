@@ -4,6 +4,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.BoardingProvider.BoardingBoard;
+import com.ringsofiron.uihud.providers.CareerProvider.Career;
 import com.ringsofiron.uihud.providers.CrewProvider.CrewSheet;
 import com.ringsofiron.uihud.providers.MissionProvider.Job;
 import com.ringsofiron.uihud.providers.MissionProvider.MissionBoard;
@@ -20,7 +21,7 @@ import java.util.regex.Pattern;
 /**
  * What the classic windows' providers say, read at once for every page of a FILAMENT terminal: the
  * market, the yard, the shipyard, the mission board, boarding and the crew, as the classic windows
- * read them, a few times a second while a page shows and straight after each order. With them what
+ * read them, and the career for the captain's record, a few times a second while a page shows and straight after each order. With them what
  * the terminal's title row and rail show on every page: the station docked at, its owner, the player's
  * standing there as a word and a figure, the services it offers, the tanks, and the held deliveries
  * this market can supply.
@@ -32,6 +33,8 @@ public final class Boards {
     public final MissionBoard missions = new MissionBoard();
     public final BoardingBoard boarding = new BoardingBoard();
     public final CrewSheet crew = new CrewSheet();
+    /** The captain's career: rank, pay, the record, the standing with every faction and the strain on their stations. */
+    public final Career career = new Career();
     /** The data layer read from, for the providers' orders. */
     public HudData data;
 
@@ -70,6 +73,8 @@ public final class Boards {
         if (d.boarding != null) d.boarding.collect(boarding);
         crew.clear();
         if (d.crew != null) d.crew.collect(crew);
+        career.clear();
+        if (d.career != null) d.career.read(career);
         StationInfo st = d.navReadout.docked;
         String name = st.present && !st.name.isEmpty() ? st.name : !trade.stationName.isEmpty() ? trade.stationName
                 : !missions.stationName.isEmpty() ? missions.stationName : !yard.stationName.isEmpty() ? yard.stationName : "";

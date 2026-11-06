@@ -3,6 +3,7 @@ package com.ringsofiron.uihud.variants.vfd.screens;
 import com.badlogic.gdx.Input.Keys;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.FilamentActor;
+import com.ringsofiron.uihud.variants.vfd.Ink;
 
 /**
  * A terminal's soft keys (style-vfd.md 18.2): a strip of rubber keys under the glass, the glass row over
@@ -28,6 +29,10 @@ public final class SoftKeys {
     private int n, slots = 1, walk;
     /** Where it was last laid out: the strip's left, the keys' top, its width, the labels' row. */
     private float x, y, w, labelY;
+    /** Laid out as a slate's keys under its glass ({@link #placeSlate}) rather than a terminal's strip. */
+    private boolean slate;
+    /** A slate key's slot and how wide its key is in it. */
+    public static final float SLATE_SLOT = 112f, SLATE_KEY = 56f, SLATE_KEY_WIDE = 66f;
 
     /** {@code count} keys in {@code slots} places, all walked, all on, with no words yet. */
     public SoftKeys define(int count, int slots) {
@@ -160,10 +165,27 @@ public final class SoftKeys {
         this.y = y;
         this.w = w;
         this.labelY = labelY;
+        slate = false;
+    }
+
+    /**
+     * Lays the keys out under a slate's glass, from {@code x}: each its action printed on the housing at
+     * {@code y} and its rubber key under it, a slot apart (the mockups' {@code slateKeys}).
+     */
+    public void placeSlate(float x, float y) {
+        this.x = x;
+        this.y = y + 6f;
+        this.labelY = y;
+        this.w = n * SLATE_SLOT;
+        slate = true;
     }
 
     public void paint(Filament f) {
         if (n == 0) return;
+        if (slate) {
+            paintSlate(f);
+            return;
+        }
         boolean walking = anyWalked();
         for (int i = 0; i < n; i++) {
             boolean walkedHere = walking && caps[i] == null && i == walk;
@@ -174,8 +196,34 @@ public final class SoftKeys {
         Glass.keyStrip(f, x, y, w, slots, n, labelY, shownCaps, words, states, leds, ledOn);
     }
 
+    /** A slate's keys: the action in silk over each, dim when it does nothing now, the cap ENTER on the one walked to. */
+    private void paintSlate(Filament f) {
+        boolean walking = anyWalked();
+        for (int i = 0; i < n; i++) {
+            if (words[i].isEmpty()) continue;
+            boolean walkedHere = walking && caps[i] == null && i == walk;
+            String cap = caps[i] != null ? caps[i] : walkedHere ? "ENTER" : "";
+            float kx = x + i * SLATE_SLOT, kw = slateKeyWidth(caps[i]);
+            Filament.Opt silk = f.o().size(12f).centre().ink(on[i] ? Ink.SLATE_KEY_SILK : Ink.SLATE_KEY_SILK_DIM);
+            f.silk(kx + SLATE_SLOT / 2f, labelY, words[i], silk);
+            Filament.Opt key = f.o().size(12f);
+            if (!on[i]) key.ink(Ink.SLATE_KEY_DIM);
+            if (leds[i] != null) key.led(leds[i], ledOn[i]);
+            f.key(kx + (SLATE_SLOT - kw) / 2f, y, kw, Glass.KEY_H, cap, key);
+        }
+    }
+
+    /** How wide a slate key with {@code cap} is: wider for a word than for one key. */
+    static float slateKeyWidth(String cap) {
+        return cap == null || cap.length() <= 1 ? SLATE_KEY : SLATE_KEY_WIDE;
+    }
+
     /** Each key's box, as {@code base + i}; the label over it too. */
     public void boxes(FilamentActor a, int base) {
+        if (slate) {
+            for (int i = 0; i < n; i++) if (!words[i].isEmpty()) a.box(base + i, x + i * SLATE_SLOT, labelY - 12f, SLATE_SLOT, y + Glass.KEY_H - labelY + 12f);
+            return;
+        }
         for (int i = 0; i < n; i++) {
             if (words[i].isEmpty()) continue;
             Glass.keyBox(x, w, slots, i, box);

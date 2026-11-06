@@ -214,7 +214,7 @@ public final class Filament implements Disposable {
     // ------------------------------------------------------------------ state
 
     private static final float D = MathUtils.degreesToRadians;
-    private static final int MAX_CELLS = 128;
+    private static final int MAX_CELLS = 256;
 
     private final Shapes shapes = new Shapes();
     private final Dots dots;
@@ -1370,6 +1370,12 @@ public final class Filament implements Disposable {
         float ink = Ink.bits(Ink.LCD_INK, 1f);
         if (warning) shapes.rect(x - r, y - r, 2f * r, 2f * r, ink);
         else frame(x - r, y - r, 2f * r, 2f * r, 1f, ink);
+    }
+
+    /** A block of the LCD's clear in a dark block, at {@code alpha}: a bar's set segments in a focused row. */
+    public void lcdClear(float x, float y, float w, float h, float alpha) {
+        if (!baseNow()) return;
+        shapes.rect(x, y, w, h, Ink.bits(Ink.LCD_CLEAR, alpha));
     }
 
     /** A dark rule or block on the LCD, with its shadow, at {@code alpha} of the ink. */

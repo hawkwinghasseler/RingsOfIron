@@ -91,8 +91,8 @@ public class GameHud implements Disposable {
     }
 
     /**
-     * The providers for flight, navigation, docking, contacts, objectives and the posts aboard,
-     * which every variant reads; the game screen adds the key hints, which need its view of where
+     * The providers for flight, navigation, docking, contacts, objectives, the posts aboard and the
+     * career, which every variant reads; the game screen adds the key hints, which need its view of where
      * the player is ({@link PlayerKeyHints}).
      */
     static void wireFlightAndPosts(com.ringsofiron.uihud.data.HudData data, GameWorld world) {
@@ -106,6 +106,7 @@ public class GameHud implements Disposable {
                 world.sensors);
         data.objectives = new PlayerObjectives(world.context, world.contracts, world.nav.target);
         data.stationBoard = new PlayerStationBoard(world.context, world.crew, world.bridge);
+        data.career = new PlayerCareer(world.standing, world.budget, world.tension, world.contracts);
     }
 
     /** The mod-script trust prompt as a dialog; pass to {@link GameWorld.Modules#modTrust} before loading content. */

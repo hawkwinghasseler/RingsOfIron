@@ -20,8 +20,9 @@ abstract class ModeTab {
     final String key;
     /** The content area, from the frame. */
     float x, y, w, h;
-    /** The mode it is a tab of, for its orders' answers and the boards. */
+    /** The modes, for its orders' answers and the boards; and the frame of the mode it is a tab of. */
     Modes modes;
+    ModeFrame frame;
 
     ModeTab(String name, ClassicWindow window, String key) {
         this.name = name;

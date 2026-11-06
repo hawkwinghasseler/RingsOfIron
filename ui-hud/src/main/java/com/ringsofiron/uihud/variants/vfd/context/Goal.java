@@ -43,7 +43,9 @@ final class Goal {
         }
         if (s.combat && !fight(o)) return;
         on = true;
-        String kind = o.kind.isEmpty() ? "" : o.kind.toUpperCase(Locale.ROOT) + ": ";
+        // A title that already starts with its kind ("Bounty: Raider") is not given it twice
+        boolean named = o.title.regionMatches(true, 0, o.kind, 0, o.kind.length());
+        String kind = o.kind.isEmpty() || named ? "" : o.kind.toUpperCase(Locale.ROOT) + ": ";
         String progress = o.of > 0 ? " · " + Math.round(o.progress) + " OF " + Math.round(o.of) : "";
         line1 = Fmt.cut(kind + o.title, 33 - progress.length()) + progress;
         String where = o.state == State.RETURN ? "BACK TO " + o.station : o.next;

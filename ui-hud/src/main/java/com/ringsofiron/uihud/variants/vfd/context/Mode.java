@@ -33,7 +33,10 @@ abstract class Mode {
     void attach(Modes m) {
         modes = m;
         tabs = tabs();
-        for (ModeTab t : tabs) t.modes = m;
+        for (ModeTab t : tabs) {
+            t.modes = m;
+            t.frame = frame;
+        }
     }
 
     /** Whether it can show at all now (the station's terminal only while docked). */
@@ -96,9 +99,9 @@ abstract class Mode {
     /** Where its frame goes on a stage {@code w} x {@code h}: {@link ModeFrame#place}s the frame. */
     abstract void place(float w, float h);
 
-    /** How wide the tab's content is: the frame's whole width, unless a rail takes the rest. */
+    /** How wide the tab's content is: the frame's whole width (the slate's glass), unless a rail takes the rest. */
     float contentWidth() {
-        return frame.w;
+        return frame.contentW();
     }
 
     void refresh(Boards b, HudData d) {
@@ -121,7 +124,7 @@ abstract class Mode {
         }
         frame.closeKey = closeKey();
         place(stageW, stageH);
-        if (tab != null) tab.place(frame.x, frame.top(), contentWidth(), frame.bottom() - frame.top());
+        if (tab != null) tab.place(frame.contentX(), frame.top(), contentWidth(), frame.bottom() - frame.top());
     }
 
     void paint(Filament f, float time) {
