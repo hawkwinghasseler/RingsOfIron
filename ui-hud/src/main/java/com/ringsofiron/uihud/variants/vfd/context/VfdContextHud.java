@@ -8,6 +8,7 @@ import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.providers.BoardingProvider.BoardingBoard;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.ShellLook;
@@ -66,6 +67,8 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
     final World world = new World();
     /** The menus in setup mode and the map's plot, the same under all three FILAMENT HUDs. */
     private final VfdScreens screens = new VfdScreens();
+    /** The full-screen modes in place of the classic windows. */
+    final Modes modes = new Modes(this);
 
     /** The groups' origins on the stage, and this frame's slots, on the grid. */
     float width = Geo.W, height = Geo.H, midX, rightX, bottomY;
@@ -79,6 +82,7 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         this.host = host;
         actor = new FilamentActor(this, this);
         host.layer().addActor(actor);
+        modes.attach(host);
     }
 
     @Override
@@ -88,10 +92,11 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         actor.setBounds(0f, 0f, w, h);
         actor.setUnitsPx(host.uiScale());
         UiHud hud = host.hud();
-        boolean fullScreen = hud != null && (hud.openWindow() != null || hud.isMapOpen());
+        boolean fullScreen = modes.up() || hud != null && (hud.openWindow() != null || hud.isMapOpen());
         BoardingBoard board = hud == null || hud.getBoardingWindow() == null ? null : hud.getBoardingWindow().getBoard();
         layout(d, w, h, delta, fullScreen, board);
         boxes(actor);
+        modes.update(delta);
     }
 
     /** Reads this frame's data into every part and places them, on a {@code w} x {@code h} stage. */
@@ -261,9 +266,12 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         f.origin(0f, 0f);
         captain.paintTags(f);
         if (!sit.fullScreen) CautionPanel.paint(f, cautions, p2Y, now, time);
-        f.origin(midX, 0f);
-        interrupts.paintThreat(f);
-        interrupts.paintCard(f, x3Y, time);
+        // Over a mode, the mode puts them over itself (paintInterruptsOver)
+        if (!modes.up()) {
+            f.origin(midX, 0f);
+            interrupts.paintThreat(f);
+            interrupts.paintCard(f, x3Y, time);
+        }
         if (sit.fullScreen) return;
         f.origin(0f, bottomY);
         rack.paintLights(f);
@@ -273,6 +281,21 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         rack.paintCue(f);
         // The orders menu over the world, on top of everything round it
         orders.paint(f, ordersFoot, time);
+    }
+
+    /**
+     * P3 and X3 over a mode, in the mode's own glass (functional-context 10: they still interrupt),
+     * with the mode on the dimmer bus while X3 shows.
+     */
+    void paintInterruptsOver(Filament f) {
+        if (interrupts.card) {
+            f.origin(0f, 0f);
+            f.dimRegion(0f, 0f, width, height, DIMMER);
+        }
+        f.origin(midX, 0f);
+        interrupts.paintThreat(f);
+        interrupts.paintCard(f, x3Y, time);
+        f.origin(0f, 0f);
     }
 
     @Override
@@ -311,7 +334,10 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
 
     @Override
     public boolean keyDown(int keycode) {
-        return host != null && key(host.data(), keycode);
+        if (host == null) return false;
+        // A mode's keys first: its tabs, its lists and its soft keys
+        if (modes.keyDown(keycode)) return true;
+        return key(host.data(), keycode);
     }
 
     /** A key the classic HUD did not use: true for the HUD's own two, which the game's bindings then leave alone. */
@@ -330,7 +356,28 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
     }
 
     @Override
+    public boolean replaces(ClassicWindow window) {
+        return modes.replaces(window);
+    }
+
+    @Override
+    public boolean open(ClassicWindow window) {
+        return modes.open(window);
+    }
+
+    @Override
+    public boolean showing(ClassicWindow window) {
+        return modes.showing(window);
+    }
+
+    @Override
+    public void close(ClassicWindow window) {
+        modes.close(window);
+    }
+
+    @Override
     public void detach() {
+        modes.detach();
         if (actor != null) actor.dispose();
         actor = null;
         host = null;
