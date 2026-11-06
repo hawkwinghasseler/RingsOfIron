@@ -96,6 +96,20 @@ marines, so Cole alone, and what his going leaves (TAC empty, in amber); the two
 footer's keys, each with what it does; and what waits for the ship to be taken. Storming forces
 every shut door, pried here since the raider's power is down, as the game's "Force a way in" does.
 
+![The yard](s6-yard.png)
+
+**S6, the station link's Yard tab, full screen (10.1 and 10.3), at Highport after the raider
+fight.** It hides the band and brings its own annunciator; the live part of the title bar (the
+station, its owner, credits and the hold) is on the glass. REPAIR ALL has been pressed, so it is
+lit and the footer shows the game's answer. The repairs are S3's damage, the nose gun at 24% first,
+each priced as the game prices it (400 a hull tile, 150 a wall, 3 000 a system and 400 a conduit
+for each whole point lost), with the hull patches and medical stores restocked free. The tanks
+need 520 kg of propellant at 0.5 a kilogram. The refits are a row per mount, named by position as
+S2 names them: the cursor's mount steps through the 18 weapons on sale, and the raider's chaingun
+from S5 is in the hold, so it fits for nothing. The cursor's refit is set out in full, new, used
+(at half the price, coming in at 60%) or salvaged, with the quarter of its price the yard gives
+for the autocannon.
+
 ## Round 5 critique
 
 Round 14 of the spec took all four round 4 notes: POWER lists what is not working in the order it

@@ -98,6 +98,21 @@ will do. The prize sells for 21 000 CR whole and 8 400 once a part is off, the s
 amber, since Ada's laser is the first part. Prisoners are shown against the free berths, and the
 cargo with the hold after all of it.
 
+![Station terminal, contracts](t6-terminal.png)
+
+**T6, TRM on its CONTRACTS tab, docked at Highport.** The task spec's frame: CHR and ALR stay
+above, the header row says where you are (the station, its owner, your standing, credits, the
+hold and contracts held), the tabs run under it on their keys (J, T, Y and I, the game's), and the
+body is the list on the left with the selected offer's terms on the right. Highport sells no ships,
+so there is no SHIPYARD tab, and the row says why. The offers are the game's, sorted by pay with
+operations first: a bounty pays 7 500 and +6 over 3 days, an escort 1 500 and +4, a patrol 1 000
+and +3, and a delivery its fee, 15% of the cargo's value and at least 500, on top of the agreed
+price for the cargo. Clear the Lanes waits for the rank of lieutenant. REACH, the spec's addition,
+is the travel time and delta-v from here. The delivery to Shackleton Ice is at the Moon, so it is
+due in 8 days, and its 3.8-day transfer leaves 4 days spare. Its terms show the food bought here,
+the fee and the price paid there, what that clears, half the standing lost on failure, and the
+route and the hold after it. TAKE (Enter) and SHOW ROUTE (M) are keys under the glass.
+
 ## Round 6 critique
 
 Round 8 of the spec took all three round 4 notes: the scope's − and + are back, the 5 km step's

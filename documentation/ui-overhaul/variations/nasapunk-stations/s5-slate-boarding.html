@@ -16,6 +16,8 @@
 // so the ship stays in the middle of the world still in view. Latched, the status strip reads
 // LATCHED, the CMD tile carries the badge, and the helm's Velocity slot reads DOCKED with the
 // Reference and Next event slots dark (8.2): the port and the collar's strain are the DOCK page's.
+// The title bar's live part (the captain's rank, the ship and the credits) is on the glass, under
+// the tabs; the bezel carries only the panel's name.
 //
 // The tab is the board-or-not decision (the task spec's B1, in this spec's words): the other ship's
 // state, who would go and what that leaves, the two orders with what each does, and what waits
@@ -72,12 +74,13 @@ s += stationBoard([[1, 'HELM', '', 'you'], [2, 'NAV', '', 'you'], [3, 'TAC', 'CO
 const P = { x: 784, y: 16, w: 480, h: 592 };
 const tabW = t => (tw(t, 12, true, 0.6) + 14) / 60;
 s += consoleFace(P.x, P.y, P.w, P.h, {
-  id: 'slate', b: 16, title: 'SLATE  ·  ENSIGN  ·  PATROL CORVETTE  ·  5 000 CR', titleSize: 10, plate: 'SLATE-1  CMD  P/N 6020-01',
+  id: 'slate', b: 16, title: 'SLATE', titleSize: 11, plate: 'SLATE-1  CMD  P/N 6020-01',
   // the tabs the slate has now: Boarding while latched; Prisoners only when held, so not yet
   tabs: ['SHIP', 'CREW', 'MEDICAL', 'EVA', { t: 'BOARDING', state: 'cur' }, 'CONTRACTS', 'CAREER', 'LOG'].map(t => typeof t === 'string' ? { t, w: tabW(t) } : Object.assign(t, { w: tabW(t.t) })),
   // the orders on the footer's soft keys: Enter sends the party (it becomes RECALL once they are
-  // across), F storms ("Force a way in" today); nothing has been pressed yet, so no response shows
-  footer: [{ t: 'SEND PARTY', k: 'ENT' }, { t: 'STORM', k: 'F' }, { t: '' }, { t: 'CLOSE', k: 'ESC' }],
+  // across), Shift and Enter storms ("Force a way in" today), the forceful form of the same order on
+  // a key the game leaves free (F is the decoy's); nothing has been pressed yet, so no response shows
+  footer: [{ t: 'SEND PARTY', k: 'ENT' }, { t: 'STORM', k: '⇧ENT' }, { t: '' }, { t: 'CLOSE', k: 'ESC' }],
   content: (gx, gy, gw, gh) => {
     let c = '';
     const L = gx + 14, R = gx + gw - 14, V0 = L + 92, T = V0 + 24;
@@ -85,31 +88,34 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     const head = (y, t) => text(L, y, t, { size: 12, bold: true, fill: C.dim, track: 0.8 });
     const val = (x, y, t, o = {}) => text(x, y, t, { size: o.size || SB, bold: o.bold !== false, fill: o.c || C.white, anchor: o.anchor || 'start', track: 0.4 });
     const note = (x, y, t, fill = C.white) => text(x, y, t, { size: 12, bold: true, fill, track: 0.4 });
+    // the title bar's live part, on the glass: the captain's rank, the ship and the credits
+    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '5 000 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
+    c += rule(gy + 48);
     // the other ship
-    c += val(L, gy + 56, 'RAIDER', { size: 15 }) + text(R, gy + 56, 'LATCHED, PORT TO PORT', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
-    c += head(gy + 80, 'STATE') + val(V0, gy + 80, 'DISABLED: REACTOR DOWN');
-    c += head(gy + 100, 'COST') + val(V0, gy + 100, 'NONE: OUTLAWS');
-    c += rule(gy + 114);
+    c += val(L, gy + 72, 'RAIDER', { size: 15 }) + text(R, gy + 72, 'LATCHED, PORT TO PORT', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    c += head(gy + 96, 'STATE') + val(V0, gy + 96, 'DISABLED: REACTOR DOWN');
+    c += head(gy + 116, 'COST') + val(V0, gy + 116, 'NONE: OUTLAWS');
+    c += rule(gy + 130);
     // who would go, and what that leaves
-    c += head(gy + 138, 'PARTY') + text(R, gy + 138, 'THE SHIP\'S MARINES', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
-    const gr = grid(L, gy + 162, [{ t: 'NAME', w: 84 }, { t: 'ROLE', w: 92 }, { t: 'HEALTH', w: 72, align: 'right' }, { t: 'NOW', w: 86, align: 'right' }, { t: 'SUIT AIR', w: 86, align: 'right' }], [
+    c += head(gy + 154, 'PARTY') + text(R, gy + 154, 'THE SHIP\'S MARINES', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    const gr = grid(L, gy + 178, [{ t: 'NAME', w: 84 }, { t: 'ROLE', w: 92 }, { t: 'HEALTH', w: 72, align: 'right' }, { t: 'NOW', w: 86, align: 'right' }, { t: 'SUIT AIR', w: 86, align: 'right' }], [
       [{ t: 'COLE', bold: true }, 'MARINE', '100%', 'AT TAC', '10:00'],
     ], { rule: 0, rh: 22 });
     c += gr.svg;
     const cw = tw('TAC EMPTY', 12, true, 0.5) + 14;
-    c += I.box(L, gy + 200, cw, 19, 'TAC EMPTY', 'caution', { size: 12 }) + note(L + cw + 10, gy + 214, 'WHILE COLE IS ACROSS: NOBODY ON THE WEAPONS');
-    c += text(L, gy + 236, 'ADA AND BEA STAY ABOARD', { size: 12, bold: true, fill: C.dim, track: 0.5 });
-    c += rule(gy + 250);
+    c += I.box(L, gy + 216, cw, 19, 'TAC EMPTY', 'caution', { size: 12 }) + note(L + cw + 10, gy + 230, 'WHILE COLE IS ACROSS: NOBODY ON THE WEAPONS');
+    c += text(L, gy + 252, 'ADA AND BEA STAY ABOARD', { size: 12, bold: true, fill: C.dim, track: 0.5 });
+    c += rule(gy + 266);
     // the two orders, each with what it does
-    c += head(gy + 274, 'ORDERS');
-    c += val(L, gy + 298, 'SEND PARTY') + note(T, gy + 298, 'ACROSS THE COLLAR, THEN ROOM BY ROOM,') + note(T, gy + 316, 'NEAREST THE DOCK FIRST');
-    c += val(L, gy + 342, 'STORM') + note(T, gy + 342, 'THE SAME, FORCING EVERY SHUT DOOR:') + note(T, gy + 360, 'PRIED OPEN, WITH ITS POWER DOWN');
-    c += rule(gy + 374);
+    c += head(gy + 290, 'ORDERS');
+    c += val(L, gy + 314, 'SEND PARTY') + note(T, gy + 314, 'ACROSS THE COLLAR, THEN ROOM BY ROOM,') + note(T, gy + 332, 'NEAREST THE DOCK FIRST');
+    c += val(L, gy + 358, 'STORM') + note(T, gy + 358, 'THE SAME, FORCING EVERY SHUT DOOR:') + note(T, gy + 376, 'PRIED OPEN, WITH ITS POWER DOWN');
+    c += rule(gy + 390);
     // what waits for the ship to be taken, and when it is
-    c += head(gy + 398, 'ONCE IT IS TAKEN');
-    c += note(L, gy + 422, 'TAKEN WHEN NONE OF ITS CREW STILL FIGHTS');
-    c += note(L, gy + 446, 'ITS SALVAGE AND CARGO COME ON THIS TAB,', C.dim);
-    c += note(L, gy + 464, 'ITS CREW, HELD, ON THE PRISONERS TAB', C.dim);
+    c += head(gy + 414, 'ONCE IT IS TAKEN');
+    c += note(L, gy + 438, 'TAKEN WHEN NONE OF ITS CREW STILL FIGHTS');
+    c += note(L, gy + 462, 'ITS SALVAGE AND CARGO COME ON THIS TAB,', C.dim);
+    c += note(L, gy + 480, 'ITS CREW, HELD, ON THE PRISONERS TAB', C.dim);
     return c;
   },
 }).svg;

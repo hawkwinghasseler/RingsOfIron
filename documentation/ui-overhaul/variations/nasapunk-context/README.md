@@ -108,6 +108,19 @@ ships shows who is where, with the rooms swept and fighting. The state line is t
 party is aboard, with the reason once on the strip under them, and RECALL is live. Salvage, cargo
 and prisoners wait, each saying what it will offer once the ship is taken.
 
+![Station, market](c7-station.png)
+
+**C7, M3 on its Market tab (10.3), docked at Highport on day 0, loading food for the delivery.**
+P1 stays above, then the title row with the tabs the station offers on their keys (Highport sells
+no ships, so there is no Shipyard tab), the tab's panel, the rail every tab shares, and the foot
+row with the feed. Highport is an agricultural dome, so it makes food and uses water and
+machinery, at today's prices. Bought cargo crosses the dock in the loaders' arms, so a buy is an
+order until it is in the hold: HELD and ON ORDER read the game's "12 (+10)". The order is under
+way with its progress, and the foot row carries the game's own line for it. Each row has today's
+four trade buttons as lit push buttons; SELL is barred where nothing is held, with the reason
+once at the foot. The rail has credits, standing, the hold with what is coming, tanks, the
+infirmary, and the delivery the cargo is for.
+
 ## Round 5 critique
 
 Version 8 took both round 4 notes: F1's kiter now moves along the line of sight (closing 12, REL 12,

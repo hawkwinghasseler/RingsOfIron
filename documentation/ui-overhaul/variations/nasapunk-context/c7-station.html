@@ -1,0 +1,126 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: station, market</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="context.js"></script>
+<script>
+// M3, the station mode (the context spec, 10.3), on its Market tab: docked at Highport on day 0,
+// loading food for the delivery to Shackleton Ice. P1 stays above; the mode's frame has its title
+// row with the tabs the station offers (Highport repairs and refits but sells no ships, so there is
+// no Shipyard tab), the tab's panel, the rail every tab shares, and the foot row with the feed.
+//
+// The market is the game's (TradeWindow, the economy data): Highport is an agricultural dome, so it
+// makes food and uses water and machinery, at today's prices. Bought cargo crosses the dock in the
+// loaders' arms, so a buy is an order until it is in the hold: HELD and ON ORDER are the game's
+// "12 (+10)". Each row has today's four trade buttons as lit push buttons; a button that can't be
+// pressed now carries the barber strip, and the panel's foot says why once (nothing held to sell).
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 11 });
+s += controlDefs();
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:15:40', warp: '1×' });
+s += consoleBody(0, 28, 1280, 772, {});
+s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M3  STATION', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
+
+const rowsep = (gx, y, gw) => line(gx + 6, y, gx + gw - 6, y, C.graticule, 1);
+
+// ---- the title row: where, the tabs on their keys, the close keys ----
+s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 51, 'HIGHPORT', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(112, 51, 'STATION', { size: LB, bold: true, fill: C.dim, track: 0.8 });
+{
+  let x = 220;
+  [['1', 'MARKET', true], ['2', 'YARD'], ['3', 'MISSIONS'], ['4', 'HIRE']].forEach(([k, t, on]) => {
+    s += capKey(x, 38, k);
+    x += capW(k) + 7;
+    s += text(x, 51, t, { size: LB, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+    if (on) s += line(x, 55, x + tw(t, LB, true, 0.8), 55, C.white, 1.5);
+    x += tw(t, LB, true, 0.8) + 26;
+  });
+}
+s += capKey(1106, 38, 'T') + text(1130, 51, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1154, 38, 'ESC') + text(1264, 51, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+
+// ---- the market ----
+s += du(8, 64, 940, 680, {
+  id: 'mkt', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = text(gx + 10, gy + 20, 'MARKET', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(gx + gw - 10, gy + 20, 'AGRICULTURAL DOME · MAKES FOOD, USES WATER AND MACHINERY', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) + rowsep(gx, gy + 28, gw);
+    const L = gx + 12;
+    // the columns: name, the station's stock and prices, what you hold and have on order
+    const cols = [[0, 'COMMODITY', 'start'], [226, 'STOCK', 'end'], [300, 'BUY AT', 'end'], [374, 'SELL AT', 'end'], [434, 'HELD', 'end'], [520, 'ON ORDER', 'end']];
+    cols.forEach(([x, t, a]) => g += lab(L + x, gy + 52, t, { anchor: a }));
+    g += lab(L + 556, gy + 52, 'TRADE');
+    g += rowsep(gx, gy + 60, gw);
+    const rows = [
+      ['WATER', '936', '15.0', '13.6', '0', '', ['live', 'live', 'na', 'na']],
+      ['FOOD', '1 549', '50.0', '45.2', '12', '+10', ['live', 'live', 'live', 'live']],
+      ['MACHINERY', '39', '750', '678', '0', '', ['live', 'live', 'na', 'na']],
+    ];
+    rows.forEach(([name, stock, buy, sell, held, order, btn], i) => {
+      const yy = gy + 96 + i * 52, by = yy - 21;
+      g += text(L, yy, name, { size: V, bold: true, fill: C.white, track: 0.5 });
+      g += text(L + 226, yy, stock, { size: B, fill: C.white, anchor: 'end' }) + lab(L + 230, yy, 'U');
+      g += text(L + 300, yy, buy, { size: V, bold: true, fill: C.white, anchor: 'end' });
+      g += text(L + 374, yy, sell, { size: V, bold: true, fill: C.white, anchor: 'end' });
+      g += text(L + 434, yy, held, { size: V, bold: true, fill: C.white, anchor: 'end' });
+      if (order) g += text(L + 520, yy, order, { size: V, bold: true, fill: C.cyan, anchor: 'end' });
+      // the four trade buttons, 76 x 30 each
+      ['BUY 1', 'BUY 10', 'SELL 1', 'SELL ALL'].forEach((t, j) => {
+        g += korry(L + 556 + j * 84, by, 76, 30, t, '', btn[j] === 'na' ? 'na' : 'idle');
+      });
+      if (i < rows.length - 1) g += rowsep(gx, yy + 21, gw);
+    });
+    // the food on order, as the loaders carry it across the dock
+    const py = gy + 96 + 3 * 52 + 6;
+    g += lab(L, py, 'ACROSS THE DOCK') + text(L + 150, py, '10 FOOD', { size: B, bold: true, fill: C.white, track: 0.3 }) + text(L + 222, py, 'THE LOADERS ARE CARRYING IT ABOARD', { size: B, fill: C.white, track: 0.2 });
+    g += rect(L + 150, py + 10, 280, 5, { fill: '#26303A' }) + rect(L + 150, py + 10, 280 * 0.3, 5, { fill: C.cyan });
+    g += text(L + 440, py + 16, '3 OF 10 IN', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    // the foot: why the strips are there, once
+    g += barber(L, gy + gh - 22, 14) + text(L + 22, gy + gh - 16, 'SELL: NOTHING HELD TO SELL', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    g += text(gx + gw - 10, gy + gh - 16, 'PRICES IN CR A UNIT · MACHINERY TAKES 2 M³ A UNIT', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    return g;
+  },
+}).svg;
+
+// ---- the rail, the same on every tab ----
+s += du(954, 64, 318, 680, {
+  id: 'rail', b: 8,
+  content: (gx, gy, gw, gh) => {
+    const L = gx + 10, R = gx + gw - 10;
+    let g = '';
+    g += lab(L, gy + 24, 'CREDITS') + val(R, gy + 24, '3 900', 'CR', { anchor: 'end' });
+    g += rowsep(gx, gy + 36, gw);
+    g += lab(L, gy + 58, 'STANDING') + text(R, gy + 58, '+0', { size: V, bold: true, fill: C.white, anchor: 'end' });
+    g += text(L, gy + 76, 'TERRAN PATROL AUTHORITY, YOUR SPONSOR', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    g += rowsep(gx, gy + 88, gw);
+    // the hold: held, and on order coming aboard, against its 40 m³
+    g += lab(L, gy + 110, 'HOLD') + val(R, gy + 110, '12 OF 40', 'M³', { anchor: 'end' });
+    const bw = gw - 20, bx = L, byy = gy + 120;
+    g += rect(bx, byy, bw, 8, { fill: '#26303A' }) + rect(bx, byy, bw * 12 / 40, 8, { fill: C.white }) + rect(bx + bw * 12 / 40, byy, bw * 10 / 40, 8, { stroke: C.cyan, sw: 1.2 });
+    g += text(L, gy + 146, '+10 ON ORDER', { size: LB, bold: true, fill: C.cyan, track: 0.5 }) + text(R, gy + 146, '18 FREE AFTER IT', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += rowsep(gx, gy + 158, gw);
+    g += lab(L, gy + 180, 'TANKS');
+    [['PROPELLANT', '100%'], ['OXYGEN', '100%'], ['NITROGEN', '100%']].forEach(([t, v], i) => {
+      g += text(L + 92, gy + 180 + i * 19, t, { size: B, fill: C.white, track: 0.3 }) + text(R, gy + 180 + i * 19, v, { size: B, bold: true, fill: C.white, anchor: 'end' });
+    });
+    g += rowsep(gx, gy + 230, gw);
+    g += lab(L, gy + 252, 'INFIRMARY') + text(L + 92, gy + 252, 'NOBODY BEING TREATED', { size: B, fill: C.white, track: 0.3 });
+    g += rowsep(gx, gy + 264, gw);
+    // the delivery this cargo is for, as P5 tracks it
+    g += lab(L, gy + 286, 'FOR') + text(L + 92, gy + 286, 'DELIVER 40 FOOD', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += text(L + 92, gy + 304, 'TO SHACKLETON ICE', { size: B, fill: C.white, track: 0.3 });
+    g += text(L + 92, gy + 322, '22 OF 40 ABOARD OR COMING', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    return g;
+  },
+}).svg;
+
+// ---- the foot row: the feed, and the close key ----
+s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 767, 'MARKET', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(84, 767, 'Ordered 10 Food: the loaders are carrying it aboard.', { size: B, fill: C.white, track: 0.2 });
+s += text(1264, 767, 'ESC CLOSES THE STATION', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>
