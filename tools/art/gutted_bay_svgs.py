@@ -1,9 +1,9 @@
 """The gutted bay, into assets/art/components: a primary (square) mount whose system was stripped
 for salvage. The machine is gone and the bay it stood in is left: the mounting frame round a
 sunken well, the clean square on the well floor where the machine's base kept the grime off, its
-hold-down bolts sheared or pulled, the power leads it was wired to cut and hanging from a dead
+hold-down bolts sheared or pulled, the power leads it was wired to unplugged and lying slack from a dead
 junction box, the pipes it drew on ending in open flanges or a blanking plate, and the nuts,
-washers and drag marks the salvage crew left behind. Nothing in it is live, so it has no
+washers and bolts the salvage crew left behind. Nothing in it is live, so it has no
 emissive layer and no unpowered, damaged or destroyed variant.
 
 One drawing for each primary mount size, `gutted_bay_<size>` (S 1x1 to XL 5x5), each its own
@@ -19,17 +19,15 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from generate_svgs import (INK, DECK_SEAM, STEEL_MID, STEEL_DARK, STEEL_HI, HOUSING, HOUSING_HI, LENS,
-                           POWER, HAZARD, PRIMARY, SIZES, T, Art, f, rect, circle, line, poly, path, bevel,
+                           POWER, PRIMARY, SIZES, T, Art, f, rect, circle, line, poly, path, bevel,
                            plate, rivet, write)
 
 # The well the machine stood in: its floor, the grime on it and the clean square under the machine
 PIT, PIT_SEAM, GRIME, CLEAN = "#1d2229", "#161a20", "#0b0d10", "#2a313a"
 # Pipes, as the pipe art draws them, and the dark inside an open one
 PIPE, PIPE_HI, PIPE_LO, BORE = "#8c96a0", "#b4bec8", "#5a6470", "#05070a"
-# A power lead's jacket and its stripe, and the copper where it was cut
-JACKET, COPPER, COPPER_HI = "#23272e", "#c47a35", "#f0b070"
-# A salvage crew's chalk
-CHALK = "#d8dde3"
+# A power lead's jacket
+JACKET = "#23272e"
 
 # Each size's layout, in tiles of its own canvas: the rim's width (units), the hold-down bolts on a
 # grid of rows x cols, the junction boxes (x, y, side the leads hang toward, leads), the pipe stubs
@@ -37,17 +35,17 @@ CHALK = "#d8dde3"
 # how much litter lies about.
 LAYOUT = {
     "s": dict(rim=7, bolts=(2, 2), boxes=[(0.22, 0.2, "e", 2)], pipes=[(0.72, "n", 4, "open")],
-              rails=[], litter=3, drag=1, chalk=False),
+              rails=[], litter=3),
     "m": dict(rim=10, bolts=(2, 3), boxes=[(0.16, 0.22, "e", 3)],
               pipes=[(0.62, "n", 5, "open"), (0.82, "n", 4, "capped")],
-              rails=[0.32, 0.72], litter=4, drag=2, chalk=True),
+              rails=[0.32, 0.72], litter=4),
     "l": dict(rim=13, bolts=(3, 3), boxes=[(0.13, 0.2, "e", 4)],
               pipes=[(0.55, "n", 7, "open"), (0.72, "n", 5, "torn"), (0.62, "e", 5, "capped")],
-              rails=[0.28, 0.5, 0.72], litter=7, drag=3, chalk=True),
+              rails=[0.28, 0.5, 0.72], litter=7),
     "xl": dict(rim=18, bolts=(4, 4), boxes=[(0.1, 0.17, "e", 5), (0.88, 0.84, "w", 3)],
                pipes=[(0.42, "n", 9, "open"), (0.58, "n", 7, "torn"), (0.74, "n", 6, "capped"),
                       (0.36, "e", 6, "open"), (0.28, "s", 7, "capped")],
-               rails=[0.24, 0.42, 0.6, 0.78], litter=11, drag=4, chalk=True),
+               rails=[0.24, 0.42, 0.6, 0.78], litter=11),
 }
 
 
@@ -138,7 +136,7 @@ def _hexagon(cx, cy, r, turn):
 
 def _box(a, rnd, w, x0, s, bx, by, toward, leads):
     """A junction box on the well's wall, cover hanging open, its terminals bare and its lamp
-    dark, and the leads the machine took power from cut and hanging out across the floor."""
+    dark, and the leads the machine took power from unplugged and lying slack across the floor."""
     u = max(1.0, s / 60)
     bw, bh = 12 * u, 16 * u
     left = toward == "e"
@@ -161,7 +159,7 @@ def _box(a, rnd, w, x0, s, bx, by, toward, leads):
              (cx + (7 if left else -7) * u, y + bh + 1 * u), (cx + (1 if left else -1) * u, y + bh - 1 * u)]
     a.b += poly(cover, STEEL_DARK, stroke=INK, sw=1.2)
     a.b += line(cover[0][0], cover[0][1], cover[1][0], cover[1][1], STEEL_HI, sw=0.8)
-    # the leads: out of the box, slack across the floor, and cut
+    # the leads: out of the box, slack across the floor, ending in their plugs
     sgn = 1 if left else -1
     for i, (px, py) in enumerate(posts):
         reach = s * rnd.uniform(0.16, 0.3)
@@ -175,17 +173,33 @@ def _box(a, rnd, w, x0, s, bx, by, toward, leads):
         a.b += path(d, stroke=INK, sw=wdt + 1.6)
         a.b += path(d, stroke=JACKET, sw=wdt)
         a.b += path(d, stroke=POWER, sw=max(0.6, wdt * 0.28), extra=' opacity="0.8"')
-        # the cut end: copper strands splayed out of the jacket
-        ang = math.atan2(ey - my, ex - mx)
-        a.b += circle(ex, ey, wdt * 0.55, COPPER, stroke=INK, sw=0.6)
-        for k in (-0.6, 0, 0.6):
-            ln = wdt * rnd.uniform(0.9, 1.5)
-            a.b += line(ex, ey, ex + math.cos(ang + k) * ln, ey + math.sin(ang + k) * ln, COPPER_HI, sw=0.7)
-        # one lead still has its lug, torn off the machine's own terminal
-        if i == 0 and s > 60:
-            lx, ly = ex + math.cos(ang) * wdt * 1.6, ey + math.sin(ang) * wdt * 1.6
-            a.b += circle(lx, ly, wdt * 0.8, COPPER, stroke=INK, sw=0.7)
-            a.b += circle(lx, ly, wdt * 0.32, BORE)
+        # the end: the plug that went into the machine's socket, unplugged, its pins covered
+        _plug(a, ex, ey, math.atan2(ey - my, ex - mx), wdt)
+
+
+def _plug(a, x, y, ang, wdt):
+    """A lead's connector: a strain-relief boot off the jacket, a ribbed body with a locking
+    collar, and the face with its pin sockets, lying at (x, y) and pointing along ang."""
+    ux, uy = math.cos(ang), math.sin(ang)
+    vx, vy = -uy, ux
+
+    def box(t0, t1, half, fill, sw=0.9):
+        pts = [(x + ux * t0 + vx * half, y + uy * t0 + vy * half), (x + ux * t1 + vx * half, y + uy * t1 + vy * half),
+               (x + ux * t1 - vx * half, y + uy * t1 - vy * half), (x + ux * t0 - vx * half, y + uy * t0 - vy * half)]
+        a.b += poly(pts, fill, stroke=INK, sw=sw)
+        return pts
+    # boot, body, collar
+    box(-wdt * 0.4, wdt * 0.5, wdt * 0.6, JACKET)
+    body = box(wdt * 0.5, wdt * 2.2, wdt * 0.95, STEEL_DARK)
+    a.b += line(body[0][0], body[0][1], body[1][0], body[1][1], STEEL_HI, sw=0.7, extra=' opacity="0.8"')
+    for k in (0.9, 1.3, 1.7):
+        a.b += line(x + ux * wdt * k + vx * wdt * 0.8, y + uy * wdt * k + vy * wdt * 0.8,
+                    x + ux * wdt * k - vx * wdt * 0.8, y + uy * wdt * k - vy * wdt * 0.8, INK, sw=0.6, extra=' opacity="0.6"')
+    box(wdt * 2.2, wdt * 2.7, wdt * 1.1, STEEL_MID)
+    # the face's pin sockets, dark
+    fx, fy = x + ux * wdt * 2.45, y + uy * wdt * 2.45
+    for o in (-0.5, 0, 0.5):
+        a.b += circle(fx + vx * wdt * o, fy + vy * wdt * o, max(0.5, wdt * 0.13), BORE)
 
 
 def _pipe(a, rnd, w, x0, s, along, wall, r, end):
@@ -238,18 +252,13 @@ def _pipe(a, rnd, w, x0, s, along, wall, r, end):
         drip = [at(length + r * 0.5, -r * 0.2), at(length + r * 2.4, r * 0.3), at(length + r * 1.4, r * 0.8)]
         a.b += poly(drip, GRIME, extra=' opacity="0.5"')
     else:
-        # capped off: a blanking plate on the flange, four bolts and a hazard tag tied to it
+        # capped off: a blanking plate on the flange, four bolts
         _flange_band(a, ex, ey, wall, r, 1.15)
         a.b += circle(ex, ey, r * 1.05, STEEL_MID, stroke=INK, sw=1.2)
         a.b += circle(ex, ey, r * 0.55, STEEL_DARK, stroke=INK, sw=0.8)
         for i in range(4):
             ang = i * math.pi / 2
             a.b += rivet(ex + math.cos(ang) * r * 0.8, ey + math.sin(ang) * r * 0.8, max(0.7, r * 0.14))
-        tx, ty = at(length + r * 1.1, r * 1.1)
-        a.b += line(ex, ey, tx, ty, INK, sw=0.8)
-        a.b += poly([(tx - r * 0.5, ty - r * 0.35), (tx + r * 0.5, ty - r * 0.35), (tx + r * 0.5, ty + r * 0.45),
-                     (tx - r * 0.5, ty + r * 0.45)], HAZARD, stroke=INK, sw=0.8)
-        a.b += line(tx - r * 0.3, ty + r * 0.05, tx + r * 0.3, ty + r * 0.05, INK, sw=max(0.6, r * 0.12))
 
 
 def _flange_band(a, x, y, wall, r, k):
@@ -261,48 +270,23 @@ def _flange_band(a, x, y, wall, r, k):
         a.b += line(x - r * 0.35 + 0.8, y - r * 1.5 * k + 1, x - r * 0.35 + 0.8, y + r * 1.5 * k - 1, PIPE_HI, sw=0.8)
 
 
-def _drag(a, rnd, x0, s, inner, n):
-    """Scrapes in the grime where the machine, or its pieces, were dragged out of the bay."""
-    for i in range(n):
-        y = x0 + inner + (s - 2 * inner) * rnd.uniform(0.2, 0.8)
-        xa = x0 + inner + (s - 2 * inner) * rnd.uniform(0.25, 0.5)
-        xb = x0 + s - 4
-        tilt = rnd.uniform(-0.08, 0.08) * s
-        for k in range(3):
-            o = (k - 1) * max(1.6, s / 60)
-            a.b += line(xa, y + o, xb, y + o + tilt, STEEL_HI, sw=0.8, extra=f' opacity="{f(0.22 + 0.06 * k)}"')
-
-
 def _litter(a, rnd, x0, s, n):
-    """What the salvage crew dropped and left: nuts, washers, a bolt, cut cable ties."""
+    """What the salvage crew dropped and left: nuts, washers and bolts."""
     u = 1 + s / 300
     for i in range(n):
         x, y = x0 + rnd.uniform(0.1, 0.9) * s, x0 + rnd.uniform(0.1, 0.9) * s
-        kind = i % 4
+        kind = i % 3
         if kind == 0:
             a.b += poly(_hexagon(x, y, 2.2 * u, rnd.uniform(0, 1)), STEEL_MID, stroke=INK, sw=0.8)
             a.b += circle(x, y, 0.9 * u, BORE)
         elif kind == 1:
             a.b += circle(x, y, 2 * u, "none", stroke=STEEL_HI, sw=1.1 * u, extra=' opacity="0.8"')
-        elif kind == 2:
+        else:
             ang = rnd.uniform(0, math.pi)
             dx, dy = math.cos(ang) * 4.5 * u, math.sin(ang) * 4.5 * u
             a.b += line(x - dx, y - dy, x + dx, y + dy, INK, sw=2.6 * u)
             a.b += line(x - dx, y - dy, x + dx, y + dy, STEEL_MID, sw=1.4 * u)
             a.b += poly(_hexagon(x - dx, y - dy, 1.8 * u, ang), STEEL_DARK, stroke=INK, sw=0.7)
-        else:
-            ang = rnd.uniform(0, math.pi)
-            a.b += path(f"M{f(x)},{f(y)} q{f(math.cos(ang) * 3 * u)},{f(-2 * u)} {f(math.cos(ang) * 5 * u)},"
-                        f"{f(math.sin(ang) * 3 * u)}", stroke="#c9ccd1", sw=0.9 * u, extra=' opacity="0.75"')
-
-
-def _chalk(a, x0, s, inner):
-    """The salvage crew's tally on the floor: the machine's corner marked, and a cross for done."""
-    c = x0 + s - inner - s * 0.12
-    k = s * 0.05
-    a.b += line(c - k, c - k, c + k, c + k, CHALK, sw=max(1.2, s / 90), extra=' opacity="0.45"')
-    a.b += line(c - k, c + k, c + k, c - k, CHALK, sw=max(1.2, s / 90), extra=' opacity="0.45"')
-    a.b += circle(c, c, k * 1.7, "none", stroke=CHALK, sw=max(1, s / 110), extra=' opacity="0.35"')
 
 
 def gutted_bay(size):
@@ -316,9 +300,6 @@ def gutted_bay(size):
     inner = _grime(a, rnd, x0, s)
     _rails(a, rnd, x0, s, inner, lay["rails"])
     _bolts(a, rnd, x0, s, inner, *lay["bolts"])
-    _drag(a, rnd, x0, s, inner, lay["drag"])
-    if lay["chalk"]:
-        _chalk(a, x0, s, inner)
     _litter(a, rnd, x0, s, lay["litter"])
     for (along, wall, r, end) in lay["pipes"]:
         _pipe(a, rnd, w, x0, s, along, wall, r, end)
@@ -332,7 +313,7 @@ def gutted_bays():
         w, h, a = gutted_bay(size)
         write(f"components/gutted_bay_{size}.svg", w, h, a,
               f"gutted bay {size.upper()}: {w // T}x{h // T} primary mount stripped for salvage, the machine "
-              "torn out: cut power leads, open and capped pipe ends, sheared hold-down bolts")
+              "torn out: unplugged power leads, open and capped pipe ends, sheared hold-down bolts")
 
 
 if __name__ == "__main__":
