@@ -12,6 +12,7 @@ import com.hawkwing.RingsOfIron.game.PlayerGunnery;
 import com.hawkwing.RingsOfIron.game.SilencedMarkers;
 import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.uihud.UiHud;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 
@@ -68,9 +69,9 @@ public final class GameSession {
         return gun;
     }
 
-    /** True while the notice log or the controls panel is open; Esc closes it rather than pausing. */
+    /** True while the notice log or the controls panel is open, the game's or a HUD variant's; Esc closes it rather than pausing. */
     public boolean isOverlayOpen() {
-        return logOpen || helpOpen;
+        return hud.isOpen(ClassicWindow.LOG) || hud.isOpen(ClassicWindow.HELP);
     }
 
     void show(String message) {
@@ -112,7 +113,7 @@ public final class GameSession {
         // A save made in First Play carries on there; any other leaves it
         firstPlay = FirstPlay.resume(world, game);
         opening = firstPlay != null ? null
-                : OpeningGuide.resume(world, () -> hud.getMissionWindow().isOpen(), options.openingWanted);
+                : OpeningGuide.resume(world, () -> hud.isOpen(ClassicWindow.MISSIONS), options.openingWanted);
     }
 
     /** Outside while seated at a console, on deck otherwise. */
