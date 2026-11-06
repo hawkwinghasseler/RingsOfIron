@@ -40,11 +40,12 @@ s += hull(SX, SY, HDG, k);
 s += W.contact('beaten', RXc, RYc, { label: ['RAIDER'], lx: -34, ly: -24 });
 
 // the top column, recentred left of the panel: the strip with its LATCHED lamp, the dark
-// annunciator, the ticker
+// annunciator, the ticker, where the party's word is boarding progress, so CMD's (13.4, 13.5),
+// spoken by Cole, who is dealing with it
 const CX = 392;
 s += statusStrip({ state: 'LATCHED', cx: CX });
 s += annunciator(CX, 44, [], {});
-s += ticker(CX - 360, 108, [['TAC', 'Cole:', 'ready to go across, Captain.']]);
+s += ticker(CX - 360, 108, [['CMD', 'Cole:', 'ready to go across, Captain.']]);
 
 // the band: both MFDs folded (DOCK and CARGO while latched), the helm cluster with its Velocity slot
 // reading DOCKED and the slots with nothing to show dark in place, the station board
@@ -68,7 +69,7 @@ s += du(Z.cluster.x, Z.cluster.y, 480, 160, {
     return c;
   },
 }).svg;
-s += stationBoard([[1, 'HELM', '', 'you'], [2, 'NAV', '', 'you'], [3, 'TAC', 'COLE', 'crew'], [4, 'ENG', 'ADA', 'crew'], [5, 'COMMS', '', 'you'], [6, 'CMD', 'LATCHED', 'none']], { day: 'DAY 0', time: '01:26:10' });
+s += stationBoard([[1, 'HELM', '', 'you'], [2, 'NAV', '', 'you'], [3, 'TAC', 'COLE', 'crew'], [4, 'ENG', 'ADA', 'crew'], [5, 'COMMS', '', 'you'], [6, 'CMD', 'LATCHED', 'none']], { day: 'DAY 0', time: '00:27:10' });
 
 // ---- the slate, on its Boarding tab ----
 const P = { x: 784, y: 16, w: 480, h: 592 };

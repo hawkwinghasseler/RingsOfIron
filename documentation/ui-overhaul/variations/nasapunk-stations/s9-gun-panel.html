@@ -22,15 +22,16 @@
 // autocannons sit forward on its beams, each turned to its own side (ships.toml), with a 300° arc,
 // so each is blind only across the hull, toward the other's side (weapons.toml). An autocannon is
 // point defense: it hunts its own missiles, the most urgent inbound, whoever is aboard
-// (WeaponControlSystem), and no gunner works it (GunCrews), so its mode (3.5) reads AUTO, in the
-// tactical cluster's green. Its 30 mm rounds leave at 2 km/s, ten a second, with no magazine to
-// run dry, and it draws 50 kW firing. A gun in hand is aimed by the pointer, and Space or a click
-// fires it, as the game says when the captain sits ("You take the gun: the pointer aims it, Space
-// or a click fires"). Seated at a gun, just that gun is in hand, point defense or not
-// (PlayerGunnery.inHand), and a mount aimed by hand hunts no missile, so the panel says so before
-// the captain takes it: the other autocannon hunts on, but it is blind to starboard, where this
-// one looks. V again stands the captain up ("You leave the gun"), and this one goes back to the
-// missiles (PlayerGunnery).
+// (WeaponControlSystem), and no gunner works it (GunCrews), so its mode (3.5) reads PD AUTO, in
+// the WEAPONS page's words and the tactical cluster's green, and YOURS once in hand (10.2). Its
+// 30 mm rounds leave at 2 km/s, ten a second, with no magazine to run dry, and it draws 50 kW
+// firing. A gun in hand is aimed by the pointer, and Space or a click fires it, as the game says
+// when the captain sits ("You take the gun: the pointer aims it, Space or a click fires"). Seated
+// at a gun, just that gun is in hand, point defense or not (PlayerGunnery.inHand), and a mount
+// aimed by hand hunts no missile, so the panel says so before the captain takes it, and names the
+// side no other point defense can then cover (10.2): the other autocannon hunts on, but it is
+// blind to starboard, where this one looks. V again stands the captain up ("You leave the gun"),
+// and this one goes back to the missiles (PlayerGunnery).
 let s = space({ planet: false, seed: 13 });
 
 // The world: the corvette's deck at Highport's arm, the camera on the captain by the starboard
@@ -114,19 +115,22 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     c += note(gy + 412, 'BLIND 60° ACROSS THE HULL, TO PORT');
     c += rule(gy + 428);
 
-    // who works it: its mode, said once (3.5); point defense picks its own missiles
-    c += head(gy + 454, 'WORKED BY') + val(gy + 454, 'AUTO', { c: C.green }) + note(gy + 454, 'NO GUNNER WORKS IT', { x: R, anchor: 'end' });
+    // who works it and its mode, in the WEAPONS page's words (10.2, 3.5): point defense picks its
+    // own missiles
+    c += head(gy + 454, 'WORKED BY') + val(gy + 454, 'PD AUTO', { c: C.green }) + note(gy + 454, 'NO GUNNER WORKS IT', { x: R, anchor: 'end' });
     c += note(gy + 472, 'IT HUNTS THE MOST URGENT MISSILE INBOUND,');
     c += note(gy + 490, 'WHOEVER IS ABOARD');
     c += rule(gy + 506);
 
-    // taking it in hand, and what that leaves
-    c += head(gy + 532, 'IN HAND') + val(gy + 532, 'V TAKES IT: THE POINTER AIMS IT,');
-    c += val(gy + 554, 'SPACE OR A CLICK FIRES IT');
-    c += note(gy + 580, 'WHILE YOU HOLD IT, IT HUNTS NO MISSILE.', { c: C.white });
-    c += note(gy + 598, 'FWD PORT HUNTS ON, BUT IT CAN\'T SEE');
-    c += note(gy + 616, 'ACROSS THE HULL TO STARBOARD');
-    c += note(gy + 640, 'V AGAIN STANDS YOU UP, AND IT HUNTS AGAIN');
+    // taking it in hand, its mode then (YOURS, in the commanded cyan), and what that leaves: the
+    // side no other point defense can then cover (10.2)
+    c += head(gy + 532, 'IN HAND') + val(gy + 532, 'YOURS', { c: C.cyan }) + note(gy + 532, 'V TAKES IT', { x: R, anchor: 'end' });
+    c += val(gy + 553, 'THE POINTER AIMS IT,');
+    c += val(gy + 574, 'SPACE OR A CLICK FIRES IT');
+    c += note(gy + 597, 'WHILE YOU HOLD IT, IT HUNTS NO MISSILE.', { c: C.white });
+    c += note(gy + 615, 'FWD PORT HUNTS ON, BUT IT CAN\'T SEE');
+    c += note(gy + 633, 'ACROSS THE HULL TO STARBOARD');
+    c += note(gy + 655, 'V AGAIN STANDS YOU UP: PD AUTO AGAIN');
     return c;
   },
 }).svg;

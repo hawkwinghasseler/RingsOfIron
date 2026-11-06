@@ -455,13 +455,28 @@ starboard that it can't turn to, while one inside its arc waits.
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Stations (10.4, 13.3) | The Log is "every alert and callout". S8 keeps one line per alert: the callout if someone called it, with the alert's mark, or else the alert's own text; then its clearing, as 13.3's record at the alert's severity, hollow. Is that the rule? | |
-| Stations (13.6) | Responses are the player's own answers, so S8 doesn't log them. Should it? | |
-| Stations (10.4, 16.3) | The Log's filters have no keys. S8 steps the focused row with ← and → under `FocusNav` and scrolls with ↑ ↓, and takes severity as a threshold, each position keeping what is more serious, as the context spec does | |
-| Stations (13.3, 13.4) | 13.3 gives one cleared record ("Fire in the bridge out after 1:42"). S8 writes the rest "<alert>, cleared after m:ss", with alert texts of my own ("Raider firing on you", "Pirates inbound", "1 system without power", "Missiles inbound"). Could the catalogue give each alert its text and its record? | |
-| Stations (7.2, 13.5) | Today's notices reach the ticker as advisories, SHIP speaking ("SHIP: docked at Highport, port 2"). Which station tags each, and is the notice's own text the line, as S8 has it? | |
-| Stations (E) | Walkthrough E's clock reads Day 3, but First Play's fight is on day 0, S5's clock; S8 keeps day 0 | |
-| Stations (10.2, 3.5) | The gun panel: a point-defense mount in hand hunts no missile, so S9 says so before the captain sits, with what the other autocannon can't cover. S9 keeps the console window's switch on Enter, though 10.2 doesn't list it and Engineering's Systems tab has the switches, and gives point defense's mode as AUTO. Confirm all three? | |
+| Stations (10.4, 13.3) | The Log is "every alert and callout". S8 keeps one line per alert: the callout if someone called it, with the alert's mark, or else the alert's own text; then its clearing, as 13.3's record at the alert's severity, hollow. Is that the rule? | Round 16: yes, in 10.4; a line revised in place is rewritten, an escalation adds a line, and advisories and crew lines answering an order are logged, repeats counted ("x3") |
+| Stations (13.6) | Responses are the player's own answers, so S8 doesn't log them. Should it? | Round 16: no; what an order changes that matters later, such as a tow and its cost, is an advisory and is logged (13.6) |
+| Stations (10.4, 16.3) | The Log's filters have no keys. S8 steps the focused row with ← and → under `FocusNav` and scrolls with ↑ ↓, and takes severity as a threshold, each position keeping what is more serious, as the context spec does | Round 16: as drawn (10.4) |
+| Stations (13.3, 13.4) | 13.3 gives one cleared record ("Fire in the bridge out after 1:42"). S8 writes the rest "<alert>, cleared after m:ss", with alert texts of my own ("Raider firing on you", "Pirates inbound", "1 system without power", "Missiles inbound"). Could the catalogue give each alert its text and its record? | Round 16: 13.7 gives every alert a raised text and a record ("Raider firing on you: cleared after 2:40"), and S8 uses them |
+| Stations (7.2, 13.5) | Today's notices reach the ticker as advisories, SHIP speaking ("SHIP: docked at Highport, port 2"). Which station tags each, and is the notice's own text the line, as S8 has it? | Round 16: 13.4's station tags each (COMMS for docking and salvage, CMD for boarding progress), the speaker rule picks who speaks, and the line is the notice's own text where it fits 50 characters; a notice with no station goes under CMD (13.5) |
+| Stations (E) | Walkthrough E's clock reads Day 3, but First Play's fight is on day 0, S5's clock; S8 keeps day 0 | Round 16: E reads Day 0 00:06:44 (`GameHudText` counts days from 0) |
+| Stations (10.2, 3.5) | The gun panel: a point-defense mount in hand hunts no missile, so S9 says so before the captain sits, with what the other autocannon can't cover. S9 keeps the console window's switch on Enter, though 10.2 doesn't list it and Engineering's Systems tab has the switches, and gives point defense's mode as AUTO. Confirm all three? | Round 16: all three, in 10.2; the mode reads PD AUTO, then YOURS in hand, in the WEAPONS page's words; the arc finding is passed on as a game issue |
+
+Round 16 took all seven, and the screens are redrawn to it. S8's records are 13.7's ("Missiles gone
+after 0:13", "Pirates broke off after 4:47", "Aft starboard gun back after 0:45"), its notices
+come under 13.4's stations in the game's own words where they fit (the docking and the chaingun
+under COMMS; the boarding, the prisoners and the raider's disablement under CMD, spoken by Cole
+where Cole deals with it), and the fight runs on First Play's day 0 with walkthrough E at 00:06:44,
+so S2's clock reads it and S5's latch is at 00:27:10, its line under CMD. The raider's breaking off
+is the record of the PIRATES caution it clears, so S8 logs it once. S9's mode reads PD AUTO, then
+YOURS in hand. Drawing it raised three small points.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Stations (13.4, 13.7) | The raider's breaking off is today's INFO notice ("Raider is breaking off", `HostileTraffic`) and also what clears PIRATES ("Pirates broke off after 4:47"). S8 logs the record only. Does the notice fold into the record? | |
+| Stations (5.6, 13.5) | Comms' row says station messages come through the ticker "as COMMS lines from the station's name", but 13.5 has them spoken by SHIP with nobody at Comms ("COMMS  SHIP: docked at Highport, port 2."). S8 follows 13.5 | |
+| Stations (5.4) | Is the callout "target struck" a hit on the target, or the target striking (surrendering, as 8.3's target states use the word)? The game posts "cuts thrust and surrenders" for the one and nothing for the other. S8 calls neither | |
 
 ## Next
 
