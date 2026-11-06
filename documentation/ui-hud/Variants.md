@@ -59,6 +59,9 @@ Life cycle, all on the render thread:
 
 A variant that throws from `attach` leaves the classic HUD up rather than none, and says so in the log.
 
+A style's three variants can share a drawing kit in the style's package: FILAMENT's is
+[`variants.vfd`](Filament.md).
+
 ### What the variant hides
 
 `keeps()` returns the classic pieces that stay up under the variant (`ClassicPart`): the flight
