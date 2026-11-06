@@ -1,25 +1,46 @@
 package com.ringsofiron.uihud.variants.cassette.task;
 
+import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectFloatMap;
+import com.badlogic.gdx.utils.ObjectMap;
 import com.badlogic.gdx.utils.ObjectSet;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.uihud.data.AlertRegistry;
 import com.ringsofiron.uihud.data.AlertRegistry.Alert;
+import com.ringsofiron.uihud.data.AlertRegistry.Category;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.AlertRegistry.TimerKind;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.minimap.ShipAlerts;
+import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
+import com.ringsofiron.uihud.providers.CrewProvider;
+import com.ringsofiron.uihud.providers.FlightStatusProvider.FlightStatus;
+import com.ringsofiron.uihud.providers.NavigationProvider.NavReadout;
+import com.ringsofiron.uihud.providers.PowerStatusProvider.Fault;
+import com.ringsofiron.uihud.providers.PowerStatusProvider.PowerFrame;
+import com.ringsofiron.uihud.providers.PowerStatusProvider.SystemRow;
+import com.ringsofiron.uihud.providers.ShieldStatusProvider.ShieldStatus;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider;
 import com.ringsofiron.uihud.variants.cassette.YardPaint;
 import com.ringsofiron.uihud.variants.cassette.YardText;
 
+import java.util.Comparator;
 import java.util.Locale;
 
 /**
- * Where each alert goes in the task spec (section 9): which of the ten annunciator lamps it lights and
- * how, and what the alert band shows. The game's {@link AlertRegistry} says what is wrong; this decides
- * the warning row (one, the soonest harm first), the caution row (three slots and +n), how long a
- * caution stays in the band (10 s, then it lives on as its lamp), and the band's words for each alert.
- * Pure logic, so it is tested without a screen.
+ * Where each alert goes in the task spec (sections 6 ANN, 9 and 13): which of the ten annunciator
+ * lamps it lights and how, and what the alert band shows. The game's {@link AlertRegistry} says what is
+ * wrong at the game's own levels, which all nine variants share; this maps each of its alerts by id to
+ * 9.2's alert and level (section 13's table), so a lamp and its alert always agree. It raises the
+ * alerts 9.2 has that the game doesn't raise yet but the HUD's data can tell (EVA BURN, SUIT AIR by
+ * time, WOUNDED, NO GUNS WORKING, a plan the propellant can't fly, a thin shield cloud, low oxygen
+ * tanks, a damaged reactor, a wrecked RCS block, crew adrift), and lights the advisories no alert
+ * carries. Then the band: the warning row (one, the soonest harm first), the caution row (three slots
+ * and +n, in 9.2's order: people, then the ship, then the job), how long a caution stays in the band
+ * (10 s, then it lives on as its lamp), and the band's words for each alert. Pure logic, so it is
+ * tested without a screen.
  */
 final class TaskAlerts {
 
@@ -28,10 +49,48 @@ final class TaskAlerts {
         HULL, FIRE, AIR, POWER, PROP, DRIVE, ARMS, CREW, EVA, SHIELD
     }
 
+    /**
+     * 9.2's alerts in its list's order, which ranks the caution row (9.1), each with the lamp it
+     * lights. OTHER is anything the list doesn't name, ranked last.
+     */
+    enum Id {
+        MISSILE(null), COLLISION(null), DISABLED(null), ABANDON(null), CAPTAIN_AIR(Lamp.AIR), CAPTAIN_HURT(Lamp.CREW),
+        CRITICAL(Lamp.CREW), BOARDERS(null), EVA_BURN(Lamp.EVA), FIRE(Lamp.FIRE), VENTING(Lamp.AIR), AIR(Lamp.AIR),
+        SUIT_AIR(Lamp.AIR), EVA(Lamp.EVA), WOUNDED(Lamp.CREW), LOCKED_ON(null), IMPACT(null), INTERCEPT(null),
+        POWER(Lamp.POWER), DRIVE(Lamp.DRIVE), ARMS(Lamp.ARMS), SHIELD(Lamp.SHIELD), HULL(Lamp.HULL),
+        PROPELLANT(Lamp.PROP), HELM(null), BURN_MISSED(null), COLLAR(null), CONTRACT(null), OTHER(null);
+
+        final Lamp lamp;
+
+        Id(Lamp lamp) {
+            this.lamp = lamp;
+        }
+    }
+
     /** Seconds a caution stays in the band before it leaves for its lamp. */
     static final float CAUTION_SECONDS = 10f;
     /** Seconds something new blinks (a lamp) or pulses (the warning row). */
     static final float NEW_SECONDS = 3f;
+    /** A missile is a warning under this many seconds from impact, else a caution (9.2). */
+    static final float MISSILE_SOON = 20f;
+    /** Crew outside with a burn due within this many seconds is EVA BURN. */
+    static final float BURN_SOON = 30f;
+    /** Burning tiles that make a fire large, as the other Task variants count it; one large tile does too. */
+    static final int LARGE_FIRE = 6;
+    /** Oxygen below this share of cabin air hurts someone without a suit ({@code CrewDef.asphyxiationThreshold}). */
+    static final float AIR_HURTS = 0.3f;
+    /** A suit's air in bad air: SUIT AIR under 4 minutes ({@code AirWatch.WARN_AT}), CAPTAIN AIR under a minute. */
+    static final float SUIT_SOON = 240f, SUIT_LAST = 60f;
+    /** Delta-v left under this many times what home takes is PROP's advisory (its caution is the game's propellant alert). */
+    static final double PROP_THIN = 1.5;
+    /** The shield cloud against its capacity: an advisory below half, a caution below a quarter. */
+    static final float CLOUD_HALF = 0.5f, CLOUD_QUARTER = 0.25f;
+    /** Oxygen tanks below this share are an AIR caution ({@code ShipGauges.CRITICAL}). */
+    static final float O2_LOW = 0.25f;
+    /** Seconds between reads of the crew roster, for the wounded. */
+    static final float ROSTER_EVERY = 0.5f;
+    /** The ids of the alerts this HUD raises itself: this, then 9.2's id. */
+    static final String OWN = "task:";
 
     /** Each lamp's level: null dark. */
     final Level[] level = new Level[Lamp.values().length];
@@ -54,25 +113,72 @@ final class TaskAlerts {
     /** The warning row's alert has not been acknowledged: MASTER WARNING is lit. */
     boolean masterWarning;
 
+    /** One alert as this spec reads it this frame: 9.2's alert, its level here, the lamps it lights. */
+    static final class Row {
+        Alert a;
+        Id id = Id.OTHER;
+        Level level = Level.ADVISORY;
+        /** The lamp it lights, and a second one (a shorted engine's alert is POWER's, and it lights DRIVE too). */
+        Lamp lamp, also;
+    }
+
+    /** The alerts 9.2 has that the game doesn't raise yet, from the HUD's data. */
+    private final AlertRegistry own = new AlertRegistry();
+    /** Their caution slot's three parts (the bold code, then the two lines), by id. */
+    private final ObjectMap<String, String[]> ownLines = new ObjectMap<>();
+    private final Array<Row> rows = new Array<>();
+    private final Array<Row> pool = new Array<>();
+    private final Array<Row> sorted = new Array<>();
+    /** This frame's power faults by their alert's id, for what a {@code sys:} alert is. */
+    private final ObjectMap<String, SystemRow> systems = new ObjectMap<>();
+    /** Each alert's level here last frame, so one that worsens comes back to the band (9.3). */
+    private final ObjectMap<String, Level> was = new ObjectMap<>();
+    private final CrewProvider.CrewSheet roster = new CrewProvider.CrewSheet();
+    private float rosterIn;
+    private Post post = Post.HELM;
+
     private final ObjectFloatMap<String> seen = new ObjectFloatMap<>();
     private final ObjectSet<String> present = new ObjectSet<>();
     private final Array<String> gone = new Array<>();
     private float clock;
 
-    /** Reads this frame's alerts. {@code gunnery}: the weapons panel shows every mount in full, so a mount's fault takes no caution slot. */
-    void update(HudData d, float delta, boolean gunnery) {
+    /** Reads this frame's alerts, for the captain at {@code post}: the band's words and what it shows fit the post (9.1). */
+    void update(HudData d, float delta, Post post) {
         clock += delta;
-        AlertRegistry reg = d.alerts;
-        Array<Alert> all = reg.all();
-        // When each alert was first seen, in real seconds, so warp doesn't hurry a blink
+        this.post = post;
+        systems.clear();
+        for (SystemRow r : d.powerFrame.faults) systems.put("sys:" + r.system + ":" + r.tileX + "," + r.tileY, r);
+        shieldFitted = d.shieldStatus.present && d.shieldStatus.emitters > 0;
+        roster(d, delta);
+        raiseOwn(d);
+
+        pool.addAll(rows);
+        rows.clear();
+        add(d.alerts.all(), d);
+        add(own.all(), d);
+
+        // When each alert was first seen, in real seconds, so warp doesn't hurry a blink; one that
+        // worsens is seen afresh and comes back unacknowledged
         present.clear();
-        for (Alert a : all) {
-            present.add(a.id);
-            if (!seen.containsKey(a.id)) seen.put(a.id, clock);
+        for (Row r : rows) {
+            String id = r.a.id;
+            present.add(id);
+            Level before = was.get(id);
+            if (!seen.containsKey(id) || before != null && r.level.ordinal() > before.ordinal()) {
+                seen.put(id, clock);
+                r.a.acknowledged = false;
+            }
+            was.put(id, r.level);
         }
         gone.clear();
         for (ObjectFloatMap.Entry<String> e : seen.entries()) if (!present.contains(e.key)) gone.add(e.key);
-        for (String id : gone) seen.remove(id, 0f);
+        for (String id : gone) {
+            seen.remove(id, 0f);
+            was.remove(id);
+        }
+        gone.clear();
+        for (ObjectMap.Entry<String, String[]> e : ownLines.entries()) if (own.get(OWN + e.key) == null) gone.add(e.key);
+        for (String id : gone) ownLines.remove(id);
 
         for (int i = 0; i < level.length; i++) {
             level[i] = null;
@@ -80,23 +186,36 @@ final class TaskAlerts {
             if (whyText[i] == null) whyText[i] = new StringBuilder();
             whyText[i].setLength(0);
         }
-        for (Alert a : all) {
-            Lamp l = lampOf(a, d);
-            if (l == null) continue;
-            light(l, a.level, age(a) < NEW_SECONDS && !a.acknowledged, a.text);
+        for (Row r : rows) {
+            boolean isNew = age(r.a) < NEW_SECONDS && !r.a.acknowledged;
+            if (r.lamp != null) light(r.lamp, r.level, isNew, r.a.text);
+            if (r.also != null) light(r.also, r.level, isNew, r.a.text);
         }
-        arms(d);
-        shieldFitted = d.shieldStatus.present && d.shieldStatus.emitters > 0;
-        if (shieldFitted && !d.shieldStatus.raised && !d.ctx.combat && !d.shieldStatus.loweredForDock) {
-            light(Lamp.SHIELD, Level.ADVISORY, false, "Shields lowered");
-        }
-        if (d.ctx.crewOutside && (d.ctx.burnFlown || d.flightStatus.mainEngine)) {
-            light(Lamp.EVA, Level.WARNING, false, "Crew outside with a burn under way");
-        }
+        advisories(d);
         for (int i = 0; i < level.length; i++) why[i] = whyText[i].length() == 0 ? null : whyText[i].toString();
         if (!shieldFitted) level[Lamp.SHIELD.ordinal()] = null;
 
-        band(all, gunnery, d);
+        band();
+    }
+
+    /** Acknowledges the band (the visor pressed): the game's alerts and this HUD's own. */
+    void acknowledge(HudData d) {
+        d.alerts.acknowledgeAll();
+        own.acknowledgeAll();
+    }
+
+    /** The row {@code id}'s alert makes this frame, or null when this spec drops it. For tests. */
+    Row row(String id) {
+        for (Row r : rows) if (r.a.id.equals(id)) return r;
+        return null;
+    }
+
+    private void add(Array<Alert> all, HudData d) {
+        for (Alert a : all) {
+            Row r = pool.size > 0 ? pool.pop() : new Row();
+            if (map(a, d, r)) rows.add(r);
+            else pool.add(r);
+        }
     }
 
     private void light(Lamp l, Level lv, boolean isNew, String text) {
@@ -109,85 +228,425 @@ final class TaskAlerts {
         }
     }
 
-    /** ARMS from the mounts themselves: caution while any is not working, a warning when none works in combat. */
-    private void arms(HudData d) {
-        int broken = 0, working = 0;
-        for (WeaponStatusProvider.Mount m : d.weaponFrame.mounts) {
-            if (m.working() || m.state == WeaponStatusProvider.State.EMPTY) working++;
-            else broken++;
+    // --- The game's alerts, as 9.2 has them (section 13's table) -------------------------------
+
+    /** Reads {@code a} into {@code r}: 9.2's alert it is, its level here and its lamps. False drops it: another alert or widget says it. */
+    private boolean map(Alert a, HudData d, Row r) {
+        r.a = a;
+        r.level = a.level;
+        r.lamp = r.also = null;
+        r.id = Id.OTHER;
+        String id = a.id;
+        CaptainStatus c = d.captainStatus;
+        if (id.startsWith(OWN)) {
+            int end = id.indexOf(':', OWN.length());
+            r.id = Id.valueOf(id.substring(OWN.length(), end < 0 ? id.length() : end));
+        } else if (id.equals("missile")) {
+            r.id = Id.MISSILE;
+            r.level = !Float.isNaN(a.timer) && a.timer < MISSILE_SOON ? Level.WARNING : Level.CAUTION;
+        } else if (id.equals("disabled")) {
+            r.id = Id.DISABLED;
+            r.lamp = causeLamp(d.ctx.disabledReason);
+        } else if (id.equals("abandon")) {
+            r.id = Id.ABANDON;
+        } else if (id.equals("captain:air")) {
+            // No suit in thin air: the room's AIR says it, until the air hurts
+            if (!Float.isNaN(c.roomOxygen) && c.roomOxygen < AIR_HURTS) {
+                r.id = Id.CAPTAIN_AIR;
+                r.level = Level.WARNING;
+            } else {
+                String room = a.room.isEmpty() ? c.room : a.room;
+                if (d.alerts.get("air:" + room) != null) return false;
+                r.id = Id.AIR;
+                r.level = Level.CAUTION;
+            }
+        } else if (id.equals("captain:suit")) {
+            // By time instead of by share: SUIT AIR, then CAPTAIN AIR, this HUD's own
+            return false;
+        } else if (id.equals("captain:bleeding")) {
+            r.id = Id.CAPTAIN_HURT;
+            r.level = Level.WARNING;
+        } else if (id.startsWith("casualty:")) {
+            // Treatment holds the clock (CrewHealthSystem), so a critical wound being treated is an advisory; stabilising does not until it is done
+            String state = condition(id.substring(9));
+            r.id = Id.CRITICAL;
+            if (state != null && state.endsWith("being treated")) {
+                r.level = Level.ADVISORY;
+                // The roster's line lights the lamp, in its own words
+                return true;
+            }
+            r.level = Level.WARNING;
+        } else if (id.startsWith("fire:")) {
+            boolean large = a.count >= LARGE_FIRE || fireSize(d, a) == Tile.FireSize.LARGE;
+            boolean here = c.present && !c.room.isEmpty() && c.room.equals(a.room);
+            r.id = Id.FIRE;
+            r.level = large || here ? Level.WARNING : Level.CAUTION;
+        } else if (id.startsWith("breach:")) {
+            r.id = Id.VENTING;
+            r.level = Level.CAUTION;
+        } else if (id.startsWith("air:") || id.startsWith("smoke:") || id.equals("oxygen")) {
+            // Until someone without a suit is in air that hurts them, which the HUD can tell only for the captain
+            r.id = Id.AIR;
+            r.level = Level.CAUTION;
+        } else if (id.equals("eva")) {
+            r.id = Id.EVA;
+            r.level = Level.ADVISORY;
+        } else if (id.equals("hostile")) {
+            // The target's lock on the ship: LOCKED ON, which takes no slot where the target plate shows it. A contact alone is dropped
+            if (a.level == Level.ADVISORY || post != Post.DECK) return false;
+            r.id = Id.LOCKED_ON;
+            r.level = Level.CAUTION;
+        } else if (id.startsWith("sys:")) {
+            return system(a, d, r);
+        } else if (id.startsWith("shield:")) {
+            r.id = Id.SHIELD;
+            r.level = Level.CAUTION;
+        } else if (id.equals("hull")) {
+            // Below 45% the ship is disabled, which is the warning
+            r.id = Id.HULL;
+            r.level = Level.CAUTION;
+        } else if (id.equals("propellant")) {
+            // Too little to fly home is the crisis placard's: the tow
+            r.id = Id.PROPELLANT;
+            r.level = Level.CAUTION;
+        } else if (id.equals("helm") || id.startsWith("empty:")) {
+            // The helm console's fault is its own system's alert (HELM is about orders); an empty launcher is WPN's 0/4
+            return false;
         }
-        if (broken == 0) return;
-        Level lv = working == 0 && d.ctx.combat ? Level.WARNING : Level.CAUTION;
-        light(Lamp.ARMS, lv, false, broken == 1 ? "A mount is not working" : broken + " mounts not working");
+        if (r.lamp == null) r.lamp = r.id.lamp;
+        return true;
     }
 
-    /** The lamp an alert lights, or null for one that lights none (it is the band's alone). */
-    static Lamp lampOf(Alert a, HudData d) {
-        String id = a.id;
-        if (id.startsWith("fire:")) return Lamp.FIRE;
-        if (id.startsWith("air:") || id.startsWith("smoke:") || id.startsWith("breach:") || id.equals("oxygen")) return Lamp.AIR;
-        if (id.equals("hull")) return Lamp.HULL;
-        if (id.equals("propellant")) return Lamp.PROP;
-        if (id.startsWith("casualty:") || id.equals("captain:bleeding") || id.equals("abandon")) return Lamp.CREW;
-        if (id.equals("eva")) return Lamp.EVA;
-        if (id.startsWith("shield:")) return Lamp.SHIELD;
-        if (id.startsWith("empty:")) return Lamp.ARMS;
-        if (id.equals("disabled")) {
-            String r = d.ctx.disabledReason.toLowerCase(Locale.ROOT);
-            if (r.contains("hull")) return Lamp.HULL;
-            if (r.contains("crew")) return Lamp.CREW;
-            return Lamp.POWER;
+    /**
+     * A system that is not working: DRIVE's, ARMS's, SHIELD's or AIR's by its system while it is
+     * damaged or stunned; POWER's for a short or a cut (a shorted engine still lights DRIVE, and a gun
+     * cut off ARMS), and its advisory for a system switched off. A reactor's fault is a POWER caution
+     * while another reactor feeds the ship, a warning when none feeds anything. An airlock's or a
+     * docking port's lights nothing, since FLT's DOCK mode and COLLAR show the port.
+     */
+    private boolean system(Alert a, HudData d, Row r) {
+        int at = a.id.indexOf(':', 4);
+        String sys = a.id.substring(4, at < 0 ? a.id.length() : at);
+        if (sys.equals("AIRLOCK") || sys.equals("DOCK PORT")) return false;
+        Lamp its;
+        switch (sys) {
+            case "ENGINE": case "HELM": its = Lamp.DRIVE; break;
+            case "TURRET": case "WEAPONS": its = Lamp.ARMS; break;
+            case "SHIELDS": its = Lamp.SHIELD; break;
+            case "LIFE SUP": its = Lamp.AIR; break;
+            default: its = Lamp.POWER; break;
         }
-        if (id.startsWith("sys:")) {
-            String sys = id.substring(4, id.indexOf(':', 4) < 0 ? id.length() : id.indexOf(':', 4));
-            switch (sys) {
-                case "ENGINE": return Lamp.DRIVE;
-                case "TURRET": case "WEAPONS": return Lamp.ARMS;
-                case "SHIELDS": return Lamp.SHIELD;
-                case "LIFE SUP": return Lamp.AIR;
-                default: return Lamp.POWER;
-            }
+        boolean reactor = sys.equals("REACTOR");
+        Level fault = reactor && noPower(d) ? Level.WARNING : Level.CAUTION;
+        switch (faultOf(a)) {
+            case OFF:
+                r.id = Id.POWER;
+                r.level = Level.ADVISORY;
+                r.lamp = Lamp.POWER;
+                break;
+            case NO_POWER:
+                r.id = Id.POWER;
+                r.level = fault;
+                r.lamp = Lamp.POWER;
+                if (its == Lamp.ARMS) r.also = Lamp.ARMS;
+                break;
+            case SHORTED:
+                r.id = Id.POWER;
+                r.level = fault;
+                r.lamp = Lamp.POWER;
+                if (its == Lamp.DRIVE || its == Lamp.ARMS) r.also = its;
+                break;
+            default:
+                r.id = its == Lamp.DRIVE ? Id.DRIVE : its == Lamp.ARMS ? Id.ARMS : its == Lamp.SHIELD ? Id.SHIELD
+                        : its == Lamp.AIR ? Id.AIR : Id.POWER;
+                r.level = fault;
+                r.lamp = its;
+                break;
         }
+        return true;
+    }
+
+    /** What a {@code sys:} alert's system has, from the power frame (its id names the system's tile), else from its words. */
+    private Fault faultOf(Alert a) {
+        SystemRow r = systems.get(a.id);
+        if (r != null) return r.fault;
+        String t = a.text;
+        if (t.endsWith(": destroyed")) return Fault.DESTROYED;
+        if (t.endsWith(": disabled")) return Fault.DISABLED;
+        if (t.endsWith(": shorted")) return Fault.SHORTED;
+        if (t.endsWith(": stunned")) return Fault.STUNNED;
+        if (t.endsWith(": no power")) return Fault.NO_POWER;
+        return Fault.OFF;
+    }
+
+    /** No reactor feeds anything: every reactor off, shorted, stunned or broken. */
+    static boolean noPower(HudData d) {
+        PowerFrame p = d.powerFrame;
+        return p.circuits.size > 0 && p.outputWatts <= 0 || p.circuits.size == 0 && p.ratedWatts > 0;
+    }
+
+    /** The lamp a disabled ship's cause lights. */
+    static Lamp causeLamp(String reason) {
+        String r = reason.toLowerCase(Locale.ROOT);
+        if (r.contains("hull") || r.contains("wreck")) return Lamp.HULL;
+        if (r.contains("crew")) return Lamp.CREW;
+        return Lamp.POWER;
+    }
+
+    /** The fire's size at the alert's tile, NONE when the HUD can't tell. */
+    private static Tile.FireSize fireSize(HudData d, Alert a) {
+        Entity ship = d.ctx.ship;
+        ShipGridComponent g = ship == null || a.tileX < 0 ? null : ship.getComponent(ShipGridComponent.class);
+        Tile t = g == null ? null : g.getTile(a.tileX, a.tileY);
+        return t == null ? Tile.FireSize.NONE : t.fireSize();
+    }
+
+    /** A crew member's condition in the roster ("Critical wound, being treated"), or null. */
+    private String condition(String name) {
+        for (CrewProvider.Member m : roster.crew) if (m.name.equals(name)) return m.condition;
         return null;
+    }
+
+    private void roster(HudData d, float delta) {
+        rosterIn -= delta;
+        if (rosterIn > 0f) return;
+        rosterIn = ROSTER_EVERY;
+        roster.clear();
+        if (d.crew != null) d.crew.collect(roster);
+    }
+
+    // --- The alerts 9.2 has that the game doesn't raise yet -----------------------------------
+
+    private void raiseOwn(HudData d) {
+        own.begin(d.ctx.simSeconds);
+        try {
+            evaBurn(d);
+            adrift(d);
+            suit(d);
+            wounded(d);
+            noGuns(d);
+            plan(d);
+            cloud(d);
+            oxygen(d);
+            reactor(d);
+            rcs(d);
+        } finally {
+            own.end();
+        }
+    }
+
+    private Alert raise(String id, Level lv, Category cat, String code, String l1, String l2, String text) {
+        String[] w = ownLines.get(id);
+        if (w == null) ownLines.put(id, w = new String[3]);
+        w[0] = code;
+        w[1] = l1;
+        w[2] = l2;
+        return own.raise(OWN + id, lv, cat).set(code, text);
+    }
+
+    /** EVA BURN: crew outside with a burn under way or due in 30 s. */
+    private void evaBurn(HudData d) {
+        if (!d.ctx.crewOutside || d.ctx.docked) return;
+        NavReadout n = d.navReadout;
+        boolean burning = n.burning || d.ctx.burnFlown || d.flightStatus.mainEngine;
+        float due = !burning && n.burnsLeft > 0 ? n.burnStartIn : Float.NaN;
+        if (!burning && (Float.isNaN(due) || due > BURN_SOON)) return;
+        Alert eva = d.alerts.get("eva");
+        String who = outside(eva == null ? "" : eva.text);
+        String when = burning ? "BURN UNDER WAY" : "BURN IN " + YardText.span(due);
+        raise("EVA_BURN", Level.WARNING, Category.CREW, "CREW OUT", who, when,
+                "Crew outside" + (who.isEmpty() ? "" : " (" + who + ")") + " with a burn " + (burning ? "under way" : "due in " + YardText.span(due))
+                        + ": hold the burn, or call them in")
+                .timer(burning ? 0f : Math.max(0f, due), TimerKind.HARM);
+    }
+
+    /** EVA: crew adrift, from the spacewalk line ("Ada adrift 340 m off, ..."). */
+    private void adrift(HudData d) {
+        Alert eva = d.alerts.get("eva");
+        if (eva == null) return;
+        String line = eva.text.startsWith("EVA: ") ? eva.text.substring(5) : eva.text;
+        for (String part : line.split("; ")) {
+            int k = part.indexOf(" adrift");
+            if (k <= 0) continue;
+            int dot = part.indexOf(". ");
+            String said = dot < 0 ? part : part.substring(0, dot);
+            String name = part.substring(0, k);
+            int from = part.indexOf("adrift ", k), to = from < 0 ? -1 : part.indexOf(" off", from);
+            String off = from >= 0 && to > from ? part.substring(from + 7, to).toUpperCase(Locale.ROOT) : "";
+            raise("EVA:" + name, Level.CAUTION, Category.CREW, "ADRIFT", name.toUpperCase(Locale.ROOT), off, said + ": bring the ship to them");
+        }
+    }
+
+    /** Who is outside, from the spacewalk line: the first by name, and +n for the rest ("ADA +1"). */
+    static String outside(String line) {
+        String s = line.startsWith("EVA: ") ? line.substring(5) : line;
+        if (s.isEmpty()) return "";
+        String[] parts = s.split("; ");
+        String first = parts[0];
+        int cut = first.length();
+        for (String w : new String[]{" on ", " in ", " off ", " adrift", " crossing", " outside"}) {
+            int at = first.indexOf(w);
+            if (at > 0 && at < cut) cut = at;
+        }
+        String name = first.substring(0, cut).toUpperCase(Locale.ROOT);
+        return parts.length > 1 ? name + " +" + (parts.length - 1) : name;
+    }
+
+    /** SUIT AIR by time, in bad air or outside: under 4 minutes a caution, under a minute CAPTAIN AIR. */
+    private void suit(HudData d) {
+        CaptainStatus c = d.captainStatus;
+        if (!c.present || !c.suited || Float.isNaN(c.suitAir)) return;
+        boolean bad = Float.isNaN(c.roomPressure) || c.roomPressure < ShipAlerts.LOW_PRESSURE
+                || !Float.isNaN(c.roomOxygen) && c.roomOxygen < AIR_HURTS;
+        if (!bad || c.suitAir >= SUIT_SOON) return;
+        String t = YardText.span(c.suitAir);
+        if (c.suitAir < SUIT_LAST) {
+            raise("CAPTAIN_AIR", Level.WARNING, Category.CAPTAIN, "YOUR AIR", "SUIT", t, "Your suit air: " + t + " left: a locker, or good air")
+                    .timer(c.suitAir, TimerKind.HARM);
+        } else {
+            raise("SUIT_AIR", Level.CAUTION, Category.CAPTAIN, "SUIT AIR", "YOU", t, "Your suit air: " + t + " left: get to good air")
+                    .timer(c.suitAir, TimerKind.HARM);
+        }
+    }
+
+    /** WOUNDED: seriously wounded or out cold, or critical and stabilised, and nobody treating them (the roster's words). */
+    private void wounded(HudData d) {
+        for (CrewProvider.Member m : roster.crew) {
+            String c = m.condition, state;
+            if (c.startsWith("Serious wound, down")) state = "DOWN";
+            else if (c.startsWith("Unconscious")) state = "OUT COLD";
+            else if (c.equals("Critical wound, stabilised")) state = "STABILISED";
+            else continue;
+            raise("WOUNDED:" + m.name, Level.CAUTION, Category.CREW, "WOUNDED", m.name.toUpperCase(Locale.ROOT), state,
+                    "Wounded: " + m.name + ", " + c.toLowerCase(Locale.ROOT) + ", nobody treating them");
+        }
+    }
+
+    /** ARMS at its warning: in combat with no gun able to fire. */
+    private void noGuns(HudData d) {
+        Array<WeaponStatusProvider.Mount> mounts = d.weaponFrame.mounts;
+        if (mounts.size == 0 || !d.ctx.combat) return;
+        for (WeaponStatusProvider.Mount m : mounts) if (m.working()) return;
+        raise("ARMS", Level.WARNING, Category.TACTICAL, "ARMS", "NO GUNS", "BREAK OFF", "No guns working: break off");
+    }
+
+    /** PROPELLANT short of the accepted plan, while the game's own propellant alert doesn't hold. */
+    private void plan(HudData d) {
+        if (d.alerts.get("propellant") != null) return;
+        FlightStatus f = d.flightStatus;
+        NavReadout n = d.navReadout;
+        double plan = n.proposal ? 0 : Math.max(n.planDeltaV, f.deltaVPlanned);
+        if (plan <= 0 || !Double.isFinite(f.deltaVLeft) || f.deltaVLeft >= plan) return;
+        raise("PROPELLANT", Level.CAUTION, Category.FLIGHT, "PROP", YardText.thousands(f.deltaVLeft) + " M/S", "PLAN " + YardText.thousands(plan),
+                String.format(Locale.ROOT, "Propellant: %,.0f m/s left, the plan takes %,.0f", f.deltaVLeft, plan));
+    }
+
+    /** SHIELD: the cloud below a quarter with the shields up. */
+    private void cloud(HudData d) {
+        ShieldStatus s = d.shieldStatus;
+        if (!shieldFitted || !s.raised || s.capacity <= 0f || s.share() >= CLOUD_QUARTER) return;
+        String pct = Math.round(s.share() * 100f) + "%";
+        raise("SHIELD", Level.CAUTION, Category.TACTICAL, "SHIELD", "CLOUD", pct, "Shield cloud at " + pct);
+    }
+
+    /** AIR: the oxygen tanks below a quarter, before the game's own oxygen alert (below a fifth). */
+    private void oxygen(HudData d) {
+        float o = d.shipStatus.oxygen;
+        if (d.alerts.get("oxygen") != null || Float.isNaN(o) || o >= O2_LOW) return;
+        String pct = Math.round(o * 100f) + "%";
+        raise("AIR:O2", Level.CAUTION, Category.LIFE_SUPPORT, "O2", pct, "LOW", "Oxygen tanks at " + pct);
+    }
+
+    /** POWER: a working reactor below full output from damage. */
+    private void reactor(HudData d) {
+        PowerFrame p = d.powerFrame;
+        if (p.ratedWatts <= 0 || p.outputWatts <= 0 || p.outputWatts >= p.ratedWatts * 0.995) return;
+        for (SystemRow r : p.faults) if ("REACTOR".equals(r.system)) return;
+        String pct = Math.round(p.outputWatts / p.ratedWatts * 100) + "%";
+        raise("POWER:REACTOR", Level.CAUTION, Category.ENGINEERING, "POWER", "REACTOR", "AT " + pct, "Reactor output at " + pct + " of its rating");
+    }
+
+    /** DRIVE: an RCS block whose hull tile is gone. The crew frame it back up on EVA, never at battle stations. */
+    private void rcs(HudData d) {
+        Entity ship = d.ctx.ship;
+        ShipGridComponent g = ship == null ? null : ship.getComponent(ShipGridComponent.class);
+        if (g == null) return;
+        int down = 0;
+        for (int i = 0; i < g.rcsThrusters.size; i++) if (!g.rcsThrusters.get(i).works(g)) down++;
+        if (down == 0) return;
+        raise("DRIVE:RCS", Level.CAUTION, Category.FLIGHT, "RCS", down == 1 ? "1 BLOCK" : down + " BLOCKS", "WRECKED",
+                (down == 1 ? "An RCS block is" : down + " RCS blocks are") + " wrecked: the crew frame the hull back up on EVA").count(down);
+    }
+
+    /** The advisories no alert carries: delta-v thinning, the shields lowered or thin, light wounds, wounds being treated, low morale. */
+    private void advisories(HudData d) {
+        FlightStatus f = d.flightStatus;
+        if (Double.isFinite(f.deltaVLeft) && Double.isFinite(f.deltaVHome) && f.deltaVHome > 0 && f.deltaVLeft < PROP_THIN * f.deltaVHome) {
+            light(Lamp.PROP, Level.ADVISORY, false,
+                    String.format(Locale.ROOT, "Delta-v %,.0f m/s left, home takes %,.0f", f.deltaVLeft, f.deltaVHome));
+        }
+        ShieldStatus s = d.shieldStatus;
+        if (shieldFitted && !s.raised && !d.ctx.combat && !s.loweredForDock) light(Lamp.SHIELD, Level.ADVISORY, false, "Shields lowered");
+        if (shieldFitted && s.raised && s.capacity > 0f && s.share() < CLOUD_HALF) {
+            light(Lamp.SHIELD, Level.ADVISORY, false, "Shield cloud below half");
+        }
+        for (CrewProvider.Member m : roster.crew) {
+            String c = m.condition;
+            if (c.startsWith("Light wound") || c.endsWith("being treated")) {
+                light(Lamp.CREW, Level.ADVISORY, false, m.name + ": " + c.toLowerCase(Locale.ROOT));
+            }
+            if (m.morale.endsWith("(slacking)")) light(Lamp.CREW, Level.ADVISORY, false, m.name + ": morale low");
+        }
     }
 
     private float age(Alert a) {
         return clock - seen.get(a.id, clock);
     }
 
-    /** The band: one warning on the top row, the rest of the warnings and the fresh cautions below. */
-    private void band(Array<Alert> all, boolean gunnery, HudData d) {
-        warning = null;
+    // --- The band ------------------------------------------------------------------------------
+
+    /** Warnings: the soonest harm first, then 9.2's order, then the oldest. */
+    private static final Comparator<Row> WARNINGS = (a, b) -> sooner(a, b) ? -1 : sooner(b, a) ? 1 : 0;
+    /** Cautions: 9.2's order (what can hurt someone, then what the ship can't do, then the job), then the oldest. */
+    private static final Comparator<Row> CAUTIONS = (a, b) -> a.id != b.id ? a.id.compareTo(b.id) : Double.compare(a.a.since, b.a.since);
+
+    /** One warning on the top row, the rest of the warnings and the fresh cautions below. */
+    private void band() {
+        Row top = null;
+        for (Row r : rows) if (r.level == Level.WARNING && (top == null || sooner(r, top))) top = r;
+        warning = top == null ? null : top.a;
         cautions.clear();
-        // The warning row: the soonest harm first, then the oldest
-        for (Alert a : all) {
-            if (a.level != Level.WARNING) continue;
-            if (warning == null || sooner(a, warning)) warning = a;
-        }
-        for (Alert a : all) {
-            if (a.level == Level.WARNING && a != warning) cautions.add(a);
-        }
-        // Warnings pushed down go first, the soonest first
-        cautions.sort((a, b) -> sooner(a, b) ? -1 : sooner(b, a) ? 1 : Double.compare(a.since, b.since));
-        for (Alert a : all) {
-            if (a.level != Level.CAUTION || a.acknowledged) continue;
-            if (age(a) >= CAUTION_SECONDS) continue;
+        sorted.clear();
+        for (Row r : rows) if (r.level == Level.WARNING && r != top) sorted.add(r);
+        sorted.sort(WARNINGS);
+        for (Row r : sorted) cautions.add(r.a);
+        sorted.clear();
+        for (Row r : rows) {
+            if (r.level != Level.CAUTION || r.a.acknowledged || age(r.a) >= CAUTION_SECONDS) continue;
             // No caution for what a visible widget shows in full: at gunnery a mount's fault is WPN's row
-            if (gunnery && lampOf(a, d) == Lamp.ARMS) continue;
-            cautions.add(a);
+            if (post == Post.GUNNERY && (r.lamp == Lamp.ARMS || r.also == Lamp.ARMS)) continue;
+            sorted.add(r);
         }
+        sorted.sort(CAUTIONS);
+        for (Row r : sorted) cautions.add(r.a);
+        sorted.clear();
         masterWarning = warning != null && !warning.acknowledged;
         warningNew = warning != null && !warning.acknowledged && age(warning) < NEW_SECONDS;
         masterCaution = false;
         for (Alert a : cautions) if (!a.acknowledged) masterCaution = true;
     }
 
-    /** {@code a} harms sooner than {@code b}: a countdown to harm beats none, a shorter one a longer. */
-    private static boolean sooner(Alert a, Alert b) {
-        boolean ta = a.timerKind == TimerKind.HARM && !Float.isNaN(a.timer), tb = b.timerKind == TimerKind.HARM && !Float.isNaN(b.timer);
-        if (ta && tb) return a.timer < b.timer;
+    /** {@code a} harms sooner than {@code b}: a countdown to harm beats none, a shorter one a longer; then 9.2's order, then age. */
+    private static boolean sooner(Row a, Row b) {
+        boolean ta = harm(a.a), tb = harm(b.a);
+        if (ta && tb && a.a.timer != b.a.timer) return a.a.timer < b.a.timer;
         if (ta != tb) return ta;
-        return a.since < b.since;
+        if (a.id != b.id) return a.id.ordinal() < b.id.ordinal();
+        return a.a.since < b.a.since;
+    }
+
+    private static boolean harm(Alert a) {
+        return a.timerKind == TimerKind.HARM && !Float.isNaN(a.timer);
     }
 
     /** Whether the band has anything to show: the visor is down. */
@@ -223,16 +682,30 @@ final class TaskAlerts {
         }
         if (id.equals("disabled")) return "SHIP DISABLED";
         if (id.equals("abandon")) return "ABANDON SHIP";
-        if (id.equals("captain:bleeding")) return Float.isNaN(a.timer) ? "YOU ARE BLEEDING" : "YOU ARE BLEEDING   " + YardText.span(a.timer);
-        if (id.equals("captain:suit")) return Float.isNaN(a.timer) ? "YOUR AIR" : "YOUR AIR   " + YardText.span(a.timer);
-        if (id.equals("captain:air")) return "NO SUIT   THIN AIR";
-        if (id.startsWith("casualty:")) return "CASUALTY   " + id.substring(9).toUpperCase(Locale.ROOT);
+        if (id.equals("captain:bleeding")) return Float.isNaN(a.timer) ? "YOU ARE CRITICAL" : "YOU ARE CRITICAL   " + YardText.span(a.timer) + " TO LIVE";
+        if (id.equals(OWN + "CAPTAIN_AIR")) return "YOUR AIR   " + YardText.span(a.timer);
+        if (id.equals("captain:air")) {
+            CaptainStatus c = d.captainStatus;
+            String room = a.room.isEmpty() ? c.room : a.room;
+            if (Float.isNaN(c.roomOxygen)) return "YOUR AIR   NO SUIT";
+            return "YOUR AIR   " + (room.isEmpty() ? "" : room + " ") + Math.round(c.roomOxygen * 100f) + "% OXYGEN";
+        }
+        if (id.startsWith("casualty:")) {
+            String name = id.substring(9).toUpperCase(Locale.ROOT);
+            return Float.isNaN(a.timer) ? "CRITICAL   " + name : "CRITICAL   " + name + "   " + YardText.span(a.timer) + " TO LIVE";
+        }
+        if (id.equals(OWN + "EVA_BURN")) {
+            String who = outside(d.alerts.get("eva") == null ? "" : d.alerts.get("eva").text);
+            return "CREW OUTSIDE" + (who.isEmpty() ? "" : "   " + who);
+        }
+        if (id.equals(OWN + "ARMS")) return "NO GUNS WORKING";
         if (id.startsWith("fire:")) return "FIRE   " + a.room;
         if (id.startsWith("breach:")) return "HULL BREACH   " + a.room;
         if (id.startsWith("air:")) return a.room + " IN VACUUM";
         if (id.equals("hull")) return "HULL   " + percent(a.text);
         if (id.equals("oxygen")) return "OXYGEN TANKS DRY";
         if (id.equals("propellant")) return "PROPELLANT LOW";
+        if (id.startsWith("sys:REACTOR")) return "NO POWER   REACTOR " + after(a.text).toUpperCase(Locale.ROOT);
         if (id.startsWith("sys:")) return a.code + "   " + after(a.text).toUpperCase(Locale.ROOT);
         return a.code;
     }
@@ -247,9 +720,14 @@ final class TaskAlerts {
         }
         if (id.equals("disabled")) return new String[]{d.ctx.disabledReason.toUpperCase(Locale.ROOT), "   OPTIONS BELOW"};
         if (id.equals("abandon")) return new String[]{"PODS LAUNCH SOON   ", key(d, "ABANDON"), "NOW"};
-        if (id.equals("captain:bleeding")) return new String[]{"FIND A MEDIC"};
-        if (id.equals("captain:suit") || id.equals("captain:air")) return new String[]{key(d, "USE"), "AT A LOCKER, OR LEAVE THE ROOM"};
-        if (id.startsWith("casualty:")) return new String[]{"BLEEDING OUT" + (Float.isNaN(a.timer) ? "" : " IN " + YardText.span(a.timer)) + "   ", key(d, "CREW"), "CREW"};
+        if (id.equals("captain:bleeding")) return new String[]{a.handling > 0 ? who(a) : "NOBODY FREE TO TREAT YOU"};
+        if (id.equals("captain:air") || id.equals(OWN + "CAPTAIN_AIR")) return new String[]{key(d, "USE"), "AT A LOCKER, OR LEAVE THE ROOM"};
+        if (id.startsWith("casualty:")) return new String[]{(a.handling > 0 ? who(a) : "NOBODY FREE") + "   ", key(d, "CREW"), "CREW"};
+        if (id.equals(OWN + "EVA_BURN")) {
+            String when = a.timer > 0f ? "BURN IN " + YardText.span(a.timer) + ":  " : "";
+            return new String[]{when + "HOLD THE BURN;  ", key(d, "CREW"), "CALL THEM IN"};
+        }
+        if (id.equals(OWN + "ARMS")) return new String[]{"BREAK OFF"};
         if (id.startsWith("fire:")) return new String[]{who(a)};
         if (id.startsWith("breach:")) return new String[]{"VENTING   " + who(a)};
         if (id.startsWith("sys:")) {
@@ -263,7 +741,14 @@ final class TaskAlerts {
      * A caution's two lines, each within 19 characters (spec 9.2): what and where, then who is on it,
      * the time or the key. The first line starts with the code, drawn bold.
      */
-    static String[] lines(Alert a, HudData d) {
+    String[] lines(Alert a, HudData d) {
+        String[] w = a.id.startsWith(OWN) ? ownLines.get(a.id.substring(OWN.length())) : null;
+        if (w != null) return fitted(w[0], w[1], w[2]);
+        return gameLines(a, d);
+    }
+
+    /** The two lines of one of the game's alerts. */
+    static String[] gameLines(Alert a, HudData d) {
         String id = a.id, code = a.code, l1 = "", l2 = "";
         if (id.equals("missile")) {
             l1 = String.valueOf(a.count);
@@ -276,44 +761,61 @@ final class TaskAlerts {
             l1 = a.room;
             l2 = who(a);
         } else if (id.startsWith("air:")) {
+            if (code.equals("PRESSURE")) code = "THIN AIR";
             l1 = a.room;
             l2 = percent(a.text);
-        } else if (id.equals("hull") || id.equals("oxygen")) {
+        } else if (id.equals("oxygen")) {
+            if (a.text.startsWith("Oxygen tanks dry")) {
+                code = "O2 DRY";
+                l1 = "RESERVE " + percent(a.text);
+                l2 = "A YARD REFILLS";
+            } else {
+                l1 = percent(a.text);
+                l2 = "LOW";
+            }
+        } else if (id.equals("hull")) {
             l1 = percent(a.text);
+            l2 = a.handling > 0 ? who(a) : "";
         } else if (id.equals("propellant")) {
+            FlightStatus f = d.flightStatus;
             code = "PROP";
-            l1 = "LOW";
-            l2 = after(a.text);
+            if (Double.isFinite(f.deltaVLeft)) {
+                l1 = YardText.thousands(f.deltaVLeft) + " M/S";
+                l2 = Double.isFinite(f.deltaVHome) ? "HOME " + YardText.thousands(f.deltaVHome) : after(a.text);
+            } else {
+                l1 = "LOW";
+                l2 = after(a.text);
+            }
         } else if (id.startsWith("sys:")) {
             l1 = a.room;
             l2 = a.timerKind == TimerKind.RECOVERY && !Float.isNaN(a.timer) ? "BACK IN " + YardText.span(a.timer) : after(a.text);
-        } else if (id.equals("captain:suit")) {
-            l2 = Float.isNaN(a.timer) ? percent(a.text) : YardText.span(a.timer);
         } else if (id.equals("captain:air")) {
-            // Below a warning that outranks it: what the air is and where, not the title over again
-            l1 = "THIN AIR";
+            // Below a warning that outranks it, or the thin air of a room no AIR caution names
+            code = "YOUR AIR";
+            l1 = "NO SUIT";
             l2 = a.room;
         } else if (id.equals("captain:bleeding")) {
-            l2 = Float.isNaN(a.timer) ? "FIND A MEDIC" : "OUT IN " + YardText.span(a.timer);
+            code = "YOU";
+            l1 = "CRITICAL";
+            l2 = Float.isNaN(a.timer) ? "FIND A MEDIC" : YardText.span(a.timer);
         } else if (id.equals("hostile")) {
-            // "Pirate raider 6 has you locked": LOCKED beside the code, the ship's name under it
+            // "Pirate raider 6 has you locked": LOCKED ON, the ship's name under it
+            code = "LOCKED ON";
             int k = a.text.indexOf(" has you locked");
-            if (k > 0) {
-                l1 = "LOCKED";
-                l2 = a.text.substring(0, k);
-            } else {
-                l2 = after(a.text);
-            }
+            l2 = k > 0 ? a.text.substring(0, k) : after(a.text);
         } else if (id.startsWith("casualty:")) {
+            code = "CRITICAL";
             l1 = id.substring(9);
-            l2 = "BLEEDING";
-        } else if (id.equals("helm")) {
-            l2 = after(a.text);
+            l2 = Float.isNaN(a.timer) ? "BLEEDING" : YardText.span(a.timer);
         } else if (id.startsWith("shield:")) {
             l1 = id.endsWith("tripped") ? "TRIPPED" : "DOWN";
         } else {
             l2 = after(a.text);
         }
+        return fitted(code, l1, l2);
+    }
+
+    private static String[] fitted(String code, String l1, String l2) {
         int room1 = Math.max(0, 19 - code.length() - 1);
         return new String[]{code, YardText.fit(l1, room1), YardText.fit(l2, 19)};
     }

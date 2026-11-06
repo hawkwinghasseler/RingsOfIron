@@ -70,7 +70,7 @@ final class Visor extends YardPart {
         p.tube(TX, 58f, TW, 36f, 3f, 4f, false);
         int shown = Math.min(3, a.cautions.size);
         for (int i = 0; i < shown; i++) {
-            String[] l = TaskAlerts.lines(a.cautions.get(i), f.data);
+            String[] l = a.lines(a.cautions.get(i), f.data);
             float cx = TX + i * SW + 8f;
             float cw = p.tube(l[0], cx, 72.5f, 13f, Yard.P_AMBER, true);
             p.tube(l[1], cx + cw + 7.8f, 72.5f, 13f, Yard.P_AMBER, false);
@@ -110,7 +110,7 @@ final class Visor extends YardPart {
     /** Pressing the visor acknowledges the band: cautions leave for their lamps, the warning stops pulsing. */
     @Override
     public boolean press(float px, float py) {
-        f.data.alerts.acknowledgeAll();
+        f.alerts.acknowledge(f.data);
         return true;
     }
 

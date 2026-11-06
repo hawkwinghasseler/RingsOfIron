@@ -110,7 +110,7 @@ public class CassetteTaskHud implements HudVariant {
         // A screen covers zones 3 to 9: the map, a console in a window's place, the deck console's window, the telex
         frame.read(d, map || hud.windowOpen() || telex);
         frame.time += delta;
-        frame.alerts.update(d, delta, frame.gunnery());
+        frame.alerts.update(d, delta, frame.post);
         if (frame.post != lastPost) {
             // The range set by hand holds until the post changes
             scope.resetRange();
