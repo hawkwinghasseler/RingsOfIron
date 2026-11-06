@@ -247,6 +247,10 @@ Resolved without a change:
 - **The interaction prompt stands down while a console panel is open.** The panel shows the same
   keys (CON's switch and `V  take the gun`), and the spec has no key repeat on screen (HNT).
 - **Warp reads `1×`** with the multiplication sign, where the spec writes `1x`.
+- **BRD is 408 wide**, where the wireframe's is 360, so the game's longest salvage status
+  (`stripping 40%`) fits beside the work and the price. Its bezel takes 24 of that.
+- **BRD's taken phase has no Recall all.** The game refuses it once the ship is taken ("No boarding
+  under way"), and an undefended ship was taken with no party to recall.
 - **Countdowns are M:SS** (`IMPACT 0:03`, `CPA 0.6 KM  T−1:15`), where the spec writes seconds.
 - **The log's clearing time has seconds** (`CLEARED 12:14:31`), where the spec writes `cleared
   14:31`: the log's own stamps carry seconds, and a missile's warning clears within its minute.
