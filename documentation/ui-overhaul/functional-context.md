@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 14.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 15.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -1380,7 +1380,7 @@ time).
 
 | Tab | Content |
 |---|---|
-| Systems | The ship's plan at large scale, every system coloured by state; a list grouped by type with health, powered, on or off (switch), stunned, circuit, and a dash where the game has no such value (a reactor makes its power rather than drawing it; an RCS block draws none and has no health of its own, working while the hull tile it is bolted to stands, `RcsThruster`); power: each circuit's reactors, output against rating, store, and the systems it can't reach; **damage control board**: every hazard and repair task with who has it, or "unassigned". These are the crew's jobs as the game posts them (`ShipHazardScanSystem`): seal a breach, patch a leak, reset a short, isolate a tank, put out a fire, repair a damaged system, treat or stabilise the wounded, and EVA work on the hull (an RCS block, a hull tile, a jammed collar), which waits at battle stations unless someone is sent out. A job that waits says why, as P2's Held does: "waits: under fire" or "waits: battle stations". A cut conduit is no crew job: only a yard repairs it, so it shows under power, with the yard's price |
+| Systems | The ship's plan at large scale, every system coloured by state; a list grouped by type with health, powered, on or off (switch), stunned, circuit, and a dash where the game has no such value (a reactor makes its power rather than drawing it; an RCS block draws none and has no health of its own, working while the hull tile it is bolted to stands, `RcsThruster`). Every system takes the switch, since the game lets the crew switch any system off (`SubsystemComponent.switchedOn`, today's console window): one key acts on the focused row, a group's row switches the group, and opening the row lists its members, each with its own switch. RCS blocks are not systems and have none. The reactor's switch is guarded, pressed twice, since switching it off darkens the whole ship; power: each circuit's reactors, output against rating, store, and the systems it can't reach; **damage control board**: every hazard and repair task with who has it, or "unassigned". These are the crew's jobs as the game posts them (`ShipHazardScanSystem`): seal a breach, patch a leak, reset a short, isolate a tank, put out a fire, repair a damaged system, treat or stabilise the wounded, and EVA work on the hull (an RCS block, a hull tile, a jammed collar), which waits at battle stations unless someone is sent out. A job that waits says why, as P2's Held does: "waits: under fire" or "waits: battle stations". A cut conduit is no crew job: only a yard repairs it, so it shows under power, with the yard's price |
 | Crew | Today's `CrewWindow` roster (role, skills, condition, morale, wage, history), sortable; EVA orders (send out, call in, let out); suits at battle stations; prisoners and what can be done with them here |
 | Cargo | Hold contents (commodity, units, volume), capacity; salvaged parts aboard |
 | Loadout | Hardpoints and what each carries; field refit (today Y away from a yard); furnishings aboard; ship figures (mass, full Δv, berths) |
@@ -1552,15 +1552,18 @@ salvaged), with the delivery this market can supply under the table: 28 more Foo
 
 ![Ship systems](wireframes/11-ship-systems.png)
 
-Battle stations, the crew doing what the game's crews would. Cole, the marine, took a light wound in
-the HOLD, so the crew keep clear of it until the fight ends and the breach there waits (a marine
-never seals one anyway); Cole mans the weapons console. Ada, the engineer, repairs the FWD PORT
-autocannon, which damage has taken under the 30% where a system stops working; a gun's repair never
-waits. Bea, the crewman, has nothing else to take, so Bea flies. One cut conduit in the BRIDGE
-strands the FWD STBD autocannon: the crew can only reset a short, and a cut waits for a yard, so it
-shows under Power with the yard's price rather than on the board. The RCS repair is outside, so it
-waits for battle stations to end unless someone is sent out. P1's chip counts the breach and the two
-guns out of action (SYSTEM DOWN).
+Battle stations, the crew doing what the game's crews would. One hit wrecked the hull tile under the
+HOLD's aft port RCS quad: the HOLD is breached, the quad stops (a block works only while its tile
+stands, `RcsThruster`), and Cole, the marine, took a light wound there. So the crew keep clear of the
+HOLD until the fight ends and the breach waits (a marine never seals one anyway); Cole mans the
+weapons console. The quad's repair is outside, so it waits for battle stations to end unless someone
+is sent out, and sealing the breach from inside won't start it again: it fires once the repair frames
+its tile back up. Ada, the engineer, repairs the FWD PORT autocannon, which damage has taken under the
+30% where a system stops working; a gun's repair never waits. Bea, the crewman, has nothing else to
+take, so Bea flies. One cut conduit in the BRIDGE strands the FWD STBD autocannon: the crew can only
+reset a short, and a cut waits for a yard, so it shows under Power with the yard's price rather than
+on the board. Every system row has its switch; the reactor's asks twice. P1's chip counts the breach
+and the two guns out of action (SYSTEM DOWN).
 
 ### 11.12 Orders menu
 
@@ -1768,3 +1771,4 @@ largest scale, and the centre stays clear.
 | 12 | 4 (NASA-punk critique) | H5's cruise range is the smallest step that holds every contact inside 50 km, in the shape of the combat rule: at a fixed 50 km, the station the ship has just left sat under the own-ship mark, and leaving a station is the commonest cruise. Automatic ranges step out at once and back in only inside 80% of the smaller ring. Wireframes 01 and 12 show the scope at 5 km |
 | 13 | 4 (NASA-punk critique) | Wireframe 11's RCS row reads a dash for power, as for health: the game's RCS blocks draw no power (`RcsThruster`, `RcsThrust`: a block fires while its hull tile stands and there is propellant), and the systems list dashes any value the game doesn't have |
 | 14 | 4 (VFD critique) | M1 draws a body the plan meets twice, as the game does: where it is now, with the Nav's mark on its station, and as a ghost where it will be at the plan's closest approach, labelled with that time; wireframe 09 shows both, the ghost 54° further along the Moon's orbit. M1's Nav card follows H2's NAV rule, so for a Nav around another body it gives that body and the arrival, not a closest approach. Section 14 lists `OrbitPathProvider`'s ghost time and gives the boarding party's states as X2 has them |
+| 15 | 4 (VFD critique) | Wireframe 11's stopped RCS block and the HOLD's breach are one hit on the same hull tile, the aft port quad's, which also wounded Cole: a block stops only while its tile is wrecked, and every one of the corvette's stands on hull next to the interior, so a stopped block always comes with a breach or a sealed one. The systems list gives every system its switch, as the game does, with a group's row switching the group and the reactor's guarded. Wireframe 11's feed line is the game's wound notice |
