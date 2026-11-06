@@ -89,7 +89,7 @@ cmd away 3500; pause 3
 cmd disable raider; pause 3
 cmd latch; pause 4; shot w12-latched
 key k; pause 1.5; shot w13-boarding
-key Down; key Down; key Down; key Down; key Down; pause 0.4; shot w13-boarding-row
+key Down; key Down; key Down; pause 0.4; shot w13-boarding-row
 key Escape; pause 1
 key F1; pause 1.2; shot w14-controls-latched
 key Escape; pause 1

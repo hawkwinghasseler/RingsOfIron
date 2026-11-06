@@ -221,10 +221,16 @@ class WindowScreensTest {
         // Latched, the engine nobody can reach from inside says so, and can still be marked
         assertEquals("EVA only", BoardingPage.partState(engine));
         assertNull(BoardingPage.partRefusal(b.boarding, engine));
-        // Marked, its state is the game's
+        // Selected, the soft row gives the game's whole reason
+        assertEquals("CAN'T BE REACHED FROM INSIDE: STAND OFF ALONGSIDE TO STRIP IT ON EVA", BoardingPage.partNote(engine, 30));
+        // Marked, its state is the game's, given whole on the soft row where the list cuts it short
         engine.marked = true;
         engine.status = "can't be reached from inside: stand off alongside to strip it on EVA";
         assertEquals(engine.status, BoardingPage.partState(engine));
+        assertEquals("CAN'T BE REACHED FROM INSIDE: STAND OFF ALONGSIDE TO STRIP IT ON EVA", BoardingPage.partNote(engine, 30));
+        engine.status = "stripping 40%";
+        assertNull(BoardingPage.partNote(engine, 30));
+        engine.status = "can't be reached from inside: stand off alongside to strip it on EVA";
         assertEquals("carrying it home", BoardingPage.partState(off));
         assertEquals("ALREADY OFF: IT IS BEING CARRIED HOME", BoardingPage.partRefusal(b.boarding, off));
         // Standing off, a part inside the hull can't be marked, and says why
