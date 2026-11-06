@@ -387,10 +387,25 @@ after a number, as prose does, and the arrow keys' caps are drawn (`arrowKey` an
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Context (10.5, P2, P3) | The Log is "every message", but P3 replaces the missile notices and P2's conditions post nothing, so a fight's record would keep none of its hits. Should the Log keep P3's threats and P2's conditions as they come and clear? C9 keeps the game's missile notices, as warnings | |
-| Context (10.5, P4) | Does the Log keep each gunnery event, or the feed's merged 5 s lines? C9 keeps the merged lines, which hold a fight to a page | |
-| Context (10.5) | The filters have no keys, and no notice has a source. C9 steps the source on ← and →, the severity with Shift, and scrolls on ↑ ↓ and the wheel as today; it tags contracts SPONSOR, prisoners handed over STATION, and a wound CREW, as C8 does | |
-| Context (10.6) | The game's hints have no gun seat, though P1 has one. Should M6 give it a section (aim, fire, stand up, zoom)? C10 lists the game's contexts only | |
+| Context (10.5, P2, P3) | The Log is "every message", but P3 replaces the missile notices and P2's conditions post nothing, so a fight's record would keep none of its hits. Should the Log keep P3's threats and P2's conditions as they come and clear? C9 keeps the game's missile notices, as warnings | Version 16: yes, Log-only and at their row's severity: each condition raised and cleared, each missile fired at the ship and how it ended |
+| Context (10.5, P4) | Does the Log keep each gunnery event, or the feed's merged 5 s lines? C9 keeps the merged lines, which hold a fight to a page | Version 16: the merged lines, each opening to its events with their times |
+| Context (10.5) | The filters have no keys, and no notice has a source. C9 steps the source on ← and →, the severity with Shift, and scrolls on ↑ ↓ and the wheel as today; it tags contracts SPONSOR, prisoners handed over STATION, and a wound CREW, as C8 does | Version 16: the filters are controls at the top, stepped with ← and → under `FocusNav` or by a click; the list scrolls with ↑ ↓, Page Up and Down and the wheel; P4 gives each notice's source, as C9 tagged them |
+| Context (10.6) | The game's hints have no gun seat, though P1 has one. Should M6 give it a section (aim, fire, stand up, zoom)? C10 lists the game's contexts only | Version 16: yes, and the hint registry gains a gun context |
+
+Version 16 took all four, and C9 and C10 are redrawn to it. C9's Log now holds the fight's whole
+record: the raider's three missiles (two shot down, one into the hold), the breach, the hold's
+pressure and vacuum and the two guns down, each as it was raised and as it cleared, with the time
+it held, and the line of hits that disabled the raider opened to its four hits. Its filters are a
+row of positions each at the top of the tab, and severity has CAUTION now that cautions are in the
+record. C10 gives the gun seat its own section under fire control's. Drawing the record found four
+more questions.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Context (P4) | P4 gives no source for a condition or a missile. C9 puts the hull, the air and a system down under Engineering, as its repairs are, and a missile under Gunnery, as point defense is | |
+| Context (P2, P4) | P2 says the long form is the Log's wording; P4's example uses the short code ("VACUUM HOLD cleared, 2:10"). C9 writes "Hull breach: HOLD" and "Hull breach: HOLD, cleared after 11:04" | |
+| Context (P2) | A room that goes from low pressure to vacuum and back: P2's example has no PRESS LOW row beside a VACUUM one. C9 takes the vacuum to stand in for the low pressure while it holds, and logs four entries | |
+| Context (10.5, P4) | The hits the ship takes from guns aren't in the record: the raider's gun hits show only as the SYSTEM DOWN they raise. Should the Log take a merged line for hits taken, opening to where each landed? | |
 
 ## Next
 

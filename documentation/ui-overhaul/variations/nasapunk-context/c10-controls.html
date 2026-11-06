@@ -28,7 +28,14 @@
 // HERE gives the situation's keys first, then the seat's, in the game's own order. The corvette has
 // no shield emitter, so the shield keys are listed and dim, and their reason is given once at the
 // foot, as the orders menu gives its reasons (C1). The verbs are caps, as a hint's verb is on
-// every instrument (the word list, rule 3), and say the Nav where the game says the target.
+// every instrument (the word list, rule 3), and say the Nav where the game says the target. The
+// missile and the decoy share a row, as the strafe keys do, so each seat's keys fit their columns.
+//
+// The sections are the seats and situations P1 names (version 16), so the gun seat has its own
+// beside fire control's: the pointer aims that gun alone, Fire or a click fires it, the wheel zooms,
+// V stands up, and the rest are fire control's keys, which its heading says rather than repeating
+// them. Today's hints file a gun under the weapons console; the spec gives the registry a gun
+// context, which the game's Bridge already tells apart.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 15 });
 s += controlDefs();
 s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:37:30', warp: '1×' });
@@ -71,7 +78,7 @@ s += text(18, 51, 'CONTROLS', { size: V, bold: true, fill: C.white, track: 0.8 }
 }
 
 // ---- here: the situation's keys, then the seat's ----
-s += du(8, 64, 1264, 238, {
+s += du(8, 64, 1264, 216, {
   id: 'here', b: 8,
   content: (gx, gy, gw, gh) => {
     let g = head(gx, gy, gw, 'HERE: HELM, APPROACH', 'WHERE YOU SIT AND WHAT IS HAPPENING, FIRST');
@@ -90,11 +97,10 @@ s += du(8, 64, 1264, 238, {
       [['M'], 'MAP'],
       [['V'], 'STAND UP'],
       [['Z', 'C'], 'STRAFE'],
-      [['X'], 'ROTATION ASSIST'],
     ])[0];
     g += section(cx(2), y0, '', [
-      [['R'], 'MISSILE'],
-      [['F'], 'DECOY'],
+      [['X'], 'ROTATION ASSIST'],
+      [['R', 'F'], 'MISSILE, DECOY'],
       [['TAB'], 'NEXT TARGET'],
       [[',', '.'], 'TIME WARP DOWN / UP'],
       [['9', '8'], 'SHIELDS, TRIM', { na: true }],
@@ -115,7 +121,7 @@ s += du(8, 64, 1264, 238, {
 }).svg;
 
 // ---- the rest: every other seat, situation and mode, then the keys that work anywhere ----
-s += du(8, 308, 1264, 436, {
+s += du(8, 286, 1264, 458, {
   id: 'rest', b: 8,
   content: (gx, gy, gw, gh) => {
     let g = head(gx, gy, gw, 'EVERYWHERE ELSE', 'KEYS CAN BE REBOUND IN SETTINGS');
@@ -138,19 +144,26 @@ s += du(8, 308, 1264, 436, {
       [['P'], 'TWICE: ABANDON SHIP'],
       [['B'], 'TWICE: CALL A TOW'],
     ])[0];
-    g += section(cx(1), y0, 'FIRE CONTROL', [
-      [['MOUSE'], 'AIM'],
+    [a, y] = section(cx(1), y0, 'FIRE CONTROL', [
+      [['MOUSE'], 'AIM THE GUNS'],
       [['SPACE'], 'GUNS'],
-      [['R'], 'MISSILE'],
+      [['R', 'F'], 'MISSILE, DECOY'],
       [['TAB'], 'NEXT TARGET'],
-      [['F'], 'DECOY'],
       [['9', '8'], 'SHIELDS, TRIM', { na: true }],
       [['1', '2', '3', '4'], 'HELM ORDERS; 0 CANCELS'],
       [['5', '6'], 'DOCK AT NAV, AUTOPILOT'],
       [['Q', ';', '/'], 'NAV, PLAN, WARP TO BURN'],
       [['V'], 'STAND UP'],
       [['WHEEL'], 'ZOOM'],
-    ])[0];
+    ]);
+    g += a;
+    // the gun seat: what differs from fire control, and its heading says the rest are the same
+    g += section(cx(1), y, 'GUN', [
+      [['MOUSE'], 'AIM THIS GUN ALONE'],
+      [['SPACE'], 'FIRE IT, OR A CLICK'],
+      [['WHEEL'], 'ZOOM'],
+      [['V'], 'STAND UP'],
+    ])[0] + text(cx(1) + cw - 16, y, 'THE REST AS AT FIRE CONTROL', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.4 });
     [a, y] = section(cx(2), y0, 'DOCKED', [
       [['J'], 'MISSIONS'],
       [['T'], 'MARKET'],

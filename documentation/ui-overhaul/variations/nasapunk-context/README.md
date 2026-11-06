@@ -1,6 +1,6 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 15 when drawn, on branch
+The context-driven functional spec (`functional-context.md`, version 16 when drawn, on branch
 `claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at 2x; sources are
@@ -175,17 +175,23 @@ gun it strands, with the yard's 400 cr. The feed has the game's own notice for a
 **C9, M5 on its Log tab (10.5), docked at Highport after the yard's order.** This is First Play's
 NOTICES step, whose own words are "L opens the notice log: the fight, the bounty and the yard's
 work are all there", and L opens M5 on this tab. The frame is C8's: P1 above with nothing wrong, the
-title row with the rank and the four tabs, the content, and the foot row, whose feed is empty since
-the yard's line has had its 5 s. The log is every message with its time, newest first under a
-header for its day, each with its source tag; the texts are the game's own notices with P4's tags,
-from the bounty done the moment the raider is beaten (7 500 CR and 6 standing with the Patrol) to
-the four prisoners handed over at 400 CR each and the yard's order. The lines the game lacks are
-the spec's: the merged gunnery lines, point defense's kills, which the Log keeps though the feed
-doesn't, and the autosaves. Severity is a mark, P2's diamond for a warning and a white dot for a
-notable message, so the record of a fight doesn't fill the glass with red. The rail filters it: a
-selector for the source with each source's count (a source with nothing in the log is dim), and
-one for the severity, NOTABLE keeping the warnings too. The source steps on ← and →, the severity
-with Shift, and ↑ and ↓ or the wheel scroll, as today.
+title row with the rank and the four tabs, the filters, the list, and the foot row, whose feed is
+empty since the yard's line has had its 5 s. The captain has scrolled to the fight and opened the
+line of hits that disabled the raider. The Log keeps a fight's record (version 16): beside every
+message, each condition as it is raised and as it clears, with the time it held, and each missile
+fired at the ship and how it ended. So the record says that point defense shot down two of the
+raider's three missiles and the second hit the hold, while the captain was on deck in C8 with no
+decoy to throw; that the hold vented to vacuum until the crew patched it after the fight; and that
+Ada's repair brought the forward port gun back in two and a half minutes. The texts are the game's
+own notices with P4's tags, the conditions in their long form with the room. The feed's merged
+gunnery lines stay, so the fight fits a page, and each opens to its hits: the time, the gun that
+fired and the room of the raider it hit. Severity is a mark, P2's diamond and triangle and a white
+dot for a notable message, hollow when it clears or a missile's flight ends, so a fight's record
+doesn't fill the glass with red. The two filters are controls at the top, a row of positions each
+with its count, stepped with ← and → once focused or by a click; the set one is white and
+underlined, as a tab is, an empty one is dark, and severity is a threshold. The list scrolls with ↑
+and ↓, Page Up and Page Down and the wheel, and the focus, in the cursor's cyan, is on the opened
+line.
 
 ![Controls](c10-controls.png)
 
@@ -197,7 +203,32 @@ ship disabled). Every key and verb is the game's, with the design's changes: E a
 opens its system, O opens the orders menu, \ acknowledges, and I, J and L open the ship and the
 record. The corvette has no shield emitter, so its shield keys are listed and dim, with the reason
 once at each section's foot, as the orders menu gives reasons. The caps sit against their verbs, so
-a single key is beside what it does and a row of them still lines up.
+a single key is beside what it does and a row of them still lines up. The sections are the seats
+and situations P1 names (version 16), so the gun seat has its own under fire control's: the pointer
+aims that gun alone, Fire or a click fires it, the wheel zooms and V stands up, and its heading says
+the rest are fire control's. The missile and the decoy share a row, as the strafe keys do, so each
+seat fits its columns.
+
+## Round 8 critique (version 16)
+
+Version 16 took the four questions C9 and C10 raised. The Log keeps the conditions and missiles
+that the feed leaves to P2 and P3, as they start and end, and the merged gunnery lines, each opening
+to its events. P4 now says which source each notice takes. The Log's filters step under `FocusNav`,
+and its list scrolls as today's log does. M6 gives the gun seat its own section, which needs a gun
+hint context, and P4's crew line is the game's own. C9 and C10 are redrawn to it. Drawing C9's
+record found four more questions, sent to the designer:
+
+- **P4 gives no source for a condition or a missile.** C9 puts the hull, the air and a system down
+  under Engineering, as its repairs are, and a missile under Gunnery, as point defense is.
+- **P2 says the long form is the Log's wording**, but P4's example uses the short code ("VACUUM
+  HOLD cleared, 2:10"). C9 uses the long form with the room, and "cleared after" the time it held.
+- **A room that goes from low pressure to vacuum and back.** P2's own example has no PRESS LOW row
+  beside a VACUUM one, so C9 takes the vacuum to stand in for the low pressure while it holds, and
+  logs four entries.
+- **The hits the ship takes from guns aren't in the record.** The Log has the hits it lands and
+  where each missile ended, but the raider's gun hits on the corvette show only as the SYSTEM DOWN
+  they raise, with nothing to say what did it. A merged line for hits taken, opening to where each
+  landed, would close the gap.
 
 ## Round 7 critique (versions 10 to 15)
 
@@ -259,8 +290,8 @@ What works:
 
 **Converged** at version 13, and still at version 14, which changed only C5's label, and at
 version 15, which changed C8's hit and switches: nothing meaningful is left in the HUD screens, and
-the designer counts it converged too. C9 and C10 are new this round; their questions are below in
-the round log.
+the designer counts it converged too. C9 and C10 were new this round; version 16 took their
+questions, and round 8 has the next ones.
 
 ## Round 5 critique (version 9)
 
