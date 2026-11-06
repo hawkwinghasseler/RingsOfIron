@@ -1,0 +1,696 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Yard Standard shell</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow+Semi+Condensed:wght@600&family=Big+Shoulders+Stencil+Display:wght@800&family=IBM+Plex+Mono:wght@300;400;500&family=Special+Elite&family=VT323&family=Inter:wght@400;600&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #0a0b0c; }
+  svg { display: block; margin-bottom: 8px; }
+  .legend { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .crt { font-family: 'IBM Plex Mono', monospace; }
+  .vt { font-family: 'VT323', monospace; }
+  .drum { font-family: 'Barlow Condensed', sans-serif; font-weight: 500; }
+  .dymo { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: 0.08em; }
+  .paper { font-family: 'Special Elite', monospace; }
+  .stencil { font-family: 'Big Shoulders Stencil Display', sans-serif; font-weight: 800; }
+  .ooc { font-family: 'Inter', sans-serif; }
+</style>
+</head>
+<body>
+<!-- The screens every spec shares, built in Yard Standard (style guide section 9). 1280 x 800 UI units. -->
+<svg id="S1-main-menu" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="S2-new-game" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="S3-pause" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="S4-load" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="S5-save" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="S6-settings" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="S7-ship-lost" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="S8-mod-scripts" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<svg id="K4-off-deck-kit" width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg"></svg>
+<script src="../kit.js"></script>
+<script>
+// =====================================================================
+// The shell: the yard office at night (style guide 9.11). It stands outside the fiction, but it is
+// built from the same hardware as the ship: a desk console in Yard Standard under a big window, and
+// today's menu backdrop (the drifting stars and the planet's limb) is the view through that window.
+// Every screen of the shell is a faceplate on that console; pause is a hatch in the ship's console.
+// =====================================================================
+const XDEFS = `<defs>
+  <filter id="projglow" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur in="SourceGraphic" stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="softshadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="2" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.65"/></filter>
+  <filter id="inkbleed" x="-5%" y="-20%" width="110%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.4"/></filter>
+  <linearGradient id="paperG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2EBD9"/><stop offset="1" stop-color="#E4DBC6"/></linearGradient>
+  <linearGradient id="canaryG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1E8BC"/><stop offset="1" stop-color="#E4D7A0"/></linearGradient>
+  <linearGradient id="tagG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2CF3E"/><stop offset="1" stop-color="#E2BB27"/></linearGradient>
+  <linearGradient id="buffG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E7D5AC"/><stop offset="1" stop-color="#D6C193"/></linearGradient>
+  <linearGradient id="castG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2dfd8"/><stop offset="0.45" stop-color="#b5b2aa"/><stop offset="1" stop-color="#86837b"/></linearGradient>
+  <linearGradient id="frameG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2e2621"/><stop offset="0.5" stop-color="#3a312a"/><stop offset="1" stop-color="#2a231e"/></linearGradient>
+  <linearGradient id="wallG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b241f"/><stop offset="1" stop-color="#15110e"/></linearGradient>
+  <linearGradient id="hatchG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cdc2a7"/><stop offset="1" stop-color="#b5aa8f"/></linearGradient>
+  <linearGradient id="doorG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8e846e"/><stop offset="1" stop-color="#b7ad95"/></linearGradient>
+  <linearGradient id="cassG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#43413d"/><stop offset="1" stop-color="#2a2826"/></linearGradient>
+  <linearGradient id="spineG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a4743"/><stop offset="0.5" stop-color="#34322f"/><stop offset="1" stop-color="#242220"/></linearGradient>
+  <linearGradient id="teleG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2d9c0"/><stop offset="1" stop-color="#c4b998"/></linearGradient>
+  <radialGradient id="lampPoolG" cx="0.5" cy="0.1" r="0.8"><stop offset="0" stop-color="#ffdca8" stop-opacity="0.18"/><stop offset="1" stop-color="#ffdca8" stop-opacity="0"/></radialGradient>
+  <pattern id="grilleP" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1.7" fill="#2b241f"/></pattern>
+  <pattern id="sprocketP" width="12" height="18" patternUnits="userSpaceOnUse"><circle cx="6" cy="9" r="2.4" fill="#16171a"/></pattern>
+</defs>`;
+
+// Lamps sit in a dark bezel ring, so a lit white lens reads as lit on beige enamel (as in the variations)
+const kitLampG = lampG;
+lampG = (cx, cy, r, color, lit) => `<circle cx="${cx}" cy="${cy}" r="${r + 2.9}" fill="#2b2723"/>` + kitLampG(cx, cy, r, color, lit);
+const lg = (x, y, t, o = {}) => tag(x, y, t, { fill: C.inkLight, ...o });          // legend painted on the dark chassis
+const fit = (t, n) => t.length > n ? t.slice(0, n - 1) + '…' : t;                 // long names are cut, never wrapped
+const typed = (x, y, t, { size = 14, fill = '#26211d', anchor = 'start' } = {}) =>
+  `<text x="${x}" y="${y}" class="paper" font-size="${size}" text-anchor="${anchor}" fill="${fill}" xml:space="preserve">${esc(t)}</text>`;
+const note = (x, y, t, { size = 13, fill = '#c9c2b4', anchor = 'start', weight = 400 } = {}) =>
+  `<text x="${x}" y="${y}" class="ooc" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" fill="${fill}">${esc(t)}</text>`;
+const head = (x, y, t, sub = '') => note(x, y, t, { size: 15, weight: 600, fill: '#ece6da' }) + (sub ? note(x, y + 19, sub, { fill: '#9d968a' }) : '');
+const dimG = (o = 0.55) => `<rect width="1280" height="800" fill="#000" opacity="${o}"/>`;
+
+// The focus pointer tab (style guide 10.2): an orange tab on the faceplate, pointing at the control
+function focusTabG(x, y) { return `<path d="M${x} ${y}l-9 -6.5v13z" fill="${C.orange}" stroke="#7a3514" stroke-width="0.6"/>`; }
+// A fixed-legend lens, lit or dark; a dark lens keeps its legend faintly
+function lensS(x, y, w, h, text, color = null, { glow = true, base = 'white', size = 12 } = {}) {
+  const lit = !!color, [on, off] = LAMP[color || base];
+  let s = `<rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="2" fill="${C.alu}"/>`;
+  if (lit && glow) s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${on}" filter="url(#lampglow)" opacity="0.6"/>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.2" fill="${lit ? on : off}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#glassG)"/>`;
+  s += `<text x="${x + w / 2}" y="${y + h / 2 + size * 0.35}" text-anchor="middle" class="legend" font-size="${size}" fill="${lit ? '#241406' : 'rgba(240,230,210,0.42)'}">${esc(text)}</text>`;
+  return s;
+}
+// Split flaps
+function flapC(x, y, str, { cw = 8.4, ch = 18, size = 13 } = {}) {
+  let s = `<rect x="${x - 2}" y="${y - 2}" width="${str.length * cw + 4}" height="${ch + 4}" rx="1.5" fill="#0d0b0a"/>`;
+  for (let i = 0; i < str.length; i++) {
+    const xx = x + i * cw;
+    s += `<rect x="${xx + 0.5}" y="${y}" width="${cw - 1}" height="${ch}" fill="#24211f"/><line x1="${xx + 0.5}" y1="${y + ch / 2}" x2="${xx + cw - 0.5}" y2="${y + ch / 2}" stroke="#000" stroke-width="0.8" opacity="0.7"/>`;
+    if (str[i] !== ' ') s += `<text x="${xx + cw / 2}" y="${y + ch / 2 + size * 0.36}" text-anchor="middle" class="drum" font-size="${size}" fill="#F3EEE2">${esc(str[i])}</text>`;
+  }
+  return s;
+}
+function dzusG(x, y) { const a = rnd() * 180; return `<circle cx="${x}" cy="${y}" r="4.4" fill="none" stroke="#8f8571" stroke-width="0.8"/><g transform="translate(${x},${y}) rotate(${a})"><circle r="3.2" fill="url(#screwG)" stroke="#5d5a53" stroke-width="0.6"/><path d="M-2.4 0H2.4" stroke="#4b4842" stroke-width="1.3"/></g>`; }
+function blankG(x, y, w, h) {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#bdb29a" stroke="#8f8571" stroke-width="0.8"/><path d="M${x + 2} ${y + 1.2}H${x + w - 2}" stroke="#e7dfca" stroke-width="1" opacity="0.8"/>` + dzusG(x + 8, y + h / 2) + dzusG(x + w - 8, y + h / 2);
+}
+// Dymo tape: raised white letters on black (or red) tape, slightly skewed
+function dymoG(x, y, t, { fill = '#1C1B1A', rot = -0.8 } = {}) {
+  const w = t.length * 7.4 + 12;
+  return `<g transform="translate(${x},${y}) rotate(${rot})"><rect width="${w}" height="17" rx="1.5" fill="${fill}"/><rect y="0.6" width="${w}" height="1" fill="#fff" opacity="0.12"/><text x="${w / 2}" y="12.6" text-anchor="middle" class="dymo" font-size="12" fill="#f4efe6">${esc(t)}</text></g>`;
+}
+// A bakelite key with a drawn arrow (no font glyphs)
+function arrowKeyG(x, y, dir, { w = 22, h = 22 } = {}) {
+  const cx = x + w / 2, cy = y + (h - 4) / 2 + 0.5;
+  const P = { L: `M${cx + 4} ${cy - 5}L${cx - 4} ${cy}L${cx + 4} ${cy + 5}Z`, R: `M${cx - 4} ${cy - 5}L${cx + 4} ${cy}L${cx - 4} ${cy + 5}Z`,
+    U: `M${cx - 5} ${cy + 3.5}L${cx} ${cy - 4.5}L${cx + 5} ${cy + 3.5}Z`, D: `M${cx - 5} ${cy - 3.5}L${cx} ${cy + 4.5}L${cx + 5} ${cy - 3.5}Z` }[dir];
+  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${C.bakelite}"/></g><rect x="${x + 2}" y="${y + 1.5}" width="${w - 4}" height="${h - 6}" rx="2" fill="#3a3430"/><path d="${P}" fill="${C.inkLight}"/>`;
+}
+// Small arrow keycaps on the keycap scale (15 tall), for engraved key hints
+function arrowCapG(x, y, dir) {
+  const w = 15, h = 15, cx = x + w / 2, cy = y + 5.6;
+  const P = { L: `M${cx + 3} ${cy - 3.6}L${cx - 3} ${cy}L${cx + 3} ${cy + 3.6}Z`, R: `M${cx - 3} ${cy - 3.6}L${cx + 3} ${cy}L${cx - 3} ${cy + 3.6}Z`,
+    U: `M${cx - 3.6} ${cy + 2.6}L${cx} ${cy - 3.2}L${cx + 3.6} ${cy + 2.6}Z`, D: `M${cx - 3.6} ${cy - 2.6}L${cx} ${cy + 3.2}L${cx + 3.6} ${cy - 2.6}Z` }[dir];
+  return `<g transform="translate(0,0)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2.5" fill="${C.rubber}"/><rect x="${x + 1.2}" y="${y + 0.8}" width="${w - 2.4}" height="${h - 4}" rx="2" fill="#4d4945"/><path d="${P}" fill="${C.inkLight}"/></g>`;
+}
+
+// ---------------- the office ----------------
+function officeG({ sd = 23 } = {}) {
+  let s = spaceG(1280, 800, { seed: sd, stars: 460, haze: false });
+  // the planet's limb, as today's menu draws it: the body dark, its edge in blue rings
+  s += `<circle cx="640" cy="1900" r="1500" fill="#0a131b"/>`;
+  s += `<g fill="none" filter="url(#glow)">` + [[0, 0.55, 2.4], [11, 0.26, 1.6], [24, 0.12, 1.2]].map(([d, o, w]) => `<circle cx="640" cy="1900" r="${1500 + d}" stroke="#86b6dc" stroke-opacity="${o}" stroke-width="${w}"/>`).join('') + `</g>`;
+  // faint reflections on the glass
+  s += `<path d="M262 22H330L214 600H146Z" fill="#fff" opacity="0.022"/><path d="M1150 22H1182L1104 600H1072Z" fill="#fff" opacity="0.02"/>`;
+  // the window: painted steel frame and two mullions, then the sill and the wall under it
+  s += `<path d="M0 0H1280V600H0Z M22 22V600H196V22Z M220 22V600H1060V22Z M1084 22V600H1258V22Z" fill="url(#frameG)" fill-rule="evenodd"/>`;
+  for (const mx of [208, 1072]) for (let yy = 60; yy < 590; yy += 90) s += screwG(mx, yy);
+  s += `<rect x="0" y="596" width="1280" height="16" fill="#4a3f36"/><rect x="0" y="596" width="1280" height="3" fill="#6b5d50"/><rect x="0" y="612" width="1280" height="188" fill="url(#wallG)"/>`;
+  return s;
+}
+// The desk console the shell is built on: Yard Standard, the orange stripe under its rolled lip
+function pedestalG({ x = 340, y = 108, w = 600 } = {}) {
+  const h = 800 - y + 20;
+  let s = `<g filter="url(#softshadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="url(#enamelG)"/></g>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="url(#enamelG)" filter="url(#grain)"/>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#lampPoolG)"/>`;
+  s += `<rect x="${x - 7}" y="${y - 5}" width="${w + 14}" height="11" rx="5" fill="url(#lipG)"/>`;
+  s += `<rect x="${x}" y="${y + 7}" width="${w}" height="6" fill="${C.orange}"/><rect x="${x}" y="${y + 13}" width="${w}" height="1" fill="#6e3216" opacity="0.6"/>`;
+  s += `<path d="M${x + 1} ${y + 16}V800" stroke="#F4EEDD" stroke-width="1.2" opacity="0.8"/><path d="M${x + w - 1} ${y + 16}V800" stroke="#7d735e" stroke-width="1.4"/>`;
+  s += screwG(x + 9, y + 24) + screwG(x + w - 9, y + 24) + screwG(x + 9, 786) + screwG(x + w - 9, 786);
+  return s;
+}
+// The builder's plate: cast aluminium, raised polished letters on a painted ground
+function builderPlateG(cx, y, { w = 500, h = 102 } = {}) {
+  const x = cx - w / 2;
+  let s = `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="url(#castG)"/></g>`;
+  s += `<rect x="${x + 9}" y="${y + 9}" width="${w - 18}" height="${h - 18}" rx="4" fill="#1d1916"/>`;
+  s += `<rect x="${x + 9}" y="${y + 9}" width="${w - 18}" height="${h - 18}" rx="4" fill="none" stroke="#000" stroke-opacity="0.5" stroke-width="1.5"/>`;
+  s += [[x + 22, y + h / 2], [x + w - 22, y + h / 2]].map(([rx, ry]) => `<circle cx="${rx}" cy="${ry}" r="5.5" fill="url(#castG)" stroke="#4d4a44" stroke-width="0.8"/><circle cx="${rx - 1.5}" cy="${ry - 1.8}" r="1.6" fill="#fff" opacity="0.6"/>`).join('');
+  s += `<text x="${cx + 1.2}" y="${y + 63.5}" text-anchor="middle" class="stencil" font-size="56" letter-spacing="2" fill="#000" opacity="0.7">RINGS OF IRON</text>`;
+  s += `<text x="${cx}" y="${y + 62}" text-anchor="middle" class="stencil" font-size="56" letter-spacing="2" fill="url(#castG)">RINGS OF IRON</text>`;
+  s += `<text x="${cx}" y="${y + 84}" text-anchor="middle" class="legend" font-size="13" letter-spacing="4" fill="#cfccc4">A NEWTONIAN SHIP SIM</text>`;
+  return s;
+}
+function serialPlateG(x, y, text) {
+  const w = 156, h = 36;
+  let s = `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="url(#castG)"/></g>`;
+  s += `<circle cx="${x + 8}" cy="${y + h / 2}" r="2.8" fill="url(#screwG)" stroke="#5d5a53" stroke-width="0.5"/><circle cx="${x + w - 8}" cy="${y + h / 2}" r="2.8" fill="url(#screwG)" stroke="#5d5a53" stroke-width="0.5"/>`;
+  s += tag(x + 18, y + 14, 'SERIAL') + `<text x="${x + 18}" y="${y + 30}" class="drum" font-size="14" letter-spacing="0.6" fill="${C.ink}">${esc(text)}</text>`;
+  return s;
+}
+// A large momentary push button (a menu's action): aluminium bezel, a cap with an engraved legend.
+// Barred: the barber strip along the cap and the legend dim; its reason goes on flaps beside it.
+function capG(x, y, w, h, label, { sub = null, color = 'cream', key = null, barred = false, focus = false, lit = false, size = 15 } = {}) {
+  const P = {
+    cream: { top: '#EFE8D4', lip: '#c9bb9b', ink: C.ink },
+    green: { top: lit ? '#a7e483' : '#7aa565', lip: '#3f6a33', ink: '#10200c', glow: LAMP.green[0] },
+    amber: { top: lit ? '#ffc466' : '#d2a24f', lip: '#8a5f1c', ink: '#2a1606', glow: LAMP.amber[0] },
+    white: { top: lit ? '#fff6dc' : '#d8d1bf', lip: '#a39b88', ink: '#241406', glow: LAMP.white[0] },
+  }[color];
+  let s = `<rect x="${x - 4}" y="${y - 4}" width="${w + 8}" height="${h + 8}" rx="4.5" fill="${C.alu}"/><rect x="${x - 4}" y="${y - 4}" width="${w + 8}" height="${h + 8}" rx="4.5" fill="url(#glassG)"/><rect x="${x - 1.8}" y="${y - 1.8}" width="${w + 3.6}" height="${h + 3.6}" rx="3" fill="#1f1b18"/>`;
+  if (lit && P.glow) s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${P.glow}" filter="url(#lampglow)" opacity="0.5"/>`;
+  s += `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h - 3}" rx="3" fill="${P.top}"/></g>`;
+  s += `<rect x="${x}" y="${y + h - 7}" width="${w}" height="4" rx="1.5" fill="${P.lip}"/><path d="M${x + 3} ${y + 1}H${x + w - 3}" stroke="#fff" stroke-opacity="0.55" stroke-width="1"/>`;
+  const ink = barred ? 'rgba(42,36,32,0.36)' : P.ink;
+  const ty = sub ? y + (h - 3) / 2 - 1 : y + (h - 4) / 2 + size * 0.36;
+  s += `<text x="${x + w / 2}" y="${ty}" text-anchor="middle" class="legend" font-size="${size}" fill="${ink}">${esc(label)}</text>`;
+  if (sub) s += `<text x="${x + w / 2}" y="${ty + 15}" text-anchor="middle" class="legend" font-size="12" fill="${ink}" opacity="0.75">${esc(sub)}</text>`;
+  if (barred) s += `<rect x="${x}" y="${y + h - 15}" width="${w}" height="7" fill="url(#barber)" opacity="0.95"/>`;
+  if (key) s += keyG(x + w + 13, y + h / 2 - 8, key, { anchor: 'start' });
+  if (focus) s += focusTabG(x - 8, y + h / 2);
+  return s;
+}
+// The same button under a red flip guard: closed, or lifted (armed) with its lamp lit beside it
+function guardCapG(x, y, w, h, label, { open = false, key = null } = {}) {
+  let s = capG(x, y, w, h, label, { key });
+  if (open) {
+    s += `<g filter="url(#shadow)"><rect x="${x - 5}" y="${y - 30}" width="${w + 10}" height="22" rx="3" fill="${C.red}"/><rect x="${x - 5}" y="${y - 12}" width="${w + 10}" height="4" fill="#7a221b"/></g>`;
+    s += lampG(x - 18, y + h / 2, 4.5, 'red', true);
+  } else {
+    s += `<g filter="url(#shadow)"><rect x="${x - 6}" y="${y - 6}" width="${w + 12}" height="${h + 12}" rx="4" fill="${C.red}" opacity="0.86"/></g><rect x="${x - 6}" y="${y - 6}" width="${w + 12}" height="${h + 12}" rx="4" fill="url(#glassG)"/>`;
+    s += `<rect x="${x - 6}" y="${y - 6}" width="${w + 12}" height="5" rx="2" fill="#7a221b"/><text x="${x + w / 2}" y="${y + h / 2 + 5}" text-anchor="middle" class="legend" font-size="14" fill="#fbe9dc">${esc(label)}</text>`;
+    s += lampG(x - 18, y + h / 2, 4.5, 'red', false);
+  }
+  return s;
+}
+// Interlocked piano keys: one down (its foot safety orange); null is a blanking plate; a jewel marks a waiting tab
+function pianoG(x, y, labels, sel, { kw = 100, h = 28, gap = 3, keys = null, jewel = -1, size = 12 } = {}) {
+  let s = `<rect x="${x - 3}" y="${y - 3}" width="${labels.length * (kw + gap) - gap + 6}" height="${h + 6}" rx="2.5" fill="${C.bakelite}"/>`;
+  labels.forEach((l, i) => {
+    const kx = x + i * (kw + gap), dn = i === sel;
+    if (l === null) { s += `<rect x="${kx}" y="${y}" width="${kw}" height="${h - 2}" rx="2" fill="#8f8b82"/>${screwG(kx + 8, y + h / 2 - 1)}${screwG(kx + kw - 8, y + h / 2 - 1)}`; return; }
+    s += `<g filter="url(#shadow)"><rect x="${kx}" y="${y + (dn ? 2 : 0)}" width="${kw}" height="${h - 2}" rx="2" fill="${dn ? '#cfc4a8' : '#ece4ce'}"/></g>`;
+    if (dn) s += `<rect x="${kx}" y="${y + h - 4}" width="${kw}" height="3" fill="${C.orange}"/>`;
+    s += `<text x="${kx + kw / 2}" y="${y + h / 2 + size * 0.36 + (dn ? 1.5 : 0)}" text-anchor="middle" class="legend" font-size="${size}" fill="${C.ink}">${esc(l)}</text>`;
+    if (i === jewel) s += lampG(kx + kw - 10, y + 8 + (dn ? 2 : 0), 2.6, 'amber', true);
+    if (keys && keys[i]) s += keyG(kx + kw / 2, y + h + 8, keys[i]);
+  });
+  return s;
+}
+// A label holder: a card in an aluminium holder, typed in Special Elite; the placeholder pencilled in grey
+function holderG(x, y, w, h, text, { placeholder = null, cursor = false, size = 15 } = {}) {
+  let s = `<g filter="url(#shadow)"><rect x="${x - 5}" y="${y - 5}" width="${w + 10}" height="${h + 10}" rx="2.5" fill="url(#castG)"/></g>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#F5EFE0"/>`;
+  s += `<rect x="${x - 5}" y="${y - 5}" width="${w + 10}" height="6" rx="2" fill="url(#castG)"/><rect x="${x - 5}" y="${y + h - 1}" width="${w + 10}" height="6" rx="2" fill="url(#castG)"/>`;
+  const ty = y + h / 2 + size * 0.36, adv = size * 0.6;
+  let cx = x + 10;
+  if (text) { s += typed(x + 10, ty, text, { size }); cx = x + 10 + text.length * adv; }
+  if (cursor) s += `<rect x="${cx + 1}" y="${y + 7}" width="${adv}" height="${h - 13}" fill="#26211d" opacity="0.8"/>`;
+  if (!text && placeholder) s += `<text x="${x + 12 + (cursor ? adv + 4 : 0)}" y="${ty}" class="paper" font-size="${size}" fill="#99928a" filter="url(#inkbleed)">${esc(placeholder)}</text>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#glassG)"/>`;
+  return s;
+}
+// A typed card under two clips: the spec's notes
+function cardG(x, y, w, lines, { size = 13.5, lh = 18, fill = 'url(#paperG)' } = {}) {
+  const h = lines.length * lh + 12;
+  let s = `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/></g>`;
+  lines.forEach((l, i) => s += typed(x + 12, y + 18 + i * lh, l, { size }));
+  s += `<rect x="${x + 16}" y="${y - 4}" width="18" height="9" rx="1.5" fill="url(#castG)"/><rect x="${x + w - 34}" y="${y - 4}" width="18" height="9" rx="1.5" fill="url(#castG)"/>`;
+  return s;
+}
+// A rotary selector at grid size: engraved positions over `span` degrees, a knurled bakelite knob
+function rotG(cx, cy, r, positions, sel, { label = null, span = 120, rad = null, size = 12 } = {}) {
+  let s = '';
+  const n = positions.length, ang = i => (-90 - span / 2 + (n === 1 ? 0 : i * span / (n - 1)));
+  const R = rad || r + 15;
+  positions.forEach((p, i) => {
+    const a = ang(i) * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+    s += `<line x1="${cx + (r + 3) * c}" y1="${cy + (r + 3) * sn}" x2="${cx + (r + 7) * c}" y2="${cy + (r + 7) * sn}" stroke="${C.ink}" stroke-width="1.3"/>`;
+    const anchor = c < -0.35 ? 'end' : c > 0.35 ? 'start' : 'middle';
+    s += tag(cx + R * c, cy + R * sn + size * 0.36, p, { anchor, size });
+  });
+  s += `<g filter="url(#shadow)"><circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#knobG)"/></g>`;
+  for (let k = 0; k < 28; k++) { const aa = k * (360 / 28) * Math.PI / 180; s += `<line x1="${cx + (r - 0.6) * Math.cos(aa)}" y1="${cy + (r - 0.6) * Math.sin(aa)}" x2="${cx + (r - 3.2) * Math.cos(aa)}" y2="${cy + (r - 3.2) * Math.sin(aa)}" stroke="#4d4540" stroke-width="1"/>`; }
+  s += `<circle cx="${cx}" cy="${cy}" r="${r * 0.66}" fill="#2a2522"/><circle cx="${cx - r * 0.2}" cy="${cy - r * 0.25}" r="${r * 0.3}" fill="#fff" opacity="0.05"/>`;
+  s += `<g transform="rotate(${ang(sel) + 90} ${cx} ${cy})"><path d="M${cx} ${cy - r + 2.5}V${cy - r * 0.25}" stroke="${C.inkLight}" stroke-width="2.4" stroke-linecap="round"/></g>`;
+  if (label) s += tag(cx, cy + r + 22, label, { anchor: 'middle' });
+  return s;
+}
+// A slide pot: a slot with an engraved 0 to 10 scale, a bakelite cap, and a drum when the exact value matters
+function slidePotG(x, y, h, v, { label, drum = null, unit = '%' } = {}) {
+  let s = tag(x, y - 14, label, { anchor: 'middle' });
+  s += `<rect x="${x - 3.5}" y="${y}" width="7" height="${h}" rx="3.5" fill="#0d0b0a"/><rect x="${x - 1}" y="${y + 3}" width="2" height="${h - 6}" fill="#2e2925"/>`;
+  for (let i = 0; i <= 10; i++) { const yy = y + h - i * h / 10; s += `<line x1="${x - 20}" y1="${yy}" x2="${x - (i % 5 ? 13 : 9)}" y2="${yy}" stroke="${C.ink}" stroke-width="${i % 5 ? 0.8 : 1.4}"/>`; }
+  [0, 5, 10].forEach(n => s += tag(x - 24, y + h - n * h / 10 + 4.3, String(n), { anchor: 'end' }));
+  const ky = y + h - v * h;
+  s += `<g filter="url(#shadow)"><rect x="${x - 15}" y="${ky - 10}" width="30" height="20" rx="2.5" fill="url(#knobG)"/></g><path d="M${x - 15} ${ky - 3}H${x + 15}M${x - 15} ${ky + 3}H${x + 15}" stroke="#3d3632" stroke-width="1"/><rect x="${x - 15}" y="${ky - 1}" width="30" height="2" fill="${C.inkLight}"/>`;
+  if (drum) { const W = drumW(drum, 13); s += drumG(x - W / 2 - 6, y + h + 16, drum, { cw: 13, ch: 20, size: 15, dimLead: false }) + tag(x + W / 2 - 1, y + h + 31, unit); }
+  return s;
+}
+// A flap selector: the choice on split flaps between two arrow keys (a set the game builds)
+function flapSelG(x, y, rows, { cells = 11, cw = 9.6, ch = 20, size = 14 } = {}) {
+  let s = arrowKeyG(x, y + (rows.length * (ch + 4) - 26) / 2, 'L');
+  rows.forEach((r, i) => s += flapC(x + 30, y + i * (ch + 4), r.padEnd(cells).slice(0, cells), { cw, ch, size }));
+  s += arrowKeyG(x + 30 + cells * cw + 8, y + (rows.length * (ch + 4) - 26) / 2, 'R');
+  return s;
+}
+// A bat toggle with ON and OFF engraved at its throws
+function batG(x, y, on, { label = null } = {}) {
+  let s = toggleG(x, y, { up: on });
+  s += tag(x + 15, y - 9, 'ON') + tag(x + 15, y + 17, 'OFF');
+  if (label) s += tag(x, y - 30, label, { anchor: 'middle' });
+  return s;
+}
+// A thumbwheel: a wheel for each digit, with the digit in a window
+function thumbG(x, y, digits, { label = null } = {}) {
+  let s = '';
+  [...digits].forEach((d, i) => {
+    const wx = x + i * 20;
+    s += `<rect x="${wx}" y="${y}" width="18" height="34" rx="2" fill="${C.bakelite}"/>`;
+    for (let k = 0; k < 7; k++) s += `<rect x="${wx + 15}" y="${y + 3 + k * 4.4}" width="4" height="2.4" fill="#5a524b"/>`;
+    s += `<rect x="${wx + 2}" y="${y + 8}" width="12" height="18" fill="#F2ECDC"/><text x="${wx + 8}" y="${y + 22}" text-anchor="middle" class="drum" font-size="15" fill="${C.ink}">${d}</text><rect x="${wx + 2}" y="${y + 8}" width="12" height="18" fill="url(#glassG)"/>`;
+  });
+  if (label) s += tag(x, y - 8, label);
+  return s;
+}
+// A patch-panel row: the action on Dymo tape, its key on a keycap in a socket; TWICE when a key is bound twice
+function patchRowG(x, y, w, label, key, { capturing = false, twice = false } = {}) {
+  let s = `<path d="M${x} ${y + 26}H${x + w}" stroke="#b9ae93" stroke-width="0.8"/>`;
+  s += dymoG(x, y + 4, fit(label.toUpperCase(), 30));
+  const sx = x + w - 64;
+  s += `<rect x="${sx}" y="${y + 1}" width="64" height="22" rx="3" fill="#15120f"/><rect x="${sx}" y="${y + 1}" width="64" height="22" rx="3" fill="none" stroke="#8f8571" stroke-width="0.8"/>`;
+  if (capturing) {
+    s += `<path d="M${sx + 14} ${y + 12}h36" stroke="#c9a74a" stroke-width="2" stroke-dasharray="3 4"/>`;
+    s += `<g filter="url(#softshadow)" transform="rotate(-7 ${sx - 34} ${y + 10})"><rect x="${sx - 62}" y="${y}" width="56" height="20" rx="3" fill="${C.rubber}"/><rect x="${sx - 60.5}" y="${y + 1}" width="53" height="15" rx="2.5" fill="#4d4945"/><text x="${sx - 34}" y="${y + 12.5}" text-anchor="middle" class="drum" font-size="13" fill="${C.inkLight}">${esc(key)}</text></g>`;
+  } else {
+    s += `<rect x="${sx + 4}" y="${y + 3}" width="56" height="18" rx="3" fill="${C.rubber}"/><rect x="${sx + 5.5}" y="${y + 3.8}" width="53" height="13" rx="2.5" fill="#4d4945"/><text x="${sx + 32}" y="${y + 14.5}" text-anchor="middle" class="drum" font-size="13" fill="${C.inkLight}">${esc(key)}</text>`;
+  }
+  if (twice) s += lensS(sx - 56, y + 3, 46, 18, 'TWICE', 'amber', { glow: false });
+  return s;
+}
+// A position meter in a bezel: the band is the share in view, its place the position
+function posMeterG(x, y, h, pos, share) {
+  const bh = Math.max(12, share * h), by = y + pos * (h - bh);
+  return `<rect x="${x - 3}" y="${y - 3}" width="12" height="${h + 6}" rx="2.5" fill="#0b0908"/><rect x="${x}" y="${y}" width="6" height="${h}" fill="#2e2925"/>`
+    + `<rect x="${x}" y="${by}" width="6" height="${bh}" rx="1" fill="#e9e2cf"/>`;
+}
+
+// ---------------- cassettes ----------------
+// A cassette's face, as it sits in the deck: the label typed, the tape window and its two reels
+function cassetteFaceG(x, y, w, h, { name = '', l2 = '', l3 = '', blank = false, cursor = false } = {}) {
+  let s = `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="url(#cassG)"/></g>`;
+  [[x + 6, y + 6], [x + w - 6, y + 6], [x + 6, y + h - 6], [x + w - 6, y + h - 6], [x + w / 2, y + h - 7]].forEach(([a, b]) => s += `<circle cx="${a}" cy="${b}" r="2.1" fill="#8d8a82"/><path d="M${a - 1.2} ${b}h2.4" stroke="#4b4842" stroke-width="0.8"/>`);
+  const lx = x + 13, ly = y + 7, lw = w - 26, lh = Math.round(h * 0.6);
+  s += `<rect x="${lx}" y="${ly}" width="${lw}" height="${lh}" rx="2" fill="url(#paperG)"/><rect x="${lx}" y="${ly + lh - 7}" width="${lw}" height="3" fill="${C.orange}" opacity="0.85"/>`;
+  for (let k = 1; k <= 3; k++) s += `<path d="M${lx + 8} ${ly + 6 + k * 15.5}H${lx + lw - 8}" stroke="#9fb2c8" stroke-width="0.6" opacity="0.55"/>`;
+  if (!blank) {
+    s += typed(lx + 9, ly + 18, name, { size: 15.5 }) + typed(lx + 9, ly + 34, l2, { size: 13.5 }) + typed(lx + 9, ly + 49.5, l3, { size: 13.5 });
+  } else {
+    s += typed(lx + 9, ly + 18, name, { size: 15.5 });
+    if (cursor) s += `<rect x="${lx + 10 + name.length * 9.3}" y="${ly + 6}" width="9" height="15" fill="#26211d" opacity="0.8"/>`;
+  }
+  const th = 18, tw = w * 0.5, tx = x + (w - tw) / 2, ty = ly + lh + 5;
+  s += `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="${th / 2}" fill="#120f0d"/>`;
+  [[tx + 11, 7.5], [tx + tw - 11, 5]].forEach(([cx, pr]) => {
+    s += `<circle cx="${cx}" cy="${ty + th / 2}" r="${pr}" fill="#4a3424"/><circle cx="${cx}" cy="${ty + th / 2}" r="3.6" fill="#e8e2d2"/><circle cx="${cx}" cy="${ty + th / 2}" r="1.6" fill="#120f0d"/>`;
+  });
+  s += `<path d="M${x + w * 0.24} ${y + h}L${x + w * 0.29} ${y + h - 11}H${x + w * 0.71}L${x + w * 0.76} ${y + h}Z" fill="#1b1816"/>`;
+  return s;
+}
+// A tape deck holding the newest save, behind a smoked lid; empty when there is none
+function tapeDeckG(x, y, { save = null, w = 262, h = 170 } = {}) {
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="${C.chassis}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="url(#glassG)"/>`;
+  const wx = x + 10, wy = y + 10, ww = w - 20, wh = h - 40;
+  s += `<rect x="${wx}" y="${wy}" width="${ww}" height="${wh}" rx="3" fill="#0b0908"/>`;
+  if (save) s += cassetteFaceG(wx + 7, wy + 6, ww - 14, wh - 12, save);
+  else [[wx + ww * 0.36], [wx + ww * 0.64]].forEach(([cx]) => {
+    s += `<circle cx="${cx}" cy="${wy + wh * 0.55}" r="9" fill="#2a2522"/>`;
+    for (let k = 0; k < 6; k++) { const a = k * 60 * Math.PI / 180; s += `<line x1="${cx}" y1="${wy + wh * 0.55}" x2="${cx + 8 * Math.cos(a)}" y2="${wy + wh * 0.55 + 8 * Math.sin(a)}" stroke="#57504a" stroke-width="2"/>`; }
+  });
+  s += `<rect x="${wx}" y="${wy}" width="${ww}" height="${wh}" rx="3" fill="#3b2614" opacity="0.16"/><rect x="${wx}" y="${wy}" width="${ww}" height="${wh}" rx="3" fill="url(#glassG)"/>`;
+  s += lg(x + 12, y + h - 12, 'NEWEST SAVE');
+  if (!save) s += flapC(x + w - 116, y + h - 27, 'NO SAVES YET', { cw: 8.6, ch: 18, size: 13 });
+  return s;
+}
+// A cassette's spine in the rack: the name and details typed on its label, the date it was saved
+// in a blue rubber stamp. The game's own saves (quick, autosaves) have printed labels.
+function spineG(x, y, w, h, sv, { sel = false } = {}) {
+  let s = '';
+  if (sel) { s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#050404"/>`; x -= 18; y -= 3; }
+  s += `<g filter="url(#${sel ? 'softshadow' : 'shadow'})"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2.5" fill="url(#spineG)"/></g>`;
+  if (sel) s += `<rect x="${x}" y="${y}" width="${w}" height="5" rx="2" fill="#5e5a55"/>`;
+  const lx = x + 8, lw = w - 16;
+  s += `<rect x="${lx}" y="${y + 4}" width="${lw}" height="${h - 8}" rx="1.5" fill="url(#paperG)"/><rect x="${lx}" y="${y + h - 6.5}" width="${lw}" height="2.5" fill="${C.orange}" opacity="0.8"/>`;
+  let tx = lx + 9;
+  if (sv.printed) {
+    s += `<rect x="${lx}" y="${y + 4}" width="66" height="${h - 8}" rx="1.5" fill="${C.chassis}"/><text x="${lx + 33}" y="${y + h / 2 + 5}" text-anchor="middle" class="dymo" font-size="15" fill="#efe8d6">${sv.printed}</text>`;
+    tx = lx + 76;
+    s += `<text x="${tx}" y="${y + 20}" class="legend" font-size="13" fill="${C.ink}">${esc(sv.name)}</text>`;
+  } else s += typed(tx, y + 20, fit(sv.name, 34), { size: 15 });
+  s += typed(tx, y + 34.5, sv.d, { size: 13 });
+  // the stamp
+  const sx = x + w - 118;
+  s += `<g transform="rotate(${sv.rot || -3} ${sx + 55} ${y + h / 2})" filter="url(#inkbleed)" opacity="0.88"><rect x="${sx + 6}" y="${y + 7}" width="100" height="${h - 14}" rx="4" fill="none" stroke="#3d5e9a" stroke-width="1.6"/>`
+    + `<text x="${sx + 56}" y="${y + 22}" text-anchor="middle" class="drum" font-size="13" letter-spacing="0.8" fill="#3d5e9a">${sv.at[0]}</text><text x="${sx + 56}" y="${y + 36}" text-anchor="middle" class="drum" font-size="13" letter-spacing="0.8" fill="#3d5e9a">${sv.at[1]}</text></g>`;
+  return s;
+}
+const SAVES = [
+  { name: 'Save 3', d: 'Day 41 06:12   Patrol Corvette   12,400 cr', at: ['2026-11-05', '22:14'] },
+  { printed: 'AUTO 1', name: 'Autosave 1', d: 'Day 41 05:40   Patrol Corvette   12,400 cr', at: ['2026-11-05', '22:02'], rot: -2 },
+  { printed: 'QUICK', name: 'Quick save', d: 'Day 40 22:30   Patrol Corvette   11,250 cr', at: ['2026-11-05', '21:40'], rot: -4 },
+  { printed: 'AUTO 2', name: 'Autosave 2', d: 'Day 38 11:20   Patrol Corvette   9,800 cr', at: ['2026-11-04', '23:58'], rot: -2.5 },
+  { name: 'Before the raid', d: 'Day 38 09:10   Patrol Corvette   9,800 cr', at: ['2026-11-04', '23:51'], rot: -3.5 },
+  { name: 'Save 2', d: 'Day 21 14:05   Patrol Corvette   6,100 cr', at: ['2026-11-03', '20:12'], rot: -2 },
+  { printed: 'AUTO 3', name: 'Autosave 3', d: 'Day 20 08:30   Patrol Corvette   5,900 cr', at: ['2026-11-03', '19:47'], rot: -3 },
+];
+function rackG(x, y, w, rows, sel, { pitch = 52, h = 44, total = null, first = 0 } = {}) {
+  const H = rows.length * pitch + 10;
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${H}" rx="4" fill="${C.chassisDeep}"/><rect x="${x}" y="${y}" width="${w}" height="${H}" rx="4" fill="none" stroke="#1a1512" stroke-width="2"/>`;
+  rows.forEach((sv, i) => { const yy = y + 6 + i * pitch; s += `<rect x="${x + 6}" y="${yy - 1}" width="${w - 34}" height="${h + 2}" rx="2" fill="#0f0c0a"/>`; });
+  rows.forEach((sv, i) => { if (i !== sel) s += spineG(x + 10, y + 6 + i * pitch, w - 44, h, sv); });
+  if (sel >= 0) s += spineG(x + 10, y + 6 + sel * pitch, w - 44, h, rows[sel], { sel: true });
+  const n = total || rows.length;
+  s += posMeterG(x + w - 17, y + 8, H - 16, first / Math.max(1, n - rows.length), rows.length / n);
+  return s;
+}
+
+// ---------------- the game behind the shell's pause and endings ----------------
+function viewG({ sd = 5 } = {}) {
+  let s = spaceG(1280, 800, { seed: sd, stars: 380 });
+  s += planetG(1080, 1060, 560) + stationG(860, 300, 1.25) + hullG(600, 430, 38, 0.95);
+  // the frame the variants share: a header rail and the coaming, dimmed with the rest
+  s += `<rect x="0" y="0" width="1280" height="26" fill="url(#chassisG)"/><rect x="0" y="22.5" width="1280" height="3.5" fill="${C.orange}"/>`;
+  s += `<rect x="0" y="788" width="1280" height="12" fill="url(#chassisG)"/><rect x="0" y="788" width="1280" height="3" fill="url(#lipG)"/>`;
+  return s;
+}
+
+// =====================================================================
+// S1: the main menu
+// =====================================================================
+function sceneS1() {
+  let s = DEFS + XDEFS + officeG() + pedestalG() + builderPlateG(640, 136);
+  const bx = 382, bw = 250;
+  [['CONTINUE'], ['NEW GAME'], ['FIRST PLAY', 'GUIDED'], ['LOAD'], ['SETTINGS']].forEach(([l, sub], i) => s += capG(bx, 278 + i * 62, bw, 48, l, { sub, focus: i === 0 }));
+  s += `<path d="M${bx - 4} 600H${bx + bw + 4}" stroke="#a99d82" stroke-width="1"/>`;
+  s += capG(bx, 616, bw, 48, 'QUIT');
+  // the newest save, in the deck beside CONTINUE
+  s += tapeDeckG(658, 278, { save: { name: 'Save 3', l2: 'Day 41 06:12   12,400 cr', l3: 'Patrol Corvette' } });
+  // a speaker grille, and the keys
+  s += `<rect x="658" y="470" width="262" height="194" rx="4" fill="#c7bc9f"/><rect x="666" y="478" width="246" height="178" rx="3" fill="url(#grilleP)" opacity="0.8"/>`;
+  s += arrowCapG(382, 700, 'U') + arrowCapG(400, 700, 'D') + tag(422, 712, 'CHOOSE') + keyG(506, 700, 'ENTER', { anchor: 'start' }) + tag(556, 712, 'PRESSES');
+  s += serialPlateG(764, 694, 'v1.0.0 (a1b2c3d)');
+  return s;
+}
+
+// =====================================================================
+// S2: a new game (Task's "new career"): the commission panel
+// =====================================================================
+function sceneS2() {
+  let s = DEFS + XDEFS + officeG() + pedestalG() + builderPlateG(640, 136);
+  s += tag(380, 286, 'NEW GAME', { size: 20 });
+  s += `<path d="M378 298H902" stroke="#a99d82" stroke-width="1"/>`;
+  s += tag(382, 336, 'SEED');
+  s += holderG(452, 316, 300, 32, '', { placeholder: 'random', cursor: true }) + focusTabG(440, 332);
+  s += tag(772, 336, 'UP TO 24', { fill: '#7d735e' });
+  s += cardG(452, 368, 436, ['Leave it empty for a new world; the same', 'seed gives the same start']);
+  s += tag(382, 474, 'SERVE');
+  s += pianoG(452, 456, ['TERRAN PATROL', 'SELENE COMBINE'], 0, { kw: 160, h: 30 });
+  s += cardG(452, 506, 436, ['The Patrol starts you at Highport in Earth', 'orbit; the Combine at Shackleton Ice above', 'the Moon']);
+  s += `<path d="M378 618H902" stroke="#a99d82" stroke-width="1"/>`;
+  s += capG(452, 640, 220, 48, 'START', { color: 'green', key: 'ENTER' });
+  s += capG(744, 640, 110, 48, 'BACK', { key: 'ESC' });
+  s += serialPlateG(764, 724, 'v1.0.0 (a1b2c3d)');
+  return s;
+}
+
+// =====================================================================
+// S3: pause: the maintenance hatch swings open in the ship's console
+// =====================================================================
+function sceneS3() {
+  let s = DEFS + XDEFS + viewG() + dimG(0.58);
+  const hx = 452, hy = 92, hw = 420, hh = 640;
+  // the surround and the open faceplate, swung out on its piano hinge at the left
+  s += `<g filter="url(#softshadow)"><rect x="${hx - 14}" y="${hy - 14}" width="${hw + 28}" height="${hh + 28}" rx="6" fill="url(#chassisG)"/></g>`;
+  s += `<path d="M${hx - 14} ${hy - 10}L${hx - 118} ${hy + 30}V${hy + hh - 30}L${hx - 14} ${hy + hh + 10}Z" fill="url(#doorG)"/>`;
+  s += `<path d="M${hx - 14} ${hy - 10}L${hx - 118} ${hy + 30}V${hy + hh - 30}L${hx - 14} ${hy + hh + 10}" fill="none" stroke="#5d5444" stroke-width="1.2"/>`;
+  s += `<path d="M${hx - 104} ${hy + 60}V${hy + hh - 60}" stroke="#6f6553" stroke-width="5" opacity="0.5"/>`;
+  for (let yy = hy; yy < hy + hh; yy += 26) s += `<rect x="${hx - 17}" y="${yy}" width="6" height="18" rx="1" fill="${C.alu}"/>`;
+  // the technician's panel behind it
+  s += `<rect x="${hx}" y="${hy}" width="${hw}" height="${hh}" rx="3" fill="url(#hatchG)" filter="url(#grain)"/>`;
+  s += screwG(hx + 8, hy + 8) + screwG(hx + hw - 8, hy + 8) + screwG(hx + 8, hy + hh - 8) + screwG(hx + hw - 8, hy + hh - 8);
+  const x = hx + 36, w = 300;
+  s += lensS(x, hy + 26, 150, 28, 'PAUSED', 'white', { size: 16 });
+  s += capG(x, hy + 80, w, 58, 'RESUME', { color: 'green', lit: true, size: 19, key: 'ESC', focus: true });
+  ['SAVE', 'LOAD', 'SETTINGS'].forEach((l, i) => s += capG(x, hy + 162 + i * 58, w, 44, l));
+  s += tag(x, hy + 352, 'BEACON') + `<path d="M${x + 52} ${hy + 348}H${x + w}" stroke="#8f8571" stroke-width="0.8"/>`;
+  s += capG(x, hy + 362, w, 44, 'CALL A TOW', { color: 'amber' });
+  s += `<rect x="${x - 10}" y="${hy + 436}" width="${w + 20}" height="4" fill="${C.red}"/>`;
+  s += capG(x, hy + 458, 140, 44, 'QUIT TO MENU', { size: 14 }) + capG(x + 160, hy + 458, 140, 44, 'QUIT GAME', { size: 14 });
+  s += arrowCapG(x, hy + 540, 'U') + arrowCapG(x + 18, hy + 540, 'D') + tag(x + 40, hy + 552, 'OR THE PAD CHOOSE') + keyG(x + 186, hy + 540, 'ESC', { anchor: 'start' }) + tag(x + 222, hy + 552, 'RESUMES');
+  s += dymoG(x, hy + 586, 'SEED 4417');
+  // where the specs differ
+  s += note(900, 700, 'Task: CONTROLS joins SAVE, LOAD and SETTINGS,', { fill: '#b9b2a4' }) + note(900, 718, 'and the tow moves to its crisis panel.', { fill: '#b9b2a4' });
+  s += note(900, 742, 'CALL A TOW shows only while a tow can be called.', { fill: '#b9b2a4' });
+  return s;
+}
+
+// =====================================================================
+// S4: load: the tape library
+// =====================================================================
+function sceneS4() {
+  let s = DEFS + XDEFS + officeG() + pedestalG() + builderPlateG(640, 136);
+  s += tag(380, 286, 'LOAD GAME', { size: 20 }) + drumG(840, 270, '9', { cw: 14, ch: 20, size: 15, dimLead: false }) + tag(862, 285, 'SAVES');
+  s += rackG(372, 300, 536, SAVES, 4, { total: 9, first: 0 });
+  s += capG(390, 694, 140, 46, 'LOAD', { color: 'green', key: 'ENTER', focus: true });
+  s += guardCapG(646, 694, 104, 46, 'DELETE', { key: 'DEL' });
+  s += capG(818, 694, 74, 46, 'BACK');
+  s += keyG(855, 752, 'ESC');
+  return s;
+}
+
+// =====================================================================
+// S5: save: a blank cassette, its label typed
+// =====================================================================
+function sceneS5() {
+  let s = DEFS + XDEFS + officeG() + pedestalG() + builderPlateG(640, 136);
+  s += tag(380, 286, 'SAVE GAME', { size: 20 });
+  s += tag(382, 318, 'NAME');
+  s += cassetteFaceG(382, 330, 270, 134, { name: 'Save 4', blank: true, cursor: true }) + focusTabG(372, 366);
+  s += lensS(690, 336, 132, 24, 'OVERWRITE', null);
+  s += cardG(690, 380, 200, ['Lit when the name is', 'a save already. Up to', '40 letters']);
+  s += tag(382, 498, 'OR PICK ONE TO WRITE OVER');
+  const rows = SAVES.filter(v => v.name !== 'Quick save').slice(0, 3);
+  s += rackG(372, 508, 536, rows, -1, { total: 8, first: 0 });
+  s += capG(382, 700, 220, 46, 'SAVE', { color: 'green', key: 'ENTER' });
+  s += capG(744, 700, 110, 46, 'BACK', { key: 'ESC' });
+  return s;
+}
+
+// =====================================================================
+// S6: settings: the maintenance panel
+// =====================================================================
+function sceneS6() {
+  let s = DEFS + XDEFS + officeG();
+  s += `<g filter="url(#softshadow)"><rect x="18" y="18" width="1244" height="764" rx="8" fill="url(#chassisG)"/></g>`;
+  s += `<rect x="26" y="26" width="1228" height="748" rx="5" fill="url(#hatchG)" filter="url(#grain)"/>`;
+  s += tag(44, 58, 'SETTINGS', { size: 20 }) + tag(150, 58, 'CHANGES TAKE EFFECT ON APPLY', { fill: '#6d6352' });
+  // SOUND
+  s += plateG(40, 76, 380, 256, { title: 'SOUND' });
+  s += slidePotG(96, 132, 128, 0.8, { label: 'MASTER', drum: '80' }) + slidePotG(186, 132, 128, 1.0, { label: 'EFFECTS', drum: '100' }) + slidePotG(276, 132, 128, 0.6, { label: 'AMBIENCE', drum: '60' });
+  s += rotG(366, 196, 17, ['AUTO', 'ON', 'OFF'], 0, { span: 110 }) + tag(366, 244, 'HRTF', { anchor: 'middle' }) + tag(366, 260, 'HEADPHONES', { anchor: 'middle', fill: '#6d6352' });
+  // DISPLAY
+  s += plateG(40, 346, 380, 354, { title: 'DISPLAY' });
+  s += batG(78, 412, true, { label: 'FULLSCREEN' });
+  s += tag(150, 382, 'WINDOW') + flapSelG(150, 396, ['1920 X 1080'], { cells: 11, cw: 10.4 });
+  s += rotG(118, 560, 21, ['AUTO', '100', '125', '150', '175', '200', '250', '300'], 0, { span: 250, rad: 40 });
+  s += tag(118, 626, 'UI SCALE %', { anchor: 'middle' });
+  s += tag(270, 532, 'NOW') + drumG(270, 540, '150', { cw: 14, ch: 22, size: 16, dimLead: false }) + tag(318, 556, '%');
+  s += cardG(232, 594, 170, ['Held to what fits', 'the window']);
+  // INTERFACE (as the Context spec sets it)
+  s += plateG(436, 76, 408, 624, { title: 'INTERFACE' });
+  s += tag(456, 116, 'HUD') + flapSelG(456, 128, ['CASSETTE-FUTURISM', 'PLAYER CONTEXT'], { cells: 17, cw: 9.6 });
+  s += rotG(530, 270, 19, ['LEARNING', 'ALWAYS', 'OFF'], 0, { span: 130 }) + tag(530, 318, 'KEY HINTS', { anchor: 'middle' });
+  s += rotG(744, 270, 19, ['SHORT', 'NORMAL', 'LONG'], 1, { span: 130 }) + tag(744, 318, 'FEED HOLD', { anchor: 'middle' });
+  s += tag(456, 372, 'REF FRAME') + pianoG(456, 382, ['AUTO', 'ORBIT'], 0, { kw: 82, h: 28 });
+  s += tag(652, 372, 'READOUTS') + pianoG(652, 382, ['COMPACT', 'EXPANDED'], 0, { kw: 82, h: 28 });
+  s += batG(492, 482, true, { label: 'FLASHING' });
+  s += batG(640, 482, false, { label: 'REDUCE MOTION' });
+  s += cardG(456, 540, 368, ['KEY HINTS to FLASHING are the Context', 'spec\u2019s; REDUCE MOTION is the style\u2019s own', '(10.5). Each spec puts its own here.']);
+  // CONTROLS: the patch panel
+  s += plateG(860, 76, 380, 624, { title: 'CONTROLS' });
+  s += batG(900, 140, true, { label: 'GAMEPAD' }) + batG(1046, 140, true, { label: 'WALKTHROUGH' });
+  s += tag(1080, 128, 'AT A NEW', { fill: '#6d6352' }) + tag(1080, 142, 'GAME', { fill: '#6d6352' });
+  s += lensS(1100, 178, 120, 22, 'PRESS A KEY', 'amber');
+  s += tag(876, 194, 'KEYS');
+  const KEYS = [['Main engine forward / walk up', 'W'], ['Main engine back / walk down', 'S'], ['Turn left / walk left', 'A'], ['Turn right / walk right', 'D'],
+    ['Strafe left', 'Z'], ['Strafe right', 'X', 'twice'], ['Rotation assist', 'X', 'twice'], ['Fire guns', 'SPACE'], ['Launch missile', 'R'],
+    ['Decoy / force door', 'F', 'cap'], ['Raise / lower shields', '9'], ['Next target', 'TAB'], ['Time warp up', '.'], ['Time warp down', ',']];
+  KEYS.slice(0, 13).forEach(([l, k, st], i) => s += patchRowG(876, 210 + i * 33, 326, l, k, { twice: st === 'twice', capturing: st === 'cap' }));
+  s += posMeterG(1218, 212, 424, 0, 13 / 58);
+  s += capG(876, 652, 140, 34, 'RESET KEYS', { size: 13 });
+  // the foot
+  s += capG(870, 718, 150, 42, 'APPLY', { color: 'white', lit: true, size: 15 });
+  s += capG(1060, 718, 110, 42, 'BACK', { key: 'ESC' });
+  return s;
+}
+
+// =====================================================================
+// S7: ship lost: a telex prints over the dimmed view
+// =====================================================================
+function sceneS7() {
+  let s = DEFS + XDEFS + spaceG(1280, 800, { seed: 9, stars: 300 });
+  s += `<circle cx="300" cy="1320" r="900" fill="#3a3936"/><circle cx="300" cy="1320" r="900" fill="none" stroke="#8d8b86" stroke-width="2" opacity="0.5"/>`;
+  for (let i = 0; i < 26; i++) { const a = rnd() * 6.28, d = 30 + rnd() * 140; s += `<rect x="${520 + Math.cos(a) * d}" y="${430 + Math.sin(a) * d * 0.5}" width="${2 + rnd() * 5}" height="${1.5 + rnd() * 3}" fill="#9a958c" opacity="${0.4 + rnd() * 0.4}" transform="rotate(${rnd() * 90} ${520 + Math.cos(a) * d} ${430 + Math.sin(a) * d * 0.5})"/>`; }
+  s += dimG(0.62);
+  // the sheet, rising from the teleprinter's platen
+  const px = 400, pw = 480, top = 200;
+  s += `<g filter="url(#softshadow)"><path d="M${px} ${top + 8}L${px + 6} ${top}L${px + 14} ${top + 7}L${px + 22} ${top}L${px + 30} ${top + 6}L${px + 38} ${top}L${px + 46} ${top + 7}` + Array.from({ length: 54 }, (_, k) => `L${px + 54 + k * 8} ${top + (k % 2 ? 7 : 0)}`).join('') + `L${px + pw} ${top + 6}V600H${px}Z" fill="url(#canaryG)"/></g>`;
+  s += `<path d="M${px + 26} ${top + 54}H${px + pw - 26}" stroke="#26211d" stroke-width="1" stroke-dasharray="6 5" opacity="0.6"/>`;
+  s += typed(px + 28, top + 44, 'TELEX', { size: 15 }) + typed(px + pw - 28, top + 44, 'DAY 41  06:12', { size: 15, anchor: 'end' });
+  s += typed(px + 28, top + 116, 'SHIP LOST', { size: 34 });
+  s += typed(px + 28, top + 170, 'YOU CRASHED INTO THE MOON ON DAY 41.', { size: 16 });
+  s += typed(px + 28, top + 226, '+++', { size: 16 });
+  // the teleprinter
+  s += `<g filter="url(#softshadow)"><path d="M330 560H950L990 800H290Z" fill="url(#teleG)"/></g><rect x="330" y="560" width="620" height="10" fill="url(#lipG)"/>`;
+  s += `<rect x="384" y="572" width="512" height="18" rx="9" fill="#1c1a18"/><rect x="384" y="572" width="512" height="5" rx="2.5" fill="#4a4743"/>`;
+  s += `<rect x="330" y="594" width="620" height="5" fill="${C.orange}"/>`;
+  // the keys the screen offers, on a plate on its front
+  s += `<g filter="url(#shadow)"><rect x="404" y="640" width="472" height="58" rx="4" fill="url(#castG)"/></g>` + screwG(414, 650) + screwG(866, 650) + screwG(414, 688) + screwG(866, 688);
+  s += keyG(436, 662, 'F9', { anchor: 'start' }) + tag(462, 674, 'QUICK LOAD') + keyG(568, 662, 'ENTER', { anchor: 'start' }) + tag(616, 674, 'LATEST AUTOSAVE') + keyG(752, 662, 'ESC', { anchor: 'start' }) + tag(786, 674, 'QUIT');
+  s += note(40, 60, 'Career over prints the same way: CAREER OVER, then', { fill: '#b9b2a4' }) + note(40, 78, 'YOU WERE KILLED, AND NOBODY WAS LEFT TO BRING YOU HOME.', { fill: '#b9b2a4' });
+  s += note(40, 102, 'A key the screen doesn\u2019t offer (ENTER, with no autosave) is a blanking plate.', { fill: '#b9b2a4' });
+  return s;
+}
+
+// =====================================================================
+// S8: the mod-scripts question: a caution tag on a wire over the dimmed menu
+// =====================================================================
+function sceneS8() {
+  let s = DEFS + XDEFS + officeG() + pedestalG() + builderPlateG(640, 136);
+  const bx = 382, bw = 250;
+  [['CONTINUE'], ['NEW GAME'], ['FIRST PLAY', 'GUIDED'], ['LOAD'], ['SETTINGS'], ['QUIT']].forEach(([l, sub], i) => s += capG(bx, 278 + i * 62 + (i === 5 ? 26 : 0), bw, 48, l, { sub }));
+  s += dimG(0.6);
+  const tx = 384, ty = 92, tw = 512, th = 640;
+  s += `<path d="M640 0V${ty + 26}" stroke="#9a968e" stroke-width="2"/><path d="M640 ${ty + 26}q-14 -6 -10 -20" fill="none" stroke="#9a968e" stroke-width="2"/>`;
+  s += `<g transform="rotate(-1.2 640 ${ty})"><g filter="url(#softshadow)"><path d="M${tx + 40} ${ty}H${tx + tw - 40}L${tx + tw} ${ty + 40}V${ty + th}H${tx}V${ty + 40}Z" fill="url(#tagG)"/></g>`;
+  s += `<circle cx="640" cy="${ty + 28}" r="11" fill="url(#castG)"/><circle cx="640" cy="${ty + 28}" r="6" fill="#16171a"/>`;
+  s += `<rect x="${tx + 22}" y="${ty + 52}" width="${tw - 44}" height="58" fill="#1C1B1A"/><text x="640" y="${ty + 97}" text-anchor="middle" class="stencil" font-size="44" letter-spacing="6" fill="#F2CF3E">CAUTION</text>`;
+  const L = (y, t, o) => typed(tx + 36, ty + y, t, o);
+  s += L(152, 'MOD SCRIPTS', { size: 24 });
+  s += L(190, 'These mods include scripts. Scripts run with', { size: 15 }) + L(211, 'full access to your computer, like any program', { size: 15 }) + L(232, 'you install. Only run mods from people you', { size: 15 }) + L(253, 'trust.', { size: 15 });
+  s += L(292, '- Better Tugs 1.2  by orbital_al', { size: 15 }) + L(313, '- Ice Futures 0.4  by kess', { size: 15 });
+  s += L(352, 'Without scripts, these mods’ data and', { size: 15, fill: '#4a3f2a' }) + L(373, 'assets still load.', { size: 15, fill: '#4a3f2a' });
+  // the answers, on a plate riveted to its foot
+  const px = tx + 30, py = ty + 412, pw = tw - 60, ph = 196;
+  s += `<g filter="url(#shadow)"><rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="4" fill="url(#castG)"/></g>`;
+  [[px + 9, py + 9], [px + pw - 9, py + 9], [px + 9, py + ph - 9], [px + pw - 9, py + ph - 9]].forEach(([a, b]) => s += `<circle cx="${a}" cy="${b}" r="3.6" fill="url(#castG)" stroke="#5d5a53" stroke-width="0.7"/><circle cx="${a - 1}" cy="${b - 1.2}" r="1" fill="#fff" opacity="0.7"/>`);
+  s += capG(px + 28, py + 34, 150, 50, 'DATA ONLY', { key: 'ESC', focus: true });
+  s += guardCapG(px + 280, py + 34, 140, 50, 'RUN SCRIPTS');
+  s += batG(px + 50, py + 146, false, { label: '' }) + tag(px + 92, py + 142, 'REMEMBER FOR') + tag(px + 92, py + 158, 'THESE MODS');
+  s += `</g>`;
+  return s;
+}
+
+// =====================================================================
+// K4: the off-deck kit: the parts section 9 adds
+// =====================================================================
+function sceneK4() {
+  let s = DEFS + XDEFS + `<rect width="1280" height="800" fill="#16171a"/>`;
+  s += note(40, 34, 'Off-deck kit: the parts section 9 adds', { size: 20, weight: 600, fill: '#f1ece2' });
+  // the big console's head
+  s += head(40, 66, 'The big console: head and foot', 'the mode’s nameplate, piano-key tabs (a blanking plate where a service isn’t offered, a jewel where something waits), the place on flaps, the close keys');
+  s += `<rect x="40" y="96" width="820" height="70" rx="4" fill="url(#enamelG)"/><rect x="40" y="96" width="820" height="4" fill="${C.orange}"/>`;
+  s += tag(54, 132, 'STATION', { size: 20 });
+  s += pianoG(152, 110, ['MARKET', 'YARD', null, 'MISSIONS', 'HIRE'], 0, { kw: 86, h: 28, keys: ['1', '2', null, '4', '5'], jewel: 3 });
+  s += flapC(618, 116, 'HIGHPORT', { cw: 10, ch: 20, size: 14 });
+  s += keyG(722, 118, 'T', { anchor: 'start' }) + keyG(744, 118, 'ESC', { anchor: 'start' }) + tag(782, 130, 'CLOSE');
+  const ft = tubeG(894, 108, 344, 22, { r: 2, bezel: 4 });
+  s += ft.under + tt(902, 123.5, 'Bought 10 water for 120 cr', { size: 13 }) + ft.over;
+  s += note(894, 150, 'the foot: the newest message on a one-line feed tube', { fill: '#9d968a' });
+  // the ledger tube
+  s += head(40, 200, 'Ledger tube', 'sort mark drawn, selected row in reverse, a struck key with its reason, the position meter, a headline value on a drum');
+  const lt = tubeG(46, 236, 520, 168, { r: 5, bezel: 6 });
+  s += `<rect x="38" y="228" width="536" height="200" rx="5" fill="${C.bakelite}"/>` + lt.under;
+  const row = (y, cells, o = {}) => cells.map(([x, t, a]) => tt(x, y, t, { size: 15, anchor: a || 'start', ...o })).join('');
+  s += row(256, [[58, 'ITEM'], [300, 'STOCK', 'end'], [370, 'BUY', 'end'], [436, 'SELL', 'end'], [500, 'HELD', 'end']], { c: 'dim' });
+  s += `<path d="M376 251l4 -6l4 6z" fill="${PH.dim}"/>`;
+  s += `<path d="M52 262H560" stroke="${PH.dim}" stroke-width="0.8" opacity="0.7"/>`;
+  s += `<g filter="url(#glow)"><rect x="50" y="268" width="512" height="20" fill="${PH.amber}"/></g>` + row(283, [[58, 'Water'], [300, '420', 'end'], [370, '12', 'end'], [436, '9', 'end'], [500, '0', 'end']], { c: C.crtBlack, glow: false });
+  s += row(305, [[58, 'Ice ore'], [300, '1,200', 'end'], [370, '4', 'end'], [436, '3', 'end'], [500, '12', 'end']]);
+  s += row(325, [[58, 'Machine parts'], [300, '35', 'end'], [370, '180', 'end'], [436, '140', 'end'], [500, '0', 'end']]);
+  s += row(345, [[58, 'Reactor-grade deut…'], [300, '8', 'end'], [370, '940', 'end'], [436, '--', 'end'], [500, '0', 'end']]);
+  s += `<path d="M58 365l5.5 -10l5.5 10z" fill="${PH.amber}" filter="url(#glow)"/>` + row(365, [[74, 'Medical stores'], [300, '2', 'end'], [370, '210', 'end'], [436, '160', 'end'], [500, '0', 'end']]);
+  s += `<path d="M52 376H560" stroke="${PH.dim}" stroke-width="0.8" opacity="0.7"/>`;
+  s += tt(58, 396, 'NONE HELD', { size: 13, c: 'dim' });
+  [['BUY 1', 0], ['BUY 10', 0], ['SELL 1', 1], ['SELL ALL', 1]].forEach(([l, st], i) => { const kx = 190 + i * 92; s += `<rect x="${kx}" y="382" width="84" height="18" fill="none" stroke="${PH.amber}" stroke-width="1" opacity="${st ? 0.45 : 0.9}"/>` + tt(kx + 42, 396, l, { size: 13, anchor: 'middle', c: st ? 'dim' : 'amber' }) + (st ? `<path d="M${kx + 6} 391H${kx + 78}" stroke="${PH.amber}" stroke-width="1.4"/>` : ''); });
+  s += lt.over + softKeysG(190, 412, 4, 362);
+  s += posMeterG(578, 240, 160, 0, 0.55);
+  s += tag(608, 252, 'CREDITS', { fill: C.inkLight }) + drumG(608, 262, '05000', { cw: 15, ch: 22, size: 16 }) + tag(690, 278, 'CR', { fill: C.inkLight });
+  s += note(608, 320, 'Rows never wrap: long names are cut', { fill: '#c9c2b4' }) + note(608, 338, 'with an ellipsis. "--" is a value that', { fill: '#c9c2b4' }) + note(608, 356, 'doesn’t apply. ▲ is drawn, not hue.', { fill: '#c9c2b4' });
+  const et = tubeG(894, 236, 344, 56, { r: 4, bezel: 5 });
+  s += et.under + tt(906, 268, 'No saves yet', { size: 15 }) + et.over + note(894, 314, 'an empty list says so in words', { fill: '#9d968a' });
+  // the no-save main menu
+  s += capG(900, 340, 170, 40, 'CONTINUE', { barred: true }) + flapC(1090, 350, 'NO SAVES YET', { cw: 8.6, ch: 18, size: 13 });
+  s += note(894, 404, 'no save: CONTINUE and LOAD barred, the deck empty', { fill: '#9d968a' });
+  // form controls
+  s += head(40, 452, 'Form controls', 'what a form becomes (style guide 9.6)');
+  s += `<rect x="40" y="478" width="1200" height="150" rx="4" fill="url(#enamelG)"/>`;
+  s += batG(82, 552, true, { label: 'A TOGGLE' });
+  s += slidePotG(176, 520, 70, 0.7, { label: 'SLIDE POT' }) + drumG(208, 560, '70', { cw: 13, ch: 20, size: 15, dimLead: false });
+  s += rotG(312, 556, 17, ['AUTO', 'ON', 'OFF'], 2, { span: 110 }) + tag(312, 604, 'ROTARY', { anchor: 'middle' });
+  s += tag(392, 512, 'FLAP SELECTOR') + flapSelG(392, 528, ['1920 X 1080'], { cells: 11, cw: 10.4 });
+  s += tag(392, 584, 'LABEL HOLDER') + holderG(398, 596, 150, 22, '', { placeholder: 'random', cursor: true, size: 13 }) + holderG(564, 596, 120, 22, 'Save 4', { size: 13 });
+  s += thumbG(718, 528, '010', { label: 'THUMBWHEEL' });
+  s += patchRowG(800, 500, 420, 'Fire guns', 'SPACE') + patchRowG(800, 534, 420, 'Decoy / force door', 'F', { capturing: true }) + patchRowG(800, 568, 420, 'Rotation assist', 'X', { twice: true });
+  s += note(1050, 618, 'patch panel: set, capturing, bound twice', { fill: '#5a5046', anchor: 'middle', size: 12 });
+  // guards, paper, optics
+  s += head(40, 660, 'Guard, paper stocks, optics port', 'a confirmation is a guard; each record has its paper; the picture-in-picture view is a ported lens');
+  s += `<rect x="40" y="690" width="268" height="96" rx="4" fill="url(#enamelG)"/>`;
+  s += guardCapG(76, 730, 80, 36, 'DELETE') + guardCapG(204, 730, 80, 36, 'DELETE', { open: true });
+  s += tag(116, 782, 'GUARDED', { anchor: 'middle' }) + tag(244, 782, 'LIFTED: ARMED', { anchor: 'middle' });
+  // fanfold contract
+  s += `<rect x="330" y="692" width="150" height="94" fill="url(#paperG)"/><rect x="330" y="692" width="150" height="94" fill="url(#greenbar)" opacity="0.35"/><rect x="330" y="692" width="12" height="94" fill="url(#sprocketP)"/><rect x="468" y="692" width="12" height="94" fill="url(#sprocketP)"/>`;
+  s += typed(348, 712, 'CONTRACT 0417', { size: 13 }) + typed(348, 730, 'Ice to Freehold', { size: 13 }) + typed(348, 748, '12 t   by day 44', { size: 13 }) + typed(348, 766, 'Pays 3,200 cr', { size: 13 });
+  // teleprinter roll
+  s += `<rect x="496" y="692" width="170" height="80" fill="url(#paperG)"/><rect x="490" y="770" width="182" height="14" rx="7" fill="#1c1a18"/>`;
+  s += typed(504, 710, 'D40 22:30 Docked', { size: 13 }) + typed(504, 727, 'D41 05:40 Autosave', { size: 13 }) + typed(504, 744, 'D41 06:02 Sold ore', { size: 13 }) + typed(504, 761, 'D41 06:12 Saved', { size: 13 });
+  // ring-bound card
+  s += `<rect x="684" y="696" width="150" height="90" rx="3" fill="#EFE0A0"/>` + [0, 1, 2, 3, 4].map(k => `<circle cx="${700 + k * 30}" cy="704" r="4" fill="#16171a"/><path d="M${700 + k * 30} 696v8" stroke="${C.alu}" stroke-width="3"/>`).join('');
+  s += typed(694, 726, 'FLIGHT', { size: 14 }) + typed(694, 744, 'W   main engine', { size: 13 }) + typed(694, 760, 'A D turn', { size: 13 }) + typed(694, 776, 'X   rotation assist', { size: 13 });
+  // service record book
+  s += `<rect x="852" y="692" width="140" height="94" rx="3" fill="url(#buffG)"/><rect x="852" y="692" width="10" height="94" fill="#a88f5f"/>`;
+  s += typed(872, 712, 'SERVICE RECORD', { size: 13 }) + typed(872, 732, 'Terran Patrol', { size: 13 }) + `<g transform="rotate(-6 930 758)" filter="url(#inkbleed)" opacity="0.85"><rect x="880" y="744" width="98" height="26" rx="4" fill="none" stroke="#3d5e9a" stroke-width="1.6"/><text x="929" y="762" text-anchor="middle" class="legend" font-size="13" fill="#3d5e9a">TRUSTED +42</text></g>`;
+  // telex
+  s += `<rect x="1010" y="692" width="96" height="94" fill="url(#canaryG)"/>` + typed(1018, 712, 'TELEX', { size: 13 }) + typed(1018, 736, 'SHIP LOST', { size: 14 });
+  // optics port
+  s += `<circle cx="1176" cy="732" r="44" fill="#8f949a"/><circle cx="1176" cy="732" r="41" fill="url(#knobG)" opacity="0.7"/><circle cx="1176" cy="732" r="37.5" fill="#111"/>`;
+  s += `<clipPath id="pipK"><circle cx="1176" cy="732" r="36"/></clipPath><g clip-path="url(#pipK)"><rect x="1140" y="696" width="72" height="72" fill="#0d130f"/><g style="filter:grayscale(1) sepia(0.6) hue-rotate(50deg) brightness(1.15)">${hullG(1176, 736, 250, 0.8)}</g>`;
+  for (let yy = 696; yy < 768; yy += 2.2) s += `<rect x="1140" y="${yy}" width="72" height="0.9" fill="#000" opacity="0.28"/>`;
+  s += `</g>` + [0, 1, 2, 3].map(i => { const a = i * Math.PI / 2 + Math.PI / 4; return screwG(1176 + 40 * Math.cos(a), 732 + 40 * Math.sin(a)); }).join('');
+  s += dymoG(1142, 776, 'RAIDER');
+  return s;
+}
+
+document.getElementById('S1-main-menu').innerHTML = sceneS1();
+document.getElementById('S2-new-game').innerHTML = sceneS2();
+document.getElementById('S3-pause').innerHTML = sceneS3();
+document.getElementById('S4-load').innerHTML = sceneS4();
+document.getElementById('S5-save').innerHTML = sceneS5();
+document.getElementById('S6-settings').innerHTML = sceneS6();
+document.getElementById('S7-ship-lost').innerHTML = sceneS7();
+document.getElementById('S8-mod-scripts').innerHTML = sceneS8();
+document.getElementById('K4-off-deck-kit').innerHTML = sceneK4();
+</script>
+</body>
+</html>

@@ -90,10 +90,10 @@ The screen is divided into the **viewport** (space, seen through glass) and the 
 * **Bays.** The deck is built of bays, each a separate faceplate with its own screws and seam. A
   functional spec's "widget" becomes an instrument in a bay. Bays are a fixed width in grid units
   (section 6), so the deck is laid out like a rack, not a free canvas.
-* **Large tasks take the main CRT, not a window.** Trade, yard, missions, boarding and the orbit map
-  are *pages* of a CRT. Small ones run in the deck's main CRT; big ones (the maneuver map, the
-  shipyard editor) **raise the big screen**: the deck slides down and a full-height CRT rolls up from it
-  (section 9). There are no draggable windows.
+* **Large tasks take hardware, not a window.** Trade, the yard, missions, boarding and the map are
+  built from tubes, controls and paper. Small ones run on the deck's main CRT; full-screen modes
+  **raise the big console**: the deck slides down and a wide console rises in its place; side panels
+  are cabinets on the side rail (section 9). There are no draggable windows.
 
 ### Interior view
 
@@ -250,7 +250,7 @@ ship in `assets/fonts` next to the Inter files that are there now. Four roles, e
 | Role | Typeface | Where | Notes |
 |---|---|---|---|
 | **Engraved legend** | **Barlow Semi Condensed**, SemiBold, all caps, tracking +6% | Faceplate labels, scales on dials, switch positions | Industrial, condensed, like a panel engraver's alphabet |
-| **CRT text** | **IBM Plex Mono**, Regular and Medium | Everything on a raster CRT | Monospace so CRT pages align to a character grid (section 9.2) |
+| **CRT text** | **IBM Plex Mono**, Regular and Medium | Everything on a raster CRT | Monospace so CRT pages align to a character grid (section 9.5) |
 | **CRT display** | **VT323** | Big CRT headings (≥ 24 units) only | Raster-terminal shape; never below 24 units |
 | **Counter drums** | **Barlow Condensed**, Medium | Digits on drum counters | White on black drums, tabular figures |
 | **Dymo / paper** | **Special Elite** (paper), **Barlow Condensed** Bold embossed (Dymo) | Printouts and labels | Typewriter for paper; emboss shader for Dymo |
@@ -295,7 +295,7 @@ on a CRT.
   (ultrawide) fills with **blank panels** (enamel, screws, maybe a Dymo label), never by stretching
   instruments. Narrower screens drop bays in a defined order (set per functional spec).
 * **Depth layers**, back to front: space → gunsight projection → deck shadow (a soft 24-unit shadow
-  cast up onto space, so the deck sits in front of the glass) → deck → raised big screen → paper.
+  cast up onto space, so the deck sits in front of the glass) → deck → side cabinets and the raised big console → paper → a tag.
 
 ---
 
@@ -343,7 +343,7 @@ This is the core of the language. A functional spec says "show X"; this table sa
 | An on/off or a fault state | **Lamp** in the annunciator, or a lamp on its own control | A grid of lamps lets a player see "all dark = all good" |
 | A word that changes (a state, a mode, a frame, a name) | **Split-flap window**, a fixed number of cells | Mechanical and legible, and the riffle shows that it changed |
 | Space, paths, positions | **Vector CRT** (green) | Lines, afterglow and persistence suit orbits and sweeps |
-| Words, lists, tables, choices | **Raster CRT** page (amber) | A character grid, cursor keys and soft keys |
+| Words, lists, tables, choices | **Raster CRT** page (amber), a ledger tube (section 9.5) | A character grid, cursor keys and soft keys |
 | A value over time (market price, power history) | **Strip chart**: a pen trace on a scrolling paper strip in a window | Physical history; it keeps scrolling while you watch |
 | A one-off record (contract, receipt, log) | **Printout** on tractor paper | The player can keep it; it is obviously a document |
 
@@ -392,57 +392,254 @@ scope is never less accurate than today's.
 
 ---
 
-## 9. CRT pages: how lists, windows and menus work
+## 9. Off the flight deck: modes, panels, lists, forms and the shell
 
-### 9.1 Pages, not windows
+The deck is for flying. Everything else the game shows is built from the same hardware by the rules in
+this section: the map, the station's services, the ship's systems and crew, boarding, the record, the
+controls reference, and the shell around the game (the main menu, pause, load and save, settings, the
+ship-lost screen and the mod-scripts question). The three specs name these screens differently
+(Context's modes M1 to M6, the Stations spec's panels in its section 10, Task's MAP, TRM, BOOK, BRD
+and CON), and the rules are the same for all of them. **There are no windows**: nothing has a title
+bar, a close cross, a scroll bar or a drag handle.
 
-Every former window is a **page** on a CRT. A CRT has a **page selector** (a rotary knob with engraved
-positions, e.g. `NAV · TGT · SHIP · CREW · COMMS`) and a row of **soft keys** under the tube whose
-labels are drawn on the bottom line of the page. Keyboard: the selector is bound to a key pair, and the
-soft keys to `1`–`6` while the page has focus.
+### 9.1 Which surface for which screen
 
-When docked, station pages (`MARKET · YARD · BOARD`) appear on the selector *because the station's
-terminal is plugged in*: an extra ring of positions with the station's livery on the knob's
-escutcheon. Undocking unplugs it, with a cable animation.
+| The spec asks for | It is built as | For example |
+|---|---|---|
+| A full-screen mode | **The big console** (9.2) | The map, the ship, the station, the record; the Stations spec's Plot, Yard and Shipyard |
+| A side panel | **A side cabinet** (9.3) | The Stations spec's Station link and Slate; Task's boarding panel |
+| A deck console's panel | **That console's own faceplate** (9.3) | The Stations spec's Engineering; Task's CON |
+| A list or a table | **A ledger tube** (9.5) | Market rows, contacts, crew, saves, offers |
+| A value or a choice to set | **A form control** (9.6) | A quantity, a volume, a seed, a key binding |
+| A confirmation | **A guard** over the control (9.7) | Delete a save, abandon ship |
+| A question the game must ask | **A tag** (9.7) | Mod scripts |
+| An ending | **A telex** (9.7) | Ship lost, career over |
+| A record the player keeps | **Paper** (9.8) | A contract, the log, the career, the controls reference |
+| The ship editor | **The drafting station** (9.10) | The shipyard |
+| The shell | **The yard office** (9.11) | The main menu, pause, saves, settings |
 
-### 9.2 The character grid
+A screen gets one surface. A spec's window that holds a list and a form is one console or cabinet with
+a ledger tube and a form bay in it, not two windows.
 
-Raster pages are laid out on a **character grid** (IBM Plex Mono at `crt-body`: 64 columns by
-20 rows in the deck's main CRT, 120 by 44 on the big screen). Tables align by column, never by pixel.
-This is a real constraint that keeps pages honest: if it does not fit in 64 columns, it is too much for
-that context and belongs on the big screen or a printout.
+### 9.2 The big console
 
-Page anatomy: row 0 is the page title in reverse video (`crt-black` on `p3-amber`) and the clock; rows
-1–17 content; row 18 a rule; row 19 the soft-key labels in boxes. The cursor is a solid block that
-blinks at 1.5 Hz. The selected row is reverse video.
+A full-screen mode raises the **big console**: a wide console that rises from the coaming in 450 ms
+with a 2-unit bump while the deck drops (section 10.3). A margin of space at least 16 units wide shows
+round it and the sim keeps running, so the player is still in the cockpit. The header stays above it
+with the master caution and warning, and whatever the spec lets interrupt a mode (Context's P3 and
+X3, Task's crisis panel) still hangs in front of it.
 
-### 9.3 The big screen
+On the 1280 × 800 grid:
 
-Tasks that need room (the maneuver map, the ship editor, the full market, crew management) **raise the
-big screen**: the deck drops 60% of its height (still showing master caution/warning, counters and the
-switch row), and a large CRT in a heavy bezel rolls up into the viewport from behind it. The big screen
-has its own page selector and soft keys on its bezel. Closing it reverses the motion. Space is still
-visible on the sides and the sim keeps running, so the player never loses the feeling of being in the
-cockpit.
+* **Head**, y 30 to 74: the mode's **nameplate**, engraved at 20 units (MAP, SHIP, STATION, BOARDING,
+  RECORD, CONTROLS); the tabs as piano keys (9.4); where the player is, on split flaps; and the close
+  keycap at the right (the mode's own key, and `Esc`).
+* **Body**, y 80 to 750: bays on the section 6 grid, each with its engraved title.
+* **Foot**, y 754 to 786: a one-line **feed tube** for the newest message, and the keycaps for the
+  tabs and for closing.
 
-The orbit/maneuver map is a **green vector** big-screen page, with persistence: the predicted path is
-drawn dim, the actual track behind the ship glows and fades. Burn handles are drawn as hollow
-triangles; dragging one shows a drum counter for Δv in a corner of the bezel.
+A station's mode is the station's equipment, not the ship's: it is in the station's livery (4.4), a
+jack plate on its edge carries the cable to the ship, and undocking pulls the plug, so its tubes go
+dark and the console sinks.
 
-### 9.4 Paper
+### 9.3 Side cabinets and faceplates
 
-Contracts, receipts and logs **print**. Accepting a contract feeds a sheet out of a slot on the deck's
-right edge (with the printer sound); the sheet can be torn off and pinned to a clipboard on the side of
-the deck (the contracts held). Clicking a pinned sheet enlarges it over the viewport. Paper is the only
-thing allowed to overlap space other than the big screen, and it is always dismissed by one click or
-`Esc`.
+A **side panel** is a cabinet that slides in along the side rail in 300 ms, at the spec's width (the
+Stations spec's 480, Task's 400), with a rolled lip on the edge that faces the view. It has the big
+console's head, body and foot at its own width. The view beside it stays live, and a second panel
+replaces the first rather than stacking on it.
 
-### 9.5 Menus and settings
+A **deck console's panel** is that console's own faceplate, opening where the spec puts it (rising
+from the bottom edge as section 2 says, or beside the console for Task's CON), in its system's livery:
+a reactor's faceplate carries the hazard stripe, life support's is avocado, a gun's is military
+grey-green. The console's name is on a cast plate at its top. Walking away closes it.
 
-The pause menu and settings are a **maintenance panel**: the deck's faceplate swings open on hinges
-and behind it is a technician's panel of DIP switches, trim pots and fuse rows (settings as toggles,
-sliders as slide pots with engraved ranges, key bindings as a patch panel of labelled keycaps). The main
-menu is a ship's console in a dark hangar with a single big CRT that warms up when the game starts.
+### 9.4 Tabs are interlocked piano keys
+
+A mode's or a panel's tabs are a row of **interlocked piano keys** in its head, like the preset keys of
+an old radio: pressing one releases the others. Each key carries its tab's engraved legend and its key
+on a small keycap under it. The latched key sits 2 units lower with a safety-orange foot.
+
+* A tab the spec offers only sometimes (a shipyard, at a station without one) keeps its place as a
+  **blanking plate** with two screws, so the keys never move and the player's hand learns them. The
+  Context spec closes the row up instead; there, the keys close up.
+* A tab with something waiting for the player (a contract to hand in, a crew member asking for them)
+  carries a small **amber jewel** on its key. Never a count badge.
+* A row holds at most eight keys. More choices than that is a list, not tabs.
+
+### 9.5 The ledger tube: lists and tables
+
+Every list or table is an amber **ledger tube**: a raster tube laid out on a **character grid** in IBM
+Plex Mono at `crt-body` (15 units: a column is 9 units and a row 18, so a 320-unit bay holds 34
+columns). Columns align by character, never by pixel. If a table doesn't fit its bay's columns, it has
+too many columns for that context.
+
+* **The header row** is in `p3-amber-dim` with a rule under it. The sorted column carries a small drawn
+  triangle (▲ ascending, ▼ descending), never a font glyph. The sort changes with a soft key or a
+  rotary, not by clicking a header.
+* **Rows never wrap.** Text too long for its column is cut with an ellipsis (`Shackleton I…`). Numbers
+  are right-aligned on their units. A value that doesn't apply is `--` on a tube (a counter shows its OFF flag), and a stale one is dim.
+* **The selected row** is in reverse video (`crt-black` on `p3-amber`). The cursor keys move it and a
+  click sets it.
+* **Severity** on a row is a drawn mark at its left (◆ warning, ▲ caution, the section 7.2 shapes), so
+  it never rests on the phosphor's colour.
+* **An empty list says so** in words on its first row (`No saves yet`). A tube is never left blank.
+* **Scrolling** shows on a small **position meter** in the tube's bezel: the pointer's height is the
+  position, and a white band is the share of the list in view. There are no scroll bars. The wheel
+  scrolls, and Page Up and Page Down move a tubeful.
+* **A row's actions** are soft keys under the tube, with their labels on its bottom row. A key that
+  can't act on the selected row is struck through, and the reason is at the tube's bottom left
+  (`SELL 1` struck, `NONE HELD`). Up to five actions that rarely change may be push buttons on the
+  bay instead.
+* **One headline value** for the whole list (the market's credits, the plan's Δv) is a drum counter or
+  a meter on the bay beside the tube, not a row.
+
+A tube's page has the same anatomy at every size: a title row in reverse video with the clock, the
+content, a rule, and the soft-key labels in boxes on the bottom row. The cursor is a solid block that
+blinks at 1.5 Hz. On a deck tube, pages are chosen with a **page selector** (a rotary with engraved
+positions, such as `NAV · TGT · SHIP · CREW · COMMS`), and the soft keys take `1` to `6` while the
+tube has focus.
+
+### 9.6 Form controls
+
+A form (settings, a new career, a quantity, a name) is built from the section 10.1 controls, never
+from widgets drawn to look like a web page:
+
+| A form needs | The control |
+|---|---|
+| On or off (a check box) | A **bat toggle**, its legend above it and ON and OFF engraved at its throws |
+| A level (a slider) | A **slide pot** in a slot with an engraved 0 to 10 scale, and a drum beside it when the exact value matters |
+| One of a fixed set of up to eight (a select) | A **rotary selector**, each position engraved |
+| One of a set the game builds (window sizes, HUDs) | A **flap selector**: split flaps show the choice, with ◀ and ▶ keys |
+| One of two or three shown side by side (a toggle group) | **Interlocked piano keys** |
+| Words (a text field) | A **label holder**: a card in an aluminium holder, typed in Special Elite with a block cursor, its placeholder pencilled in grey |
+| A number | A **thumbwheel**, a wheel for each digit |
+| A key binding | A **patch-panel row**: the action on Dymo tape, its key on a keycap |
+| An action (a button) | A **momentary push button**, barred with its reason while it can't act |
+
+Controls are at least 24 units across their short side, and their legends at least 12. A form's
+controls stand in reading order, top to bottom and left to right, so `FocusNav` and the gamepad step
+through them in the order they are read. Changes take effect on `APPLY`, which is lit while there are
+changes, except where the spec makes a control act at once.
+
+### 9.7 Confirmations, questions and endings
+
+There are no dialog boxes. The three jobs a dialog does each have their own object:
+
+1. **A confirmation is a guard.** An action that can't be undone (delete a save, abandon ship, quit
+   with progress unsaved) sits under a red flip guard. The first press lifts the guard and lights the
+   lamp beside it, and the second acts. The guard drops again after 4 s, or on `Esc`. Nothing asks
+   "Are you sure?".
+2. **A question the game must ask is a tag.** It hangs on a wire over the dimmed screen like a lock-out
+   tag on a switch: a yellow card with a black CAUTION band and a grommet, the question typed on it in
+   Special Elite, and its answers on a small plate riveted to its foot. The safe answer is a push
+   button and the dangerous one is guarded. `Esc` gives the safe answer, and a "remember this" choice
+   is a bat toggle. Everything else waits until the tag is answered.
+3. **An ending is a telex.** Ship lost and career over arrive as a telex that prints over the dimmed
+   view at 30 rows a second: a header line with the day and time, the title, the message in capitals
+   (a telex had no lower case), and the keys the screen offers on a plate under the sheet. A key it
+   doesn't offer (Enter, with no autosave) is a blanking plate.
+
+### 9.8 Paper
+
+Paper is for records the player keeps and reads, never for something they must act on quickly. Each
+kind of record has its own stock, so the player knows it by its paper:
+
+| Record | Stock |
+|---|---|
+| A contract, an offer's terms | **Fanfold** with green bars and sprocket holes, torn off and clipped |
+| The notice log | A **teleprinter roll**: a line for each notice with its day and time, the newest at the platen |
+| The controls reference | **Ring-bound cards**, yellow, a card for each context (flight, guns, deck, the map), flipped with the tabs |
+| The captain's record (career, standing) | A **service record book** in buff card, with rubber stamps |
+| An ending | A **telex** (9.7) |
+
+Paper is typed in Special Elite at 13 units or more, in `ink` on the stock. It scrolls by **feeding**:
+the wheel and the cursor keys feed the sheet through, with the line-feed jitter of section 10.3.
+Accepting a contract feeds its sheet out of a slot (with the printer's sound), and the sheet can be torn
+off and pinned to the clipboard at the side of the deck. Clicking a pinned sheet enlarges it over the
+view. Paper is always put away with one click or `Esc`.
+
+### 9.9 The map
+
+The map is the big console's **plotting tube**: a large green vector tube with persistence. The
+predicted path is drawn in `p1-green-dim`, the track behind the ship glows and fades, bodies are their
+outlines with their names in amber, and burn handles are hollow triangles. Dragging a handle shows the
+burn's Δv on drums in the bezel's corner.
+
+The spec's other parts of the map are the console's other bays: the plan and the target are amber
+ledger tubes with push buttons for their actions (ACCEPT, DISCARD) and their totals on drums; the
+timeline is a long, low **strip tube** along the foot, its events as ticks with their names; layers are
+a row of bat toggles; a sort is a rotary (`DIST · KIND`); zoom is a rocker.
+
+### 9.10 The ship at large
+
+The ship's plan is a green vector tube: the rooms as outlines, hazards in red phosphor with their
+shapes, damage in amber, and the crew as dots with their initials. The systems list beside it is a
+ledger tube, and power is a bay of needles and drums (section 8).
+
+**Damage control is a T-card board**, the planning board of an old maintenance shop: a column for each
+crew member and one for UNASSIGNED, and each job a card in a slot, typed with the job, its place and its
+state. Assigning a job moves its card to a column, with the mouse or with the arrow keys and a number
+key. A job under way has a green tab and a blocked one a barber strip.
+
+**The ship editor is a drafting station**: the hull on a large green tube, drawn with a **light pen**
+(the mouse); the parts catalogue as **index cards** in a drawer, by category; and the totals (mass,
+cost, Δv, power) on drums across the top. A part that can't go where it is pointed draws dashed, with
+the reason on the tube's bottom row. Placing furniture on deck keeps the prompt plate the deck already
+uses.
+
+### 9.11 The shell: the yard office at night
+
+The shell stands outside the fiction but is built from the same hardware: a **yard office** at night,
+a desk console in Yard Standard under a big window. Today's backdrop (the drifting stars and the
+planet's limb) is the view through that window. The specs list what each screen holds; this is how it
+is built.
+
+* **Main menu.** A cast **builder's plate** with RINGS OF IRON in stencil and A NEWTONIAN SHIP SIM
+  engraved under it. A column of large push buttons: CONTINUE, NEW GAME (Task calls it NEW CAREER),
+  FIRST PLAY, LOAD, SETTINGS, QUIT. Beside CONTINUE, a **tape deck** holds the newest
+  save as a cassette, its label showing the save's name and details. With no save the deck is empty,
+  and CONTINUE and LOAD are barred with NO SAVES YET on flaps. The version is stamped on a small serial
+  plate in the corner.
+* **New game** (Task's new career). The console's bay becomes a **commission panel**: the seed in a
+  label holder (`random` pencilled in), the sponsor on interlocked keys (TERRAN PATROL, SELENE
+  COMBINE), the spec's notes typed on cards clipped under each, then START and BACK.
+* **Pause.** The **maintenance hatch**: the console's faceplate swings open, the view dims and a PAUSED
+  lens lights. RESUME is the big green push button, with SAVE, LOAD, SETTINGS (and CONTROLS, where the
+  spec has it) under it. CALL A TOW is there only while a tow can be called, as today, on an amber push
+  button under an engraved BEACON. QUIT TO MENU and QUIT GAME stand apart behind a painted red line.
+  ESC RESUMES is engraved on the hatch, and the world (`SEED 4417` or `DESIGNED START`) is on Dymo
+  tape.
+* **Load and save: the tape library.** Each save is a **cassette** in a rack, its name and details (the
+  day, the ship and the credits) typed on the spine's label and the date it was saved in a blue rubber
+  stamp. The selected cassette slides half out; LOAD is a push button and DELETE is guarded. The quick
+  save and the three autosaves have printed labels (QUICK, AUTO 1 to 3), so they read as the game's
+  own. Saving shows a blank cassette with the next free name typed on its label (`Save 4`), and the
+  rack under it to write over one instead. An OVERWRITE lens lights while the name is a save already;
+  this is new, since the game overwrites without saying so today.
+* **Settings: the maintenance panel.** Bays for SOUND, DISPLAY, INTERFACE and CONTROLS, with the
+  section 9.6 controls. The key bindings are a **patch panel**: a row for each action, its name on Dymo
+  tape and its key on a keycap. Pressing a keycap lifts it out of its socket and lights the PRESS A KEY
+  lens (`Esc` cancels). A key bound twice lights a TWICE lens on both rows; this is new, since the game
+  doesn't check for it today. RESET KEYS sits in the CONTROLS bay, and APPLY (lit while there are
+  changes) and BACK stand along the foot.
+* **Ship lost and career over** are the telex (9.7), and **mod scripts** is the tag (9.7).
+
+### 9.12 On the glass
+
+Marks in the view are the reflector-sight projection of section 2, and these join them: a burn cue is
+a double chevron, a fire arc is a thin amber arc with ticks at its ends, and a hit lane is dashed. The
+picture-in-picture views are **optics ports**: a round lens bolted to the canopy (an aluminium ring and
+four screws), monochrome green video with scanlines, the craft's name on Dymo tape under it, and its
+"+3 others" on a tab that opens a small ledger tube. An optics port is the one piece of hardware
+allowed over space, because it is a window, not a panel.
+
+### 9.13 The developer layer
+
+Developer tools (the console, the debug overlays) are **service equipment**, so no player mistakes them
+for the ship's: bare aluminium, a red SERVICE ONLY Dymo strip, white IBM Plex Mono on black, no
+phosphor glow and no motion. They draw in their own band at the bottom left, never over the deck's
+instruments.
 
 ---
 
@@ -460,6 +657,9 @@ menu is a ship's console in a dark hangar with a single big CRT that warms up wh
 | **Rotary selector** (detents) | Choices of 3–12: page, radar range, view mode | Each detent | Two keys step it |
 | **Thumbwheel** | Numeric entry: quantities to buy, Δv, a heading | Each digit | Arrow keys on the focused wheel |
 | **Slide pot** | Continuous: throttle limit, volumes, brightness | Position | Shown only in maintenance panel |
+| **Interlocked piano keys** | Tabs; one of two to eight shown side by side | One down, the rest up; a blanking plate | A keycap under each key |
+| **Flap selector** | One of a set the game builds: window sizes, HUDs | Each choice, with a riffle as it changes | ◀ and ▶ keycaps |
+| **Label holder** | Words: a seed, a save's name | Empty (placeholder pencilled), typing (block cursor), set | Focus moves to it; then typing |
 
 Each control has a **keycap legend**: a tiny keycap shape (8 units, `rubber` with `ink-light` letter)
 next to it, showing its binding. The keyboard is the primary input; the console tells the player which
@@ -491,7 +691,12 @@ Motion is physics, not easing. Values:
 | Lamps | Filament: on in 40 ms, off in 120 ms (warm fade). Flashing at 2 Hz, 50% duty |
 | CRT power-on | 250 ms: a dot, a horizontal line, the raster opens vertically, brightness settles |
 | CRT page change | 120 ms: the old page drops to the ghost colour, a vertical roll of 1 frame, the new page draws in top to bottom at 60 rows/s |
-| Big screen | 450 ms mechanical rise with a 2-unit bump at the top; the deck drops in the same motion |
+| Big console | 450 ms mechanical rise with a 2-unit bump at the top; the deck drops in the same motion |
+| Side cabinet | 300 ms slide along the rail, with a 1-unit settle |
+| Faceplates (a console's panel, the pause hatch) | Swing open on the hinge in 350 ms |
+| Piano keys | The pressed key drops in 60 ms and the one it releases springs up in 90 ms |
+| Tag | Drops on its wire in 250 ms and swings, damped, for 1 s |
+| Cassette | Slides half out of the rack in 150 ms |
 | Printout | Paper feeds at 30 rows/s with a line-feed jitter |
 
 The **player's input is acknowledged in the first frame** (the switch moves, the click plays) even
@@ -500,7 +705,7 @@ controls.
 
 ### 10.4 CRT rendering
 
-* **Scanlines** at the tube's native line count (240 lines for the deck CRTs, 480 for the big screen),
+* **Scanlines** at the tube's native line count (240 lines for the deck CRTs, 480 for the big console's tubes),
   25% darkening between lines.
 * **Bloom**: a 2-pass blur of the phosphor layer at 35% strength.
 * **Persistence**: the phosphor layer renders into a frame buffer that decays toward `crt-black` with
@@ -513,7 +718,7 @@ controls.
 ### 10.5 Reduced motion
 
 A setting replaces needle springs with critically damped motion, rolls drums instantly, removes CRT
-roll and wobble, and keeps everything else. State is still shown by position and lamps.
+roll and wobble, hangs tags still, and keeps everything else. State is still shown by position and lamps.
 
 ---
 
@@ -602,7 +807,7 @@ in a spec, the translation is:
    information too: it tells the player the system is off.
 
 When a spec asks for something this language does poorly (free-floating tooltips, dense
-spreadsheets, drag-and-drop), the answer is a page, a printout or the big screen, and I will note
+spreadsheets, drag-and-drop), the answer is a page, a printout or the big console (section 9), and I will note
 the adaptation in the skinned spec rather than bend the style.
 
 ---
@@ -625,13 +830,23 @@ Written so this can be built on the existing `ui-hud` module without a rewrite o
     curvature `ShaderProgram` on composite), with `RasterPage` (character grid) and `VectorPage`
     (line drawing) contents;
   * `RotarySelector`, `ToggleSwitch`, `GuardedToggle`, `PushLight`, `Thumbwheel`, `KeycapLegend`;
-  * `Deck` (the rack of bays, densities, the big-screen raise) and `Printout`.
+  * `Deck` (the rack of bays, densities, the big console's raise) and `Printout`.
 * **Existing widgets map onto these:** `ShipGauges` → edgewise meters and the power needle;
   `FlightReadoutSystem` text → counters and compass; `RadarScope` → a `CrtScreen` with a PPI
   `VectorPage`; `AlertList` and `WireframeMinimap`'s alert list → annunciator tiles; `TradeWindow`,
-  `YardWindow`, `MissionWindow`, `BoardingWindow`, `CrewWindow` → `RasterPage`s; `ManeuverMap` and
-  `OrbitMap` → big-screen `VectorPage`; `ShipyardWindow` (the ship editor) → a big-screen page;
-  `ThreatOverlay` and `NavMarkers` → the gunsight projection layer.
+  `YardWindow`, `MissionWindow`, `BoardingWindow`, `CrewWindow` → ledger tubes (`RasterPage`s) in a
+  big console or a side cabinet; `ConsoleWindow` → the console's faceplate; `ManeuverMap` and
+  `OrbitMap` → the big console's plotting tube (a `VectorPage`); `ShipyardWindow` (the ship editor) →
+  the drafting station; `ThreatOverlay` and `NavMarkers` → the gunsight projection layer;
+  `PictureInPicture` → optics ports; `DevConsoleWindow` → service equipment.
+* **The screens outside the HUD** (section 9): the shell's menus (`ShellMenus`) → the yard office; the
+  crash screen → the telex; the notice log and the controls panel → paper; `ModTrustDialog` → the tag.
+  These, the windows and the map are swapped through the **shared framework hook** that lets a HUD
+  variant replace the game's windows, the map and the shell's menus. It comes from the VFD thread as
+  one change on the variants framework, and the Cassette builds are made on it, not on a hook of their
+  own. New widgets for them: `BigConsole`, `SideCabinet`, `PianoKeys`, `LedgerTube` (a `RasterPage`
+  with the sort mark, the position meter and soft keys), `FlapSelector`, `LabelHolder`, `SlidePot`,
+  `PatchPanel`, `Tag` and `Telex`.
 * **Persistence cost:** one extra frame buffer per CRT (at most four on screen); deck CRTs render at
   their native line count (e.g. 320×240) and are upscaled, which is both cheaper and more authentic.
 * **Power wiring:** a `ConsolePowerProvider` maps bay ids to `PowerCircuit` state; every instrument
@@ -651,3 +866,8 @@ section and supersede these two as the reference for sizes.
 * `mockup-flight.png` – the flight console at 16:9: a raider locked at 1.3 km, a caution lit for
   low propellant, the main CRT on the target page.
 * `mockup-components.png` – palette, type, the control catalogue in its states, and the instruments.
+* `shell/` (source: `cassette/shell/shell.html`, captions in its README) – the screens of section 9
+  that every spec shares: S1 the main menu, S2 a new game, S3 pause, S4 load and S5 save (the tape
+  library), S6 settings, S7 ship lost, S8 the mod-scripts tag, and K4, the off-deck kit (the big
+  console's head, piano keys, the ledger tube's states, the form controls, the guard, the paper
+  stocks, the optics port).

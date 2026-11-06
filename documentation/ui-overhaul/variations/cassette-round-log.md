@@ -8,6 +8,8 @@ Each functional design (Ship Stations, Context-driven, Task-driven) is combined 
 | [Context-driven × Cassette](context-cassette/README.md) | Context v7 | 2 | 01 cruise, 03 approach, 04 combat, 05 fire control, 07 deck emergency, 08 docked, 12 orders menu, 13 boarding | 3 style, 6 functional |
 | [Task-driven × Cassette](task-cassette/README.md) | Task round 9 | 2 | 01 helm at rest, 02 gunnery, 03 deck, 04 terminal, 05 map, 06 crisis, 07 FLT modes and lamp states, 08 ship's book, 09 relations and states | None in the stills (3 for the in-game build), 3 functional |
 
+The screens the three specs share outside the flight deck (the main menu, pause, load and save, settings, the ship-lost screen and the mod-scripts question) are drawn once for all three, in [cassette/shell](../cassette/shell/README.md).
+
 ## Round 0: the style guide itself
 
 The first pass at combining the guide with a 1280 × 800 spec showed problems in the guide. They were fixed before round 1:
@@ -139,3 +141,12 @@ Notes sent to the task designer:
 1. TRM's wireframe still shows a SHIPYARD tab at Highport, which sells no ships.
 2. The DOCK sample's Highport port 6 is an M port; the corvette's port is S, and Highport's S ports are 1 and 2.
 3. MAP.1's services for Shackleton Ice leave out its shipyard and hiring.
+
+## Off the flight deck: the screens the overhaul skipped
+
+The first rounds covered flight, the deck and docking, but not the screens around them: the map, the station's services, the ship's systems, boarding, the record, the controls reference, and the shell (the main menu, pause, load and save, settings, the crash screen and the mod-scripts question). The style guide's section 9 is rewritten to cover them. It says which surface each kind of screen becomes (a big console for a full-screen mode, a side cabinet for a side panel, the console's own faceplate for a deck console's panel), and how tabs, lists and tables, form controls, confirmations, questions, endings, paper, the map, the ship editor, the shell and the developer layer are built. Full-screen modes, side panels and the shell are swapped in through the shared framework hook for windows, the map and the shell's menus, and the Cassette builds will use it.
+
+The shell is drawn first, since all three specs share it: eight screens and a kit sheet in [cassette/shell](../cassette/shell/README.md). Two small additions came out of drawing it, flagged as new in its README: a TWICE lens when a key is bound to two actions (the game doesn't check today), and an OVERWRITE lens when a save's name is taken.
+
+Next: Context round 3 draws its full-screen modes (the map, the station, the ship's systems), then the Stations spec's panels and Task's boarding and console panels.
+
