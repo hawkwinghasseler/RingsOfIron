@@ -549,10 +549,10 @@ The menus around the game are the ship's computer in **setup mode** (18.5), buil
 - **Page keys** run along the top edge, each with its page's full name in the glass beside it, the page up in inverse. A narrow panel puts them down its left edge instead, each name in the glass's first column, so a 480-unit side panel still takes six pages by their full names (`INFIRMARY` is nine cells). A page this place doesn't offer is a blank key over blank glass: the other keys keep their homes.
 - **Soft keys** run along the bottom edge: the cap prints the keyboard key, the glass row over it the action. An action that can't be taken now stays in its place as a dim label; nothing on a terminal appears or vanishes as the state changes.
 - **The title row** carries the place in fourteen segments (`HIGHPORT`), its owner dim beside it, and the figures that matter on every page (credits, hold) in seven segments at the right.
-- **Rows and focus.** Tables are cell grids (7.6); the focused row inverts across the whole grid and its `▶` sits in column 0. The soft keys act on the focused row, so a table has no buttons in its rows: `BUY 1`, `BUY 10`, `SELL 1`, `SELL ALL` act on the row under the cursor.
+- **Rows and focus.** Tables are cell grids (7.6); the focused row inverts across the whole grid and its `▶` sits in column 0. The soft keys act on the focused row, so a table has no buttons in its rows: `BUY 1`, `BUY 10`, `SELL 1`, `SELL ALL` act on the row under the cursor. A group's row (`ENGINES ×2`) acts for the group: `OPEN` (→) lists its members under it, a cell in, each its own row, and `FOLD` (←) puts them away.
 - **Pages, not scrolling.** A list longer than its glass pages (`PG 1/2`, its arrows lit where there is more). Only the focused row may scroll its overflow (9.3).
 - **The response line** over the soft keys says what the last press did (`SOLD 2 WATER FOR 26 CR`) until the next.
-- **The mode frame.** A full-screen mode (the context spec's map, ship, station and boarding modes) is a terminal across the screen: a title strip (the mode's title in fourteen segments, a dim subtitle, its tabs as keys in the bezel above the strip, each tab's name in the strip under its key, the one showing inverse); the content in panes; a foot strip with the one-line feed at the left and the closing keys right-aligned (`M  OR  ESC  CLOSE`). A pane is a module of glass with its name as a dim legend in its first row; a section in a pane is a dim legend and a ghost rule to the pane's edge.
+- **The mode frame.** A full-screen mode (the context spec's map, ship, station and boarding modes) is a terminal across the screen; its captain's record is a slate (18.4) and its controls the card (18.6), each in the same frame: a title strip (the mode's title in fourteen segments, a dim subtitle, its tabs as keys in the bezel above the strip, each tab's name in the strip under its key, the one showing inverse); the content in panes; a foot strip with the one-line feed at the left and the closing keys right-aligned (`M  OR  ESC  CLOSE`). A pane is a module of glass with its name as a dim legend in its first row; a section in a pane is a dim legend and a ghost rule to the pane's edge.
 
 | | |
 |---|---|
@@ -599,8 +599,11 @@ The orbit canvas keeps the game's geometry; FILAMENT draws each piece on the dot
 - **No colour on the LCD.** A caution is an outlined square, a warning a solid one; focus is a dark block with the dots left clear.
 - Its tab keys run down the housing's left edge with their names beside them in the glass; its action keys sit under the glass with their actions printed on the housing over them, so they never light.
 - A slate is a side panel: seated, it stops above the band and the camera moves to keep the ship in what is left of the world, a world label it would cover going to its edge marker.
+- **A slate as a mode.** Where a spec's modes share one frame (the context spec's captain's record), the slate takes it across the screen: its tab keys in the housing over the glass's title row, each tab's name in the glass under its key, the title in large dot matrix, and the feed and the closing keys in the glass's last row, each key an inverse cell. A log's merged line opens under its row, its events a cell in at L1.
 
-![The slate](variations/vfd/stations-slate.jpg)
+| | |
+|---|---|
+| ![The slate](variations/vfd/stations-slate.jpg) | ![A slate as a mode](variations/vfd/context-record.jpg) |
 
 ### 18.5 Setup mode: the menus
 
@@ -624,10 +627,13 @@ Before a game starts, nothing aboard is live but the computer. The top rack show
 - The controls (F1) and the end of a career are printed quick-reference cards laid over the game (7.12): Inter in sentence case, black on the card, key caps printed as outlined keys.
 - The controls card puts the section the player is in first, tagged `HERE`, and says which key closes it.
 - **Ship lost.** The tubes go dark, every ghost still showing, and the card says what happened and the ways on, each with its key. The game keeps those keys; the card only names them.
+- **A card as a mode** (the context spec's controls) prints its tabs as index tabs along its top edge, each with its number, the one showing in front and joined to the card. P1 above it and the mode's foot strip under it stay on the glass, since a card can't show what is live.
 
 | | |
 |---|---|
 | ![The controls card](vfd/card-controls.jpg) | ![Ship lost](vfd/card-lost.jpg) |
+
+![A card as a mode](variations/vfd/context-controls.jpg)
 
 ### 18.7 In the game
 

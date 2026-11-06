@@ -261,7 +261,8 @@ const SCR = (() => {
     b.shadowColor = 'transparent';
     b.strokeStyle = '#3a3c3f'; b.lineWidth = 0.8; b.beginPath(); b.roundRect(x + 0.4, y + 0.4, w - 0.8, h - 0.8, r); b.stroke();
     b.restore();
-    const lx = x + (o.keysLeft ? 78 : 14), ly = y + 26, lw = w - (o.keysLeft ? 78 : 14) - 14, lh = h - 26 - (o.keysBottom ? 52 : 16);
+    const top = o.top ?? 0; // room over the glass for keys along the housing's top edge
+    const lx = x + (o.keysLeft ? 78 : 14), ly = y + 26 + top, lw = w - (o.keysLeft ? 78 : 14) - 14, lh = h - 26 - top - (o.keysBottom ? 52 : 16);
     S.silk(x + 14, y + 17, o.brand ?? 'SLATE', { size: 12, color: '#7b8186' });
     if (o.owner) S.silk(x + w - 14, y + 17, o.owner, { size: 12, color: '#7b8186', align: 'right' });
     S.lcdPanel(lx, ly, lw, lh, { backlight: o.backlight });

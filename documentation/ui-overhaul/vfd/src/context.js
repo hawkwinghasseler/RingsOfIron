@@ -987,7 +987,7 @@
     // the systems, grouped by type, a dash where the game has no such value. Every system has its switch, and
     // the keys act on the focused row: SWITCH, its LED green while the system is on (on the reactor's row the
     // first press sets it blinking amber and the second switches); OPEN lists a group's members under its row,
-    // each with its own switch, so on a single system's row it is dim. RCS blocks are not systems: no switch.
+    // each with its own switch, and FOLD puts them away, so on a single system's row both are dim. RCS blocks are not systems: no switch.
     const sh = mid - top - KH - 9, s0 = rx + 12;
     pane(S, rx, top, rw, sh, 'SYSTEMS');
     SC.pager(S, rx + rw - 12 - 80, top + 8, 1, 2);
@@ -1004,7 +1004,7 @@
       sg.row(i * 1.5, SC.cols([[n, 21], ['', 1], [h, 4, 'r'], ['', 2], [pw, 4], ['', 2], [st, 16]]), { c: 2, focus, cursor: focus });
     });
     T(S, sg.cx(3), top + 46 + 11 * 20.25 + 12, 'PG 2: TANKS, CARGO BAYS, ESCAPE POD, DOCKING PORT', { level: 'dim' });
-    SC.keyStrip(S, rx + 8, top + sh + 5, rw - 16, [{ t: 'SWITCH', k: 'ENTER', led: 'green', ledOn: true }, { t: 'OPEN', k: '→', dim: true }], { slots: 4, labelY: top + sh - 7 * P - 6 });
+    SC.keyStrip(S, rx + 8, top + sh + 5, rw - 16, [{ t: 'SWITCH', k: 'ENTER', led: 'green', ledOn: true }, { t: 'OPEN', k: '→', dim: true }, { t: 'FOLD', k: '←', dim: true }], { slots: 4, labelY: top + sh - 7 * P - 6 });
 
     // damage control: the crew's jobs as the game posts them, and who has each or why it waits
     const dy0 = mid + 6, dh = bot - dy0;
@@ -1048,6 +1048,187 @@
     T(S, pv, py + 15, 'THE CREW CAN ONLY RESET A SHORT;', { level: 'dim' });
     T(S, pv, py + 30, 'A YARD REPAIRS A CUT: 400 CR', { level: 'dim' });
     S.finish();
+  };
+
+  // ------------------------------------------------------------------ M5 Captain's record, the Log tab (10.5)
+  // The captain's own book, so FILAMENT builds it on the slate (7.11), across the screen as the mode it is:
+  // the frame every mode has, in reflective LCD, its tabs as keys over the glass's title row and the feed
+  // and the closing keys in its foot row. Two minutes after M2, the record so far, newest first: P4's
+  // messages and, Log-only at their rows' severity, the conditions P2 raised and cleared and each missile
+  // P3 counted, fired and how it ended. The feed's merged gunnery lines are kept; the one in focus is open
+  // to its events. A condition's or a missile's row takes the source of what it is about, as P4's notices do.
+  SCREENS['cx-record'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 33 });
+    topRack(S, { seat: 'DECK', authority: 'HELM: BEA · HOLDING HEADING', battle: true, chip: ['1', '2'], day: '0', time: '00:22', warp: '1' });
+    const hx = 12, hy = 40, hw = 1256, hh = 748;
+    const L = SC.slate(S, hx, hy, hw, hh, { brand: 'SLATE', owner: 'CAPTAIN', keysBottom: true, top: KH - 4 });
+    const D = (x, y, str, o = {}) => SC.lcdDm(S, x, y, str, o);
+    const legend = (x, y, t) => S.lcdText(x, y, t, { size: 12, ink: 'rgba(26,32,22,0.6)' });
+    const x0 = L.x + 14, x1 = L.x + L.w - 14, CWL = 9;
+    // the title row: the mode's title, then its tabs, each under its key, the one showing inverse
+    let tx = x0 + D(x0, L.y + 9, "CAPTAIN'S RECORD", { pitch: 2.5 }) + 34;
+    [['CAREER', '1'], ['STANDING', '2'], ['CONTRACTS', '3'], ['LOG', '4', true]].forEach(([t, k, on]) => {
+      const lw = SC.width(t.length), kw = Math.max(44, lw), slot = kw + 26;
+      S.key(tx + (slot - kw) / 2, hy + 12, kw, KH, k, { size: 12 });
+      D(tx + (slot - lw) / 2, L.y + 13, t, { inverse: on ? [0, t.length] : null, cells: t.length });
+      tx += slot;
+    });
+    SC.lcdRule(S, L.x + 8, L.y + 38, L.w - 16);
+    // the filters: controls at the top of the tab, a value between ◀ and ▶ stepped with ← and → once focused
+    const fy = L.y + 54;
+    const choice = (x, label, value, cells) => {
+      legend(x, fy + 9, label);
+      const vx = x + 74;
+      D(vx, fy, '◀', { level: 'dim' }); D(vx + 2 * CWL, fy, value, { cells }); D(vx + (cells + 3) * CWL, fy, '▶', { level: 'dim' });
+      return vx + (cells + 4) * CWL;
+    };
+    choice(choice(x0, 'SOURCE', 'ALL', 11) + 40, 'SEVERITY', 'ALL', 7);
+    D(x1 - 15 * CWL, fy, 'PG 1/1', { level: 'dim' }); D(x1 - 8 * CWL, fy, '▲', { level: 'dim' }); D(x1 - 6 * CWL, fy, '▼', { level: 'dim' });
+    // the record: pips, then the time, the source and what happened; the day heads its rows
+    const g = SC.grid(S, x0, L.y + 104, Math.floor((L.w - 28) / CWL), 26, { lcd: true });
+    legend(g.cx(3), L.y + 96, 'TIME'); legend(g.cx(13), L.y + 96, 'SOURCE'); legend(g.cx(26), L.y + 96, 'WHAT HAPPENED');
+    g.text(3, 0, 'DAY 0', { level: 'dim' });
+    const rows = [
+      ['00:21:58', 'GUNNERY', '2 HITS ON RAIDER'],
+      ['00:20:41', 'ENGINEERING', 'FIRE BRIDGE CLEARED, 1:56', 'red'],
+      ['00:19:57', 'CREW', 'COLE IS LIGHTLY WOUNDED AND WORKING SLOWER'],
+      ['00:19:56', 'ENGINEERING', 'HULL BREACH HOLD', 'red'],
+      ['00:19:56', 'GUNNERY', 'MISSILE FROM RAIDER HIT THE HOLD', 'red'],
+      ['00:19:49', 'GUNNERY', 'MISSILE FIRED AT US BY RAIDER', 'red'],
+      ['00:18:45', 'ENGINEERING', 'FIRE BRIDGE', 'red'],
+      ['00:18:45', 'ENGINEERING', 'SYSTEM DOWN: AUTOCANNON (FWD STBD), CUT OFF', 'amber'],
+      ['00:17:30', 'ENGINEERING', 'SYSTEM DOWN: AUTOCANNON (FWD PORT), DAMAGED', 'amber'],
+      ['00:16:12', 'GUNNERY', '3 HITS ON RAIDER', null, [['00:16:12', 'AUTOCANNON (FWD PORT) HIT RAIDER'],
+        ['00:16:10', 'COILGUN (NOSE) HIT RAIDER'], ['00:16:08', 'AUTOCANNON (FWD PORT) HIT RAIDER']]],
+      ['00:14:20', 'GUNNERY', 'MISSILE SHOT DOWN BY POINT DEFENSE', 'red'],
+      ['00:14:12', 'GUNNERY', 'MISSILE FIRED AT US BY RAIDER', 'red'],
+      ['00:13:05', 'GUNNERY', 'MISSILE AWAY AT RAIDER'],
+      ['00:12:40', 'SHIELDS', 'SHIELDS RAISED'],
+      ['00:00:40', 'STATION', 'UNDOCKED FROM HIGHPORT'],
+      ['00:00:40', 'LOG', 'AUTOSAVED, UNDOCKING'],
+    ];
+    let r = 1.5;
+    for (const [t, src, what, sev, events] of rows) {
+      g.pips(0, r, sev);
+      g.row(r, SC.cols([[t, 8], ['', 2], [src, 11], ['', 2], [what, 60]]), { c: 2, focus: !!events, cursor: !!events });
+      r += 1.5;
+      // an open merged line: its events under it, a cell in, each with its time
+      for (const [et, ew] of events || []) { g.text(4, r, SC.cols([[et, 8], ['', 15], [ew, 60]]), { level: 'dim' }); r += 1.5; }
+    }
+    // the foot row: the one-line feed, and the keys that close the mode
+    const fr = L.y + L.h - 26;
+    SC.lcdRule(S, L.x + 8, fr - 8, L.w - 16);
+    const fx = x0 + D(x0, fr, 'GUNNERY:', { level: 'dim' }) + CWL;
+    D(fx, fr, '2 HITS ON RAIDER');
+    let cx = x1 - 14 * CWL + 3;
+    for (const [w, inv] of [['L', true], ['OR', false], ['ESC', true], ['CLOSE', false]]) {
+      D(cx, fr, w, { inverse: inv ? [0, w.length] : null, cells: w.length }); cx += (w.length + 1) * CWL;
+    }
+    // the slate's keys under its glass, printed with their actions
+    SC.slateKeys(S, L.x + 4, L.y + L.h + 12, [{ k: '→', t: 'OPEN', dim: true }, { k: '←', t: 'FOLD' },
+      { k: 'PG UP', t: 'PREV PAGE', dim: true }, { k: 'PG DN', t: 'NEXT PAGE', dim: true }]);
+    S.finish();
+  };
+
+  // ------------------------------------------------------------------ M6 Controls (10.6)
+  // The F1 card (7.12) as the Context design's mode: its tabs are index tabs printed along its top edge, the
+  // one showing in front, each with its number. P1 above and the mode's foot strip below stay on the glass,
+  // since a card can't show what is live; the feed is quiet in cruise. The sections are the seats and
+  // situations P1 names, in P1's order, the captain's own first (HERE); the gun seat has its own, and the
+  // Lock and the Nav are named apart, as everywhere in the design. The keys are the game's, with the design's
+  // new ones (O, the orders menu, which the lighting gives up; \, acknowledge) and its modes' keys.
+  SCREENS['cx-controls'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 8 });
+    topRack(S, { seat: 'HELM', day: '0', time: '00:33', warp: '1' });
+    const b = S.base, x = 28, y = 74, w = 1224, h = 672, PAPER = '#e9e6dc', BACK = '#d2cec2', INK = '#1c1c1c', SOFT = '#5d5b55';
+    const tw = 158, th = 30, t1 = x + 22, t2 = t1 + tw - 4;
+    // the tab behind, then the card and the tab in front of it as one sheet
+    b.save(); b.shadowColor = 'rgba(0,0,0,0.5)'; b.shadowBlur = 10; b.shadowOffsetY = 2;
+    b.fillStyle = BACK; b.beginPath(); b.roundRect(t2, y - th + 3, tw, th + 4, [6, 6, 0, 0]); b.fill(); b.restore();
+    b.save(); b.shadowColor = 'rgba(0,0,0,0.7)'; b.shadowBlur = 22; b.shadowOffsetY = 6; b.fillStyle = PAPER;
+    b.beginPath(); b.roundRect(x, y, w, h, 7); b.roundRect(t1, y - th, tw, th + 8, [6, 6, 0, 0]); b.fill();
+    b.shadowColor = 'transparent';
+    const g = b.createLinearGradient(x, y - th, x + w * 0.4, y + h);
+    g.addColorStop(0, 'rgba(255,255,255,0.35)'); g.addColorStop(0.3, 'rgba(255,255,255,0.04)'); g.addColorStop(1, 'rgba(0,0,0,0.03)');
+    b.fillStyle = g; b.beginPath(); b.roundRect(x, y, w, h, 7); b.roundRect(t1, y - th, tw, th + 8, [6, 6, 0, 0]); b.fill(); b.restore();
+    const tabLabel = (tx, k, word, color) => {
+      const kw = SC.printedKey(S, tx + 16, y - th + 7, k, { size: 12, h: 18 });
+      SC.print(S, tx + 16 + kw + 9, y - th + 21, word, { size: 13, weight: 700, color });
+    };
+    tabLabel(t1, '1', 'Keyboard', INK); tabLabel(t2 + 4, '2', 'Gamepad', SOFT);
+    // the head: the title, and where the captain is
+    SC.print(S, x + 30, y + 44, 'Controls', { size: 24, weight: 700, track: 0 });
+    const hw = SC.print(S, x + 30, y + 68, 'Here: Helm, cruise.', { size: 13, weight: 700 });
+    SC.print(S, x + 30 + hw + 6, y + 68, 'Your keys by seat and situation, where you are first.', { size: 13, color: SOFT });
+    b.fillStyle = INK; b.fillRect(x + 30, y + 84, w - 60, 1.4);
+    // one hint: its key caps, then what they do, wrapped at a space when it runs past its column
+    const COL = 291, LH = 20;
+    const hint = (hx, hy, keys, words) => {
+      let kx = hx;
+      for (const k of keys) kx += SC.printedKey(S, kx, hy - 13, k, { size: 12, h: 18 }) + 3;
+      const tx0 = Math.max(kx + 6, hx + 92), room = hx + COL - 14 - tx0, lines = [];
+      let line = '';
+      for (const word of words.split(' ')) {
+        const t = line ? line + ' ' + word : word;
+        if (line && SC.print(S, -999, -999, t, { size: 13 }) > room) { lines.push(line); line = word; } else line = t;
+      }
+      lines.push(line);
+      lines.forEach((ln, i) => SC.print(S, tx0, hy + i * 16, ln, { size: 13 }));
+      return (lines.length - 1) * 16;
+    };
+    const section = (sx, sy, title, rows, o = {}) => {
+      if (o.here) {
+        const ttw = SC.print(S, -999, -999, title, { size: 13, weight: 700, track: 0.06 });
+        b.fillStyle = INK; b.beginPath(); b.roundRect(sx - 6, sy - 15, ttw + 70, 21, 3); b.fill();
+        SC.print(S, sx, sy, title, { size: 13, weight: 700, color: PAPER, track: 0.06 });
+        SC.print(S, sx + ttw + 10, sy, 'HERE', { size: 12, weight: 700, color: '#bdb8aa', track: 0.12 });
+      } else SC.print(S, sx, sy, title, { size: 13, weight: 700, track: 0.06 });
+      b.fillStyle = 'rgba(28,28,28,0.35)'; b.fillRect(sx, sy + 8, COL - 21, 0.8);
+      let ry = sy + 31;
+      for (const [keys, words] of rows) ry += hint(sx, ry, keys, words) + LH;
+      if (o.note) { SC.print(S, sx, ry, o.note, { size: 12, color: SOFT }); ry += LH; }
+      return K.fits(ry + 14, y + h + 14, `M6 ${title}`);
+    };
+    const c = [0, 1, 2, 3].map(i => x + 30 + i * COL), top = y + 122;
+    section(c[0], top, 'HELM', [
+      [['W', 'S'], 'thrust'], [['A', 'D'], 'turn'], [['Z', 'C'], 'strafe'], [['X'], 'rotation assist'],
+      [['SPACE'], 'guns'], [['R'], 'missile'], [['F'], 'decoy'], [['TAB'], 'next Lock'], [['Q'], 'next Nav'],
+      [[';'], 'plan to the Nav'], [['/'], 'warp to the next burn'], [[',', '.'], 'time warp down / up'],
+      [['G'], 'arm port, ask clearance'], [['H'], 'next port'], [['9'], 'raise / lower shields'], [['8'], 'shield trim'],
+      [['1', '2', '3', '4', '0'], 'helm: fly burns / match / hold / approach / cancel'], [['5'], 'helm: dock at the Nav'],
+      [['6'], 'autopilot: fly the transfer'], [['V'], 'stand up'], [['WHEEL'], 'zoom'],
+    ], { here: true });
+    let y2 = section(c[1], top, 'FIRE CONTROL', [
+      [['MOUSE'], 'aim every gun'], [['SPACE', 'CLICK'], 'guns'], [['R'], 'missile'], [['TAB'], 'next Lock'], [['F'], 'decoy'],
+      [['9'], 'raise / lower shields'], [['8'], 'shield trim'], [['Q'], 'next Nav'], [[';'], 'plan to the Nav'],
+      [['/'], 'warp to the next burn'], [['1', '2', '3', '4', '0'], 'helm orders, as at the\u00a0helm'], [['5', '6'], 'dock, autopilot'],
+      [['V'], 'stand up'], [['WHEEL'], 'zoom'],
+    ]);
+    section(c[1], y2, 'GUN', [[['MOUSE'], 'aim this gun alone'], [['SPACE', 'CLICK'], 'fire it'], [['WHEEL'], 'zoom'], [['V'], 'stand up']],
+      { note: 'The rest as at fire control.' });
+    let y3 = section(c[2], top, 'DECK', [[['W', 'A', 'S', 'D'], 'walk'], [['E'], 'use what you face'], [['V'], 'sit at the console'],
+      [['F'], 'force a shut door'], [['B'], 'cut a shut door']]);
+    y3 = section(c[2], y3, 'DOCKED', [[['T'], 'market'], [['Y'], 'yard'], [['J'], 'missions'], [['U'], 'undock']]);
+    y3 = section(c[2], y3, 'BOARDING', [[['K'], 'boarding'], [['I'], 'prisoners, in the ship'], [['Y'], 'hand over the prize'], [['U'], 'cast off']]);
+    section(c[2], y3, 'EMERGENCY', [[['P'], 'twice: abandon ship'], [['B'], 'twice: call a tow']]);
+    const y4 = section(c[3], top, 'MAP', [
+      [['N'], 'plan a burn'], [['B'], 'next burn'], [['↑', '↓'], 'prograde / retrograde'], [['→', '←'], 'radial out / in'],
+      [[']', '['], 'burn later / earlier (Shift\u00a0x10)'], [['DEL'], 'delete burn'],
+    ], { note: 'The helm orders work here too.' });
+    section(c[3], y4, 'ANYWHERE', [
+      [['M'], 'map'], [['I'], 'ship'], [['J'], 'captain’s record, away from a station'], [['L'], 'log'], [['O'], 'orders'],
+      [['\\'], 'acknowledge the master\u00a0alert'], [['P'], 'twice: abandon ship'], [['F5'], 'quick save'], [['F9'], 'quick load'],
+      [['ESC'], 'close what is open, else the\u00a0menu'],
+    ]);
+    // the mode's foot strip, on the glass: the feed, quiet in cruise, and the keys that close it
+    const fy = 762;
+    S.module(12, fy, 1256, 26, { filaments: 0, glare: false, radius: 2 });
+    let kx = 12 + 1256 - 12 - (capsW(S, 'F1') + SC.width(2) + 14 + capsW(S, 'ESC') + SC.width(5));
+    kx = SC.capWord(S, kx, fy + 4, ['F1'], 'OR');
+    SC.capWord(S, kx, fy + 4, ['ESC'], 'CLOSE');
+    S.finish({ mesh: true });
   };
 
   Object.assign(K, { cx: { topRack, bottomRack, cue, h4Lights, h4Face, h1, h5Key, h5Scope, p2, p3, p4, p5, h2, h6, h7, x2, x3, d1 } });

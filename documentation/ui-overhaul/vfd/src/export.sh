@@ -23,6 +23,8 @@ shot cx-map $V/context-map.jpg
 shot cx-station $V/context-station.jpg
 shot cx-board $V/context-boarding-mode.jpg
 shot cx-ship $V/context-ship.jpg
+shot cx-record $V/context-record.jpg
+shot cx-controls $V/context-controls.jpg
 shot tk-helm-quiet $V/task-helm-quiet.jpg
 shot tk-gunnery-combat $V/task-gunnery-combat.jpg
 shot tk-deck-dc $V/task-deck-damage-control.jpg
