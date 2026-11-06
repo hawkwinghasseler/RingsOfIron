@@ -64,7 +64,8 @@ public class CassetteTaskHud implements HudVariant {
     private PromptStrip prompt;
     private Post lastPost;
     /** The menus, the map and the windows in the Yard Standard. */
-    private final YardScreens screens = new YardScreens();
+    // Esc closes the controls card before the screen under it (spec round 11)
+    private final YardScreens screens = new YardScreens().controlsOver(true);
 
     @Override
     public void attach(HudVariantHost host) {

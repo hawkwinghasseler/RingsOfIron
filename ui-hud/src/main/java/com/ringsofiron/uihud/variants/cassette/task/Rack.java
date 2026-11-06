@@ -15,13 +15,18 @@ import com.ringsofiron.uihud.variants.cassette.YardText;
 import java.util.Locale;
 
 /**
- * Z3, the incoming rack at top right: each contract held (OBJ) a paper slip with its time left on drums
- * and a state flap (blank, NAV, LATE, DONE), the navigation target's slip standing proud with its next
- * step under it; the news (NTF) on a telex strip below, newest at the bottom, important lines in red.
+ * Z3, the incoming rack at top right: each contract held (OBJ) a paper slip of its title with its time
+ * left on drums and a state flap (blank, NAV or LATE: the game pays a contract as it ends, so none waits
+ * done), the navigation target's slip standing proud with its next step under it; the news (NTF) on a
+ * telex strip below, newest at the bottom, important lines in red. A title or a notice too long for its
+ * line takes a second (a title breaks before where the job goes, or at a word, its time staying on the
+ * first), never a third.
  */
 final class Rack extends YardPart {
     static final float W = 300f;
     private static final int CARDS = 4, LINES = 3;
+    /** Characters on a slip's line, and on a telex line. */
+    static final int SLIP_CHARS = 25, TELEX_CHARS = 36;
     private static final Color INK = Yard.Finish.YARD.ink, PAPER_RED_LINE = Yard.hex("B8352B");
 
     private final TaskFrame f;
@@ -67,15 +72,42 @@ final class Rack extends YardPart {
     private float height() {
         float y = 9f;
         ObjectiveFrame of = f.data.objectiveFrame;
-        for (int i = 0; i < cards; i++) {
-            y += 26f;
-            if (navLine(of.objectives.get(i), of) != null) y += 19f;
-        }
+        for (int i = 0; i < cards; i++) y += slipHeight(of.objectives.get(i), of);
         if (telex.size > 0) {
             if (cards > 0) y += 2f;
-            y += 5f + telex.size * 16f + 8f + 6f;
+            y += 5f + telexLines() * 16f + 8f + 6f;
         }
         return cards == 0 && telex.size == 0 ? 0f : y + 4f;
+    }
+
+    /** A slip's height in the rack: one or two lines of title, and the next step under the target's. */
+    private static float slipHeight(Objective o, ObjectiveFrame of) {
+        return 26f + (wrap(o.title, SLIP_CHARS, true).length > 1 ? 15f : 0f) + (navLine(o, of) != null ? 19f : 0f);
+    }
+
+    private int telexLines() {
+        int n = 0;
+        for (MessageFeed.Message m : telex) n += wrap(m.label(), TELEX_CHARS, false).length;
+        return n;
+    }
+
+    /**
+     * {@code s} in at most two lines of {@code n} characters: before where the job goes ("Deliver 40
+     * Food" over "to Shackleton Ice") when {@code job}, else at a word, else where it must; past two it
+     * is cut with an ellipsis.
+     */
+    static String[] wrap(String s, int n, boolean job) {
+        if (s.length() <= n) return new String[]{s};
+        int at = -1;
+        if (job) {
+            for (String w : new String[]{" to ", " from "}) {
+                int k = s.indexOf(w);
+                if (k > 0 && k <= n && (at < 0 || k < at)) at = k;
+            }
+        }
+        if (at < 0) at = s.lastIndexOf(' ', n);
+        if (at <= 0) at = n;
+        return new String[]{s.substring(0, at).trim(), YardText.cut(s.substring(at).trim(), n)};
     }
 
     @Override
@@ -86,14 +118,16 @@ final class Rack extends YardPart {
         int n = cards;
         for (int i = 0; i < n; i++) {
             Objective o = of.objectives.get(i);
-            String st = o.state == State.DONE || o.state == State.RETURN ? "DONE" : o.late ? "LATE" : o.state == State.FAILED ? "FAIL" : o.nextIsNav ? "NAV" : "";
-            Color ink = st.equals("LATE") || st.equals("FAIL") ? Yard.FLAP_AMBER : st.equals("DONE") ? Yard.FLAP_GREEN : Yard.FLAP_TEXT;
+            String st = o.late ? "LATE" : o.nextIsNav ? "NAV" : "";
+            Color ink = st.equals("LATE") ? Yard.FLAP_AMBER : Yard.FLAP_TEXT;
             p.flaps(992f, y + 2f, st, 4, 9f, 16f, 12.5f, ink);
             float raise = o.nextIsNav ? -1.5f : 0f;
-            p.paper(1036f, y + raise, 172f, 20f);
+            String[] title = wrap(o.title, SLIP_CHARS, true);
+            p.paper(1036f, y + raise, 172f, title.length > 1 ? 35f : 20f);
             p.rect(1036f, y + raise, 172f, 2f, PAPER_RED_LINE, 0.55f);
-            String title = o.kind.isEmpty() ? o.title : o.kind + ": " + o.title;
-            p.typed(YardText.cut(title, 25), 1042f, y + 14.5f + raise, 12.5f, Yard.PAPER_INK);
+            for (int k = 0; k < title.length; k++) {
+                p.typed(YardText.cut(title[k], SLIP_CHARS), 1042f, y + 14.5f + k * 15f + raise, 12.5f, Yard.PAPER_INK);
+            }
             double left = o.timeLeft;
             if (Double.isNaN(left)) {
                 p.drums(1214f, y + 1f, " ", 11f, 18f, 14f, false);
@@ -105,7 +139,7 @@ final class Rack extends YardPart {
             }
             p.legend("D", 1228f, y + 15f, INK);
             p.legend("H", 1265f, y + 15f, INK);
-            y += 26f;
+            y += 26f + (title.length > 1 ? 15f : 0f);
             String nl = navLine(o, of);
             if (nl != null) {
                 p.flaps(1036f, y - 3f, YardText.fit(nl, 28), 28, 8f, 15f, 12.5f, Yard.FLAP_TEXT);
@@ -116,13 +150,16 @@ final class Rack extends YardPart {
             if (n > 0) y += 2f;
             p.rrect(986f, y, 288f, 6f, 2f, Yard.BAKELITE);
             p.rect(990f, y + 2f, 280f, 2f, Color.BLACK);
-            float py = y + 5f, ph = telex.size * 16f + 8f;
+            float py = y + 5f, ph = telexLines() * 16f + 8f;
             p.paper(990f, py, 280f, ph);
             // The torn foot of the telex strip
             for (int i = 0; i < 28; i++) p.rect(990f + i * 10f + 5f, py + ph - 3f, 5f, 3f, Yard.SHADOW, 0.25f);
+            int line = 0;
             for (int i = 0; i < telex.size; i++) {
                 MessageFeed.Message m = telex.get(i);
-                p.typed(YardText.cut(m.label(), 36), 998f, py + 15f + i * 16f, 13f, m.important ? Yard.PAPER_RED : Yard.PAPER_INK);
+                for (String l : wrap(m.label(), TELEX_CHARS, false)) {
+                    p.typed(l, 998f, py + 15f + line++ * 16f, 13f, m.important ? Yard.PAPER_RED : Yard.PAPER_INK);
+                }
             }
         }
     }
@@ -142,12 +179,23 @@ final class Rack extends YardPart {
         float y = 9f;
         for (int i = 0; i < Math.min(cards, of.objectives.size); i++) {
             Objective o = of.objectives.get(i);
-            float rowH = 26f + (navLine(o, of) != null ? 19f : 0f);
+            float rowH = slipHeight(o, of);
             if (ly >= y && ly < y + rowH) {
                 String due = Double.isNaN(o.timeLeft) ? "no deadline" : (o.late ? "late, " : "") + YardText.span(o.timeLeft).toLowerCase(Locale.ROOT) + " left";
-                return (o.kind.isEmpty() ? "" : o.kind + ": ") + o.title + (o.giver.isEmpty() ? "" : ", for " + o.giver) + "  (" + due + ")";
+                return o.title + (o.giver.isEmpty() ? "" : ", for " + o.giver) + "  (" + due + ")";
             }
             y += rowH;
+        }
+        // The telex: a notice's whole text
+        if (telex.size > 0) {
+            if (cards > 0) y += 2f;
+            float line = (ly - (y + 5f + 4f)) / 16f;
+            int at = 0;
+            for (MessageFeed.Message m : telex) {
+                int n = wrap(m.label(), TELEX_CHARS, false).length;
+                if (line >= at && line < at + n) return m.label();
+                at += n;
+            }
         }
         return null;
     }
