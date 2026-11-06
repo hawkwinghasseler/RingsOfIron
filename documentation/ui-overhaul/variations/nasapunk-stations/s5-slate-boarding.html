@@ -19,16 +19,18 @@
 // part (the captain's rank, the ship and the credits) is on the glass, under the tabs; the bezel
 // carries only the panel's name.
 //
-// The tab is what the game's boarding window has for this ship (BoardingWork, Boarding, Salvage).
-// First Play's raider flies with nobody aboard (GameScenario spawns it with no crew and no cargo), and
-// a disabled ship nobody defends needs no party: the first part marked takes it
-// (Boarding.takeUndefended), so the game hides the party's orders and opens the salvage at once,
-// with its state "Disabled: reactor down" until the first order and "Taken" from then on. So the tab
-// gives the state, says why there is no party to send, and lists what can be stripped, most valuable
-// first, each at what a station pays for it (a twentieth of its price new, Salvage.SALE_SHARE) and
-// its work (a tile's 10 s at the usual rate); every part comes off as a 1 m³ crate. The engines hang
-// outside the hull, but the game finds that only once their strip is ordered, so they read as any
-// other part. The cursor is on the chaingun, which S6 fits from the hold, and Enter strips it.
+// The tab is the spec's Boarding tab (10.4, round 19), on what the game's boarding window has for
+// this ship (BoardingWork, Boarding, Salvage). First Play's raider flies with nobody aboard
+// (GameScenario spawns it with no crew and no cargo), and a disabled ship nobody defends needs no
+// party: the first part marked takes it (Boarding.canTakeUndefended), so the game hides the party's
+// orders and opens the salvage at once. So the tab has no party row, not even one saying none is
+// needed: the state line says it once, "Nobody defends it: the first part marked takes it", and the
+// parts are open at once, most valuable first, each at what a station pays for it (a twentieth of
+// its price new, Salvage.SALE_SHARE) and with how its strip stands. Latched, a part nobody can
+// reach from inside reads EVA ONLY before it is marked, so the engines, which hang outside the
+// hull, say so (new data, 19: Salvage.reachable). The raider's hold is empty, so the tab has no
+// cargo, and boarding outlaws costs no standing, so nothing says so. The cursor is on the
+// chaingun, which S6 fits from the hold, and Enter strips it.
 let s = space({ px: 1180, py: 1500, pr: 1000, seed: 9 });
 // the pair in the outside view: the raider is the corvette refitted by pirates (GameScenario's
 // corvette_raider), so it is drawn on the corvette's hull in its own colours, latched along our port
@@ -93,27 +95,25 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     // the title bar's live part, on the glass: the captain's rank, the ship and the credits
     c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '12 500 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
     c += rule(gy + 48);
-    // the other ship, and why no party goes
+    // the other ship and its state, in the game's words: disabled, and nobody defends it, so the
+    // first part marked takes it; the tab has no party row for it (10.4, round 19)
     c += val(L, gy + 72, 'RAIDER', { size: 15 }) + text(R, gy + 72, 'LATCHED, PORT TO PORT', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     c += head(gy + 96, 'STATE') + val(V0, gy + 96, 'DISABLED: REACTOR DOWN');
-    c += head(gy + 116, 'COST') + val(V0, gy + 116, 'NONE: OUTLAWS');
-    c += head(gy + 136, 'PARTY') + val(V0, gy + 136, 'NONE NEEDED: NOBODY ABOARD');
-    c += note(V0, gy + 154, 'THE FIRST PART MARKED TAKES IT', C.dim);
-    c += rule(gy + 168);
-    // what can be stripped, most valuable first, with what a station pays and the work
-    c += head(gy + 192, 'SALVAGE') + note(R, gy + 192, 'EACH A 1 M³ CRATE', C.dim, { anchor: 'end' });
+    c += val(V0, gy + 116, 'NOBODY DEFENDS IT:') + val(V0, gy + 134, 'THE FIRST PART MARKED TAKES IT');
+    c += rule(gy + 148);
+    // the parts, most valuable first: what a station pays for each and how its strip stands; latched,
+    // a part nobody can reach from inside reads EVA ONLY before it is marked
+    c += head(gy + 172, 'SALVAGE');
     const rows = [
-      ['LASER MK1', '2 250', '10 S'], ['REACTOR', '2 000', '40 S'], ['HARPOON LAUNCHER', '1 500', '10 S'],
-      ['ENGINE', '1 250', '20 S'], ['ENGINE', '1 250', '20 S'], ['CHAINGUN MK1', '900', '10 S'],
-      ['LIFE SUPPORT', '750', '20 S'], ['AUTOCANNON MK1', '600', '10 S'],
+      ['LASER MK1', '2 250', ''], ['REACTOR', '2 000', ''], ['HARPOON LAUNCHER', '1 500', ''],
+      ['ENGINE', '1 250', 'EVA ONLY'], ['ENGINE', '1 250', 'EVA ONLY'], ['CHAINGUN MK1', '900', ''],
+      ['LIFE SUPPORT', '750', ''], ['AUTOCANNON MK1', '600', ''],
     ];
-    const gr = grid(L, gy + 216, [{ t: 'PART', w: 200 }, { t: 'SELLS FOR', w: 100, align: 'right' }, { t: 'WORK', w: 80, align: 'right' }], rows.map((r, i) => i === 5 ? { cells: [{ t: r[0], bold: true }, r[1], r[2]], cursor: true } : r), { rule: 0, rh: 22 });
+    const st = t => ({ t, c: C.dim, size: 12, bold: true });
+    const gr = grid(L, gy + 196, [{ t: 'PART', w: 200 }, { t: 'SELLS FOR', w: 100, align: 'right' }, { t: '', w: 120, align: 'right' }], rows.map((r, i) => i === 5 ? { cells: [{ t: r[0], bold: true }, r[1], st(r[2])], cursor: true } : [r[0], r[1], st(r[2])]), { rule: 0, rh: 22 });
     c += gr.svg;
     const my = gr.rowY(7) + 22;
     c += note(L, my, '7 MORE · 2 000 CR IN ALL', C.dim) + val(R, my, 'SHOW ALL>', { anchor: 'end', size: 12 });
-    c += rule(my + 14);
-    // the cargo aboard it: none
-    c += head(my + 38, 'CARGO') + val(V0, my + 38, 'NONE ABOARD', { bold: false });
     return c;
   },
 }).svg;

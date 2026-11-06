@@ -1,6 +1,6 @@
 # Nasa-punk × Ship Stations
 
-The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn, S7 at round 15, S9 at round 16 and S8 at round 18) skinned in the
+The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn, S7 at round 15, S9 at round 16, S8 at round 18 and S5 at round 19) skinned in the
 Nasa-punk style (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
 2x; sources are the HTML files here, using `stations.js` and the shared kit in
@@ -91,15 +91,16 @@ it, and the camera's centre moves left by half its width, so the pair stays in t
 world still in view. The raider is the corvette refitted by pirates, so it is drawn on the
 corvette's hull in its own colours, half a turn round along the port side with the collar between.
 Latched, the strip and the CMD tile read LATCHED, the cluster's Velocity slot reads DOCKED with
-the Reference and Next event slots dark, and the rails offer DOCK and CARGO. The tab is what the
-game's boarding window has for this ship. First Play's raider flies with nobody aboard, and a
-disabled ship nobody defends needs no party: the first part marked takes it
-(`Boarding.takeUndefended`), so the game hides the party's orders and opens the salvage at once.
-So the tab gives the raider's state and what boarding it costs, says why no party goes, and lists
-what can be stripped, most valuable first, each at what a station pays for it and its work, every
-part a 1 m³ crate. The cursor is on the chaingun, which S6 fits from the hold, and Enter strips it.
-The engines hang outside the hull, but the game finds that only once their strip is ordered, so
-they read as any other part.
+the Reference and Next event slots dark, and the rails offer DOCK and CARGO. The tab is round
+19's, on what the game's boarding window has for this ship. First Play's raider flies with nobody
+aboard, and a disabled ship nobody defends needs no party: the first part marked takes it
+(`Boarding.canTakeUndefended`), so the game hides the party's orders and opens the salvage at once.
+So the tab has no party row, not even one saying none is needed: the state line says it once,
+"Nobody defends it: the first part marked takes it", and the parts are open at once, most valuable
+first, each at what a station pays for it. Latched, a part nobody can reach from inside reads EVA
+ONLY before it is marked, so the engines, which hang outside the hull, say so. The raider's hold is
+empty and boarding outlaws costs no standing, so the tab says neither. The cursor is on the
+chaingun, which S6 fits from the hold, and Enter strips it.
 
 ![The yard](s6-yard.png)
 

@@ -10,7 +10,7 @@ at 1280 x 800.
 
 | Variation | Folder | Spec version drawn | State |
 |---|---|---|---|
-| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18 | Converged in round 5; S7 to S9 drawn in round 7, and S5 to S8 redrawn for the crewless Raider |
+| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18, S5 at 19 | Converged in round 5; S7 to S9 drawn in round 7, and S5 to S8 redrawn for the crewless Raider |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17; C11 at 18 | Converged in round 5, and again at versions 13 to 18 in round 7; C11's questions and the crewless Raider are with the designer |
 | Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 15 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 15 in round 7 |
 
@@ -615,7 +615,17 @@ one point for the stations designer.
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Stations (10.4) | The Boarding tab gives "the boarding party (send, recall)". For a disabled ship nobody defends, such as First Play's Raider, the game hides the party's orders and opens the salvage at once, and the first part marked takes it (`BoardingWork`, `Boarding.takeUndefended`). S5 keeps the PARTY row to say why none goes ("NONE NEEDED: NOBODY ABOARD", "THE FIRST PART MARKED TAKES IT") and opens the salvage. Is that the tab's rule for an undefended ship? | |
+| Stations (10.4) | The Boarding tab gives "the boarding party (send, recall)". For a disabled ship nobody defends, such as First Play's Raider, the game hides the party's orders and opens the salvage at once, and the first part marked takes it (`BoardingWork`, `Boarding.takeUndefended`). S5 keeps the PARTY row to say why none goes ("NONE NEEDED: NOBODY ABOARD", "THE FIRST PART MARKED TAKES IT") and opens the salvage. Is that the tab's rule for an undefended ship? | Round 19: no. A row that only says it isn't needed is the empty state the dark-ship rule removes, so there is no party row; the state line says it once ("Nobody defends it: the first part marked takes it"), and the parts list is open at once (10.4) |
+
+**Round 19** took the note and went further. It adopts the task spec's EVA ONLY: latched, a part
+nobody can reach from inside reads so before it is marked (new data, `Salvage.reachable`). And it
+opens the tab alongside a ship in EVA reach too, as today's window boards and strips one there, with
+the CMD tile's boarding badge but no status-strip state, the parts inside the hull reading "inside:
+latch on". S5 is redrawn to it. The PARTY row is gone, and by the same rule so are the COST row
+(boarding outlaws costs no standing) and the CARGO row (the Raider's hold is empty). The engines
+read EVA ONLY. The work column and the crate note were the task spec's, not this one's, so they go
+too: the stations spec's parts are each with what it sells for and how its strip stands. No
+stations screen stands off alongside a ship, so the new case isn't drawn.
 
 ## Next
 
