@@ -1,6 +1,6 @@
 # Nasa-punk × Ship Stations
 
-The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn, and S7 at round 15) skinned in the
+The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn, and S7 to S9 at round 15) skinned in the
 Nasa-punk style (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
 2x; sources are the HTML files here, using `stations.js` and the shared kit in
@@ -132,6 +132,38 @@ the trigger. I have stepped Cole from AUTO through TAC to the NOSE GUN, which le
 the trigger. A fire, a casualty or a boarding still comes first, as manning a console does today.
 Letting go is docked only and can't be undone, so it takes Enter twice, and the page says it is
 for good.
+
+![The slate, log](s8-slate-log.png)
+
+**S8, the slate's Log tab (10.4), on deck, docked at Highport on S7's visit (round 15).** The tab
+is "every alert and callout, newest first, filterable by station and severity; the last 500". L
+opened it, and the captain has scrolled down to the First Play fight, eleven lines below the
+newest. Each line is what the ticker carried, with its station tag and its speaker. An alert
+someone called is one line, the callout, with the alert's mark, and its clearing is 13.3's
+record at the same severity, hollow ("Fire in the bridge out after 1:42"). Advisories carry no
+mark, and responses, the player's own answers, are not logged. Read from the bottom, the fight
+goes in order: the Raider moving to intercept, in the guns' range, opening fire; its harpoons,
+both shot down 13 s later; the Raider breaking off, the parting short on the aft starboard gun
+and the fire it lit; the Raider disabled and the latch. Above the page are the boarding, the way
+home and the three prisoners handed over, 400 CR each. The filters are two rows at the top, each
+position with its count, as on the context variation's record (C9): station takes one or all,
+and severity is a threshold, each position keeping what is more serious. ← and → step the
+focused row, under `FocusNav`, and ↑ ↓ scroll. NAV has nothing in it, so it is dark.
+
+![The gun panel](s9-gun-panel.png)
+
+**S9, the gun panel (10.2), on deck at the forward starboard autocannon, docked at Highport
+(round 15).** E at a gun opens that mount in detail as the side panel, in place of today's "Gun"
+console window and its "Take the gun" button. The title names the mount by where it sits
+(13.2), and a synoptic puts it on the hull among the other four with its arc: 300° about
+starboard, so its one blind 60° is across the hull, to port. Its state, health and switch are
+the console window's. Its rounds are 30 mm at 2 km/s, ten a second, with no magazine, and it
+draws 50 kW firing. It is point defense, so its mode (3.5) reads AUTO in the tactical cluster's
+green: it hunts the most urgent missile inbound whoever is aboard, and no gunner works it.
+Taking it in hand is V, or the footer's TAKE THE GUN, and the panel says what that costs before
+the captain sits: a gun aimed by hand hunts no missile, and the other autocannon hunts on but
+can't see across the hull to starboard, the side this one covers. V again stands the captain
+up, and the gun goes back to the missiles.
 
 ## Round 5 critique
 

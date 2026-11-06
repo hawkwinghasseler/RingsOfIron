@@ -1,0 +1,136 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Stations: gun panel</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="stations.js"></script>
+<script>
+// The gun panel (the stations spec, 10.2 and 5.1): E at a gun opens that mount in detail, and
+// sitting, V, takes it in hand. On deck, docked at Highport on S7's visit, the captain has walked
+// forward to the starboard autocannon's mount and pressed E. The panel is the gun's console face
+// standing as the side panel, full height on deck (10.1), so the world's centre moves left by half
+// its width (6.2) and the captain stays in the middle of what it leaves. Nothing is wrong aboard.
+//
+// It replaces today's console window at a gun (titled "Gun": ConsoleWindow's default layout, the
+// system, its health and state, the switch, and the "Take the gun [V]" button), in the spec's
+// words: the weapon, its state, its ammunition where limited, who works it, and taking it in hand.
+// All of it is the game's. The mount is named by where it sits (13.2). The corvette's two
+// autocannons sit forward on its beams, each turned to its own side (ships.toml), with a 300° arc,
+// so each is blind only across the hull, toward the other's side (weapons.toml). An autocannon is
+// point defense: it hunts its own missiles, the most urgent inbound, whoever is aboard
+// (WeaponControlSystem), and no gunner works it (GunCrews), so its mode (3.5) reads AUTO, in the
+// tactical cluster's green. Its 30 mm rounds leave at 2 km/s, ten a second, with no magazine to
+// run dry, and it draws 50 kW firing. A gun in hand is aimed by the pointer, and Space or a click
+// fires it, as the game says when the captain sits ("You take the gun: the pointer aims it, Space
+// or a click fires"). Seated at a gun, just that gun is in hand, point defense or not
+// (PlayerGunnery.inHand), and a mount aimed by hand hunts no missile, so the panel says so before
+// the captain takes it: the other autocannon hunts on, but it is blind to starboard, where this
+// one looks. V again stands the captain up ("You leave the gun"), and this one goes back to the
+// missiles (PlayerGunnery).
+let s = space({ planet: false, seed: 13 });
+
+// The world: the corvette's deck at Highport's arm, the camera on the captain by the starboard
+// autocannon's mount (chassis 14, 1), moved 240 left (6.2)
+const AV = [13.55, 1.6];
+const K = 56, OX = 392 - AV[0] * K, OY = 400 - (6 - AV[1]) * K, X = tx => OX + tx * K, Y = ty => OY + (6 - ty) * K;
+{
+  const ax = X(7.3), aw = X(9.7) - X(7.3);
+  s += rect(ax, -4, aw, Y(6) + 8, { fill: '#3E434A', stroke: '#24282C', sw: 1.5 });
+  for (let yy = Y(6) - 30; yy > 0; yy -= 30) s += line(ax + 2, yy, ax + aw - 2, yy, '#2E3237', 2);
+  s += line(ax + 10, -4, ax + 10, Y(6), '#4D535B', 1.5) + line(ax + aw - 10, -4, ax + aw - 10, Y(6), '#4D535B', 1.5);
+  s += rect(X(7.1), Y(6) - 12, X(9.9) - X(7.1), 14, { fill: '#30353B', stroke: '#1E2125', sw: 1.5 });
+}
+s += corvetteDeck(OX, OY, K, {
+  id: 's9',
+  // Bea at the helm, Cole at the weapons console; Ada is in the hold, off the left edge
+  crew: [[4.2, 4.45], [10.25, 4.55], [10.3, 3.45]],
+  avatar: AV,
+  labels: true, labelAt: { bridge: [11.6, 2.75] },
+});
+const CX = 392;
+s += statusStrip({ state: 'DOCKED', cx: CX });
+s += annunciator(CX, 44, [], {});
+
+// The mount synoptic: the hull, its five mounts by name, and this one's arc. The hull art is
+// centred on chassis (13, 3), 64 units a tile; the mounts sit on their tile centres. The arc is a
+// symbol, not a range: the 300° the mount turns through, centred on the side it faces, with the
+// gap of the 60° it can't see across the hull.
+function mountSynoptic(x0, y0, k) {
+  const X = tx => x0 + tx * k, Y = ty => y0 + (6 - ty) * k;
+  let c = `<polygon transform="translate(${X(13)} ${Y(3)}) scale(${k / 64})" points="${CORVETTE.hull}" fill="none" stroke="#33414D" stroke-width="${1.2 * 64 / k}"/>`;
+  const ring = (cx, cy, r, col, sw = 1.5) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.glass}" stroke="${col}" stroke-width="${sw}"/>`;
+  // the other mounts, dim, each named beside its ring
+  [[11.5, 4.5, 'AFT PORT', -1], [14.5, 4.5, 'FWD PORT', 1], [16.5, 2.5, 'NOSE', 1], [11.5, 1.5, 'AFT STBD', -1]].forEach(([tx, ty, t, side]) => {
+    c += ring(X(tx), Y(ty), 5, C.dim);
+    c += text(X(tx) + side * 11, Y(ty) + 4, t, { size: 12, bold: true, fill: C.dim, anchor: side < 0 ? 'end' : 'start', track: 0.5 });
+  });
+  // this mount: facing starboard (down the page), its arc 300° about that, the gap to port
+  const mx = X(14.5), my = Y(1.5), r = 36, a0 = (90 - 150) * Math.PI / 180, a1 = (90 + 150) * Math.PI / 180;
+  const pt = a => [mx + r * Math.cos(a), my + r * Math.sin(a)];
+  const [sx, sy] = pt(a0), [ex, ey] = pt(a1);
+  c += `<path d="M${mx} ${my} L${sx} ${sy} A${r} ${r} 0 1 1 ${ex} ${ey} Z" fill="rgba(238,241,243,0.07)" stroke="${C.white}" stroke-width="1.2"/>`;
+  // its facing, an arrow out of the starboard side; then the mount, in the focus ring
+  c += line(mx, my + 13, mx, my + 30, C.white, 1.5) + path(`M${mx - 4} ${my + 25} L${mx} ${my + 31} L${mx + 4} ${my + 25}`, C.white, 1.5);
+  c += ring(mx, my, 5, C.white) + `<circle cx="${mx}" cy="${my}" r="11" fill="none" stroke="${C.cyan}" stroke-width="1.6"/>`;
+  c += text(mx + 30, Y(0) + 19, '300°', { size: SB, bold: true, fill: C.white });
+  return c;
+}
+
+// The gun panel: the mount's console face, standing as the side panel (Z4), full height on deck
+const P = { x: 784, y: 16, w: 480, h: 768 };
+const tabW = t => (tw(t, 12, true, 0.6) + 14) / 60;
+s += consoleFace(P.x, P.y, P.w, P.h, {
+  id: 'gun', b: 16, title: 'TAC  ·  FWD STBD GUN', titleSize: 11, plate: 'DU-4  TAC  P/N 5340-07',
+  // one tab: the mount
+  tabs: [{ t: 'GUN', state: 'cur', w: tabW('GUN') }],
+  footer: [{ t: 'SWITCH OFF', k: 'ENT' }, { t: 'TAKE THE GUN', k: 'V' }, { t: '' }, { t: 'CLOSE', k: 'ESC' }],
+  content: (gx, gy, gw, gh) => {
+    let c = '';
+    const L = gx + 14, R = gx + gw - 14, V = L + 104;
+    const rule = y => line(gx + 4, y, gx + gw - 4, y, C.graticule, 1);
+    const head = (y, t) => text(L, y, t, { size: 12, bold: true, fill: C.dim, track: 0.8 });
+    const val = (y, t, o = {}) => text(o.x ?? V, y, t, { size: o.size || SB, bold: true, fill: o.c || C.white, anchor: o.anchor || 'start', track: 0.4 });
+    const note = (y, t, o = {}) => text(o.x ?? V, y, t, { size: 12, bold: true, fill: o.c || C.dim, anchor: o.anchor || 'start', track: 0.4 });
+
+    // the mount: where it sits (13.2), the weapon, and what kind of gun it is
+    c += text(L, gy + 44, 'FWD STBD', { size: 15, bold: true, fill: C.white, track: 0.4 }) + text(L + tw('FWD STBD', 15, true, 0.4) + 12, gy + 44, 'AUTOCANNON MK1', { size: SB, bold: true, fill: C.white, track: 0.4 });
+    c += note(gy + 44, 'POINT DEFENSE', { x: R, anchor: 'end' });
+    c += rule(gy + 56);
+    c += mountSynoptic(gx + gw / 2 - 10.5 * 21, gy + 90, 21);
+    c += rule(gy + 254);
+
+    // its state, health and switch, as the console window gives them today; its rounds, its draw
+    // and its arc
+    c += head(gy + 280, 'STATE') + val(gy + 280, 'READY') + note(gy + 280, 'HEALTH 100%', { x: R, anchor: 'end' });
+    c += head(gy + 304, 'SWITCH') + val(gy + 304, 'ON');
+    c += head(gy + 328, 'ROUNDS') + val(gy + 328, '30 MM AT 2 KM/S, 10 A SECOND');
+    c += note(gy + 346, 'NO MAGAZINE: IT DOESN\'T RUN DRY');
+    c += head(gy + 370, 'DRAWS') + val(gy + 370, '50 KW FIRING');
+    c += head(gy + 394, 'ARC') + val(gy + 394, '300°, ABOUT STARBOARD');
+    c += note(gy + 412, 'BLIND 60° ACROSS THE HULL, TO PORT');
+    c += rule(gy + 428);
+
+    // who works it: its mode, said once (3.5); point defense picks its own missiles
+    c += head(gy + 454, 'WORKED BY') + val(gy + 454, 'AUTO', { c: C.green }) + note(gy + 454, 'NO GUNNER WORKS IT', { x: R, anchor: 'end' });
+    c += note(gy + 472, 'IT HUNTS THE MOST URGENT MISSILE INBOUND,');
+    c += note(gy + 490, 'WHOEVER IS ABOARD');
+    c += rule(gy + 506);
+
+    // taking it in hand, and what that leaves
+    c += head(gy + 532, 'IN HAND') + val(gy + 532, 'V TAKES IT: THE POINTER AIMS IT,');
+    c += val(gy + 554, 'SPACE OR A CLICK FIRES IT');
+    c += note(gy + 580, 'WHILE YOU HOLD IT, IT HUNTS NO MISSILE.', { c: C.white });
+    c += note(gy + 598, 'FWD PORT HUNTS ON, BUT IT CAN\'T SEE');
+    c += note(gy + 616, 'ACROSS THE HULL TO STARBOARD');
+    c += note(gy + 640, 'V AGAIN STANDS YOU UP, AND IT HUNTS AGAIN');
+    return c;
+  },
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

@@ -285,7 +285,8 @@ and the game's numbers.
 | Boarding | T5, BRD once the ship is taken, with the salvage marked | C6, M4 with the party fighting aboard | S5, the slate's Boarding tab before the party goes |
 | The station's services | T6, the station terminal on Contracts | C7, M3 on its Market tab, a panel over the docked view | S6, the station link's Yard tab |
 | Ship and crew | T7, the ship's book on Crew | C8, M2 on Systems in the corvette's fight | S7, the slate's Crew tab, with the new station order |
-| The log and the controls | T8, the book's Log tab; T9, the controls reference | C9, M5 on its Log tab; C10, M6 on its Keyboard tab | |
+| The log and the controls | T8, the book's Log tab; T9, the controls reference | C9, M5 on its Log tab; C10, M6 on its Keyboard tab | S8, the slate's Log tab |
+| The consoles | | | S9, the gun panel at a point-defense mount |
 
 **New pieces in the kit.** A mark box for lists where Enter marks or leaves a row: filled cyan when
 marked (a command, so cyan), hollow and dim when not, and absent where the row can't be marked,
@@ -434,6 +435,33 @@ fit takes a second line, broken where the two are most even (a deviation).
 | Task (7, LOG) | T8 logs each alert as it is raised, under WARNINGS with the band's level as its mark. Is its clearing logged? The intercept is a WARNING notice with no alert of its own: as a caution, what are its code and action? The game keeps 50 notices, and a day like T8's fills 19 of them | |
 | Task (10, pad) | The pad can't aim at the weapons console: the guns follow the pointer (`PlayerGunnery`), and there only the weapons answer, so both sticks are free and the right one could aim. Nor does the pad reach the shields (9, 8), zoom, the lights, the next port (H), the map's Q, ; and /, the book's I and L, F1 or a quick load | |
 | Task (10) | Esc closes "the top layer", but the closing order puts the controls reference after screens and panels, so with F1 open over the map, Esc closes the map under it first | |
+| Task (7, Z3) | Z3 is 240 wide, and few of the game's notices fit it on one line (even "DELIVERY: ICE TO FREEHOLD 1D 4H" is 246). May a news slip or an objective take a second line? T3 breaks one where the two lines are most even | |
+
+**The slate's Log and the gun panel.** S8 draws the slate on its Log tab, docked after the fight,
+the latch and the way home, and S9 the gun panel at the forward starboard autocannon, docked. The
+Log's lines are the game's where the game has one: the disablement notice is "Raider is disabled:
+reactor down" (`GameBootstrap`), the handover "Crew 4 (Void Raiders) handed over: +400 cr" for
+each prisoner (`Prisoners`), the breaking off is `HostileTraffic`'s, and the short's 45 s
+`DamageStates.AUTO_RESET`. The gunner's callouts are 5.4's: in range and missile down. Today's
+window at a gun is titled "Gun" (`ShipConsoles`) and reads the health and one of ONLINE, OFF, NO
+POWER or DESTROYED (`ConsoleWindow`); S9's READY is 8.3's word for a gun. Seated at a gun, just
+that gun is in hand, point defense too (`PlayerGunnery.inHand`), a mount aimed by hand hunts no
+missile (`WeaponControlSystem`), and let go it hunts again; V stands the captain up with "You
+leave the gun" (`GameInput`). The two autocannons face their own sides with 300° arcs, so each is
+blind across the hull to the other's side. One thing the check found is the game's, not the UI's:
+point defense picks the missile due soonest within its reach whatever its arc
+(`WeaponControlSystem.pickMissileThreat`), so the port autocannon can hold on a missile from
+starboard that it can't turn to, while one inside its arc waits.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Stations (10.4, 13.3) | The Log is "every alert and callout". S8 keeps one line per alert: the callout if someone called it, with the alert's mark, or else the alert's own text; then its clearing, as 13.3's record at the alert's severity, hollow. Is that the rule? | |
+| Stations (13.6) | Responses are the player's own answers, so S8 doesn't log them. Should it? | |
+| Stations (10.4, 16.3) | The Log's filters have no keys. S8 steps the focused row with ← and → under `FocusNav` and scrolls with ↑ ↓, and takes severity as a threshold, each position keeping what is more serious, as the context spec does | |
+| Stations (13.3, 13.4) | 13.3 gives one cleared record ("Fire in the bridge out after 1:42"). S8 writes the rest "<alert>, cleared after m:ss", with alert texts of my own ("Raider firing on you", "Pirates inbound", "1 system without power", "Missiles inbound"). Could the catalogue give each alert its text and its record? | |
+| Stations (7.2, 13.5) | Today's notices reach the ticker as advisories, SHIP speaking ("SHIP: docked at Highport, port 2"). Which station tags each, and is the notice's own text the line, as S8 has it? | |
+| Stations (E) | Walkthrough E's clock reads Day 3, but First Play's fight is on day 0, S5's clock; S8 keeps day 0 | |
+| Stations (10.2, 3.5) | The gun panel: a point-defense mount in hand hunts no missile, so S9 says so before the captain sits, with what the other autocannon can't cover. S9 keeps the console window's switch on Enter, though 10.2 doesn't list it and Engineering's Systems tab has the switches, and gives point defense's mode as AUTO. Confirm all three? | |
 
 ## Next
 
