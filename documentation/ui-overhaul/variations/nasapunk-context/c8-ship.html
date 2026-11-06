@@ -27,9 +27,10 @@
 // outside, and EVA work waits at battle stations. Cole, the marine, takes the weapons console. No
 // crew mends a cut conduit, so it is no job on the board: the power panel has it, with the yard's
 // 400 cr. The circuit stores 2 s of the reactor's 3.0 MW, and a gun that is switched on but on no
-// reactor's network is down. RCS blocks draw no power (RcsThruster: a block works while the hull
-// tile it is bolted to stands), so the list gives them no circuit. The feed's line is the game's own
-// notice for a light wound.
+// reactor's network is down. The list dashes a value the game doesn't have (version 13): RCS blocks
+// draw no power and have no health of their own (RcsThruster: a block works while the hull tile it
+// is bolted to stands), and tanks and bays draw none. The feed's line is the game's own notice for
+// a light wound.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 12 });
 s += controlDefs();
 s += statusStrip({ seat: 'DECK', authority: 'HELM: BEA · HOLDING HEADING', battle: true, chip: { warn: 1, caut: 2 }, clock: 'DAY 0 · 00:20:30', warp: '1×' });
@@ -146,14 +147,14 @@ s += du(714, 64, 558, 420, {
     const toggle = (x, y) => `<circle cx="${x + 5}" cy="${y - 4.5}" r="5" fill="#1F2226" stroke="#4A5058" stroke-width="1"/>` + line(x + 5, y - 4.5, x + 5, y - 12, '#D2D5CF', 2) + `<circle cx="${x + 5}" cy="${y - 12.5}" r="1.8" fill="#D2D5CF"/>` + text(x + 16, y, 'ON', { size: LB, bold: true, fill: C.white, track: 0.4 });
     const groups = [
       ['POWER', [['REACTOR M', '100%', '1', true, ['3.0 MW', C.white]]]],
-      ['FLIGHT', [['HELM', '100%', '1', true, ['BEA AT IT', C.white]], ['ENGINES, 2', '100%', '1', true], ['RCS BLOCKS, 8', '–', '', false, ['1 STOPPED', C.amber]]]],
+      ['FLIGHT', [['HELM', '100%', '1', true, ['BEA AT IT', C.white]], ['ENGINES, 2', '100%', '1', true], ['RCS BLOCKS, 8', '–', '–', false, ['1 STOPPED', C.amber]]]],
       ['WEAPONS', [['WEAPONS CONSOLE', '100%', '1', true, ['COLE AT IT', C.white]], ['NOSE COILGUN', '100%', '1', true],
         ['FWD PORT AUTOCANNON', '20%', '1', true, ['REPAIRING', C.cyan]],
         { cursor: true, r: ['FWD STBD AUTOCANNON', '100%', 'NONE', true, ['CUT OFF', C.amber]] },
         ['AFT PORT LAUNCHER', '100%', '1', true], ['AFT STBD LASER', '100%', '1', true]]],
       ['LIFE', [['LIFE SUPPORT', '100%', '1', true]]],
       ['DOCK', [['DOCKING PORT', '100%', '1', true]]],
-      ['PASSIVE', [['TANKS, 3', '100%', '', false], ['CARGO BAYS, 4', '100%', '', false], ['ESCAPE POD, 4 SEATS', '100%', 'OWN', false]]],
+      ['PASSIVE', [['TANKS, 3', '100%', '–', false], ['CARGO BAYS, 4', '100%', '–', false], ['ESCAPE POD, 4 SEATS', '100%', 'OWN', false]]],
     ];
     let y = gy + 72;
     groups.forEach(([gname, rows], gi) => {

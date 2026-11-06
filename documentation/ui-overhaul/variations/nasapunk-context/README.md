@@ -1,6 +1,6 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 12 when drawn, on branch
+The context-driven functional spec (`functional-context.md`, version 13 when drawn, on branch
 `claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at 2x; sources are
@@ -155,22 +155,23 @@ system stops working, and an earlier one holed the hull tile under the aft starb
 sealed since from inside. The plan is the corvette's real layout and network: every system by its
 state, the hold hatched for its breach, the cut marked where it broke, the eight RCS blocks on the
 hull with the stopped one amber, and the crew where they work. The list groups the systems by type,
-each with its health, circuit, switch and anything not normal; RCS blocks draw no power, so theirs
-have no circuit. The board is the game's crew rules at work. Ada has the gun, since a gun's repair
+each with its health, circuit, switch and anything not normal, and a dash where the game has no
+such value: RCS blocks draw no power and have no health of their own, and tanks and bays draw none. The board is the game's crew rules at work. Ada has the gun, since a gun's repair
 never waits out a fight. The breach is where Cole was hit, so the crew leave it till the fight ends
 (and Cole, a marine, never seals one). The RCS block is outside, and EVA work waits for battle
 stations to end. That is why Bea can hold the helm: crew man a console only when nothing on the
 board suits them. No crew mends a cut conduit, so it is no job on the board: Power has it under the
 gun it strands, with the yard's 400 cr. The feed has the game's own notice for a light wound.
 
-## Round 7 critique (versions 10 to 12)
+## Round 7 critique (versions 10 to 13)
 
 Version 10 came from the cassette direction's round 3. It made the samples true to the game's
 geography (Shackleton Ice orbits the Moon, so the trip is planned a leg at a time and the deadline
 outlasts it), set the full-screen modes' frame (tabs on their number keys, the close keys at the
 foot), and made M3 a panel over the docked view. I checked it against the game's code and sent four
 notes; version 11 took all four and added P2's Held state. Drawing C1 to it found one more, which
-version 12 took. Every screen here is redrawn to version 12.
+version 12 took, and drawing C8 one more, which version 13 took. Every screen here is redrawn to
+version 13.
 
 Problems in the spec, sent and taken:
 
@@ -191,6 +192,10 @@ Problems in the spec, sent and taken:
   under the own-ship mark, so the commonest cruise there is, leaving a station, drew one blob.
   Version 12 takes the smallest step that holds every contact inside 50 km, and steps back in only
   once everything is inside 80% of the smaller ring, so a contact on a ring doesn't flip the scope.
+- **Wireframe 11's systems list gave the RCS blocks' power as "ok"**, but the game's blocks draw
+  none (`RcsThruster`: a block works while the hull tile it is bolted to stands, and `RcsThrust`
+  checks only that and the propellant). Version 13 dashes it, and the list dashes any value the
+  game doesn't have.
 
 Found in my own screens and fixed this round:
 
@@ -202,9 +207,6 @@ Found in my own screens and fixed this round:
   least 13 clear of the one before it.
 - **Comments in C3's source named Ada "her".** The crew are named, never gendered.
 
-One note is open, sent with this round: wireframe 11's systems list gives the RCS blocks' power as
-"ok", but the game's blocks draw none (`RcsThruster`: a block works while the hull tile it is
-bolted to stands, and `RcsThrust` checks only that and the propellant). C8 gives them no circuit.
 
 What works:
 
@@ -215,7 +217,7 @@ What works:
 - The map and H2 tell the same trip in the same words: one burn, the crossing, the capture as an
   estimate, the arrival, the deadline.
 
-**Converged** for versions 10 to 12, but for the open note, which changes only a sample.
+**Converged** at version 13: nothing meaningful is left, and the designer counts it converged too.
 
 ## Round 5 critique (version 9)
 
