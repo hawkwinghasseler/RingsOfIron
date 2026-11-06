@@ -91,11 +91,15 @@ it, and the camera's centre moves left by half its width, so the pair stays in t
 world still in view. The raider is the corvette refitted by pirates, so it is drawn on the
 corvette's hull in its own colours, half a turn round along the port side with the collar between.
 Latched, the strip and the CMD tile read LATCHED, the cluster's Velocity slot reads DOCKED with
-the Reference and Next event slots dark, and the rails offer DOCK and CARGO. The tab is the
-decision to board: the raider's state and what boarding it costs; the party, which is the ship's
-marines, so Cole alone, and what Cole's going leaves (TAC empty, in amber); the two orders on the
-footer's keys, each with what it does; and what waits for the ship to be taken. Storming forces
-every shut door, pried here since the raider's power is down, as the game's "Force a way in" does.
+the Reference and Next event slots dark, and the rails offer DOCK and CARGO. The tab is what the
+game's boarding window has for this ship. First Play's raider flies with nobody aboard, and a
+disabled ship nobody defends needs no party: the first part marked takes it
+(`Boarding.takeUndefended`), so the game hides the party's orders and opens the salvage at once.
+So the tab gives the raider's state and what boarding it costs, says why no party goes, and lists
+what can be stripped, most valuable first, each at what a station pays for it and its work, every
+part a 1 m³ crate. The cursor is on the chaingun, which S6 fits from the hold, and Enter strips it.
+The engines hang outside the hull, but the game finds that only once their strip is ordered, so
+they read as any other part.
 
 ![The yard](s6-yard.png)
 
@@ -119,7 +123,7 @@ for the autocannon.
 the slate runs the full height, and the camera's centre moves left by half its width, so the
 captain stands in the middle of the world still in view, in the hold, where Ada is idle.
 Highport's docking arm meets the port collar, and the strip reads DOCKED. Boarding went with the
-latch, and the raider's crew were handed over on docking, so there is no Prisoners tab. The roster
+latch, and the raider flew with nobody aboard, so there is no Prisoners tab. The roster
 gives each person's name, role, station, condition and morale, and the cursor's person, Cole, has
 skills, record, wage and what Cole is doing now. The station column is the new order, a station
 assignment: the console a person mans whenever nothing else needs them. AUTO keeps the crew's own
@@ -137,23 +141,24 @@ for good.
 
 **S8, the slate's Log tab (10.4), on deck, docked at Highport on S7's visit (round 18).** The tab
 is what happened aboard, newest first, the last 500 lines. L opened it, and the captain has
-scrolled down to the First Play fight, ten lines below the newest. Each line is what the ticker
+scrolled down to the First Play fight, four lines below the newest. Each line is what the ticker
 carried, with its station tag and its speaker. An alert someone called is one line, the callout,
 with the alert's mark, and its clearing is its record from 13.7 at the same severity, hollow
 ("Missiles gone after 0:13", "Raider firing on you: cleared after 9:12"). Advisories and crew
 lines answering an order carry no mark, and responses, the player's own answers, are not logged.
 Today's notices come in under the station 13.4 gives them, COMMS for docking and salvage, TAC for
-the Raider's disablement and CMD for the bounty, boarding progress and the prisoners, in the
-game's own words where they fit 50 characters ("Raider is taken: 3 held") and shorter ones where
+the Raider's disablement and CMD for the bounty and boarding progress, in the
+game's own words where they fit 50 characters ("Raider is taken") and shorter ones where
 they don't (the bounty's "Raider bounty done: +7 500 CR, +6 standing", round 18's form for a
 contract's end, whose whole sentence stays on the Contracts tab). A station speaks
 in its own name ("Highport: clearance granted, port 2."); the ship's own events are SHIP's. Read
 from the bottom, the fight goes in order on First Play's day 0: the Raider in the guns' range and
 opening fire, its harpoons, both shot down 13 s later, the short on the aft starboard gun and the
-fire it lit, then the Raider disabled, which pays the bounty, and the latch. First Play's raider is
-a ship placed beside Highport, not a pirate on the rails, so it never intercepts or breaks off.
-Above the page are the boarding, the way home and the three prisoners handed over, 400 CR each,
-and the credits are the game's sum: 5 000 to start, the bounty's 7 500 and the handovers' 1 200.
+fire it lit, then the Raider disabled, which pays the bounty, the latch, and the Raider taken by
+the first part marked, since nobody aboard defends it. First Play's raider is a ship placed beside
+Highport, not a pirate on the rails, so it never intercepts or breaks off. Above the page are the
+chaingun in the hold and the way home, and the credits are the game's sum: 5 000 to start and the
+bounty's 7 500.
 The filters are two rows at the top, each position with its count: station takes one or all, and
 severity is a threshold, each position keeping what is more serious. ← and → step the focused row,
 under `FocusNav`, and ↑ ↓ scroll. NAV has nothing in it, so it is dark.

@@ -10,8 +10,8 @@
 <script src="stations.js"></script>
 <script>
 // The slate's Crew tab (the stations spec, 10.4), on deck, docked at Highport on the visit of S6,
-// before the yard: the raider's crew were handed over to the Patrol on docking, so the slate has no
-// Prisoners tab, and Boarding went with the latch. I opened it on Crew (16.1). On deck the slate
+// before the yard: the raider flew with nobody aboard, so the slate has no Prisoners tab, and
+// Boarding went with the latch. I opened it on Crew (16.1). On deck the slate
 // runs the full height (10.1), and the camera's centre moves left by half its width, so the captain
 // stands in the middle of the world still in view: in the hold, where Ada is idle.
 //
@@ -37,9 +37,10 @@
 // undone, so it takes a second press (round 15): the first asks "Let Cole go? [Enter] again: Cole
 // leaves the ship for good", and the second gives the game's "Cole leaves the ship". Suits at battle stations is on, the game's
 // default. The starting crew are the service's, so they draw no wage. Skills from the game: every
-// skill starts at 50, a marine's gunnery at 75 (CrewDef.marine), and the boarding and the two Cole
-// downed took Cole's marine skill to 56. Morale rose 5 points for the ship beaten and 5 more for
-// the boarding party, and it drifts back 5 points a day.
+// skill starts at 50 and a marine's gunnery at 75 (CrewDef.marine). The raider was taken with
+// nobody aboard to fight for it, and a taking counts only for the crew aboard it or on their way
+// across (CrewCareer), so Cole's marine skill is still 50 and the record one ship beaten. Morale
+// rose 5 points for the ship beaten, and it drifts back 5 points a day.
 let s = space({ planet: false, seed: 12 });
 
 // The world: the corvette's deck, the camera on the captain and moved 240 left (6.2)
@@ -84,7 +85,7 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     const val = (x, y, t, o = {}) => text(x, y, t, { size: o.size || SB, bold: o.bold !== false, fill: o.c || C.white, anchor: o.anchor || 'start', track: 0.4 });
     const note = (x, y, t, fill = C.white) => text(x, y, t, { size: 12, bold: true, fill, track: 0.4 });
     // the title bar's live part, on the glass: the captain's rank, the ship and the credits
-    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '13 700 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
+    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '12 500 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
     c += rule(gy + 48);
     c += head(gy + 72, 'BERTHS') + val(V0, gy + 72, '4 OF 8') + note(V0 + tw('4 OF 8', SB, true, 0.4) + 10, gy + 72, 'YOU AND 3 CREW', C.dim);
     c += head(gy + 92, 'HIRING') + val(V0, gy + 92, '5 LOOKING FOR A BERTH') + note(V0 + tw('5 LOOKING FOR A BERTH', SB, true, 0.4) + 10, gy + 92, 'ON THE STATION LINK', C.dim);
@@ -96,7 +97,7 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     const gr = grid(L, gy + 150, cols, [
       [{ t: 'ADA', bold: true }, 'ENGINEER', { t: '—', c: C.dim }, 'OK 100%', '75%'],
       [{ t: 'BEA', bold: true }, 'CREWMAN', { t: 'HELM', bold: true }, 'OK 100%', '75%'],
-      { cells: [{ t: 'COLE', bold: true }, 'MARINE', { t: 'NOSE GUN', bold: true }, 'OK 100%', '80%'], cursor: true },
+      { cells: [{ t: 'COLE', bold: true }, 'MARINE', { t: 'NOSE GUN', bold: true }, 'OK 100%', '75%'], cursor: true },
     ], { rule: 0, rh: 24 });
     c += gr.svg;
     c += text(L + 62 + 92 + tw('HELM', 13, true, 0.4) + 8, gr.rowY(1), 'AUTO', { size: 12, bold: true, fill: C.dim, track: 0.5 });
@@ -107,13 +108,13 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     // the cursor's person in full
     c += val(L, gy + 304, 'COLE', { size: 15 }) + text(R, gy + 304, 'MARINE', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     c += head(gy + 328, 'SKILLS');
-    [['GUNNERY', 75], ['ENGINEERING', 50], ['MARINE', 56], ['MEDICINE', 50]].forEach(([t, v], i) => {
+    [['GUNNERY', 75], ['ENGINEERING', 50], ['MARINE', 50], ['MEDICINE', 50]].forEach(([t, v], i) => {
       const y = gy + 328 + i * 20, bx = V0 + 104, bw = R - 34 - bx;
       c += text(V0, y, t, { size: 12, bold: true, fill: C.white, track: 0.4 });
       c += rect(bx, y - 8, bw, 7, { fill: '#26303A' }) + rect(bx, y - 8, bw * v / 100, 7, { fill: C.white });
       c += val(R, y, String(v), { anchor: 'end' });
     });
-    c += head(gy + 414, 'RECORD') + val(V0, gy + 414, '1 SHIP BEATEN, 1 BOARDED, 2 DOWNED');
+    c += head(gy + 414, 'RECORD') + val(V0, gy + 414, '1 SHIP BEATEN');
     c += head(gy + 434, 'WAGE') + val(V0, gy + 434, 'NONE: IN THE PATROL\'S SERVICE');
     c += head(gy + 454, 'NOW') + val(V0, gy + 454, 'MANNING THE WEAPONS, IN THE BRIDGE');
     c += rule(gy + 468);

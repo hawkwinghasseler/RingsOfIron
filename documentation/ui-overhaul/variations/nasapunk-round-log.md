@@ -10,7 +10,7 @@ at 1280 x 800.
 
 | Variation | Folder | Spec version drawn | State |
 |---|---|---|---|
-| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18 | Converged in round 5; S7 to S9 drawn in round 7 |
+| Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18 | Converged in round 5; S7 to S9 drawn in round 7, and S5 to S8 redrawn for the crewless Raider |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17; C11 at 18 | Converged in round 5, and again at versions 13 to 18 in round 7; C11's questions and the crewless Raider are with the designer |
 | Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 14 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 14 in round 7 |
 
@@ -588,6 +588,24 @@ are now the game's sum: 12 500 aboard the Raider (5 000 to start and the bounty'
 | Spec | Note sent this round | Landed |
 |---|---|---|
 | Stations (10.4, 13.4) | 10.4's example has "the Raider" breaking off after closing to 50 km. First Play's raider can do neither: it is placed beside Highport (`GameScenario`) and `HostileTraffic` doesn't fly it, so it posts no intercept and never breaks off. The example would hold for a pirate on the rails ("Pirate raider 3 is breaking off"). My S8 had the First Play raider intercept and break off, which is where the example came from; S8 no longer does | Round 18: the example is "Pirate raider 3 is breaking off", and 10.4 says First Play's Raider posts no intercept and never breaks off, fighting until it is beaten or surrenders (5.4, 10.4) |
+
+**The stations screens without the prisoners.** Task round 14's finding holds for my stations
+screens too: First Play's Raider flies with nobody aboard (`GameScenario` gives it no crew and no
+cargo), so the first part marked takes it (`Boarding.takeUndefended`), and the game's boarding
+window hides the party's orders and opens the salvage at once (`BoardingWork`). My S5 to S8 had
+boarded a crewed raider, which was my error, not the spec's. S5 now draws the Boarding tab as the
+game would fill it for this ship: the state, why no party goes, and the salvage, most valuable
+first, with the cursor on the chaingun that S6 fits. S7's Cole has one ship beaten, the marine
+skill at its starting 50 and morale at 75%, since a taking counts only for the crew aboard the ship
+or on their way across (`CrewCareer`). S8 loses the party, the forced airlock, the prisoners and
+their handovers, and logs "Raider is taken" 16 s after the latch, with the chaingun's line in the
+game's own words, which fit 50 characters. With no handovers, the credits at Highport are 12 500
+(5 000 to start and the bounty's 7 500) in S6, S7 and S8, not the 13 700 above. Drawing S5 raised
+one point for the stations designer.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Stations (10.4) | The Boarding tab gives "the boarding party (send, recall)". For a disabled ship nobody defends, such as First Play's Raider, the game hides the party's orders and opens the salvage at once, and the first part marked takes it (`BoardingWork`, `Boarding.takeUndefended`). S5 keeps the PARTY row to say why none goes ("NONE NEEDED: NOBODY ABOARD", "THE FIRST PART MARKED TAKES IT") and opens the salvage. Is that the tab's rule for an undefended ship? | |
 
 ## Next
 

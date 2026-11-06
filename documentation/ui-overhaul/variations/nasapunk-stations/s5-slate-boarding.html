@@ -9,24 +9,26 @@
 <script src="../../nasapunk/mockups/screens.js"></script>
 <script src="stations.js"></script>
 <script>
-// The slate's Boarding tab (the stations spec, 10.4), before the party goes: seated at the helm, just
-// latched onto the raider, whose reactor is down. K opened the slate on the tab, as a side panel
-// (Z4) that stops above the band, so the instruments stay in sight; the top column recentres in
-// what the panel leaves (6.3), and the camera's centre moves left by half the panel's width (240),
-// so the ship stays in the middle of the world still in view. Latched, the status strip reads
-// LATCHED, the CMD tile carries the badge, and the helm's Velocity slot reads DOCKED with the
-// Reference and Next event slots dark (8.2): the port and the collar's strain are the DOCK page's.
-// The title bar's live part (the captain's rank, the ship and the credits) is on the glass, under
-// the tabs; the bezel carries only the panel's name.
+// The slate's Boarding tab (the stations spec, 10.4), just latched: seated at the helm, latched onto
+// the raider, whose reactor is down. K opened the slate on the tab, as a side panel (Z4) that stops
+// above the band, so the instruments stay in sight; the top column recentres in what the panel
+// leaves (6.3), and the camera's centre moves left by half the panel's width (240), so the ship
+// stays in the middle of the world still in view. Latched, the status strip reads LATCHED, the CMD
+// tile carries the badge, and the helm's Velocity slot reads DOCKED with the Reference and Next
+// event slots dark (8.2): the port and the collar's strain are the DOCK page's. The title bar's live
+// part (the captain's rank, the ship and the credits) is on the glass, under the tabs; the bezel
+// carries only the panel's name.
 //
-// The tab is the board-or-not decision (the task spec's B1, in this spec's words): the other ship's
-// state, who would go and what that leaves, the two orders with what each does, and what waits
-// for the ship to be taken. All of it is the game's (Boarding, BoardingWork): the party is the
-// ship's marines, or its crewmen if it has none, so on the starting corvette it is Cole, who mans
-// TAC, and sending Cole leaves the weapons console empty, which the board shows the moment Cole goes.
-// Both orders are open on a disabled ship: the party opens the doors it meets, and storming forces
-// every shut one (prying with the power down, cutting with it up), as the game's "Force a way in"
-// button does. The party goes suited, with a suit's 10 minutes of air (CrewDef.suitAir, 600 s).
+// The tab is what the game's boarding window has for this ship (BoardingWork, Boarding, Salvage).
+// First Play's raider flies with nobody aboard (GameScenario spawns it with no crew and no cargo), and
+// a disabled ship nobody defends needs no party: the first part marked takes it
+// (Boarding.takeUndefended), so the game hides the party's orders and opens the salvage at once,
+// with its state "Disabled: reactor down" until the first order and "Taken" from then on. So the tab
+// gives the state, says why there is no party to send, and lists what can be stripped, most valuable
+// first, each at what a station pays for it (a twentieth of its price new, Salvage.SALE_SHARE) and
+// its work (a tile's 10 s at the usual rate); every part comes off as a 1 m³ crate. The engines hang
+// outside the hull, but the game finds that only once their strip is ordered, so they read as any
+// other part. The cursor is on the chaingun, which S6 fits from the hold, and Enter strips it.
 let s = space({ px: 1180, py: 1500, pr: 1000, seed: 9 });
 // the pair in the outside view: the raider is the corvette refitted by pirates (GameScenario's
 // corvette_raider), so it is drawn on the corvette's hull in its own colours, latched along our port
@@ -40,12 +42,12 @@ s += hull(SX, SY, HDG, k);
 s += W.contact('beaten', RXc, RYc, { label: ['RAIDER'], lx: -34, ly: -24 });
 
 // the top column, recentred left of the panel: the strip with its LATCHED lamp, the dark
-// annunciator, the ticker, where the party's word is boarding progress, so CMD's (13.4, 13.5),
-// spoken by Cole, who is dealing with it
+// annunciator, and the ticker with the latch, a Comms event of the ship's own, so SHIP's with
+// nobody at Comms (13.4, 13.5)
 const CX = 392;
 s += statusStrip({ state: 'LATCHED', cx: CX });
 s += annunciator(CX, 44, [], {});
-s += ticker(CX - 360, 108, [['CMD', 'Cole:', 'ready to go across, Captain.']]);
+s += ticker(CX - 360, 108, [['COMMS', 'SHIP:', 'docked at Raider.']]);
 
 // the band: both MFDs folded (DOCK and CARGO while latched), the helm cluster with its Velocity slot
 // reading DOCKED and the slots with nothing to show dark in place, the station board
@@ -76,47 +78,42 @@ const P = { x: 784, y: 16, w: 480, h: 592 };
 const tabW = t => (tw(t, 12, true, 0.6) + 14) / 60;
 s += consoleFace(P.x, P.y, P.w, P.h, {
   id: 'slate', b: 16, title: 'SLATE', titleSize: 11, plate: 'SLATE-1  CMD  P/N 6020-01',
-  // the tabs the slate has now: Boarding while latched; Prisoners only when held, so not yet
+  // the tabs the slate has now: Boarding while latched; Prisoners only when held, and none will be
   tabs: ['SHIP', 'CREW', 'MEDICAL', 'EVA', { t: 'BOARDING', state: 'cur' }, 'CONTRACTS', 'CAREER', 'LOG'].map(t => typeof t === 'string' ? { t, w: tabW(t) } : Object.assign(t, { w: tabW(t.t) })),
-  // the orders on the footer's soft keys: Enter sends the party (it becomes RECALL once they are
-  // across), Shift and Enter storms ("Force a way in" today), the forceful form of the same order on
-  // a key the game leaves free (F is the decoy's); nothing has been pressed yet, so no response shows
-  footer: [{ t: 'SEND PARTY', k: 'ENT' }, { t: 'STORM', k: '⇧ENT' }, { t: '' }, { t: 'CLOSE', k: 'ESC' }],
+  // the order on the footer's soft keys: Enter strips the cursor's part, or leaves it once marked;
+  // nothing has been pressed yet, so no response shows
+  footer: [{ t: 'STRIP', k: 'ENT' }, { t: '' }, { t: '' }, { t: 'CLOSE', k: 'ESC' }],
   content: (gx, gy, gw, gh) => {
     let c = '';
-    const L = gx + 14, R = gx + gw - 14, V0 = L + 92, T = V0 + 24;
+    const L = gx + 14, R = gx + gw - 14, V0 = L + 92;
     const rule = y => line(gx + 4, y, gx + gw - 4, y, C.graticule, 1);
     const head = (y, t) => text(L, y, t, { size: 12, bold: true, fill: C.dim, track: 0.8 });
     const val = (x, y, t, o = {}) => text(x, y, t, { size: o.size || SB, bold: o.bold !== false, fill: o.c || C.white, anchor: o.anchor || 'start', track: 0.4 });
-    const note = (x, y, t, fill = C.white) => text(x, y, t, { size: 12, bold: true, fill, track: 0.4 });
+    const note = (x, y, t, fill = C.white, o = {}) => text(x, y, t, { size: 12, bold: true, fill, track: 0.4, anchor: o.anchor || 'start' });
     // the title bar's live part, on the glass: the captain's rank, the ship and the credits
     c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '12 500 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
     c += rule(gy + 48);
-    // the other ship
+    // the other ship, and why no party goes
     c += val(L, gy + 72, 'RAIDER', { size: 15 }) + text(R, gy + 72, 'LATCHED, PORT TO PORT', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     c += head(gy + 96, 'STATE') + val(V0, gy + 96, 'DISABLED: REACTOR DOWN');
     c += head(gy + 116, 'COST') + val(V0, gy + 116, 'NONE: OUTLAWS');
-    c += rule(gy + 130);
-    // who would go, and what that leaves
-    c += head(gy + 154, 'PARTY') + text(R, gy + 154, 'THE SHIP\'S MARINES', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
-    const gr = grid(L, gy + 178, [{ t: 'NAME', w: 84 }, { t: 'ROLE', w: 92 }, { t: 'HEALTH', w: 72, align: 'right' }, { t: 'NOW', w: 86, align: 'right' }, { t: 'SUIT AIR', w: 86, align: 'right' }], [
-      [{ t: 'COLE', bold: true }, 'MARINE', '100%', 'AT TAC', '10:00'],
-    ], { rule: 0, rh: 22 });
+    c += head(gy + 136, 'PARTY') + val(V0, gy + 136, 'NONE NEEDED: NOBODY ABOARD');
+    c += note(V0, gy + 154, 'THE FIRST PART MARKED TAKES IT', C.dim);
+    c += rule(gy + 168);
+    // what can be stripped, most valuable first, with what a station pays and the work
+    c += head(gy + 192, 'SALVAGE') + note(R, gy + 192, 'EACH A 1 M³ CRATE', C.dim, { anchor: 'end' });
+    const rows = [
+      ['LASER MK1', '2 250', '10 S'], ['REACTOR', '2 000', '40 S'], ['HARPOON LAUNCHER', '1 500', '10 S'],
+      ['ENGINE', '1 250', '20 S'], ['ENGINE', '1 250', '20 S'], ['CHAINGUN MK1', '900', '10 S'],
+      ['LIFE SUPPORT', '750', '20 S'], ['AUTOCANNON MK1', '600', '10 S'],
+    ];
+    const gr = grid(L, gy + 216, [{ t: 'PART', w: 200 }, { t: 'SELLS FOR', w: 100, align: 'right' }, { t: 'WORK', w: 80, align: 'right' }], rows.map((r, i) => i === 5 ? { cells: [{ t: r[0], bold: true }, r[1], r[2]], cursor: true } : r), { rule: 0, rh: 22 });
     c += gr.svg;
-    const cw = tw('TAC EMPTY', 12, true, 0.5) + 14;
-    c += I.box(L, gy + 216, cw, 19, 'TAC EMPTY', 'caution', { size: 12 }) + note(L + cw + 10, gy + 230, 'WHILE COLE IS ACROSS: NOBODY ON THE WEAPONS');
-    c += text(L, gy + 252, 'ADA AND BEA STAY ABOARD', { size: 12, bold: true, fill: C.dim, track: 0.5 });
-    c += rule(gy + 266);
-    // the two orders, each with what it does
-    c += head(gy + 290, 'ORDERS');
-    c += val(L, gy + 314, 'SEND PARTY') + note(T, gy + 314, 'ACROSS THE COLLAR, THEN ROOM BY ROOM,') + note(T, gy + 332, 'NEAREST THE DOCK FIRST');
-    c += val(L, gy + 358, 'STORM') + note(T, gy + 358, 'THE SAME, FORCING EVERY SHUT DOOR:') + note(T, gy + 376, 'PRIED OPEN, WITH ITS POWER DOWN');
-    c += rule(gy + 390);
-    // what waits for the ship to be taken, and when it is
-    c += head(gy + 414, 'ONCE IT IS TAKEN');
-    c += note(L, gy + 438, 'TAKEN WHEN NONE OF ITS CREW STILL FIGHTS');
-    c += note(L, gy + 462, 'ITS SALVAGE AND CARGO COME ON THIS TAB,', C.dim);
-    c += note(L, gy + 480, 'ITS CREW, HELD, ON THE PRISONERS TAB', C.dim);
+    const my = gr.rowY(7) + 22;
+    c += note(L, my, '7 MORE · 2 000 CR IN ALL', C.dim) + val(R, my, 'SHOW ALL>', { anchor: 'end', size: 12 });
+    c += rule(my + 14);
+    // the cargo aboard it: none
+    c += head(my + 38, 'CARGO') + val(V0, my + 38, 'NONE ABOARD', { bold: false });
     return c;
   },
 }).svg;
