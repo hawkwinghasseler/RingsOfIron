@@ -322,7 +322,7 @@ def deck(out):
     s.text(500, 292, "Hold", size=11, fill="#666", anchor="middle")
     s.text(780, 292, "Bridge", size=11, fill="#666", anchor="middle")
     # hazards, each tagged with its worker's progress or "nobody"
-    s.box(392, 316, 120, 40, "", "fire (medium)", ["[======    ]"], kind="world")
+    s.box(392, 316, 120, 40, "", "fire, 3 tiles", ["[======    ]"], kind="world")
     s.add('<circle cx="452" cy="380" r="5" fill="#888"/>')
     s.text(462, 384, "Cole", size=10, fill="#777")
     s.box(660, 316, 120, 40, "", "conduit short", ["[=======   ]"], kind="world")
@@ -485,7 +485,9 @@ def book(out):
     s.box(784, 136, 480, 392, "BOOK.2", "Systems", [
         "REACTOR (M)    3.0 MW   on    ok",
         "draw now 2.4 MW    store 2 s  ok",
-        "LIFE SUPPORT   on    serving 2 of 2 rooms",
+        # life support stands in the Bridge and reaches the Hold through the open door; it puts
+        # no air into a room venting to space (LifeSupportSystem)
+        "LIFE SUPPORT   on    air to the Hold only: Bridge venting",
         "   O2 tank 82%   N2 tank 90%",
         "ENGINES  2 (S) ok    RCS 7/8 (1 wrecked)",
         "PROPELLANT 1,640 kg  -> dv 7,007 m/s",
@@ -497,7 +499,7 @@ def book(out):
         "says where to go ('walk there' marker)"])
     s.box(16, 536, 1248, 224, "BOOK.3", "Damage and work", [
         "what                  where         who's on it                progress",
-        "fire (medium)         Hold          Cole                       shrinking",
+        "fire, 3 tiles         Hold          Cole                       shrinking",
         "conduit short         Bridge        Ada                        [=======   ]",
         "breach, venting       Bridge        nobody: no patches left    needs a yard (Y there)",
         "RCS block wrecked     outside, aft  waiting: EVA is held       [let out]"])
