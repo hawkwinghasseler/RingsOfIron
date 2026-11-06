@@ -33,7 +33,10 @@
 // is bolted to stands), and tanks and bays draw none. The feed's line is the game's own notice for
 // a light wound. Every system row has its switch, as the game lets the crew switch any system off
 // (SubsystemComponent.switchedOn, version 15): a group's row switches the group, the RCS blocks are
-// no system and have none, and the reactor's is guarded, pressed twice.
+// no system and have none, and the reactor's is guarded, pressed twice. A gun is its weapon, in the
+// game's name for it, and its mount (version 19, F2: "Autocannon Mk1 (FWD STBD)"), in the systems
+// list, on the board and under Power, so the systems list takes 598 of the width, as the wireframe
+// widens its own.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 12 });
 s += controlDefs();
 s += statusStrip({ seat: 'DECK', authority: 'HELM: BEA · HOLDING HEADING', battle: true, chip: { warn: 1, caut: 2 }, clock: 'DAY 0 · 00:20:30', warp: '1×' });
@@ -59,7 +62,7 @@ s += text(18, 51, 'PATROL CORVETTE', { size: V, bold: true, fill: C.white, track
 }
 
 // ---- the plan: the corvette's real layout (chassis.toml), every system by its state ----
-s += du(8, 64, 700, 420, {
+s += du(8, 64, 660, 420, {
   id: 'plan', b: 8,
   content: (gx, gy, gw, gh) => {
     let g = head(gx, gy, gw, 'PLAN', 'EVERY SYSTEM BY ITS STATE, THE HAZARDS, THE CREW AT WORK');
@@ -139,11 +142,11 @@ s += du(8, 64, 700, 420, {
 }).svg;
 
 // ---- the systems, by type: health, circuit, switch, and what is not normal ----
-s += du(714, 64, 558, 420, {
+s += du(674, 64, 598, 420, {
   id: 'sys', b: 8,
   content: (gx, gy, gw, gh) => {
     let g = head(gx, gy, gw, 'SYSTEMS', 'BY TYPE');
-    const L = gx + 10, N = L + 70, H = L + 292, CI = L + 358, SW = L + 372, ST = L + 428;
+    const L = gx + 10, N = L + 72, H = L + 350, CI = L + 414, SW = L + 428, ST = L + 484;
     g += lab(N, gy + 48, 'SYSTEM') + lab(H, gy + 48, 'HEALTH', { anchor: 'end' }) + lab(CI, gy + 48, 'CIRCUIT', { anchor: 'end' }) + lab(SW - 4, gy + 48, 'SWITCH') + lab(ST, gy + 48, 'STATE');
     // a toggle seen from the front: the bezel and its lever, up for on; the reactor's under a
     // striped guard, since it is pressed twice
@@ -152,10 +155,10 @@ s += du(714, 64, 558, 420, {
     const groups = [
       ['POWER', [['REACTOR M', '100%', '1', true, ['3.0 MW', C.white]]]],
       ['FLIGHT', [['HELM', '100%', '1', true, ['BEA AT IT', C.white]], ['ENGINES, 2', '100%', '1', true], ['RCS BLOCKS, 8', '–', '–', false, ['1 STOPPED', C.amber]]]],
-      ['WEAPONS', [['WEAPONS CONSOLE', '100%', '1', true, ['COLE AT IT', C.white]], ['NOSE COILGUN', '100%', '1', true],
-        ['FWD PORT AUTOCANNON', '20%', '1', true, ['REPAIRING', C.cyan]],
-        { cursor: true, r: ['FWD STBD AUTOCANNON', '100%', 'NONE', true, ['CUT OFF', C.amber]] },
-        ['AFT PORT LAUNCHER', '100%', '1', true], ['AFT STBD LASER', '100%', '1', true]]],
+      ['WEAPONS', [['WEAPONS CONSOLE', '100%', '1', true, ['COLE AT IT', C.white]], ['COILGUN MK1 (NOSE)', '100%', '1', true],
+        ['AUTOCANNON MK1 (FWD PORT)', '20%', '1', true, ['REPAIRING', C.cyan]],
+        { cursor: true, r: ['AUTOCANNON MK1 (FWD STBD)', '100%', 'NONE', true, ['CUT OFF', C.amber]] },
+        ['HARPOON LAUNCHER (AFT PORT)', '100%', '1', true], ['LASER MK1 (AFT STBD)', '100%', '1', true]]],
       ['LIFE', [['LIFE SUPPORT', '100%', '1', true]]],
       ['DOCK', [['DOCKING PORT', '100%', '1', true]]],
       ['PASSIVE', [['TANKS, 3', '100%', '–', true], ['CARGO BAYS, 4', '100%', '–', true], ['ESCAPE POD, 4 SEATS', '100%', 'OWN', true]]],
@@ -187,15 +190,15 @@ s += du(8, 490, 700, 254, {
   id: 'dc', b: 8,
   content: (gx, gy, gw, gh) => {
     let g = head(gx, gy, gw, 'DAMAGE CONTROL', 'EVERY HAZARD AND REPAIR, AND WHO HAS IT');
-    const L = gx + 10, T = L + 20, W = L + 250, O = L + 330, PR = L + 410;
+    const L = gx + 10, T = L + 20, W = L + 298, O = L + 366, PR = L + 420;
     g += lab(T, gy + 48, 'JOB') + lab(W, gy + 48, 'WHERE') + lab(O, gy + 48, 'WHO') + lab(PR, gy + 48, 'PROGRESS, OR WHY IT WAITS');
     const sev = (y, kind) => kind === 'warning' ? sym.diamond(L + 6, y - 4.7, 4.6, C.red, 1.2, C.red) : kind === 'caution' ? path(`M${L + 6} ${y - 10.5} L${L + 11.6} ${y} L${L + 0.4} ${y} Z`, C.amber, 1.2, { fill: C.amber }) : '';
     // version 11: the jobs the game posts. A light wound isn't posted at battle stations, and a cut
     // conduit is no crew job (the power panel has it), so neither is a row
     const rows = [
-      [null, 'REPAIR THE FWD PORT GUN', 'BRIDGE', ['ADA', C.white], null, 'A GUN\'S REPAIR NEVER WAITS', 0.2],
+      [null, 'REPAIR AUTOCANNON MK1 (FWD PORT)', 'BRIDGE', ['ADA', C.white], null, 'A GUN\'S REPAIR NEVER WAITS', 0.2],
       ['warning', 'SEAL THE BREACH', 'HOLD', ['WAITS', C.dim], ['UNDER FIRE, TILL THE FIGHT ENDS', C.white], ['THE HOLD AT 82 KPA AND FALLING', C.white]],
-      [null, 'REPAIR AN RCS BLOCK', 'OUTSIDE', ['WAITS', C.dim], ['TILL BATTLE STATIONS END', C.white], ['UNLESS SOMEONE IS SENT OUT ON EVA', C.dim]],
+      [null, 'REPAIR AN RCS BLOCK', 'OUTSIDE', ['WAITS', C.dim], ['TILL BATTLE STATIONS END', C.white], ['UNLESS SOMEONE GOES OUT ON EVA', C.dim]],
     ];
     rows.forEach(([kind, job, where, who, why, sub, bar], i) => {
       const y = gy + 74 + i * 40;
@@ -231,7 +234,7 @@ s += du(714, 490, 558, 254, {
     g += lab(L, gy + 148, 'FEEDS') + text(V2, gy + 148, '10 SYSTEMS', { size: B, bold: true, fill: C.white, track: 0.3 });
     g += rowsep(gx, gy + 162, gw);
     g += path(`M${L + 6} ${gy + 175.5} L${L + 11.6} ${gy + 186} L${L + 0.4} ${gy + 186} Z`, C.amber, 1.2, { fill: C.amber });
-    g += text(L + 20, gy + 186, 'CUT OFF', { size: LB, bold: true, fill: C.amber, track: 0.6 }) + text(V2, gy + 186, 'FWD STBD AUTOCANNON', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += text(L + 20, gy + 186, 'CUT OFF', { size: LB, bold: true, fill: C.amber, track: 0.6 }) + text(V2, gy + 186, 'AUTOCANNON MK1 (FWD STBD)', { size: B, bold: true, fill: C.white, track: 0.3 });
     g += lab(R - valW('400', 'CR', B) - 6, gy + 186, 'YARD', { anchor: 'end' }) + val(R, gy + 186, '400', 'CR', { anchor: 'end', size: B });
     g += text(V2, gy + 204, 'NO REACTOR REACHES IT: THE CONDUIT UNDER IT IS CUT.', { size: LB, bold: true, fill: C.dim, track: 0.3 });
     g += text(V2, gy + 220, 'NO CREW MENDS A CUT; A YARD DOES.', { size: LB, bold: true, fill: C.dim, track: 0.3 });

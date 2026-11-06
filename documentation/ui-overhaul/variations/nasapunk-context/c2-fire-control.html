@@ -142,21 +142,22 @@ s += du(330, 638, 620, 150, {
     const R = gx + gw - 10;
     // Version 6's sample: an idle point-defense mount reads READY (the state list has no IDLE), the
     // engaging one says what it engages, and the launchers are ready with what they hold. A
-    // launcher reloads in 1 s, and one that had just fired would have its harpoon on screen
+    // launcher reloads in 1 s, and one that had just fired would have its harpoon on screen. Each
+    // weapon is the game's name for it, mark and all (version 19, WeaponDef.name)
     const rows = [
       ['NOSE', 'HEAVY CANNON', ['READY'], [2, '62%', 'FAIR'], '', 'YOU'],
-      ['FWD PORT', 'AUTOCANNON', ['ENGAGING MSL', C.green], null, '', 'PD'],
-      ['FWD STBD', 'AUTOCANNON', ['READY'], null, '', 'PD'],
-      ['AFT PORT', 'HARPOON', ['READY'], null, '3 LEFT', 'YOU'],
-      ['AFT STBD', 'HARPOON', ['READY'], null, '4 LEFT', 'YOU'],
+      ['FWD PORT', 'AUTOCANNON MK1', ['ENGAGING MSL', C.green], null, '', 'PD'],
+      ['FWD STBD', 'AUTOCANNON MK1', ['READY'], null, '', 'PD'],
+      ['AFT PORT', 'HARPOON LAUNCHER', ['READY'], null, '3 LEFT', 'YOU'],
+      ['AFT STBD', 'HARPOON LAUNCHER', ['READY'], null, '4 LEFT', 'YOU'],
     ];
     rows.forEach(([mount, weapon, [st, stc, stv], hit, ammo, who], i) => {
       const top = gy + 7 + i * 24, yy = top + 16.7;
       if (i) c += line(gx + 4, top, gx + gw - 4, top, C.graticule, 1);
       c += text(gx + 12, yy, mount, { size: B, bold: true, fill: C.white, track: 0.4 });
-      c += text(gx + 112, yy, weapon, { size: B, fill: C.white, track: 0.3 });
-      c += text(gx + 240, yy, st, { size: B, bold: true, fill: stc || C.white, track: 0.4 });
-      if (stv) c += val(gx + 240 + tw(st, B, true, 0.4) + 8, yy, stv, null, { size: B });
+      c += text(gx + 100, yy, weapon, { size: B, fill: C.white, track: 0.3 });
+      c += text(gx + 256, yy, st, { size: B, bold: true, fill: stc || C.white, track: 0.4 });
+      if (stv) c += val(gx + 256 + tw(st, B, true, 0.4) + 8, yy, stv, null, { size: B });
       if (hit) {
         const [pips, pct, word] = hit;
         for (let k = 0; k < 3; k++) c += `<circle cx="${gx + 376 + k * 9}" cy="${yy - 4.5}" r="3" fill="${k < pips ? C.cyan : 'none'}" stroke="${C.cyan}" stroke-width="1.2"/>`;

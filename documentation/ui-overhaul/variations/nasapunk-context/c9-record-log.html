@@ -9,11 +9,12 @@
 <script src="../../nasapunk/mockups/screens.js"></script>
 <script src="context.js"></script>
 <script>
-// M5, the captain's record (the context spec, 10.5), on its Log tab, at version 17: the Log keeps a
-// fight's record. First Play's NOTICES step says "L opens the notice log: the fight, the bounty and
-// the yard's work are all there". Docked at Highport at the helm after the fight with the raider,
-// the boarding of C6 and C4, the prisoners handed over and the yard's repairs ordered, the captain
-// has pressed L, which opens M5 on this tab, scrolled down to the fight, and opened the line of the
+// M5, the captain's record (the context spec, 10.5), on its Log tab, drawn at version 17 and with
+// First Play's Raider as version 19 has it, flying with nobody aboard: the Log keeps a fight's
+// record. First Play's NOTICES step says "L opens the notice log: the fight, the bounty and the
+// yard's work are all there". Docked at Highport at the helm after the fight with the raider, the
+// taking of it and its chaingun stripped, and the yard's repairs ordered, the captain has pressed
+// L, which opens M5 on this tab, scrolled down to the fight, and opened the line of the
 // raider's hits on the corvette (Enter on the focused line, or a click), so the whole fight is on
 // the page with one line open. The mode's frame is C8's: P1 above (nothing is wrong, so no
 // chip), the title row with the rank and the tabs on their numbers, the filters, the list, and the
@@ -42,11 +43,12 @@
 //
 // The other texts are the game's own notices with P4's source tags, as in version 15: the bounty
 // (ContractBoard: a bounty is done the moment its ship is beaten, 7 500 cr and 6 standing with the
-// Patrol), the disablement, the latch and the collar (PlayerDocking), the forced airlock and the
-// taking (Boarding), the prisoners brought aboard and handed over for 400 cr each (Prisoners), the
-// leak patched (DamageControl) and the yard's order (StationYard). Hostile crew are named by number
-// (HostileSpawns). Thousands take the style's thin space, and a unit after a number is the word
-// list's (CR).
+// Patrol), the disablement, the latch and the collar (PlayerDocking), the taking (Boarding), the
+// chaingun off the raider and in the hold, at a twentieth of its price new (Salvage), the leak
+// patched (DamageControl) and the yard's order (StationYard). Nobody defends the raider, so no
+// party goes and nobody is held: the first part marked takes it (Boarding.takeUndefended, the
+// spec's section 8), and the taking's notice names no prisoners. Thousands take the style's thin
+// space, and a unit after a number is the word list's (CR).
 //
 // The severity marks are P2's shapes: ◆ a warning, ▲ a caution, a white dot a notable (the game's
 // IMPORTANT) message, nothing for routine; a clearing, and a missile's end, keep the row's mark,
@@ -93,17 +95,13 @@ s += text(18, 51, 'ENSIGN', { size: V, bold: true, fill: C.white, track: 0.8 }) 
 // focus: the line with the focus }]
 const LOG = [
   ['01:43:10', 'STATION', '', 'Repairs ordered: about 920 CR, paid as the work is done'],
-  ['01:41:52', 'STATION', '', 'Crew 4 (Void Raiders) handed over: +400 CR'],
-  ['01:41:46', 'STATION', '', 'Crew 3 (Void Raiders) handed over: +400 CR'],
-  ['01:41:40', 'STATION', '', 'Crew 2 (Void Raiders) handed over: +400 CR'],
-  ['01:41:34', 'STATION', '', 'Crew 1 (Void Raiders) handed over: +400 CR'],
   ['01:40:05', 'LOG', '', 'Autosaved on docking'],
   ['01:40:05', 'HELM', '', 'Docked at Highport'],
   ['01:36:20', 'STATION', '', 'Highport gives clearance: port 2 is armed for you'],
   ['01:33:50', 'HELM', '', 'Undocked from Raider'],
-  ['01:31:40', 'BOARDING', '', '4 prisoners brought aboard'],
-  ['01:30:17', 'BOARDING', '', 'Raider is taken: 4 held'],
-  ['01:25:30', 'BOARDING', '', 'The airlock door of Raider is forced open'],
+  ['01:26:35', 'BOARDING', '', 'The Chaingun Mk1 is in the hold (sells for 900 CR)'],
+  ['01:26:02', 'BOARDING', '', 'The Chaingun Mk1 is off Raider; it\'s being carried home'],
+  ['01:25:12', 'BOARDING', '', 'Raider is taken'],
   ['01:24:40', 'HELM', '', 'Docked at Raider'],
   ['01:24:10', 'HELM', '', 'Your collar has hold of Raider; drawing in'],
   ['01:23:05', 'HELM', '', 'Raider opens its port to you; port armed'],
@@ -141,7 +139,7 @@ const LOG = [
   ['00:00:00', 'SPONSOR', 'n', 'Welcome aboard, Ensign.'],
 ];
 const count = f => LOG.filter(f).length;
-const TOP = 15;   // the entries scrolled past, above: the list is at the fight
+const TOP = 11;   // the entries scrolled past, above: the list is at the fight
 
 // ---- the filters: the source and the severity, each a control in a row of its positions ----
 s += du(8, 64, 1264, 76, {

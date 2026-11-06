@@ -11,7 +11,7 @@ at 1280 x 800.
 | Variation | Folder | Spec version drawn | State |
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18, S5 at 19 | Converged in round 5; S7 to S9 drawn in round 7, and S5 to S8 redrawn for the crewless Raider |
-| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17; C11 at 18 | Converged in round 5, and again at versions 13 to 18 in round 7; C11's questions and the crewless Raider are with the designer |
+| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 19 | Converged in round 5, and again at versions 13 to 18 in round 7; version 19 drawn in round 7, and its two notes are with the designer |
 | Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 15 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 15 in round 7 |
 
 ## Round 1 (3 November 2026)
@@ -501,12 +501,12 @@ context screens draw too: First Play's Raider flies with nobody aboard.
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Context (X1) | The sample's standing names a level ("Trusted (+42)"), but the game names none: standing is a number for each faction. C11 writes STANDING +0 | |
-| Context (X1) | The infirmary line when nobody was treated. C11 leaves it out, as it does a service the station doesn't offer. Should it say instead that nobody needed treating? | |
-| Context (D2) | A gun's Type: the game's system type is TURRET_MOUNT and its console is "Gun". C11 gives the weapon on the mount (Autocannon Mk1), as H7 lists it | |
-| Context (P1) | The helm field while docked: the game's bridge line has no docked case, so a helmsman at the helm "holds the heading" (`GameHudText.bridgeLine`). C11 draws that. Should it be empty, or say docked? | |
-| Context (H7, P6) | H7 says a point-defense mount is never in hand, but at a gun seat the game puts that gun in hand, point defense too (`PlayerGunnery.inHand`), and a gun aimed by hand hunts no missile. P6 at a point-defense gun could say what taking it costs, as the task and stations specs now do | |
-| Context (X2, 11.13) | First Play's Raider flies with nobody aboard: `GameScenario` spawns it with no crew and no cargo, while `HostileSpawns` crews the rails' pirates. Once it is disabled, the first strip order takes it (`Boarding.takeUndefended`), with no party, no defender, no prisoner and no cargo. X2's sample and 11.13, and so C4 and C6, assume a crewed Raider; a rails pirate ("Pirate raider 3") would have one. 11.13's P5 also keeps a bounty step, but the game pays a bounty the moment its ship is beaten (`ContractBoard`) | |
+| Context (X1) | The sample's standing names a level ("Trusted (+42)"), but the game names none: standing is a number for each faction. C11 writes STANDING +0 | Version 19: the game's signed number, +0 on day 0, as drawn |
+| Context (X1) | The infirmary line when nobody was treated. C11 leaves it out, as it does a service the station doesn't offer. Should it say instead that nobody needed treating? | Version 19: as drawn; the line shows only while the infirmary treats one of the crew or has billed for one since docking |
+| Context (D2) | A gun's Type: the game's system type is TURRET_MOUNT and its console is "Gun". C11 gives the weapon on the mount (Autocannon Mk1), as H7 lists it | Version 19: the weapon and its mount, "Autocannon Mk1 (FWD STBD)", as P1's seat, M2's systems list and F2 now name a gun; weapons carry the game's names, mark and all |
+| Context (P1) | The helm field while docked: the game's bridge line has no docked case, so a helmsman at the helm "holds the heading" (`GameHudText.bridgeLine`). C11 draws that. Should it be empty, or say docked? | Version 19: empty while docked or latched |
+| Context (H7, P6) | H7 says a point-defense mount is never in hand, but at a gun seat the game puts that gun in hand, point defense too (`PlayerGunnery.inHand`), and a gun aimed by hand hunts no missile. P6 at a point-defense gun could say what taking it costs, as the task and stations specs now do | Version 19: at a gun seat that gun is in hand and hunts no missile till let go; F2 says so, and P6's prompt at a point-defense gun gives the cost |
+| Context (X2, 11.13) | First Play's Raider flies with nobody aboard: `GameScenario` spawns it with no crew and no cargo, while `HostileSpawns` crews the rails' pirates. Once it is disabled, the first strip order takes it (`Boarding.takeUndefended`), with no party, no defender, no prisoner and no cargo. X2's sample and 11.13, and so C4 and C6, assume a crewed Raider; a rails pirate ("Pirate raider 3") would have one. 11.13's P5 also keeps a bounty step, but the game pays a bounty the moment its ship is beaten (`ContractBoard`) | Version 19: 11.13 latches onto a crewed pirate on day 6, Pirate raider 3, a Light Raider whose crew of three surrendered; P5 is not drawn, and X2 says how a craft nobody defends is taken ("taken: undefended", section 8) |
 
 **Round 14** took the CON note, and the designer's own review against the code found two more
 things on drawn screens. TGT's states follow the game: a hostile with nothing locked is `not
@@ -626,6 +626,25 @@ latch on". S5 is redrawn to it. The PARTY row is gone, and by the same rule so a
 read EVA ONLY. The work column and the crate note were the task spec's, not this one's, so they go
 too: the stations spec's parts are each with what it sells for and how its strip stands. No
 stations screen stands off alongside a ship, so the new case isn't drawn.
+
+**The context spec's version 19** took all six. C2, C8 and C11 give the weapons the game's names,
+mark and all, and C8 and C11 name a gun outside the rack by its weapon and mount, so C8's systems
+list widens to fit them. C7 and C11 give the standing as +0 and have no infirmary line, C7's tanks
+take the wireframe's 72%, C11's helm field is empty at the berth, and its prompt says that taking a
+point-defense gun pauses its point defense. C6 and C4 now board Pirate raider 3 on day 6, drawn on
+the game's raider chassis: the Light Raider's two rooms, BRIDGE and TANKS, either side of a thin
+wall, with its small port on top, three tiles along the hull. Its port door was powered, so Cole
+hacked it, and the crew of three yielded as soon as Cole stepped aboard. C6 is 15 s after the
+taking, with the parts at a twentieth of their price new and the three held against four berths
+free, and C4 is 80 s on, with X2's rows as the wireframe has them. C9 keeps First Play's story,
+and its log loses the forced airlock, the prisoners and their handovers. The first part marked
+takes the Raider, so the log has the taking 32 s after the latch, then the chaingun off and in the
+hold in the game's words. C10's story is unchanged. Drawing version 19 raised two points.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Context (11.13, P4) | The feed and X2 can't both be true. The feed has the taking's notice, which holds 5 s, but X2 has three parts marked and one off, which takes a minute or more: the engineers cross, a gun is 10 s of work, and its crate is carried home. C4 draws the spec's lines. The feed could have the salvage's last notice instead ("The Chaingun Mk1 is off Pirate raider 3; it's being carried home"), or X2 could stand at the taking, with nothing marked yet | |
+| Context (10.4) | The escape pod sells for nothing: the game has no price for one (`Salvage.systemPrice`), so M4's list ends with a part worth 0, which C6 draws. The list could leave out what sells for nothing, or the game could price the pod | |
 
 ## Next
 

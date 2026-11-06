@@ -1,6 +1,6 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 17 when drawn and version 18 now,
+The context-driven functional spec (`functional-context.md`, version 17 when drawn and version 19 now,
 on branch `claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at 2x; sources are
@@ -42,8 +42,9 @@ Round history is in [`../nasapunk-round-log.md`](../nasapunk-round-log.md).
 
 Each screen is its walkthrough's moment, at its wireframe's clock with the seconds added. They are
 separate moments, as the spec's walkthroughs are, not one voyage, except for one story: First
-Play's fight with the raider and the way home, which C8, C6, C4, C10 and C9 follow in that order
-(C9's log has the others' events at their times).
+Play's fight with the raider and the way home, which C8, C10 and C9 follow in that order (C9's log
+has the others' events at their times). First Play's Raider flies with nobody aboard, so C6 and C4
+board another, a pirate whose crew surrendered on day 6, as 11.13 does (version 19).
 
 ![Helm, cruising, orders open](c1-helm-cruise.png)
 
@@ -71,7 +72,7 @@ leads it by 27 m: the lead reticle rings it. The shield ring leans to the bow. I
 cannon has the hit chance on the Lock, the autocannons are point defense (one engaging the
 missile, one ready), and the harpoon launchers are ready with 3 and 4 left. The scope is at 5 km,
 version 6's new step, with Raider 2, 14 km off, as a rim tick, and the world gives it an edge
-marker at the same bearing.
+marker at the same bearing. Each weapon carries the game's name, mark and all (version 19).
 
 ![Deck emergency](c3-deck-emergency.png)
 
@@ -92,12 +93,17 @@ the reactor giving 0 of its 3.0 MW, and 42 kg left of the 60 kg emergency oxygen
 
 ![Boarding, latched](c4-boarding.png)
 
-**C4, latched to a taken raider (11.13), two minutes after C6.** Latched, the screen is the docked
-one. P5 has the bounty's next step, X2 sits where the station panel would be, with the raider's
-state on its own row, and H4 has its quiet lights. The party is Cole alone, the ship's one marine,
-coming home now that the raider is taken. The raider lies the way the game docks two ships: half a turn
-apart, port to port. That puts it over the corvette's port side, upside down and nose aft. Its lock
-brackets and name stay, but there is no lock card and no range.
+**C4, latched to a taken pirate (11.13, version 19), 80 s after C6.** Day 6: Pirate raider 3, a
+Light Raider the captain held a bounty on, surrendered, and Cole's boarding took it. Latched, the
+screen is the docked one: P1 with its helm field empty, X2 where the station panel would be, with
+the raider's state on its own row, and H4's quiet lights. P5 isn't drawn, since the bounty paid the
+moment the raider surrendered and nothing else is held. X2 has the wireframe's rows: the party,
+Cole alone, coming home; three parts marked and the chaingun off; and the three held against four
+berths free. A pirate's loot never goes into its hold, so there is no cargo row. The raider lies
+the way the game docks two ships, half a turn apart and port to port, its small port on top meeting
+the corvette's: over the corvette's port side, upside down and nose aft. Its lock brackets and name
+stay, but there is no lock card and no range. The feed still has the taking's notice, as the
+wireframe does, though it would have had its 5 s (round 10, below).
 
 ### The windows the overhaul skipped
 
@@ -122,15 +128,18 @@ gives the arrival in place of a closest approach.
 
 ![Boarding, the party aboard](c6-boarding.png)
 
-**C6, M4, the boarding mode (10.4), two minutes before C4.** The raider's reactor is down, the
-dock's door was pried (the raider has no power to cut against), and the party has swept the hold
-and is fighting in the bridge. The party is the game's: the ship's marines, so Cole alone, at 64%
-and in a pressure suit whose air stays full while the bridge holds pressure. The plan of both
-ships shows who is where, with the rooms swept and fighting. The state line is the game's own
-("Boarding: 1 of ours aboard, 1 of theirs standing"). SEND PARTY and STORM are barred while the
-party is aboard, with the reason once on the strip under them, and RECALL is live. Salvage, cargo
-and prisoners wait, each saying what it will offer once the ship is taken. The close keys, K or
-Esc, are the foot's.
+**C6, M4, the boarding mode (10.4), 80 s before C4.** Day 6, just after the taking. The raider's
+port door was shut and powered, so Cole hacked it open, and its crew of three yielded as soon as
+Cole stepped aboard, as a surrendered crew does: the raider was taken 15 s ago, and the feed has the
+game's notice, "Pirate raider 3 is taken: 3 held". The party stands down and comes home, and the
+captain is marking what to strip. The plan is the Light Raider as the game builds it, BRIDGE and
+TANKS either side of a thin wall, with the corvette faint over its port side, who is where, the
+three held, and the parts marked to strip in cyan. The salvage is every part that can come off,
+most valuable first, at a twentieth of its price new; the game prices an escape pod at nothing, so
+it sells for 0. The prisoners come across as berths allow: four are free, so all three fit, and
+BRING ABOARD is live. A pirate's loot never goes into its hold, so the cargo line says so once.
+Once taken, nothing can be sent, stormed or recalled, so the three orders are barred, with the
+game's reason once. The close keys, K or Esc, are the foot's.
 
 ![Station, market](c7-station.png)
 
@@ -145,8 +154,9 @@ ORDER read the game's "12 (+10)". The order is under way with its progress, and 
 carries the game's own line for it. Each row has today's four trade buttons as lit push buttons;
 SELL is barred where nothing is held, with the reason once at the foot. Under the table is the
 delivery this market can supply: 12 of 40 aboard, 10 coming, and 18 more fill the hold. The rail
-has credits (the starting 5 000, less 22 food at 50), standing, the hold with what is coming,
-tanks and the infirmary.
+has credits (the starting 5 000, less 22 food at 50), standing as the game's signed number, the
+hold with what is coming, and the tanks, the propellant at C1's 72%. The infirmary has no line,
+since nobody aboard is hurt (version 19).
 
 ![Ship, systems](c8-ship.png)
 
@@ -160,7 +170,9 @@ there. Another cut the conduit under the forward starboard autocannon, and anoth
 port autocannon at 20%, under the 30% where a system stops working. The plan is the corvette's
 real layout and network: every system by its state, the hold hatched for its breach, the cut marked
 where it broke, the eight RCS blocks on the hull with the stopped one amber beside the breach, one
-label for the one hit, and the crew where they work. The list groups the systems by type, each with
+label for the one hit, and the crew where they work. A gun is named by its weapon, mark and all,
+and its mount, as the game names them ("Autocannon Mk1 (FWD STBD)", version 19), in the list, on
+the board and under Power, so the list is the wider panel. The list groups the systems by type, each with
 its health, circuit, switch and anything not normal, and a dash where the game has no such value:
 RCS blocks draw no power and have no health of their own, and tanks and bays draw none. Every
 system has its switch, as the game lets the crew switch any system off; a group's row switches the
@@ -179,7 +191,9 @@ NOTICES step, whose own words are "L opens the notice log: the fight, the bounty
 work are all there", and L opens M5 on this tab. The frame is C8's: P1 above with nothing wrong, the
 title row with the rank and the four tabs, the filters, the list, and the foot row, whose feed is
 empty since the yard's line has had its 5 s. The captain has scrolled to the fight and opened the
-line of the raider's hits on the corvette. The Log keeps a fight's record (versions 16 and 17): with
+line of the raider's hits on the corvette. Above it, the Raider's boarding is three lines: it flies
+with nobody aboard, so the first part marked took it, with no party and nobody held, and the
+chaingun came across to the hold (version 19). The Log keeps a fight's record (versions 16 and 17): with
 every message come each condition as it is raised and as it clears, each missile fired at the ship
 and how it ended, and the hits the ship takes from guns, merged as the feed merges its own. So the
 whole fight is on one page, and it says what caused the damage. Point defense shot down two of the
@@ -222,19 +236,41 @@ docking. The spec gives a gun no panel. E at a gun takes it, as V does (4.3), so
 with its numbers and its switch, belongs to D2, the inspect card over whatever the pointer rests on.
 The pointer went to the mount and a click pinned the card, so its switch acts. A dotted ring marks
 the subject, a dotted leader runs from it to the card, and the pin sits in the card's corner. The
-card holds the spec's fields in the game's numbers: the mount's name as H7 gives it, the weapon
-(Autocannon Mk1), health, circuit and powered, with stunned shown only while it is. The switch is
+card holds the spec's fields in the game's numbers: its type, a gun's weapon and mount
+("Autocannon Mk1 (FWD STBD)", version 19), health, circuit and powered, with stunned shown only
+while it is. The switch is
 a lit push button, as C1's orders are: ON is lit green while the gun is on, and the hint beside it
-says what a click does. P6 stands beside the hull under the mount, with the name once and E's verb
-in the game's words ("take the gun"). Inside the deck that spot is the systems', and the card holds
-the other side. Docked, X1 takes the right column with the spec's lines in the game's numbers:
-Highport is the Patrol's, at port 2. Standing is a number, since the game names no levels. The
-yard has nothing to repair and the propellant is at C1's 72%. The board posts five jobs a day and
+says what a click does. P6 has the name once, E's verb in the game's words ("take the gun"), and,
+since the mount is point defense, what taking it costs: in hand it hunts no missile until let go
+(version 19). It stands in the world below the hull, left of the card, since inside the deck that
+spot is the systems'. Docked, X1 takes the right column with the spec's lines in the game's numbers:
+Highport is the Patrol's, at port 2. Standing is the game's signed number, +0, since the game
+names no levels. The yard has nothing to repair, so its line gives only the tanks, at C1's 72%. The board posts five jobs a day and
 the delivery is taken, so four are left. Three are looking for a berth, and Hire, a tab in the
 terminal, has its name and count but no key. The infirmary has treated nobody, so it has no line.
 Nothing is bought yet (C7 is two minutes on), so the credits are the starting 5 000 and the hold is
-empty. P5 is compact with the delivery, H4 is compact and dark, and P1's helm field is the game's
-bridge line, which keeps a helmsman at the helm holding the heading while docked.
+empty. P5 is compact with the delivery, H4 is compact and dark, and P1's helm field is empty at a
+berth (version 19).
+
+## Round 10 critique (version 19)
+
+Version 19 took all five of round 9's questions and the crewless Raider. X1's standing is the
+game's signed number; the Yard line counts repairs only when there are any; the infirmary has a
+line only while it treats one of the crew or has billed for one since docking; a gun is its weapon
+and mount, as D2's type, P1's seat, M2's systems list and F2 now name it; P1's helm field is empty
+while docked or latched; and P6 at a point-defense gun gives what taking it costs. Weapons carry
+the game's names, mark and all. So C2, C7, C8 and C11 are redrawn, and C7's tanks take the
+wireframe's 72%. 11.13 now latches onto a crewed pirate on day 6, so C6 and C4 are redrawn to
+Pirate raider 3 on the game's raider chassis, and C9's log loses First Play's prisoners. Two more
+points went to the designer:
+
+- **11.13's feed and X2 can't both be true.** The feed has the taking's notice, which holds 5 s,
+  but X2 has three parts marked and one off, which takes a minute or more: the engineers cross, a
+  gun is 10 s of work, and its crate is carried home. C4 draws the spec's lines. The feed could
+  have the salvage's last notice instead, or X2 could stand at the taking, with nothing marked.
+- **The escape pod sells for nothing.** The game has no price for one (`Salvage.systemPrice`), so
+  M4's list ends with a part worth 0, as C6 draws it. The list could leave out what sells for
+  nothing, or the game could price the pod.
 
 ## Round 9 critique (version 18)
 
@@ -260,8 +296,8 @@ ship with nobody to fight for it is taken when the first strip order goes in
 (`Boarding.takeUndefended`), with no party, no prisoners and no cargo. X2's sample, 11.13 and so
 C4 and C6, with a defender in the bridge and four held, assume a crewed Raider, and 11.13's P5
 keeps a bounty step, though the game pays a bounty the moment its ship is beaten
-(`ContractBoard`). Both went to the designer with the rest. C4 and C6 stay as drawn until the spec
-answers.
+(`ContractBoard`). Both went to the designer with the rest, and version 19 answered (round 10,
+above).
 
 ## Round 8 critique (versions 16 and 17)
 

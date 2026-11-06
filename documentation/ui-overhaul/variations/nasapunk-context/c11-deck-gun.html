@@ -13,24 +13,27 @@
 // autocannon. The context spec gives a gun no panel: E sits the captain there, as V does (4.3), so
 // the system itself, its numbers and its switch, is the D2 inspect card's, over whatever the
 // pointer rests on. The pointer went to the mount and a click pinned the card, so its switch now
-// acts, and the pointer is on it. The P6 prompt stands at the mount with E's verb, the game's own
-// words for it ("take the gun"). Docked, the deck shows X1, the station panel, on the right; P5
-// compact; H4 compact, its lights dark; P1. P2, P4 and D1 have nothing to say, so they are empty.
+// acts, and the pointer is on it. The P6 prompt stands below the mount with E's verb, the game's
+// own words for it ("take the gun"), and since the mount is point defense, what taking it costs
+// (version 19): in hand it shoots where the captain aims and hunts no missile until let go
+// (PlayerGunnery.inHand). Docked, the deck shows X1, the station panel, on the right; P5 compact;
+// H4 compact, its lights dark; P1, whose helm field is empty at a berth (version 19). P2, P4 and D1
+// have nothing to say, so they are empty.
 //
 // It replaces today's console window at a gun (ConsoleWindow, titled "Gun": the console id, the
 // system, its health and state, a Switch off button, and "Take the gun [V]", centred on the
 // screen), in the spec's words: the type, health, powered, on or off, stunned only while it is,
 // and the circuit, with the switch as the card's one button (D2), a lit push button as C1's
-// orders are, ON lit green while it is on. All of it is the game's: an Autocannon Mk1 on circuit
-// 1, the ship's one; nothing is wrong with it.
+// orders are, ON lit green while it is on. A gun's type is its weapon, in the game's name, and its
+// mount (version 19, F2's rule), so the card is titled with it. All of it is the game's: an
+// Autocannon Mk1 on circuit 1, the ship's one; nothing is wrong with it.
 //
-// X1 is the spec's content with the game's numbers on day 0: Highport is the Patrol's, at port 2
-// for the corvette's S port; standing is a number, since the game names no levels of it; the yard
-// has nothing to repair and the propellant is at C1's 72%; the board posts five jobs a day and the
-// delivery is taken, so four are left; three of the day's three to five are looking for a berth;
-// the infirmary has treated nobody, so it has no line; and nothing is bought yet (C7 is two
-// minutes on), so the credits are the starting 5 000 and the hold is empty. P1's helm field is the
-// game's bridge line, a helmsman at the helm holding the heading, which it keeps docked.
+// X1 is the spec's content with the game's numbers on day 0 (version 19): Highport is the Patrol's,
+// at port 2 for the corvette's S port; standing is the game's signed number, +0; the yard has
+// nothing to repair, so its line gives only the tanks, at C1's 72%; the board posts five jobs a
+// day and the delivery is taken, so four are left; three of the day's three to five are looking
+// for a berth; the infirmary has nobody to treat, so it has no line; and nothing is bought yet (C7
+// is two minutes on), so the credits are the starting 5 000 and the hold is empty.
 let s = space({ planet: false, seed: 13 }) + controlDefs();
 
 // The world: the corvette's deck at C3's scale, its nose clear of X1, at Highport's arm
@@ -50,34 +53,35 @@ s += corvetteDeck(OX, OY, K, {
   avatar: [13.55, 1.6],
 });
 
-// P6 at the mount the captain stands at, its name once, then E and its verb: in the world beside the
-// hull under the mount, since the deck inside has its systems there and the card holds the other side
+// P6 at the mount the captain stands at, its name once, then E and its verb, with what taking a
+// point-defense gun costs: in the world below the hull, left of the card, since the deck inside
+// has its systems there
 const MX = X(14.5), MY = Y(1.5);
-s += O.prompt(MX - 150, Y(0) + 10, 'FWD STBD AUTOCANNON', [['E', 'TAKE THE GUN']]);
+s += O.prompt(436, 594, 'AUTOCANNON MK1 (FWD STBD)', [['E', 'TAKE THE GUN (POINT DEFENSE PAUSES)']]);
 
 // D2, pinned beside where the pointer was: a dotted leader to its subject, the pin, the system in
 // the spec's fields, and its switch as the one button
 {
-  const x = 732, y = 494, w = 216, h = 140;
-  s += line(MX + 12, MY + 12, x, y + 10, C.dim, 1.2, { dash: '2 3' }) + `<circle cx="${MX}" cy="${MY}" r="${0.48 * K}" fill="none" stroke="${C.white}" stroke-width="1.2" stroke-dasharray="3 3"/>`;
+  const x = 700, y = 514, w = 260, h = 122;
+  s += line(MX, MY + 0.48 * K + 2, MX, y, C.dim, 1.2, { dash: '2 3' }) + `<circle cx="${MX}" cy="${MY}" r="${0.48 * K}" fill="none" stroke="${C.white}" stroke-width="1.2" stroke-dasharray="3 3"/>`;
   s += rect(x, y, w, h, { fill: 'rgba(5,7,10,0.94)', stroke: '#3A434D', sw: 1, r: 1.5 }) + rect(x, y, 4, h, { fill: C.white });
   // the pin: a click put it there, and a second click on the subject takes it out
   s += `<circle cx="${x + w - 13}" cy="${y + 13}" r="4.2" fill="${C.cyan}"/>` + line(x + w - 13, y + 17, x + w - 13, y + 24, C.cyan, 1.6);
   const L = x + 14, R = x + w - 12;
-  s += text(L, y + 21, 'FWD STBD AUTOCANNON', { size: B, bold: true, fill: C.white, track: 0.3 });
-  s += lab(L, y + 39, 'AUTOCANNON MK1');
-  s += lab(L, y + 61, 'HEALTH') + val(L + 62, y + 61, '100%') + lab(L + 124, y + 61, 'CIRCUIT') + val(R, y + 61, '1', null, { anchor: 'end' });
-  s += text(L, y + 81, 'POWERED', { size: B, bold: true, fill: C.white, track: 0.3 });
+  // the type, a gun's weapon and its mount (version 19)
+  s += text(L, y + 21, 'AUTOCANNON MK1 (FWD STBD)', { size: B, bold: true, fill: C.white, track: 0.3 });
+  s += lab(L, y + 43, 'HEALTH') + val(L + 62, y + 43, '100%') + lab(L + 124, y + 43, 'CIRCUIT') + val(L + 200, y + 43, '1', null, { anchor: 'end' });
+  s += text(L, y + 63, 'POWERED', { size: B, bold: true, fill: C.white, track: 0.3 });
   // the switch: on, lit green; a click switches it off
-  s += korry(L, y + 92, 96, 40, 'SWITCH', 'ON', 'on');
-  s += text(L + 108, y + 108, 'CLICK TO', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + text(L + 108, y + 124, 'SWITCH OFF', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+  s += korry(L, y + 74, 96, 40, 'SWITCH', 'ON', 'on');
+  s += text(L + 108, y + 90, 'CLICK TO', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + text(L + 108, y + 106, 'SWITCH OFF', { size: LB, bold: true, fill: C.dim, track: 0.4 });
   // the pointer, on the button
-  const px = L + 62, py = y + 116;
+  const px = L + 62, py = y + 98;
   s += `<path d="M${px} ${py} l0 17 l4.2 -4 l3.2 7 l3 -1.4 l-3.2 -6.8 l5.8 -0.4 Z" fill="${C.white}" stroke="#0A0C0E" stroke-width="1.2" stroke-linejoin="round"/>`;
 }
 
 // ---- the fixed zones ----
-s += statusStrip({ seat: 'DECK', authority: 'HELM: BEA · HOLDING HEADING', clock: 'DAY 0 · 00:13:40', warp: '1×' });
+s += statusStrip({ seat: 'DECK', clock: 'DAY 0 · 00:13:40', warp: '1×' });
 // P5, compact: the delivery, with C7's time left
 s += objective(['DELIVER 40 FOOD', '→ SHACKLETON ICE · 5D 5H LEFT']).svg;
 // H4, compact and dark: nothing aboard is wrong
@@ -98,7 +102,7 @@ s += du(ZC.rmid.x, ZC.rmid.y, 308, 260, {
     // it has the name and the count but no key
     const svc = (yy, k, name, now) => (k ? capKey(L, yy - 12.5, k) : '') + text(KX, yy, name, { size: B, bold: true, fill: C.white, track: 0.3 }) + (now ? text(R, yy, now, { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.4 }) : '');
     c += svc(gy + 88, 'T', 'MARKET', '');
-    c += svc(gy + 110, 'Y', 'YARD', 'NO REPAIRS · PROP 72%');
+    c += svc(gy + 110, 'Y', 'YARD', 'TANKS 72%');
     c += svc(gy + 132, 'J', 'MISSIONS', '4 OFFERS');
     c += svc(gy + 154, null, 'HIRE', '3 LOOKING FOR A BERTH');
     c += line(gx + 4, gy + 165, gx + gw - 4, gy + 165, C.graticule, 1);

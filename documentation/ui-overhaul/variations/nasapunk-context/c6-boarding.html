@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Context: boarding, during</title>
+<html><head><meta charset="utf-8"><title>Context: boarding, taken</title>
 <link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
 <style>html,body{margin:0;background:#000}svg{display:block}</style>
 </head><body>
@@ -9,151 +9,169 @@
 <script src="../../nasapunk/mockups/screens.js"></script>
 <script src="context.js"></script>
 <script>
-// M4, the boarding mode (context spec, 10.4), while the party is aboard: today's boarding window,
-// with its orders (send, storm, recall), and the spec's addition, a plan of the other ship with the
-// party where they are. Two minutes before C4: the raider's reactor is down, the corvette has
-// latched on, the dock's door was pried (the raider has no power to cut against), and the party
-// has swept the hold and is fighting in the bridge.
+// M4, the boarding mode (context spec, 10.4), just after the taking: today's boarding window, with
+// its orders (send, storm, recall), its parts to strip, cargo and prisoners, and the spec's
+// addition, a plan of the other ship with the party where they are. Day 6, 80 s before C4
+// (version 19's 11.13): Pirate raider 3, a Light Raider the player held a bounty on, cut thrust and
+// surrendered, and the corvette latched on. Its port door was shut and powered, so Cole hacked it
+// open (45 s, ForceMethod.HACK); the crew of three yielded as soon as Cole stepped aboard, as a
+// surrendered crew does (Boarding), and the raider is taken, 15 s ago: "Pirate raider 3 is taken:
+// 3 held". The party stands down and comes home, and the captain is marking what to strip.
 //
-// The party is the game's: the ship's marines, or its crewmen if it has none (Boarding.party), so
-// on the starting corvette it is Cole alone; Ada and Bea stay aboard. The state line is the game's
-// own ("Boarding: 1 of ours aboard, 1 of theirs standing"). Nothing can be stripped or carried
-// until the ship is taken, so those parts of the screen wait, saying so. The party goes in pressure
-// suits, whose 10 minutes of air (Suit.IVA_AIR, 600 s) run down only where the air is not
-// breathable, so Cole's is still full in the raider's pressurised bridge.
+// All of it is the game's. The party is the ship's marines, or its crewmen if it has none
+// (Boarding.party), so Cole alone. The raider is the game's Light Raider (ships.toml raider_light,
+// chassis raider): a pirate's fast boat with its crew of three, one chaingun in the nose turret,
+// two rooms either side of a thin wall, BRIDGE for its helm and TANKS for what fills the aft room
+// (RoomNames), and a small port on top, three tiles along the hull. Docked ships lie half a turn
+// apart, port to port, so the corvette lies over the raider's port side, nose aft. The state line
+// is the game's ("Taken, 3 held", BoardingWork). The parts are every system that can come off
+// (Salvage.parts: not the cargo bay or the port), most valuable first, each at a twentieth of its
+// price new (Salvage.SALE_SHARE); the game prices an escape pod at nothing (Salvage.systemPrice),
+// so it sells for 0. A pirate's loot never goes into its hold, so there is no cargo, and the tab
+// says so once. The prisoners come across as berths allow (Prisoners.takeAboard): the corvette has
+// eight and four aboard. Once taken, nothing can be sent, stormed or recalled ("Pirate raider 3 is
+// taken", Boarding.refusal), so the three orders are barred, with the reason once.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 7 });
 s += controlDefs();
-s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:28:40', warp: '1×' });
+s += statusStrip({ seat: 'HELM', clock: 'DAY 6 · 10:13:40', warp: '1×' });
 s += consoleBody(0, 28, 1280, 772, {});
 s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M4  BOARDING', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
 
 const kvl = (x, y, t) => text(x, y, t, { size: LB, bold: true, fill: C.dim, track: 0.6 });
 const rowsep = (gx, y, gw) => line(gx + 6, y, gx + gw - 6, y, C.graticule, 1);
 const word = (x, y, t, c = C.white, o = {}) => text(x, y, t, { size: o.size || B, bold: o.bold !== false, fill: c, track: 0.4, anchor: o.anchor || 'start' });
+const panelHead = (gx, gy, gw, t, right, rc = C.dim) => text(gx + 10, gy + 22, t, { size: V, bold: true, fill: C.white, track: 0.8 }) + (right ? text(gx + gw - 10, gy + 22, right, { size: LB, bold: true, fill: rc, anchor: 'end', track: 0.5 }) : '') + rowsep(gx, gy + 30, gw);
 
 // ---- the title row ----
 s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
-s += text(18, 51, 'RAIDER', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(18 + tw('RAIDER', V, true, 0.8) + 10, 51, 'BOARDING', { size: LB, bold: true, fill: C.dim, track: 0.8 });
+s += text(18, 51, 'PIRATE RAIDER 3', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(18 + tw('PIRATE RAIDER 3', V, true, 0.8) + 10, 51, 'BOARDING', { size: LB, bold: true, fill: C.dim, track: 0.8 });
 
 // ---- the plan of the other ship ----
-// The raider as the game builds it (the corvette's chassis), port side up, nose right; beyond the
-// collar, the corvette, faint, half a turn round as it lies, with who stayed aboard. The raider's
-// rooms are outlined by how the sweep stands (green swept, amber fighting, dim not yet); people are
-// circles for ours (with their names) and diamonds for theirs, an X where one is down, so the plan
-// reads without colour.
+// The raider as the game builds it, port side up, nose right; over its port, the corvette, faint,
+// half a turn round as it lies, with who is aboard it. The raider's rooms and systems are in
+// outline, the parts marked to strip in the cursor's cyan, dashed; people are circles for ours
+// (with their names) and diamonds for theirs, dim now that they are held.
 s += du(8, 64, 800, 680, {
   id: 'plan', b: 8,
   content: (gx, gy, gw, gh) => {
-    const k = 34, ox = 54, oy = 452, G = 1.3;
-    const X = tx => ox + tx * k, Y = ty => oy + (6 - ty) * k;
-    // a point aboard ours, in the raider's frame: half a turn about the collar
-    const OXp = tx => X(17 - tx), OYp = ty => Y(12 + G - ty);
-    let g = text(gx + 10, gy + 22, 'PLAN', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(gx + gw - 10, gy + 22, 'ROOMS SWEPT 1 OF 2', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
-    // ours, latched over its port side: its outline and rooms faint, and who is aboard
-    g += `<polygon transform="translate(${X(4)} ${Y(12 + G - 3)}) rotate(180) scale(${k / 64})" points="${CORVETTE.hull}" fill="none" stroke="#2C3540" stroke-width="${1.2 * 64 / k}"/>`;
-    ['hold', 'bridge'].forEach(r => { const [tx, ty, w, h] = CORVETTE.rooms[r]; g += rect(OXp(tx + w) + 2, OYp(ty) + 2, w * k - 4, h * k - 4, { stroke: '#26303A', sw: 1.2 }); });
-    g += text(X(-0.6), Y(13.9), 'OUR SHIP', { size: LB, bold: true, fill: C.dim, track: 1 });
-    const home = (tx, ty, name, you) => `<circle cx="${OXp(tx)}" cy="${OYp(ty)}" r="6" fill="none" stroke="${C.dim}" stroke-width="1.8"/>` + (you ? `<circle cx="${OXp(tx)}" cy="${OYp(ty)}" r="10" fill="none" stroke="${C.cyan}" stroke-width="1.4"/>` : '') + text(OXp(tx) + (you ? 15 : 11), OYp(ty) + 4.5, name, { size: LB, bold: true, fill: C.dim, track: 0.5 });
-    g += home(10.25, 4.55, 'YOU', true) + home(13.4, 2.4, 'ADA') + home(5.4, 3.4, 'BEA');
-    // the collar between the ports, and the dock's door, pried open
-    g += rect(X(7.2), Y(6 + G), 2.6 * k, G * k, { stroke: C.dim, sw: 1 }) + line(X(7.2), Y(6 + G / 2), X(9.8), Y(6 + G / 2), '#2C3540', 1, { dash: '3 3' });
-    g += text(X(9.8) + 8, Y(6 + G / 2) + 4.5, 'DOOR PRIED', { size: LB, bold: true, fill: C.dim, track: 0.5 });
-    // the raider's hull and its systems, in outline
-    g += `<polygon transform="translate(${X(13)} ${Y(3)}) scale(${k / 64})" points="${CORVETTE.hull}" fill="none" stroke="#5B636D" stroke-width="${1.4 * 64 / k}"/>`;
-    CORVETTE.parts.forEach(([kind, tx, ty, w, h]) => {
-      if (kind === 'engine' || kind === 'dock') return;
-      g += kind === 'turret' ? `<circle cx="${X(tx + 0.5)}" cy="${Y(ty + 0.5)}" r="${k * 0.3}" fill="none" stroke="#26303A" stroke-width="1.2"/>` : rect(X(tx) + 3, Y(ty + h) + 3, w * k - 6, h * k - 6, { stroke: '#26303A', sw: 1.2, r: 1.5 });
-    });
-    // the reactor that beat it: down, crossed
-    g += path(`M${X(15) + 8} ${Y(5) + 8} L${X(17) - 8} ${Y(3) - 8} M${X(15) + 8} ${Y(3) - 8} L${X(17) - 8} ${Y(5) + 8}`, '#8A3A34', 1.6);
-    // the rooms, by the sweep, named in the hull's band above them
-    const room = (r, c, sw) => { const [tx, ty, w, h] = CORVETTE.rooms[r]; return rect(X(tx) + 2, Y(ty + h) + 2, w * k - 4, h * k - 4, { stroke: c, sw }); };
-    g += room('hold', C.green, 2) + room('bridge', C.amber, 2);
-    g += line(X(8), Y(4) + 3, X(8), Y(3) - 3, C.glass, 4);
-    const named = (x, n, st, c) => text(x, Y(5) - 10, n, { size: LB, bold: true, fill: C.white, track: 1 }) + text(x + tw(n, LB, true, 1) + 8, Y(5) - 10, st, { size: LB, bold: true, fill: c, track: 0.6 });
-    g += named(X(3) + 6, 'HOLD', 'SWEPT', C.green) + named(X(10.2), 'BRIDGE', 'FIGHTING', C.amber);
-    g += text(X(16), Y(5) - 10, 'REACTOR DOWN', { size: LB, bold: true, fill: C.dim, anchor: 'middle', track: 0.4 });
-    // the people: ours a circle, theirs a diamond; down, an X
-    const theirs = (tx, ty) => path(`M${X(tx)} ${Y(ty) - 7} L${X(tx) + 7} ${Y(ty)} L${X(tx)} ${Y(ty) + 7} L${X(tx) - 7} ${Y(ty)} Z`, C.red, 2);
-    const down = (tx, ty) => path(`M${X(tx) - 5} ${Y(ty) - 5} L${X(tx) + 5} ${Y(ty) + 5} M${X(tx) - 5} ${Y(ty) + 5} L${X(tx) + 5} ${Y(ty) - 5}`, C.dim, 1.8);
-    g += down(4.4, 1.6) + down(10.4, 1.7) + down(13.0, 1.7);
-    g += theirs(14.2, 3.2);
-    g += `<circle cx="${X(11.7)}" cy="${Y(2.7)}" r="6" fill="none" stroke="${C.amber}" stroke-width="2"/>` + text(X(11.7) + 11, Y(2.7) + 4.5, 'COLE 64%', { size: LB, bold: true, fill: C.amber, track: 0.5 });
+    const k = 29, G = 1.3, ox = gx + 171, oy = gy + 480;
+    const X = tx => ox + tx * k, Y = ty => oy - ty * k;
+    // a point aboard ours (its own chassis corners) in the raider's frame: half a turn about the collar
+    const CX = cx => X(15 - cx), CY = cy => Y(11 + G - cy);
+    let g = panelHead(gx, gy, gw, 'PLAN', 'BOTH SHIPS, AND WHO IS WHERE');
+    // ours, latched over the raider's port: its outline and rooms faint, and who is aboard
+    g += `<g transform="translate(${ox + 2 * k} ${oy - (8 + G) * k}) scale(${-k / 64})"><polygon points="${CORVETTE.hull}" fill="none" stroke="#2C3540" stroke-width="${1.2 * 64 / k}"/></g>`;
+    ['hold', 'bridge'].forEach(r => { const [tx, ty, w, h] = CORVETTE.rooms[r]; g += rect(CX(tx + w) + 2, CY(ty) + 2, w * k - 4, h * k - 4, { stroke: '#26303A', sw: 1.2 }); });
+    g += text(X(-4.6), Y(12.3) - 10, 'OUR SHIP', { size: LB, bold: true, fill: C.dim, track: 1 });
+    const home = (cx, cy, name, you, left) => {
+      const x = CX(cx), y = CY(cy);
+      return `<circle cx="${x}" cy="${y}" r="6" fill="none" stroke="${C.dim}" stroke-width="1.8"/>` + (you ? `<circle cx="${x}" cy="${y}" r="10" fill="none" stroke="${C.cyan}" stroke-width="1.4"/>` : '')
+        + text(left ? x - (you ? 15 : 11) : x + (you ? 15 : 11), y + 4.5, name, { size: LB, bold: true, fill: C.dim, track: 0.5, anchor: left ? 'end' : 'start' });
+    };
+    g += home(10.25, 4.55, 'YOU', true, true) + home(7.6, 4.5, 'ADA', false, false) + home(5.4, 3.4, 'BEA');
+    // the collar between the ports, and the raider's port door, hacked open
+    g += rect(X(5.2), Y(5 + G), 2.6 * k, G * k, { stroke: C.dim, sw: 1 }) + line(X(5.2), Y(5 + G / 2), X(7.8), Y(5 + G / 2), '#2C3540', 1, { dash: '3 3' });
+    g += text(X(7.8) + 8, Y(5 + G / 2) + 4.5, 'DOOR HACKED', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    // the raider's hull, its rooms and the wall between with its door, and its systems in outline
+    g += `<g transform="translate(${X(9.5)} ${Y(2.5)}) scale(${k / 64})"><path d="${HULL_ART.raider.d}" fill="none" stroke="#5B636D" stroke-width="${1.4 * 64 / k}"/></g>`;
+    const roomBox = (tx, w) => rect(X(tx) + 2, Y(4) + 2, w * k - 4, 3 * k - 4, { stroke: '#4A525C', sw: 1.4 });
+    g += roomBox(3, 8) + roomBox(11, 5) + line(X(11), Y(2) + 3, X(11), Y(1) - 3, C.glass, 5);
+    const foot = (tx, ty, w, h, o = {}) => rect(X(tx) + 3, Y(ty + h) + 3, w * k - 6, h * k - 6, { stroke: o.c || '#2E3742', sw: o.sw || 1.2, r: 1.5, dash: o.dash || '' });
+    [[0, 3, 2, 1], [0, 1, 2, 1], [11, 3, 2, 1], [14, 3, 1, 2], [3, 2, 2, 1], [5, 2, 1, 2], [7, 2, 1, 2], [11, 2, 2, 1], [13, 2, 1, 2], [6, 1, 1, 2], [5, 4, 3, 1]].forEach(f => { g += foot(...f); });
+    // marked to strip: the reactor, and the chaingun in the nose turret
+    g += foot(8, 2, 2, 2, { c: C.cyan, sw: 1.6, dash: '4 3' });
+    g += `<circle cx="${X(15.5)}" cy="${Y(2.5)}" r="${k * 0.34}" fill="none" stroke="${C.cyan}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+    // the rooms by the game's names, in the band under the hull
+    g += text(X(3) + 4, Y(0) + 20, 'TANKS', { size: LB, bold: true, fill: C.white, track: 1 }) + text(X(11) + 4, Y(0) + 20, 'BRIDGE', { size: LB, bold: true, fill: C.white, track: 1 });
+    // the people: Cole by the port, standing down; the raider's three, held where they yielded
+    const held = (tx, ty) => path(`M${X(tx)} ${Y(ty) - 7} L${X(tx) + 7} ${Y(ty)} L${X(tx)} ${Y(ty) + 7} L${X(tx) - 7} ${Y(ty)} Z`, C.dim, 1.8);
+    g += held(8.6, 1.5) + held(11.7, 1.5) + held(13.6, 1.5);
+    g += `<circle cx="${X(6.5)}" cy="${Y(3.5)}" r="6" fill="none" stroke="${C.white}" stroke-width="2"/>` + text(X(5) - 4, Y(3.5) + 4.5, 'COLE', { size: LB, bold: true, fill: C.white, track: 0.5, anchor: 'end' });
     // the legend, at the glass foot
     const ly = gy + gh - 14;
     let lx = gx + 12;
     g += `<circle cx="${lx + 5}" cy="${ly - 4.5}" r="5" fill="none" stroke="${C.white}" stroke-width="1.8"/>` + word(lx + 16, ly, 'OURS', C.dim, { size: LB }); lx += 70;
-    g += path(`M${lx + 5} ${ly - 10.5} L${lx + 11} ${ly - 4.5} L${lx + 5} ${ly + 1.5} L${lx - 1} ${ly - 4.5} Z`, C.red, 1.8) + word(lx + 18, ly, 'THEIRS', C.dim, { size: LB }); lx += 86;
-    g += path(`M${lx} ${ly - 9} L${lx + 9} ${ly} M${lx} ${ly} L${lx + 9} ${ly - 9}`, C.dim, 1.6) + word(lx + 16, ly, 'DOWN', C.dim, { size: LB }); lx += 76;
-    g += rect(lx, ly - 10, 14, 10, { stroke: C.green, sw: 1.6 }) + word(lx + 20, ly, 'SWEPT', C.dim, { size: LB }); lx += 82;
-    g += rect(lx, ly - 10, 14, 10, { stroke: C.amber, sw: 1.6 }) + word(lx + 20, ly, 'FIGHTING', C.dim, { size: LB });
+    g += path(`M${lx + 5} ${ly - 10.5} L${lx + 11} ${ly - 4.5} L${lx + 5} ${ly + 1.5} L${lx - 1} ${ly - 4.5} Z`, C.dim, 1.8) + word(lx + 18, ly, 'THEIRS, HELD', C.dim, { size: LB }); lx += 128;
+    g += rect(lx, ly - 10, 14, 10, { stroke: C.cyan, sw: 1.6, dash: '4 3' }) + word(lx + 20, ly, 'MARKED TO STRIP', C.dim, { size: LB });
     return g;
   },
 }).svg;
 
-// ---- the boarding: the ship, how it stands, what it costs ----
-s += du(816, 64, 456, 140, {
+// ---- the boarding: the ship and how it stands ----
+s += du(816, 64, 456, 96, {
   id: 'board', b: 8,
   content: (gx, gy, gw, gh) => {
     const L = gx + 10, V0 = gx + 92;
-    let g = text(L, gy + 22, 'BOARD', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(gx + gw - 10, gy + 22, 'LATCHED, PORT TO PORT', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) + rowsep(gx, gy + 30, gw);
-    g += kvl(L, gy + 52, 'STATE') + word(V0, gy + 52, 'BOARDING', C.amber);
-    g += kvl(L, gy + 72, 'ABOARD') + word(V0, gy + 72, '1 OF OURS · 1 OF THEIRS STANDING');
-    g += kvl(L, gy + 92, 'BEATEN') + word(V0, gy + 92, 'DISABLED: REACTOR DOWN');
-    g += kvl(L, gy + 112, 'COST') + word(V0, gy + 112, 'NONE: OUTLAWS');
+    let g = panelHead(gx, gy, gw, 'BOARD', 'LATCHED, PORT TO PORT');
+    g += kvl(L, gy + 52, 'STATE') + word(V0, gy + 52, 'TAKEN,', C.green) + word(V0 + tw('TAKEN,', B, true, 0.4) + 6, gy + 52, '3 HELD');
+    g += kvl(L, gy + 72, 'BEATEN') + word(V0, gy + 72, 'SURRENDERED');
     return g;
   },
 }).svg;
 
-// ---- the party, and what they face ----
-s += du(816, 210, 456, 196, {
+// ---- the party: standing down now that it is taken ----
+s += du(816, 166, 456, 96, {
   id: 'party', b: 8,
   content: (gx, gy, gw, gh) => {
     const L = gx + 10;
-    let g = text(L, gy + 22, 'PARTY', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(gx + gw - 10, gy + 22, 'THE SHIP\'S MARINES', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) + rowsep(gx, gy + 30, gw);
-    const gr = grid(L, gy + 52, [{ t: 'NAME', w: 64 }, { t: 'ROLE', w: 78 }, { t: 'HEALTH', w: 62, align: 'right' }, { t: 'ROOM', w: 86, align: 'right' }, { t: 'DOING', w: 86, align: 'right' }, { t: 'AIR', w: 52, align: 'right' }], [
-      [{ t: 'COLE', bold: true }, 'MARINE', { t: '64%', c: C.amber, bold: true }, 'BRIDGE', { t: 'FIGHTING', c: C.amber, bold: true }, '10:00'],
+    let g = panelHead(gx, gy, gw, 'PARTY', 'THE SHIP\'S MARINES');
+    const gr = grid(L, gy + 50, [{ t: 'NAME', w: 64 }, { t: 'ROLE', w: 78 }, { t: 'HEALTH', w: 62, align: 'right' }, { t: 'ROOM', w: 76, align: 'right' }, { t: 'DOING', w: 140, align: 'right' }], [
+      [{ t: 'COLE', bold: true }, 'MARINE', '100%', 'TANKS', { t: 'COMING HOME', bold: true }],
     ], { rule: 0, rh: 22 });
     g += gr.svg;
-    g += text(L, gy + 104, 'ADA AND BEA STAY ABOARD', { size: LB, bold: true, fill: C.dim, track: 0.5 });
-    g += rowsep(gx, gy + 118, gw);
-    g += kvl(L, gy + 140, 'DEFENDERS') + word(gx + 104, gy + 140, '1 STANDING', C.red) + word(gx + 104 + tw('1 STANDING', B, true, 0.4) + 8, gy + 140, 'IN THE BRIDGE', C.white, { bold: false });
-    g += word(gx + 104, gy + 160, '3 DOWN', C.white) + word(gx + 104 + tw('3 DOWN', B, true, 0.4) + 8, gy + 160, '1 IN THE HOLD, 2 IN THE BRIDGE', C.white, { bold: false });
     return g;
   },
 }).svg;
 
-// ---- the orders: send and storm can't be given while the party is aboard ----
-s += du(816, 412, 456, 132, {
-  id: 'orders', b: 8,
-  content: (gx, gy, gw, gh) => {
-    const L = gx + 10, bw = 132, by = gy + 40;
-    let g = text(L, gy + 22, 'ORDERS', { size: V, bold: true, fill: C.white, track: 0.8 }) + rowsep(gx, gy + 30, gw);
-    g += korry(L, by, bw, 36, 'SEND PARTY', '', 'na') + korry(L + bw + 9, by, bw, 36, 'STORM', '', 'na') + korry(L + 2 * (bw + 9), by, bw, 36, 'RECALL', '', 'idle');
-    g += barber(L, gy + 98, 14) + text(L + 22, gy + 104, 'THE PARTY IS ABOARD', { size: LB, bold: true, fill: C.dim, track: 0.5 });
-    return g;
-  },
-}).svg;
-
-// ---- what waits for the ship to be taken ----
-s += du(816, 550, 456, 194, {
-  id: 'after', b: 8,
+// ---- the parts to strip, most valuable first ----
+s += du(816, 268, 456, 306, {
+  id: 'salv', b: 8,
   content: (gx, gy, gw, gh) => {
     const L = gx + 10;
-    let g = text(L, gy + 22, 'ONCE IT IS TAKEN', { size: V, bold: true, fill: C.white, track: 0.8 }) + rowsep(gx, gy + 30, gw);
-    const wait = (y, t, line2) => kvl(L, y, t) + word(gx + 104, y, line2, C.dim);
-    g += wait(gy + 54, 'SALVAGE', 'MARK ITS PARTS TO STRIP');
-    g += wait(gy + 76, 'CARGO', 'TAKE WHAT IS IN ITS HOLD');
-    g += wait(gy + 98, 'PRISONERS', 'BRING ITS CREW ABOARD');
-    g += rowsep(gx, gy + 114, gw);
-    g += text(L, gy + 136, 'TAKEN WHEN NONE OF ITS CREW STILL FIGHTS', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    let g = panelHead(gx, gy, gw, 'SALVAGE', 'MOST VALUABLE FIRST');
+    const parts = [
+      ['REACTOR', '2 000', 'MARKED', true], ['ENGINE', '1 250'], ['ENGINE', '1 250'], ['CHAINGUN MK1', '900', 'MARKED', true],
+      ['LIFE SUPPORT', '750'], ['HELM', '400'], ['WEAPONS', '400'], ['TANK', '200'], ['TANK', '200'], ['TANK', '200'], ['ESCAPE POD', '0'],
+    ];
+    const gr = grid(L + 18, gy + 50, [{ t: 'PART', w: 180 }, { t: 'SELLS FOR', w: 90, align: 'right' }, { t: '', w: 132, align: 'right' }],
+      parts.map(([n, cr, st, m], i) => ({ cells: [i === 4 ? { t: n, bold: true } : n, cr, { t: st || '', c: C.cyan, size: LB, bold: true }] })), { rule: 0, rh: 19 });
+    g += gr.svg;
+    // a mark box on each part, filled cyan once marked; the cursor spans its row
+    parts.forEach(([, , , m], i) => { const y = gr.rowY(i); g += rect(L, y - 9.5, 9, 9, m ? { fill: C.cyan } : { stroke: C.dim, sw: 1.2 }); });
+    g += cursor(L - 5, gr.rowY(4) - 14, gw - 10, 19);
+    g += text(L, gy + gh - 12, '2 MARKED · 2 900 CR · ENTER MARKS THE CURSOR\'S PART', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    return g;
+  },
+}).svg;
+
+// ---- the prisoners, against the berths free for them; no cargo ----
+s += du(816, 580, 456, 76, {
+  id: 'pris', b: 8,
+  content: (gx, gy, gw, gh) => {
+    const L = gx + 10, V0 = gx + 104;
+    let g = kvl(L, gy + 20, 'PRISONERS') + word(V0, gy + 20, '3 HELD ABOARD IT');
+    g += kvl(L, gy + 38, 'BERTHS') + word(V0, gy + 38, '4 FREE: ALL 3 FIT');
+    g += kvl(L, gy + 56, 'CARGO') + word(V0, gy + 56, 'NOTHING IN ITS HOLD', C.dim, { bold: false });
+    g += korry(gx + gw - 10 - 136, gy + 10, 136, 36, 'BRING ABOARD', '', 'idle');
+    return g;
+  },
+}).svg;
+
+// ---- the orders: nothing to send, storm or recall once it is taken ----
+s += du(816, 662, 456, 82, {
+  id: 'orders', b: 8,
+  content: (gx, gy, gw, gh) => {
+    const L = gx + 10, bw = 132, by = gy + 34;
+    const why = 'PIRATE RAIDER 3 IS TAKEN', wx = gx + gw - 10 - tw(why, LB, true, 0.5);
+    let g = text(L, gy + 22, 'ORDERS', { size: V, bold: true, fill: C.white, track: 0.8 }) + barber(wx - 22, gy + 16, 14) + text(gx + gw - 10, gy + 22, why, { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += korry(L, by, bw, 30, 'SEND PARTY', '', 'na') + korry(L + bw + 9, by, bw, 30, 'STORM', '', 'na') + korry(L + 2 * (bw + 9), by, bw, 30, 'RECALL', '', 'na');
     return g;
   },
 }).svg;
 
 // ---- the foot row: the one-line feed, and the keys that close the mode (version 10 puts them here) ----
 s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
-s += text(18, 767, 'BOARDING', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(100, 767, 'The hold is swept: Cole is fighting in the bridge.', { size: B, fill: C.white, track: 0.2 });
+s += text(18, 767, 'BOARDING', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(100, 767, 'Pirate raider 3 is taken: 3 held', { size: B, fill: C.white, track: 0.2 });
 s += capKey(1106, 754, 'K') + text(1128, 767, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1152, 754, 'ESC') + text(1264, 767, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
 
 document.getElementById('out').innerHTML = svgPage(s);

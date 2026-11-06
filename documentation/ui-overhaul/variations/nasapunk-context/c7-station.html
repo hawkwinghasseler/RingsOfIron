@@ -24,7 +24,9 @@
 // the hold: HELD and ON ORDER read the game's "12 (+10)". Each row has today's four trade buttons as
 // lit push buttons; a button that can't be pressed now carries the barber strip, and the tab's foot
 // says why once. Under the table, the held delivery this market can supply (version 10), since what
-// to buy here depends on it: 40 food fill the corvette's 40 m³ hold, at 1 m³ each.
+// to buy here depends on it: 40 food fill the corvette's 40 m³ hold, at 1 m³ each. The rail gives
+// the Patrol's standing as the game's signed number, +0 on day 0, the propellant at C1's 72%, as
+// the spec's wireframe has it, and no infirmary line, since nobody aboard is hurt (version 19).
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 11 });
 s += controlDefs();
 
@@ -179,11 +181,11 @@ s += du(PX + 836, PY + 36, 276, 346, {
     g += text(L, gy + 146, '+10 ON ORDER', { size: LB, bold: true, fill: C.cyan, track: 0.5 }) + text(R, gy + 146, '18 FREE AFTER IT', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     g += rowsep(gx, gy + 158, gw);
     g += lab(L, gy + 180, 'TANKS');
-    [['PROPELLANT', '100%'], ['OXYGEN', '100%'], ['NITROGEN', '100%']].forEach(([t, v], i) => {
+    [['PROPELLANT', '72%'], ['OXYGEN', '100%'], ['NITROGEN', '100%']].forEach(([t, v], i) => {
       g += text(L + 82, gy + 180 + i * 19, t, { size: B, fill: C.white, track: 0.3 }) + text(R, gy + 180 + i * 19, v, { size: B, bold: true, fill: C.white, anchor: 'end' });
     });
-    g += rowsep(gx, gy + 230, gw);
-    g += lab(L, gy + 252, 'INFIRMARY') + text(L + 82, gy + 252, 'NOBODY IN IT', { size: B, fill: C.white, track: 0.3 });
+    // no infirmary line: it has one only while it treats one of the crew or has billed for one since
+    // docking, and nobody aboard is hurt (version 19)
     return g;
   },
 }).svg;
