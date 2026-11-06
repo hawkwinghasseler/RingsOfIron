@@ -229,41 +229,40 @@ const layouts = {
     strip('HELM', 'Day 0 · 00:33     1x');
     emptySlots();
     stack(12, 194, [
-      ['P5', 'Objective (compact)', 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 1.4 d left']],
+      ['P5', 'Objective (compact)', 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 5.2 d left']],
       ['H2', 'Navigation', 'full', [
         'ORBIT  Earth · alt 400 km',
-        '       Ap 403 km  T-24:10',
-        '       Pe 397 km  T-1 h 10 m',
+        '       Pe 397 km  T-8:40',
         'NAV    Shackleton Ice',
-        '       1,240 km · opening 220 m/s',
-        '       closest 3.2 km T-2 h 05 m',
-        'NEXT   burn 1/2 · T-12:05',
-        '       420 m/s · helm flies it',
-        'PLAN   Δv 860 · leaves 380 m/s']],
+        '       384,000 km · at the Moon',
+        '       arrival T-4.2 d',
+        'NEXT   burn 1/1 · T-12:05',
+        '       3,084 m/s · helm flies it',
+        'PLAN   Δv 3,877 · leaves 1,729 m/s']],
     ]);
     box('H1', 'Flight display', 440, 688, 400, 100, 'full', [
       'ORBIT · auto                 7,672 m/s',
       '▢main ▢turn ▢strafe          assist ON',
-      'Δv 1,240 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
+      'Δv 5,606 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
     shipLights();
-    box('H5', 'scope', 1220, 740, 48, 48, 'compact', ['3']);
+    box('H5', 'Contact scope · 50 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope (cruise, 50 km): Highport and the Hauler Kestrel, 3 km off' });
     centreClear(); ship(640, 400); velocity(640, 400);
     edge(1100, 300, '◌ Shackleton Ice →');
   }],
   '02': ['Helm, time warp', () => {
-    strip('HELM', 'Day 3 · 14:05     1,000x rails');
+    strip('HELM', 'Day 2 · 21:45     1,000x rails');
     emptySlots();
     stack(12, 194, [
-      ['P5', 'Objective', 'full', ['Deliver 40 Food', '→ Shackleton Ice', '1.4 d left']],
+      ['P5', 'Objective', 'full', ['Deliver 40 Food', '→ Shackleton Ice', '2.3 d left']],
       ['H2', 'Navigation (warp face)', 'full', [
-        'ORBIT  Earth · alt 400 km',
-        'NAV    Shackleton Ice · 1,240 km',
-        '^NEXT   burn 1/2     T-2 h 05 m  ▸',
-        '^       Moon SOI     T-2.4 d     ▸',
-        '^       arrival      T-3.1 d     ▸',
-        'PLAN   Δv 860 · leaves 380 m/s']],
+        'ORBIT  Earth · alt 333,000 km',
+        'NAV    Shackleton Ice · 95,000 km',
+        '^NEXT   Moon SOI      T-9 h 30 m  ▸',
+        '^       capture       T-1.2 d     ▸',
+        '^       arrival       T-1.3 d     ▸',
+        'PLAN   Δv 793 · leaves 1,729 m/s']],
     ]);
-    box('H1', 'Flight (warp)', 540, 757, 200, 31, 'compact', ['ORBIT   Δv 1,240 m/s']);
+    box('H1', 'Flight (warp)', 540, 757, 200, 31, 'compact', ['ORBIT   Δv 2,522 m/s']);
     shipLights();
     centreClear(); ship(640, 400);
     edge(1100, 300, '◌ Shackleton Ice →');
@@ -274,7 +273,7 @@ const layouts = {
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Station: clearance granted, port 2']);
     const h3 = box('H3', 'Docking display', 440, 598, 400, 190, 'full', ['Port (S) → Highport #2 · armed'],
       { h: 92, text: 'alignment picture (0.4 m left, 2° off)   |   closing gauge: 120 m, 6.2 m/s against a safe 4.9, in the FAST band' });
-    addLines(h3, ['clearance granted · contact T-19 s', '▣main ▢turn ▢strafe · assist ON · Δv 1,180']);
+    addLines(h3, ['clearance granted · contact T-19 s', '▣main ▢turn ▢strafe · assist ON · Δv 6,070']);
     chip(704, 601, 132, 'MASTER CAUTION');
     shipLights();
     box('H5', 'Contact scope · 2 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope (auto range 2 km)' });
@@ -289,7 +288,7 @@ const layouts = {
     box('P3', 'Threat alert', 390, 38, 500, 60, 'interrupt', ['#2 MISSILES INBOUND · T-4 s', 'decoy ready (F) · point defense engaging']);
     box('P2', 'Caution and warning', 12, 38, 308, 0, 'cond tight', ['^◆ BREACH      ENGINES    ●']);
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Gunnery: 3 hits on Raider']);
-    box('H2', 'Navigation (compact)', 12, 194, 308, 0, 'compact', ['NAV    Shackleton Ice · 1,240 km']);
+    box('H2', 'Navigation (compact)', 12, 194, 308, 0, 'compact', ['NAV    Shackleton Ice · 384,000 km']);
     stack(960, 194, [
       ['H6', 'Lock card', 'full', ['LOCK  Raider', '      HOSTILE   ◆ FIRING ON YOU', '      3.4 km · closing 12 m/s', '      shot 2.2 s · hit 62% fair'], 110],
       ['H7', 'Armament', 'full', ['GUNS   ready · you fire', 'MSL    7 left · ready', 'SHLD   raised · trim bow'], 70],
@@ -300,7 +299,7 @@ const layouts = {
     box('H1', 'Flight display', 440, 688, 400, 100, 'full', [
       'LOCK · Raider · auto            12 m/s',
       '▣main ▢turn ▣strafe          assist ON',
-      'Δv 1,240 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
+      'Δv 6,831 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
     chip(682, 760, 154, 'MASTER WARN BREACH');
     box('H5', 'Contact scope · 5 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope: the raider and 2 missiles' });
     centreClear(); ship(640, 400); velocity(640, 400);
@@ -342,7 +341,7 @@ const layouts = {
   '06': ['Deck', () => {
     strip('DECK      Helm: Bea · holding heading', 'Day 0 · 00:58     1x');
     emptySlots();
-    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 1.4 d left']);
+    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 5.2 d left']);
     deckPlan();
     circ(712, 372, 6, { fill: '#d8dbde' }); wtext(722, 366, 'captain');
     circ(470, 430, 5, { fill: '#9aa0a6' }); wtext(480, 424, 'Ada');
@@ -384,7 +383,7 @@ const layouts = {
     strip('HELM', 'Day 0 · 00:08     1x');
     box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
     box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Log: autosaved', 'Station: welcome to Highport']);
-    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 1.4 d left']);
+    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 5.2 d left']);
     box('X1', 'Station panel', 960, 194, 308, 260, 'full', [
       'HIGHPORT · port 2',
       'Terran Patrol Authority',
@@ -422,60 +421,79 @@ const layouts = {
     wtext(470, 486, 'the ship can\'t fly, so the flight instruments retire as when docked', '');
   }],
   '09': ['Map (full-screen mode)', () => {
-    strip('HELM      ▲ 1', 'Day 0 · 00:12     1x');
-    box('M1', 'Map', 0, 26, W, 30, 'mode', ['Earth system                                                  [M] close · [Esc]']);
+    strip('HELM', 'Day 0 · 00:33     1x');
+    box('M1', 'Map (no tabs)', 0, 26, W, 30, 'mode', ['Earth system']);
+    box('', 'View', 320, 56, 640, 34, 'mode', ['^[Centre: Earth]   [Fit]   [All traffic]']);
     box('', 'Plan', 0, 56, 320, 718, 'mode', [
       'ORBIT NOW  Earth',
-      'Ap 403 km  T-24:10',
-      'Pe 397 km  T-1 h 10 m',
+      'Pe 397 km  T-8:40',
       'period 1 h 32 m',
       '',
       'BURNS',
-      '▶ 1  T-12:05     420 m/s  pro 420',
-      '  2  T-2 h 05 m  440 m/s  pro 438',
-      '                          rad 40',
+      '▶ 1  T-12:05  3,084 m/s  pro 3,084',
+      '~     then at the Moon: capture,',
+      '~     about 793 m/s at T-4.1 d,',
+      '~     planned at the crossing',
       '',
-      'SELECTED  burn 1 → Ap 384,000 km',
+      'SELECTED  burn 1 → Ap 378,000 km',
+      '          Moon SOI T-3.3 d',
       '',
-      'PLAN  Δv 860 of 1,240 m/s',
-      '      arrival T-3.1 d',
+      'PLAN  Δv 3,877 of 5,606 m/s',
+      '      arrival T-4.2 d',
       '',
       '^[Helm flies burns]  [Autopilot]',
-      '^[Warp to next]      [Clear]']);
+      '^[Warp to next]   [Delete burn]',
+      '^[Clear all]']);
     box('', 'Target and traffic', 960, 56, 320, 718, 'mode', [
       'NAV  Shackleton Ice',
-      'ice mine · 1,240 km',
-      'closest 3.2 km T-2 h 05 m',
+      'ice mine · 384,000 km',
+      'at the Moon · arrival T-4.2 d',
+      '^[Next target]',
       '^[Plan]  [Accept]  [Discard]',
+      '~Accept, Discard: nothing proposed',
       '',
       'CONTACTS         by distance ▾',
       '  Highport             3.0 km',
-      '  Freighter            3.1 km',
-      '◆ Raider              10.8 km',
-      '  Gateway          62,000 km',
+      '  Hauler Kestrel       3.1 km',
+      '  Deepwell Depot     9,800 km',
+      '  Anvil Yards       18,400 km',
       '',
       'LAYERS',
       '^☑ stations  ☑ haulers  ☑ pirates',
       '^☑ derelicts ☑ objectives ☐ tension']);
     box('', 'Timeline', 320, 684, 640, 90, 'mode', [
-      'now ──▲burn 1────Ap────▲burn 2─────◇Moon SOI────●arrival',
-      '~     T-12:05  T-24:10  T-2 h 05 m  T-2.4 d      T-3.1 d']);
-    box('', 'foot: the one-line feed', 0, 774, W, 26, 'mode', ['Log: autosaved']);
-    circ(640, 370, 120, { fill: '#3e4248' }); circ(640, 370, 150, { 'stroke-dasharray': '5 4' });
-    el('ellipse', { cx: 760, cy: 330, rx: 210, ry: 170, fill: 'none', stroke: '#d8dbde', 'stroke-dasharray': '7 5' });
-    wtext(560, 360, 'Earth'); wtext(840, 160, 'planned path');
+      'now ──▲burn 1───────────◇Moon SOI───△capture─●arrival──■deadline',
+      '~      T-12:05           T-3.3 d     T-4.1 d  T-4.2 d   T-5.2 d',
+      '~△ an estimate until the crossing plans it. A click centres the map',
+      '~on an event; each future one has a warp-to']);
+    box('', 'foot: the one-line feed and the close keys', 0, 774, W, 26, 'mode',
+      ['Log: autosaved' + ' '.repeat(96) + '[M] close · [Esc]']);
+    // At Fit, 780 km a unit: Earth at the left focus, the Moon 484 units out
+    circ(416, 390, 484, { 'stroke-dasharray': '2 6' });                                    // the Moon's orbit
+    el('ellipse', { cx: 653, cy: 390, rx: 247, ry: 64, fill: 'none', stroke: '#d8dbde', 'stroke-dasharray': '7 5' }); // after burn 1
+    circ(416, 390, 8, { fill: '#9aa0a6' }); wtext(372, 404, 'Earth');
+    circ(894, 316, 85, { 'stroke-dasharray': '5 4' }); circ(894, 316, 3, { fill: '#d8dbde' });   // 0.15 rad ahead
+    wtext(880, 324, 'Moon'); wtext(830, 212, 'Moon SOI');
+    wtext(400, 368, '▲ burn 1'); wtext(540, 300, 'planned path (the Moon catches it up)');
+    wtext(330, 640, 'the capture and the approach are drawn once the crossing plans them');
   }],
-  '10': ['Station terminal (full-screen mode)', () => {
+  '10': ['Station (docked: a panel over the docked view)', () => {
     strip('HELM', 'Day 0 · 00:15     1x');
-    box('M3', 'Station', 0, 26, W, 34, 'mode', ['HIGHPORT    [Market]  Yard  Missions  Hire        [1-4] tabs · [T] close · [Esc]']);
-    box('', 'Market', 0, 60, 960, 714, 'mode', [
-      'COMMODITY        STOCK     BUY      SELL     HELD   ON ORDER',
-      '^Water            1,200     12 cr    10 cr    0      –        [Buy 1] [Buy 10] [Sell 1] [Sell all]',
-      '^Ice ore            340     30 cr    26 cr    4      –        [Buy 1] [Buy 10] [Sell 1] [Sell all]',
-      '^Machine parts       80    210 cr   180 cr    0      +2       [Buy 1] [Buy 10]',
-      '^Medical stores      45    160 cr   140 cr    1      –        [Buy 1] [Buy 10] [Sell 1] [Sell all]',
-      '...']);
-    box('', 'Rail', 960, 60, 320, 714, 'mode', [
+    rect(560, 440, 160, 160, { fill: '#41454b' }); wtext(566, 444, 'Highport', 'tag');
+    ship(640, 650);
+    wtext(380, 720, 'the docked view stays in sight below the panel; the HUD hides as for a full-screen mode');
+    box('M3', 'Station (a panel, 1,120 wide, as tall as its tab)', 80, 60, 1120, 34, 'mode',
+      ['HIGHPORT     [1] Market   [2] Yard   [3] Missions   [4] Hire']);
+    box('', 'Market', 80, 94, 800, 190, 'mode', [
+      'COMMODITY               STOCK     BUY    SELL  HELD   ON ORDER',
+      '^Water                     420   14 cr   12 cr     0   –      [Buy 1] [Buy 10] [Sell 1] [Sell all]',
+      '^Food                    2,600   36 cr   32 cr    12   –      [Buy 1] [Buy 10] [Sell 1] [Sell all]',
+      '^Machinery                  20  680 cr  620 cr     0   +2     [Buy 1] [Buy 10]',
+      '^Salvaged autocannon mk1     –       –  600 cr     1   –                       [Sell 1] [Sell all]',
+      '',
+      'FOR YOUR CONTRACTS',
+      'Deliver 40 Food → Shackleton Ice · 12 of 40 aboard · 5.2 d left']);
+    box('', 'Rail', 880, 94, 320, 190, 'mode', [
       'Credits      5,000 cr',
       'Standing     Trusted (+42)',
       'Hold         12 / 40 m³',
@@ -484,51 +502,54 @@ const layouts = {
       '',
       'Infirmary    treating 1',
       '             bill 150 cr']);
-    box('', 'foot: the one-line feed', 0, 774, W, 26, 'mode', ['Station: clearance granted']);
+    box('', 'foot: the one-line feed and the close keys', 80, 284, 1120, 26, 'mode',
+      ['Station: clearance granted' + ' '.repeat(62) + '[T] close · [Esc]']);
   }],
   '11': ['Ship, systems tab (full-screen mode)', () => {
-    strip('DECK      Helm: Bea · holding heading', 'Day 0 · 00:20     1x');
-    box('M2', 'Ship', 0, 26, W, 34, 'mode', ['Red Kestrel    [Systems]  Crew  Cargo  Loadout                [1-4] tabs · [I] close · [Esc]']);
+    strip('DECK      Helm: Bea · holding heading      BATTLE STATIONS      ◆ 1 · ▲ 2', 'Day 0 · 00:20     1x');
+    box('M2', 'Ship', 0, 26, W, 34, 'mode', ['PATROL CORVETTE    [1] Systems   [2] Crew   [3] Cargo   [4] Loadout']);
     box('', 'Plan', 0, 60, 760, 440, 'mode', [], { h: 404, text: 'the ship plan at large scale: every system by state, hazards, crew and their work' });
     box('', 'Systems', 760, 60, 520, 440, 'mode', [
-      'SYSTEM            HEALTH  POWER   STATE',
-      '^Reactor M          100%   –       on        [off]',
-      'Main engine        100%   ok      on',
-      'RCS ×4             2 dmg  ok      on',
-      '^Coilgun (nose)     100%   ok      on        [off]',
-      'Autocannon (port)   40%   ok      damaged',
-      'Laser (stbd)       100%   none    cut off',
-      'Life support       100%   ok      on',
+      'SYSTEM                 HEALTH  POWER   STATE',
+      '^Reactor M               100%   –       on        [off]',
+      'Main engine             100%   ok      on',
+      'RCS ×4                  1 dmg  ok      on',
+      '^Coilgun (NOSE)          100%   ok      on        [off]',
+      'Autocannon (FWD PORT)    40%   ok      damaged',
+      'Autocannon (FWD STBD)   100%   ok      on',
+      'Harpoon (AFT PORT)      100%   ok      on',
+      'Laser (AFT STBD)        100%   none    cut off',
+      'Life support            100%   ok      on',
       '...']);
     box('', 'Damage control', 0, 500, 760, 274, 'mode', [
-      'TASK                         WHERE        WHO',
-      'Seal breach                  HOLD         Bea',
-      'Repair autocannon (port)     BRIDGE       unassigned',
-      'Reconnect conduit            BRIDGE       Ada',
-      'Treat light wound            HOLD         after battle stations']);
+      'TASK                            WHERE        WHO',
+      'Seal breach                     HOLD         Cole',
+      'Repair autocannon (FWD PORT)    BRIDGE       unassigned',
+      'Repair conduit ×2               HOLD         Ada',
+      'Repair RCS thruster             outside      after battle stations']);
     box('', 'Power', 760, 500, 520, 274, 'mode', [
       'CIRCUIT 1   reactor M · 3.0 of 3.0 MW',
       '            store ▮▮▮▮▮▮▮▮▯▯ 80%',
-      'CUT OFF     Laser (stbd): no reactor reaches it',
+      'CUT OFF     Laser (AFT STBD): no reactor reaches it',
       '',
-      'A cut conduit in the BRIDGE strands the laser']);
-    box('', 'foot: the one-line feed', 0, 774, W, 26, 'mode', ['Crew: Ada back inside']);
+      'Two cut conduits in the HOLD strand the laser']);
+    box('', 'foot: the one-line feed and the close keys', 0, 774, W, 26, 'mode',
+      ['Crew: Ada back inside' + ' '.repeat(89) + '[I] close · [Esc]']);
   }],
   '12': ['Orders menu (helm, cruise)', () => {
     strip('HELM', 'Day 0 · 00:33     1x');
     emptySlots();
     stack(12, 194, [
-      ['P5', 'Objective (compact)', 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 1.4 d left']],
+      ['P5', 'Objective (compact)', 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 5.2 d left']],
       ['H2', 'Navigation', 'full', [
         'ORBIT  Earth · alt 400 km',
-        '       Ap 403 km  T-24:10',
-        '       Pe 397 km  T-1 h 10 m',
+        '       Pe 397 km  T-8:40',
         'NAV    Shackleton Ice',
-        '       1,240 km · opening 220 m/s',
-        '       closest 3.2 km T-2 h 05 m',
-        'NEXT   burn 1/2 · T-12:05',
-        '       420 m/s · helm flies it',
-        'PLAN   Δv 860 · leaves 380 m/s']],
+        '       384,000 km · at the Moon',
+        '       arrival T-4.2 d',
+        'NEXT   burn 1/1 · T-12:05',
+        '       3,084 m/s · helm flies it',
+        'PLAN   Δv 3,877 · leaves 1,729 m/s']],
     ]);
     box('C1', 'Orders menu (O)', 330, 430, 620, 250, 'cond', [
       '^HELM       [1] Fly the planned burns   [2] Match velocity •',
@@ -544,9 +565,9 @@ const layouts = {
     box('H1', 'Flight display', 440, 688, 400, 100, 'full', [
       'ORBIT · auto                 7,672 m/s',
       '▢main ▢turn ▢strafe          assist ON',
-      'Δv 1,240 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
+      'Δv 5,606 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
     shipLights();
-    box('H5', 'scope', 1220, 740, 48, 48, 'compact', ['3']);
+    box('H5', 'Contact scope · 50 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope (cruise, 50 km): Highport and the Hauler Kestrel, 3 km off' });
     ship(640, 380); velocity(640, 380);
   }],
 };

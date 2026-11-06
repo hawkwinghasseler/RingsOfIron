@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 9.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 10.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -295,7 +295,7 @@ frame changes, the frame tag on H1 and on the velocity markers is highlighted fo
 ### 4.6 The visibility matrix
 
 ● shown in full · ◐ compact face · ! only while its own condition holds · – hidden.
-"Full-screen" means any of M1 to M6 is open.
+"Full-screen" means any of M1 to M6 is open (M3 is a panel, but the HUD treats it the same).
 
 | Widget | Helm cruise | Helm warp | Helm approach | Helm combat | Fire control | Gun | Deck | Deck combat or emergency | Docked | Full-screen |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -702,7 +702,7 @@ widget that shows the setting is not on screen.
    in M5; by default the one with the soonest deadline.
 
 "+2 more contracts" under it when more are held. **Compact face**, two lines: the job ("Deliver 40
-Food"), then where and the time left ("→ Shackleton Ice · 1.4 d left"). A contract heading is too long for one
+Food"), then where and the time left ("→ Shackleton Ice · 5.2 d left"). A contract heading is too long for one
 line of the column at the minimum text size.
 
 In combat, P5 shows only when the tracked contract is a fight (a defence, a bounty, a convoy), compact,
@@ -815,42 +815,63 @@ assist; needs exposing), `Navigation.deltaVLeft` (delta-v), `ShipStatusProvider`
 
 ```
 ORBIT  Earth · alt 400 km
-       Ap 403 km  T-24:10
-       Pe 397 km  T-1 h 10 m
+       Pe 397 km  T-8:40
 NAV    Shackleton Ice
-       1,240 km · opening 220 m/s
-       closest 3.2 km T-2 h 05 m
-NEXT   burn 1/2 · T-12:05
-       420 m/s · helm flies it
-PLAN   Δv 860 · leaves 380 m/s
+       384,000 km · at the Moon
+       arrival T-4.2 d
+NEXT   burn 1/1 · T-12:05
+       3,084 m/s · helm flies it
+PLAN   Δv 3,877 · leaves 1,729 m/s
 ```
 
 Each line fits the 34-character budget. About 175 units tall.
 
-- The ORBIT lines show the time to each apsis. The period, the speed at closest approach and the
-  rest are in the expanded face and the map.
-- The NAV lines appear only with a nav target.
-- NEXT names the next event of any kind: a burn, a change of sphere of influence ("enters Moon SOI
-  T-2.4 d"), an impact, an arrival.
-- PLAN appears only with burns planned: the Δv the plan needs and what it leaves. The Δv left is
-  H1's, so PLAN doesn't repeat it. When the plan needs more than is left the line reads "short 380
-  m/s" in caution, and P2 leaves PLAN SHORT to it.
+- The ORBIT lines show the time to each apsis. An apsis due after the next burn is left out, since
+  the burn changes the orbit before it comes (above, the Ap would come 46 minutes after the Pe, past
+  burn 1). The period, the speed at closest approach and the rest are in the expanded face and the
+  map.
+- The NAV lines appear only with a nav target. For a Nav around the same body as the ship, they give
+  the range, closing or opening, and the closest approach along the plan ("1,240 km · closing 220
+  m/s", "closest 3.2 km T-2 h 05 m"). For one around another body, the range rate swings with the
+  ship's own orbit, and a closest approach worked out on an orbit that leaves out that body's pull
+  (as `Navigation.approach` does) means nothing, so the second line names the body ("at the Moon")
+  and the third gives the plan's arrival.
+- A trip to another body is planned a leg at a time, as the game plans it (`PlayerTransfer`): the
+  burn that leaves this sphere of influence now, then the capture and the approach once the ship has
+  crossed into the next. So before the crossing the plan holds one burn ("burn 1/1"), the capture
+  shows as an event of its own at the planner's estimate (the warp face below), and PLAN's Δv counts
+  it.
+- The sample is the corvette in Highport's orbit, planning the trip to Shackleton Ice, which orbits
+  the Moon 100 km up. The planner's Hohmann transfer takes 3,084 m/s to leave; the ship crosses into
+  the Moon's sphere 3.3 days later, is captured at periapsis for about 793 m/s, and meets the station
+  one orbit after that (`RoutePlanner`'s arrival estimate), 4.2 days out. The corvette's one Small
+  tank holds 2,000 kg of propellant (its 2.6 t of tank contents include 600 kg of oxygen and
+  nitrogen), which at 700 km/s gives about 8,750 m/s with an empty hold. The delivery's 40 Food
+  weigh 20 t, so with them aboard and the tanks at 72% it has 5,606.
+- NEXT names the next event of any kind: a burn, a change of sphere of influence ("Moon SOI T-3.3
+  d"), a capture, an impact, an arrival.
+- PLAN appears only with burns planned or a leg to come: the Δv the plan needs and what it leaves.
+  The Δv left is H1's, so PLAN doesn't repeat it. When the plan needs more than is left the line
+  reads "short 380 m/s" in caution, and P2 leaves PLAN SHORT to it.
 
 **Warp face.** ORBIT and NAV shrink to one line each, and NEXT lists the next three events, each on a
 row of 24 units with a warp-to key:
 
 ```
-ORBIT  Earth · alt 400 km
-NAV    Shackleton Ice · 1,240 km
-NEXT   burn 1/2      T-2 h 05 m  ▸
-       Moon SOI      T-2.4 d     ▸
-       arrival       T-3.1 d     ▸
-PLAN   Δv 860 · leaves 380 m/s
+ORBIT  Earth · alt 333,000 km
+NAV    Shackleton Ice · 95,000 km
+NEXT   Moon SOI      T-9 h 30 m  ▸
+       capture       T-1.2 d     ▸
+       arrival       T-1.3 d     ▸
+PLAN   Δv 793 · leaves 1,729 m/s
 ```
 
+(Day 2 of the same trip, coasting after burn 1, with Δv 2,522 left. The capture isn't planned until
+the crossing, so its time and Δv are the planner's estimates until then.)
+
 **Compact face** (combat): one line, the most pressing of: the next event if it is due within
-30 minutes ("NEXT   burn 1/2 · T-12:05"), else the Nav and its distance ("NAV    Shackleton Ice ·
-1,240 km"). Hidden if there is neither. In an approach H2 is hidden: H3 names the station and has the
+30 minutes ("NEXT   burn 1/1 · T-12:05"), else the Nav and its distance ("NAV    Shackleton Ice ·
+384,000 km"). Hidden if there is neither. In an approach H2 is hidden: H3 names the station and has the
 distance.
 
 **Data.** `OrbitInfoProvider`, `Navigation.readout` pieces (structured, not strings),
@@ -1270,7 +1291,7 @@ below.
 - **Under warp.** Only Nav and objective labels.
 - **Hover card.** Hovering a contact (or its scope glyph) shows a small card: name, kind, faction,
   state (hostile, fleeing, disabled, surrendered, wreck, docked), range, and the one-line detail the
-  traffic map already has ("to Gateway, 2 h"). A click selects as today. This is how a player learns
+  traffic map already has ("to Anvil Yards, 2 h"). A click selects as today. This is how a player learns
   about a contact without locking it.
 
 ### W2 Velocity markers
@@ -1314,8 +1335,15 @@ W1's cluster label, so the two read alike.
 
 ## 10. Full-screen modes
 
-Every mode has the same frame: a title row with its tabs, the content, and a foot row with the one-line
-message feed and the keys to change tab and close. P1 stays above, P3 and X3 still interrupt.
+Every mode has the same frame: a title row with its tabs, each tab with its key; the content; and a
+foot row with the one-line message feed and the keys that close the mode (its own key and Esc). P1
+stays above, P3 and X3 still interrupt. Modes take the whole screen, except M3 (section 10.3).
+
+A tab's key is its number, 1 to 5 in the order the tabs are shown. While a mode with tabs is open,
+the number keys switch its tabs, so the helm, autopilot and shield orders on them (C1) wait
+until it closes; the map has no tabs and leaves them working, since the plan is flown from there.
+M3's station keys work inside it too: T, Y and J switch to their tab, and close M3 when their tab is
+already showing.
 
 ### 10.1 M1 Map
 
@@ -1324,9 +1352,10 @@ Its panels are rebuilt:
 
 | Panel | Zone | Content |
 |---|---|---|
-| Plan | Left, 320 wide | Orbit now (body, Ap and Pe with times, period); the burns as a list (number, T-, Δv, prograde and radial); the selected burn's result; totals (Δv need and have, arrival); actions: Helm flies burns, Autopilot, Warp to next burn, Clear |
-| Target and traffic | Right, 320 wide | The Nav card (name, kind, detail line, distance, closest approach); transfer: Plan, Accept, Discard; a contact list sortable by distance or kind; layer toggles: stations, haulers, pirates, derelicts, objectives, faction tension |
-| Timeline | Bottom, full width between the panels, 90 tall | A time axis from now to the last event: burns, apsides, sphere-of-influence changes, impact, arrival, contract deadlines. Click an event to centre the map on it; a warp-to on each future event |
+| Plan | Left, 320 wide | Orbit now (body, Ap and Pe with times, leaving out an apsis past the next burn as H2 does, period); the burns as a list (number, T-, Δv, prograde and radial), then the leg still to come when the trip goes on into another sphere of influence (its capture, with the estimated Δv and time, planned at the crossing); the selected burn's result; totals (Δv need and have, arrival); actions: Helm flies burns, Autopilot, Warp to next burn, Delete burn (the selected one), Clear all |
+| Target and traffic | Right, 320 wide | The Nav card (name, kind, detail line, distance, closest approach); Next target; transfer: Plan, Accept, Discard; a contact list sortable by distance or kind; layer toggles: stations, haulers, pirates, derelicts, objectives, faction tension |
+| View | Top of the map, between the panels | Centre (cycles what the map centres on), Fit (the plan in view), All traffic (zooms out to every craft), as today's VIEW row |
+| Timeline | Bottom, full width between the panels, 90 tall | A time axis from now to the last event: burns, apsides, sphere-of-influence changes, a leg's capture, impact, arrival, contract deadlines. Click an event to centre the map on it; a warp-to on each future event |
 
 The tension readout leaves the default map face and becomes a layer.
 
@@ -1344,14 +1373,16 @@ time).
 
 ### 10.3 M3 Station
 
-Docked only. Tabs: **Market** (T), **Yard** (Y), **Shipyard**, **Missions** (J), **Hire**, each only
+Docked only. M3 is the one mode that doesn't take the whole screen: a panel 1,120 wide and as tall as
+its tab needs, up to the full height, over the docked view (the Market at Highport is four rows; the
+Yard can run long and scrolls). Tabs: **Market** (T), **Yard** (Y), **Shipyard**, **Missions** (J), **Hire**, each only
 where the station offers it: Shipyard where a faction sells ships (Anvil Yards, Shackleton Ice; not
 Highport), Hire at any station that isn't hostile. A right rail
 on every tab: credits, standing with the station's faction, hold used of capacity, tanks.
 
 | Tab | Content |
 |---|---|
-| Market | Today's `TradeWindow`: per commodity stock, buy, sell, held, on order, and the trade buttons |
+| Market | Today's `TradeWindow`: per commodity stock, buy, sell, held, on order, and the trade buttons; salvaged parts aboard, which every station buys and none sells. Under the table, the held deliveries this market can supply, with how much is aboard and the time left ("Deliver 40 Food → Shackleton Ice · 12 of 40 aboard · 5.2 d left"), since what to buy here depends on them |
 | Yard | Repairs (the damage list and Repair all), supplies (tanks and air, with their cost), refits (each hardpoint with new, used and salvaged options), furnishings (buy and arrange), Rebuild decks (opens the ship editor) |
 | Shipyard | Ships for sale (price, after trade-in, locked and why); your ship's trade-in; a prize in tow (sell or turn in, with terms) |
 | Missions | Offers (title, giver, terms, note, locked and why), each with Take; the faction tension line; the contracts already held, one line each with Give up, so the player can weigh a new job against them (their full detail is in M5) |
@@ -1413,9 +1444,10 @@ Each walkthrough is what is on screen, nothing more. The grey-box wireframe for 
 
 ![Helm, cruise](wireframes/01-helm-cruise.png)
 
-P1 (HELM, clock, warp) · P5 objective (compact) · H2 navigation · H1 flight display · H4 four quiet
-lights · H5 as a small button (no contacts within 50 km). P2, P3 and P4 are empty and invisible. About
-10 lines of text, against about 40 today.
+P1 (HELM, clock, warp) · P5 objective (compact) · H2 navigation · H1 flight display · H4 three quiet
+lights (the corvette has no shield emitter) · H5 at its cruise range of 50 km, holding Highport and the
+hauler the ship has just left (with nothing inside 50 km it shrinks to a 48 x 48 button). P2, P3 and
+P4 are empty and invisible. About 10 lines of text, against about 40 today.
 
 ### 11.2 Helm, warp
 
@@ -1486,13 +1518,25 @@ can fix); P1. The flight instruments retire.
 
 ![Map](wireframes/09-map.png)
 
-### 11.10 Station terminal
+The plan to Shackleton Ice at the moment of 11.1: one burn planned, and the capture at the Moon shown
+as an estimate until the crossing plans it. The view row sits between the panels, and the timeline
+runs to the contract's deadline. The map has no tabs, so the number keys keep the helm orders.
 
-![Station terminal](wireframes/10-station.png)
+### 11.10 Station
+
+![Station](wireframes/10-station.png)
+
+M3 as a panel over the docked view, as tall as its tab. Highport's Market is four rows (it trades
+water, food and machinery, and buys salvage), with the delivery this market can supply under the
+table. The tabs carry their numbers, and T closes the panel from the Market.
 
 ### 11.11 Ship, systems
 
 ![Ship systems](wireframes/11-ship-systems.png)
+
+Battle stations, with a breach in the HOLD that Cole seals while Bea holds the heading, the FWD PORT
+autocannon damaged, and the laser cut off by two cut conduits. The RCS repair is outside, so it waits
+for battle stations to end. P1's chip counts the breach and the two guns out of action (SYSTEM DOWN).
 
 ### 11.12 Orders menu
 
@@ -1612,7 +1656,7 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 | `WeaponStatusProvider` | New | Per mount: name, position, weapon, state, reload, power, stunned, in arc, hit chance on the lock, ammunition, controller; missiles; the decoy's cooldown; point defense active |
 | `CaptainStatusProvider` | New | Condition and bleed-out, suit on, suit air, local air, carried item |
 | `FlightStatus` | Extend `ShipStatusProvider` or new | Thrust per axis, rotation assist, delta-v left, acceleration, mass, frame velocities |
-| `NavigationProvider` | New, over `Navigation` | Structured readout: nav target, distance, closing, closest approach, next events (burns, apsides with times, SOI changes, impact, arrival), plan Δv |
+| `NavigationProvider` | New, over `Navigation` | Structured readout: nav target, distance, closing, closest approach, next events (burns, apsides with times, SOI changes, a leg's capture, impact, arrival), plan Δv. An accepted trip to another body keeps the leg still to come (the capture's estimated time and Δv, and the arrival) with its `TransferLegComponent`: today accepting drops the proposal and keeps only the burns, so after burn 1 the capture has no time and the plan's Δv is gone |
 | `DockingProvider` | New, over `PlayerDocking` | Ports, selected, armed, clearance state, the approach (distance, lateral, angle, closing, safe speed), capture state |
 | `StationProvider` | New, gathering existing | Station name, faction, standing, services available with counts, infirmary |
 | Contact state | Change `HudMarkerComponent` | Allegiance and state as a value (from `HostileLabel`), not only tint and label text |
@@ -1634,7 +1678,8 @@ The existing providers (`TradeProvider`, `YardProvider`, `MissionProvider`, `Boa
   becomes each object's main action (P6).
 - **Esc closes the topmost thing**: the inspect card, then a mode, then (with nothing open) the pause
   menu, as `GameShell.hudWindowOpen` does today.
-- **The same key closes the mode it opened**; a mode's tab keys switch tabs inside it.
+- **The same key closes the mode it opened**; a mode's tab keys (the tabs' numbers, and in M3 T, Y
+  and J) switch tabs inside it (section 10).
 - **One mode at a time.** Opening another replaces it.
 - **Gamepad.** Every mode and every clickable widget is reachable with `FocusNav`. In the HUD, the pad's
   Back layer opens modes as today. The inspect card follows the focused object.
@@ -1693,3 +1738,4 @@ largest scale, and the centre stays clear.
 | 7 | 3 (VFD critique) | "Point defense" spelled as the game spells it (`point_defense`), so the three designs share one string. H7's missile row is the total across launchers, ready while any can fire; F2 splits it by launcher |
 | 8 | 2 and 4 (cassette and NASA-punk critiques) | Sample data true to the game: the corvette's S port is cleared to Highport's port 2, coming in at 120 m too fast for the 4.9 m/s safe speed there; Highport sells no ships, so X1 lists hiring on its own line, and M3 shows Shipyard and Hire only where they are offered; F1's kiter moves along the line of sight. F4 names each missile's shooter instead of a bearing with no reference. Section 12.4 says which numbers are values drawn at 15. H4's power line shows the output and adds the rating only when damage holds the output under it. At fire control the master alert cue sits above the rack. H5's 5 km step is justified by fights that reach 5 km. W5 notes that the lead reticle sits inside the lock mark at fight zooms |
 | 9 | 3 (VFD critique) | H6's example closes at 12 m/s (pilots close at 80 m/s at most), and wireframe 04's H1 reads the kiter's 12 m/s in the LOCK frame, matching F1 |
+| 10 | 3 (cassette critique) | Sample data true to the game's geography and ships: Shackleton Ice orbits the Moon, so from Highport's orbit it is 384,000 km away, and the planner's trip is 3,084 m/s out, about 793 to capture and 4.2 days; the corvette's 2,000 kg of propellant give about 8,750 m/s with an empty hold, so with the delivery's 20 t of food aboard H1 reads 5,606 at 72% (the gunship's 4,000 kg give it 6,831); the delivery's deadline (5.2 d) outlasts the trip; the market at Highport (an agricultural dome) trades water, food, machinery and salvage; Gateway, which the game doesn't have, becomes Anvil Yards; the ship is named by its class. H2 leaves out an apsis past the next burn, and for a Nav around another body names the body and gives the arrival in place of closing and the closest approach. A trip to another body is shown as the game plans it, a leg at a time: one burn before the crossing, then the capture as an estimated event, which H2, M1's burns list and the timeline show and section 14's NavigationProvider keeps. Mode tabs carry their keys (their numbers, which take the helm orders' keys only while a mode with tabs is open) and the foot the close keys. M1 lists all of today's map controls (Delete burn, Next target, Centre, Fit, All traffic). M3 becomes a panel as tall as its tab, and its Market lists the held deliveries it can supply. Wireframe 01's scope shows at 50 km, since the ship has just left Highport, which the map at the same moment lists 3 km off. Wireframe 11: Bea flies and Cole seals the breach, the P1 chip counts the breach and the two guns out of action, conduits are repaired (two cuts strand the laser), and the job held for battle stations is the EVA one |
