@@ -1,6 +1,7 @@
 package com.ringsofiron.uihud.variants.cassette.screens;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IntArray;
 import com.ringsofiron.uihud.providers.BoardingProvider;
 import com.ringsofiron.uihud.providers.BoardingProvider.BoardingBoard;
@@ -24,6 +25,7 @@ final class BoardingPage extends ListPage {
     private static final float SIDE_W = 300f;
     private Boards b;
     private final IntArray kinds = new IntArray(), refs = new IntArray();
+    private final Array<Integer> byValue = new Array<>();
     private String name = "", nameCaps = "";
     private final String[] drums = new String[3];
     private final int[] drumAt = {-1, -1, -1};
@@ -57,7 +59,8 @@ final class BoardingPage extends ListPage {
         add(RECALL, 0);
         if (bb.parts.size > 0 || bb.salvage) {
             add(HEAD, 1);
-            for (int i = 0; i < bb.parts.size; i++) add(PART, i);
+            mostValuableFirst(bb.parts, byValue);
+            for (int i = 0; i < byValue.size; i++) add(PART, byValue.get(i));
         }
         if (bb.cargo.size > 0) {
             add(HEAD, 2);
@@ -227,9 +230,12 @@ final class BoardingPage extends ListPage {
         p.flaps(rx, by + 30f, f, Math.max(8, Math.min(26, f.length())), 10f, 20f, 14f, Yard.FLAP_TEXT);
         p.legend(bb.byEva ? "ALONGSIDE, NOT LATCHED" : "LATCHED", rx, by + 70f, Yard.INK);
         p.paper(rx, by + 82f, SIDE_W - 32f, 44f);
-        String st = bb.state.isEmpty() ? "" : bb.state;
-        p.typed(Ledger.cut(st, 34), rx + 8f, by + 99f, 13f, Paper.INK);
-        if (st.length() > 34) p.typed(Ledger.cut(st.substring(Math.min(34, st.length())), 34), rx + 8f, by + 117f, 13f, Paper.INK);
+        String st = state(bb);
+        // Two typed lines, broken at a word
+        int cut = st.length() <= 34 ? st.length() : st.lastIndexOf(' ', 34);
+        if (cut <= 0) cut = Math.min(34, st.length());
+        p.typed(st.substring(0, cut), rx + 8f, by + 99f, 13f, Paper.INK);
+        if (cut < st.length()) p.typed(Ledger.cut(st.substring(cut).trim(), 34), rx + 8f, by + 117f, 13f, Paper.INK);
         counter(p, 0, "PARTY ABOARD", bb.aboard, rx, by + 150f);
         counter(p, 1, "DEFENDERS", bb.defenders, rx, by + 200f);
         counter(p, 2, "PRISONERS", bb.prisoners, rx, by + 250f);
@@ -261,5 +267,27 @@ final class BoardingPage extends ListPage {
         }
         p.legend(legend, x, y, Yard.INK);
         p.drums(x, y + 8f, drums[i], 15f, 22f, 16f, false);
+    }
+
+    /** The parts' indices, most valuable first, those still on the hull before those already off it. */
+    static void mostValuableFirst(Array<Part> parts, Array<Integer> out) {
+        out.clear();
+        for (int i = 0; i < parts.size; i++) out.add(i);
+        out.sort((x, y) -> {
+            Part px = parts.get(x), py = parts.get(y);
+            if (px.off != py.off) return px.off ? 1 : -1;
+            return Double.compare(py.value, px.value);
+        });
+    }
+
+    /**
+     * How the other ship stands, in the game's words; a beaten craft nobody aboard defends needs no
+     * party, since the first part marked or cargo taken takes it ({@code Boarding.takeUndefended}).
+     */
+    static String state(BoardingBoard bb) {
+        if (bb.salvage && !bb.taken && !bb.boarding && bb.defenders == 0 && bb.disabled) {
+            return "Nobody aboard: the first part marked or cargo taken takes it";
+        }
+        return bb.state;
     }
 }

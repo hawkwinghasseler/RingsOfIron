@@ -111,7 +111,8 @@ final class MissionsPage extends ListPage {
         Job j = job(sel);
         if (j == null) return;
         if (kinds.get(sel) == OFFER) softKey("TAKE", j.locked.isEmpty() ? null : Fmt.upper(j.locked));
-        else guardedKey("GIVE UP", null);
+        else guardedKey("GIVE UP", null, "Give up " + j.title + "? Press again: it costs standing"
+                + (j.giver.isEmpty() ? "" : " with " + j.giver));
     }
 
     @Override

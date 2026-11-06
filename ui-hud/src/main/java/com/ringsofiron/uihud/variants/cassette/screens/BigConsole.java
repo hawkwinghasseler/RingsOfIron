@@ -112,6 +112,14 @@ final class BigConsole extends YardPart implements Hits.Target {
         closing = false;
     }
 
+    /** Puts the console back up on the tab it had, settled, without rising afresh: what stood over it has gone. */
+    void resume(HudData data) {
+        this.data = data;
+        visible = true;
+        riseT = RISE;
+        refreshNow();
+    }
+
     /** Asks to close at the next frame: an order handed the player to the deck (placing furniture, the ship editor). */
     void closeSoon() {
         closing = true;
