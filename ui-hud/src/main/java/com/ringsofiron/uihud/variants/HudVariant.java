@@ -3,6 +3,7 @@ package com.ringsofiron.uihud.variants;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.Insets;
+import com.ringsofiron.uihud.widgets.MapPainter;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -122,5 +123,17 @@ public interface HudVariant {
      * close whole.
      */
     default void close(ClassicWindow window) {
+    }
+
+    /**
+     * How the full-screen map looks under this variant: a {@link MapPainter} that draws every piece of
+     * it (the backdrop, the orbits, the bodies, the marks, the labels, the traffic, the burn handles,
+     * the scale bar and the title), or null for the classic look. Read once, after {@link #attach}.
+     * The map keeps where everything goes, the zoom, the panning and the clicks. A variant that also
+     * {@link #replaces} {@link ClassicWindow#MAP} shows the side panel's contents in its own panels,
+     * and keeps the canvas clear of them with {@code host.hud().getManeuverMap().setCanvasInsets}.
+     */
+    default MapPainter mapPainter() {
+        return null;
     }
 }

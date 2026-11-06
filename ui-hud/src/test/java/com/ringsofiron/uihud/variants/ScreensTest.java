@@ -9,6 +9,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ScreensTest {
@@ -255,5 +256,6 @@ class ScreensTest {
             assertFalse(v.open(w), w.name());
             assertFalse(v.showing(w), w.name());
         }
+        assertNull(v.mapPainter(), "the classic map's look");
     }
 }

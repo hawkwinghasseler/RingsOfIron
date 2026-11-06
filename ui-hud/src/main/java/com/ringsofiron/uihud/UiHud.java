@@ -913,6 +913,9 @@ public class UiHud implements Disposable {
             screenLayer.clearChildren();
             variant = null;
         }
+        // The map as the classic HUD has it, until the next variant gives it its own look and insets
+        maneuverMap.setPainter(null);
+        maneuverMap.setCanvasInsets(0f, 0f, 0f, 0f);
         variantId = entry.id;
         hidden.clear();
         HudVariant next = entry.create();
@@ -923,10 +926,13 @@ public class UiHud implements Disposable {
                 for (ClassicPart p : ClassicPart.values()) if (!next.keeps().contains(p)) hidden.add(p);
                 variant.resize(com.badlogic.gdx.Gdx.graphics == null ? 0 : com.badlogic.gdx.Gdx.graphics.getWidth(),
                         com.badlogic.gdx.Gdx.graphics == null ? 0 : com.badlogic.gdx.Gdx.graphics.getHeight(), viewports.getUiScale());
+                maneuverMap.setPainter(next.mapPainter());
             } catch (RuntimeException e) {
                 // A variant that cannot start leaves the classic HUD up rather than none
                 variantLayer.clearChildren();
                 screenLayer.clearChildren();
+                maneuverMap.setPainter(null);
+                maneuverMap.setCanvasInsets(0f, 0f, 0f, 0f);
                 hidden.clear();
                 variant = null;
                 variantId = HudVariants.CLASSIC;

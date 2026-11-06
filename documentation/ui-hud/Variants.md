@@ -125,7 +125,7 @@ takes clicks only on its own actors: a click off them reaches the map or the wor
 
 | `ClassicWindow` | The classic window | What a screen reads and acts through |
 |---|---|---|
-| `MAP` | The map (M): its orbit canvas, and the side panel of orbit, burn, fly it, target and view | `orbitPath`, `planner`, `trafficMap`. The canvas stays the game's, with its zoom, panning, burn handles and contact picks, and fills the stage when the variant shows the panels: the classic side panel is hidden |
+| `MAP` | The map (M): its orbit canvas, and the side panel of orbit, burn, fly it, target and view | `orbitPath`, `planner`, `trafficMap`. The canvas stays the game's, with its zoom, panning, burn handles and contact picks, and fills the stage when the variant shows the panels: the classic side panel is hidden. Its look is `mapPainter()` (below) |
 | `CONSOLE` | The window E opens at a console | `console`: the console entity (its `SubsystemComponent` has the system, health and switch), what E found there, and the game's own actions at it ("Take fire control", with its key) |
 | `TRADE` | The station market (T, docked) | `trade` |
 | `YARD` | The yard (Y): repairs, tanks, refits, furnishings, Rebuild decks; away from a yard, the field refit | `yard` |
@@ -136,6 +136,53 @@ takes clicks only on its own actors: a click off them reaches the map or the wor
 | `LOG` | The notice log (L) | `messages`, the last fifty notices with their time |
 | `HELP` | The controls panel (F1) | `hints.collectAll(frame)`: every hint by where it applies, with the player's keys |
 | `GAME_OVER` | Ship lost or career over | `gameOver`: what happened, and the ways on with their keys. It opens and closes by itself; the game keeps its keys there (Enter, the quick load, Esc), so show them but don't take them |
+
+Furniture placing needs no screen of its own: while the player places furniture, the key hints say
+so (`keyHints.placing` and `placingText`), and a variant that hides the classic hint line shows
+that line in its place.
+
+### The map's look
+
+The map's orbit canvas stays the game's whoever shows its panels, but a variant can make it look its
+own. `mapPainter()` returns a `MapPainter`, read once after `attach`; null keeps the classic look.
+`MapPainter` itself is the classic look, so a variant extends it and overrides what it draws
+differently:
+
+- `color(role)` recolours every piece and keeps its shape. The roles are `MapPainter.Role`: the
+  backdrop, the body, moons and their orbits, the orbit now and planned, legs around a moon, a
+  proposed transfer, the target, the ship, the selected burn, impacts, each kind of contact, the
+  handles, the scale bar, the title and dim text.
+- `font()` is the labels' font. The map measures labels with it to keep them clear of each other.
+  `lineHeight()` is the gap between a contact's lines.
+- Each piece has its own method for its shape, called where the map has put it, in stage
+  coordinates:
+  - the screen: `backdrop`, `noOrbit`, `title`, `instructions`, `scaleBar`;
+  - the orbits: `path` (one piece of a path, already cut to the canvas), `body`, `ghost`,
+    `approach`, `burn`, `ship`, `moon`, `marker`, `mark`, `label`;
+  - the traffic: `contact`, `objective`, `targetBrackets`, `leader`, `contactName`,
+    `contactDetail`, `regions` (the tension readout);
+  - planning: `handle` (one of the selected burn's four).
+
+  A variant that shows the title, the instructions or the tension in its own panels draws nothing
+  in those.
+
+The map keeps where everything goes and when it shows: the zoom and panning, the clipping, what is
+pulled to the canvas's edge, the labels kept apart, the burn handles and what a click picks. So the
+mouse planning works the same under every look.
+
+A variant that `replaces(ClassicWindow.MAP)` also shows what the classic side panel did, in its own
+panels:
+
+- the orbit, burn and plan text, and the orders, through `planner`: `orbitText`, `burnText`,
+  `planText`, `selectedBurn`, `deleteSelected`, `clearBurns`, `warpToBurn`, `helmFlyBurns`,
+  `autopilot`, `nextTarget`, `planToTarget`, `hasTarget`, `acceptPlan`, `discardPlan` and
+  `hasProposal`;
+- the view, through `host.hud().getManeuverMap()`: `nextFocus`, `getFocus`, `fit` and `fitTraffic`.
+
+The classic panel is hidden then, and the canvas fills the screen. To keep it clear of the panels,
+call `getManeuverMap().setCanvasInsets(left, top, right, bottom)` (UI units). The orbits then fit
+and centre in what is left, and the scale bar and title sit there. The insets go back to 0 when the
+variant changes.
 
 ## The common data layer
 
