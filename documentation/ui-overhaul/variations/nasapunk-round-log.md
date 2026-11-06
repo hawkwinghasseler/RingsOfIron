@@ -11,7 +11,7 @@ at 1280 x 800.
 | Variation | Folder | Spec version drawn | State |
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18 | Converged in round 5; S7 to S9 drawn in round 7 |
-| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17 | Converged in round 5, and again at versions 13 to 17 in round 7 |
+| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17; C11 at 18 | Converged in round 5, and again at versions 13 to 18 in round 7; C11's questions and the crewless Raider are with the designer |
 | Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 13 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 13 in round 7 |
 
 ## Round 1 (3 November 2026)
@@ -286,7 +286,7 @@ and the game's numbers.
 | The station's services | T6, the station terminal on Contracts | C7, M3 on its Market tab, a panel over the docked view | S6, the station link's Yard tab |
 | Ship and crew | T7, the ship's book on Crew | C8, M2 on Systems in the corvette's fight | S7, the slate's Crew tab, with the new station order |
 | The log and the controls | T8, the book's Log tab; T9, the controls reference | C9, M5 on its Log tab; C10, M6 on its Keyboard tab | S8, the slate's Log tab |
-| The consoles | T10, CON at the same mount, anchored below it | | S9, the gun panel at a point-defense mount |
+| The consoles | T10, CON at the same mount, anchored below it | C11, the inspect card pinned on the same mount, with the station panel docked | S9, the gun panel at a point-defense mount |
 
 **New pieces in the kit.** A mark box for lists where Enter marks or leaves a row: filled cyan when
 marked (a command, so cyan), hollow and dim when not, and absent where the row can't be marked,
@@ -488,6 +488,25 @@ words for it, and Crew 3's wound is being treated (`CrewMedical.condition`).
 | Spec | Note sent this round | Landed |
 |---|---|---|
 | Task (CON) | A point-defense gun's panel could say what taking it costs: while the captain sits at a mount, that mount is in hand and hunts no missile (`PlayerGunnery.inHand`), so its side has only the other autocannon, which can't see across the hull. The stations spec's gun panel says so (10.2); CON lists only the switch and `V  take the gun` | |
+
+**C11, the inspect card on a gun.** The consoles row had no context screen, since the context spec
+gives a gun no panel: E at a gun takes it, and the system's numbers and switch are the inspect
+card's (D2). C11 draws that card pinned on the starboard autocannon, docked at Highport on day 0,
+with the P6 prompt beside the hull under the mount and, docked, the station panel (X1) in the right
+column, all three drawn for the first time. X1's lines are the game's on day 0: four of the board's
+five offers left once the delivery is taken, three of the day's three to five looking for a berth,
+nothing to repair, the propellant at C1's 72%, and the starting 5 000 with an empty hold. Checking
+it against the code raised five questions. The task designer's round 14 found a sixth, which the
+context screens draw too: First Play's Raider flies with nobody aboard.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Context (X1) | The sample's standing names a level ("Trusted (+42)"), but the game names none: standing is a number for each faction. C11 writes STANDING +0 | |
+| Context (X1) | The infirmary line when nobody was treated. C11 leaves it out, as it does a service the station doesn't offer. Should it say instead that nobody needed treating? | |
+| Context (D2) | A gun's Type: the game's system type is TURRET_MOUNT and its console is "Gun". C11 gives the weapon on the mount (Autocannon Mk1), as H7 lists it | |
+| Context (P1) | The helm field while docked: the game's bridge line has no docked case, so a helmsman at the helm "holds the heading" (`GameHudText.bridgeLine`). C11 draws that. Should it be empty, or say docked? | |
+| Context (H7, P6) | H7 says a point-defense mount is never in hand, but at a gun seat the game puts that gun in hand, point defense too (`PlayerGunnery.inHand`), and a gun aimed by hand hunts no missile. P6 at a point-defense gun could say what taking it costs, as the task and stations specs now do | |
+| Context (X2, 11.13) | First Play's Raider flies with nobody aboard: `GameScenario` spawns it with no crew and no cargo, while `HostileSpawns` crews the rails' pirates. Once it is disabled, the first strip order takes it (`Boarding.takeUndefended`), with no party, no defender, no prisoner and no cargo. X2's sample and 11.13, and so C4 and C6, assume a crewed Raider; a rails pirate ("Pirate raider 3") would have one. 11.13's P5 also keeps a bounty step, but the game pays a bounty the moment its ship is beaten (`ContractBoard`) | |
 
 **The slate's Log and the gun panel.** S8 draws the slate on its Log tab, docked after the fight,
 the latch and the way home, and S9 the gun panel at the forward starboard autocannon, docked. The

@@ -1,7 +1,7 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 17 when drawn, on branch
-`claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
+The context-driven functional spec (`functional-context.md`, version 17 when drawn and version 18 now,
+on branch `claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at 2x; sources are
 the HTML files here, using `context.js` and the shared kit in `../../nasapunk/mockups/`. From
@@ -213,6 +213,55 @@ and situations P1 names (version 16), so the gun seat has its own under fire con
 aims that gun alone, Fire or a click fires it, the wheel zooms and V stands up, and its heading says
 the rest are fire control's. The missile and the decoy share a row, as the strafe keys do, so each
 seat fits its columns.
+
+![Deck, docked, a gun inspected](c11-deck-gun.png)
+
+**C11, on deck, docked at Highport, with the starboard autocannon inspected (11.6 and 11.8).**
+This is the moment the other two variations draw as a gun panel (S9, T10), on day 0 just after
+docking. The spec gives a gun no panel. E at a gun takes it, as V does (4.3), so the system itself,
+with its numbers and its switch, belongs to D2, the inspect card over whatever the pointer rests on.
+The pointer went to the mount and a click pinned the card, so its switch acts. A dotted ring marks
+the subject, a dotted leader runs from it to the card, and the pin sits in the card's corner. The
+card holds the spec's fields in the game's numbers: the mount's name as H7 gives it, the weapon
+(Autocannon Mk1), health, circuit and powered, with stunned shown only while it is. The switch is
+a lit push button, as C1's orders are: ON is lit green while the gun is on, and the hint beside it
+says what a click does. P6 stands beside the hull under the mount, with the name once and E's verb
+in the game's words ("take the gun"). Inside the deck that spot is the systems', and the card holds
+the other side. Docked, X1 takes the right column with the spec's lines in the game's numbers:
+Highport is the Patrol's, at port 2. Standing is a number, since the game names no levels. The
+yard has nothing to repair and the propellant is at C1's 72%. The board posts five jobs a day and
+the delivery is taken, so four are left. Three are looking for a berth, and Hire, a tab in the
+terminal, has its name and count but no key. The infirmary has treated nobody, so it has no line.
+Nothing is bought yet (C7 is two minutes on), so the credits are the starting 5 000 and the hold is
+empty. P5 is compact with the delivery, H4 is compact and dark, and P1's helm field is the game's
+bridge line, which keeps a helmsman at the helm holding the heading while docked.
+
+## Round 9 critique (version 18)
+
+Version 18 gave the modes their missing data sources and a group's switch its rule when the members
+disagree (all on, then all off). No drawn screen changes. C11, new this round, draws D2, P6 and X1
+for the first time, and five questions went to the designer:
+
+- **X1's standing names a level ("Trusted (+42)"), but the game names none.** Standing is a number
+  for each faction, so C11 writes STANDING +0.
+- **X1's infirmary line when nobody was treated.** C11 leaves it out, as it does a service the
+  station doesn't offer. It could instead read that nobody needed treating.
+- **D2's Type for a gun.** The game's system type is TURRET_MOUNT, and its console is "Gun". C11
+  gives the weapon on the mount (Autocannon Mk1), which is what H7 lists.
+- **P1's helm field while docked.** The game's bridge line has no docked case: a helmsman at the
+  helm "holds the heading". C11 draws it so. It could instead be empty, or read docked.
+- **H7 says a point-defense mount is never in hand,** but at a gun seat the game puts that gun in
+  hand, point defense too (`PlayerGunnery.inHand`), and a gun aimed by hand hunts no missile. P6
+  at a point-defense gun could say what taking it costs, as the other two specs now do.
+
+The task designer's round 14 also found that First Play's Raider flies with nobody aboard:
+`GameScenario` spawns it with no crew, while `HostileSpawns` crews the rails' pirates. A disabled
+ship with nobody to fight for it is taken when the first strip order goes in
+(`Boarding.takeUndefended`), with no party, no prisoners and no cargo. X2's sample, 11.13 and so
+C4 and C6, with a defender in the bridge and four held, assume a crewed Raider, and 11.13's P5
+keeps a bounty step, though the game pays a bounty the moment its ship is beaten
+(`ContractBoard`). Both went to the designer with the rest. C4 and C6 stay as drawn until the spec
+answers.
 
 ## Round 8 critique (versions 16 and 17)
 
