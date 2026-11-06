@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UI context wireframes</title>
+<!--
+  Grey-box wireframes for documentation/ui-overhaul/functional-context.md.
+  Style-agnostic on purpose: boxes, labels and sample data only.
+  Open with ?n=01 .. ?n=12 to see one layout; render.js screenshots them all and checks the text fits.
+  Coordinates are UI units at the 1280 x 800 reference layout. Text is drawn at the spec's floor
+  (13 units, monospaced, section 12.4), so a line that fits here fits the budget in section 5.6.
+  Line prefixes: ^ a row of 24 units (it holds a control), # P3's size (22 units), ~ dim.
+-->
+<style>
+  :root {
+    --world: #34373c; --world-line: #8b9096; --world-text: #c9ccd0;
+    --box: #f3f3f1; --box-compact: #dcdcd8; --ink: #1d1f22; --ink-dim: #5d6166;
+    --rule: #222; --mode: #ececea; --caption: #f6f6f4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--caption); }
+  body { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; color: var(--ink); }
+  #frame { position: relative; width: 1280px; height: 856px; }
+  #screen { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; background: var(--world); overflow: hidden; }
+  #caption { position: absolute; left: 0; top: 800px; width: 1280px; height: 56px; background: var(--caption);
+    border-top: 1px solid #999; padding: 8px 14px; display: flex; align-items: center; gap: 22px; font-size: 13px; }
+  #caption .title { font-weight: bold; font-size: 15px; min-width: 300px; }
+  .key { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-dim); }
+  .sw { width: 22px; height: 14px; background: var(--box); border: 1.5px solid var(--rule); display: inline-block; }
+  .sw.cond { border-style: dashed; }
+  .sw.compact { background: var(--box-compact); }
+  .sw.interrupt { border-width: 3px; }
+  .sw.slot { background: transparent; border: 1.5px dashed #777; }
+  svg#world { position: absolute; left: 0; top: 0; }
+  .b { position: absolute; background: var(--box); border: 1.5px solid var(--rule); padding: 6px 7px 4px; }
+  .b.cond { border-style: dashed; }
+  .b.compact { background: var(--box-compact); }
+  .b.interrupt { border-width: 3px; padding: 4px 7px 2px; }
+  .b.mode { background: var(--mode); }
+  .b.slot { background: transparent; border: 1.5px dashed #6c7076; color: #aeb2b7; }
+  .b.dimmed { opacity: .45; }
+  .b.tight { padding: 1px 7px 2px; } /* P2: six rows of 24 in 150 */
+  /* the widget's name sits on its top border, like a legend, so it takes no room from the content */
+  .b .lg { position: absolute; top: -8px; left: 6px; font-size: 9.5px; line-height: 12px; padding: 0 3px;
+    background: var(--box); color: var(--ink-dim); white-space: nowrap; }
+  .b.compact .lg { background: var(--box-compact); }
+  .b.mode .lg { top: 3px; left: auto; right: 6px; background: var(--mode); }
+  .b.slot .lg { background: var(--world); color: #aeb2b7; }
+  .b .lg b { color: var(--ink); }
+  .b.slot .lg b { color: #aeb2b7; }
+  .b .ln { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 13px; line-height: 18px; white-space: pre; }
+  .b .ln.tall { line-height: 24px; }
+  .b .ln.big { font-size: 22px; line-height: 28px; font-weight: bold; }
+  .b .ln.dim { color: var(--ink-dim); }
+  .b .ph { border: 1px solid #9a9ea3; background: #fff; margin: 2px 0; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--ink-dim); text-align: center; padding: 0 8px; }
+  .w { position: absolute; font-size: 12px; color: var(--world-text); white-space: nowrap; }
+  .w.tag { font-weight: bold; }
+  .w.room { font-size: 10px; color: #8d9298; }
+  .t { position: absolute; font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 12px; line-height: 16px;
+    padding: 1px 4px; background: #1d1f22; color: #f3f3f1; border: 1.5px dashed #f3f3f1; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="screen"><svg id="world" width="1280" height="800"></svg></div>
+  <div id="caption"></div>
+</div>
+<script>
+const W = 1280, H = 800;
+const screen = document.getElementById('screen');
+const svg = document.getElementById('world');
+const NS = 'http://www.w3.org/2000/svg';
+
+function el(tag, attrs, parent = svg) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function line(x1, y1, x2, y2, dash = '', w = 1.2, c = 'var(--world-line)') {
+  el('line', { x1, y1, x2, y2, stroke: c, 'stroke-width': w, 'stroke-dasharray': dash });
+}
+function rect(x, y, w, h, opts = {}) {
+  el('rect', Object.assign({ x, y, width: w, height: h, fill: 'none', stroke: 'var(--world-line)', 'stroke-width': 1.2 }, opts));
+}
+function circ(cx, cy, r, opts = {}) {
+  el('circle', Object.assign({ cx, cy, r, fill: 'none', stroke: 'var(--world-line)', 'stroke-width': 1.2 }, opts));
+}
+function wtext(x, y, s, cls = '') {
+  const d = document.createElement('div');
+  d.className = 'w ' + cls; d.style.left = x + 'px'; d.style.top = y + 'px'; d.textContent = s;
+  screen.appendChild(d);
+}
+/** Text lines into a box. Prefixes: ^ a 24-unit row, # P3's size, ~ dim. */
+function addLines(d, lines) {
+  for (let l of lines) {
+    const p = document.createElement('div');
+    let cls = 'ln';
+    while (l && '^#~'.includes(l[0])) {
+      cls += { '^': ' tall', '#': ' big', '~': ' dim' }[l[0]];
+      l = l.slice(1);
+    }
+    p.className = cls;
+    p.textContent = l || ' ';
+    d.appendChild(p);
+  }
+}
+/**
+ * A widget box. kind: full | cond | compact | interrupt | mode | slot. h = 0 sizes it to its content.
+ * ph adds a placeholder picture { h, text } after the lines.
+ */
+function box(id, name, x, y, w, h, kind = 'full', lines = [], ph = null) {
+  const d = document.createElement('div');
+  d.className = 'b ' + kind;
+  Object.assign(d.style, { left: x + 'px', top: y + 'px', width: w + 'px' });
+  if (h) d.style.height = h + 'px';
+  if (id || name) d.innerHTML = `<span class="lg"><b>${id}</b> ${name}</span>`;
+  addLines(d, lines);
+  if (ph) {
+    const p = document.createElement('div');
+    p.className = 'ph'; p.style.height = ph.h + 'px';
+    p.textContent = ph.text; d.appendChild(p);
+  }
+  screen.appendChild(d);
+  return d;
+}
+/** Boxes stacked down from y with the zone's 6-unit gap; each item is [id, name, kind, lines, h]. */
+function stack(x, y, items, w = 308) {
+  for (const [id, name, kind, lines, h] of items) {
+    const d = box(id, name, x, y, w, h || 0, kind, lines);
+    y += d.offsetHeight + 6;
+  }
+  return y;
+}
+/** The master alert cue: a small lit chip with no legend. */
+function chip(x, y, w, text) {
+  const d = document.createElement('div');
+  d.className = 'b interrupt';
+  Object.assign(d.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: '24px', padding: '0 5px' });
+  d.innerHTML = `<div class="ln" style="line-height:18px">${text}</div>`;
+  screen.appendChild(d);
+}
+/** A D3 hazard tag in the world. */
+function tag(x, y, text) {
+  const d = document.createElement('div');
+  d.className = 't'; d.style.left = x + 'px'; d.style.top = y + 'px'; d.textContent = text;
+  screen.appendChild(d);
+}
+function centreClear() {
+  rect(360, 220, 560, 370, { 'stroke-dasharray': '3 6', stroke: '#5b6066' });
+  wtext(366, 224, 'centre kept clear', '');
+}
+function ship(cx, cy, label = '') {
+  rect(cx - 42, cy - 13, 84, 26, { fill: '#4a4e54' });
+  el('polygon', { points: `${cx + 42},${cy - 13} ${cx + 56},${cy} ${cx + 42},${cy + 13}`, fill: '#4a4e54', stroke: 'var(--world-line)' });
+  if (label) wtext(cx - 20, cy + 18, label);
+}
+function velocity(cx, cy) {
+  circ(cx + 70, cy, 7); line(cx + 70, cy - 11, cx + 70, cy - 7); line(cx + 70, cy + 7, cx + 70, cy + 11); line(cx + 77, cy, cx + 81, cy);
+  circ(cx - 70, cy, 7); line(cx - 75, cy - 5, cx - 65, cy + 5); line(cx - 75, cy + 5, cx - 65, cy - 5);
+}
+function contact(x, y, shape = 'circle', label = '', sub = '') {
+  if (shape === 'circle') circ(x, y, 5);
+  else if (shape === 'diamond') el('polygon', { points: `${x},${y - 7} ${x + 7},${y} ${x},${y + 7} ${x - 7},${y}`, fill: 'none', stroke: 'var(--world-line)', 'stroke-width': 1.2 });
+  else if (shape === 'square') rect(x - 5, y - 5, 10, 10);
+  if (label) wtext(x + 12, y - 9, label, 'tag');
+  if (sub) wtext(x + 12, y + 5, sub);
+}
+function lockMark(x, y) { // corner brackets
+  const r = 14, s = 6;
+  for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+    line(x + dx * r, y + dy * r, x + dx * (r - s), y + dy * r, '', 1.6, '#d8dbde');
+    line(x + dx * r, y + dy * r, x + dx * r, y + dy * (r - s), '', 1.6, '#d8dbde');
+  }
+}
+function navMark(x, y) { circ(x, y, 17, { 'stroke-dasharray': '4 3', stroke: '#d8dbde' }); }
+function edge(x, y, text) { wtext(x, y, text, 'tag'); }
+
+function caption(title) {
+  document.getElementById('caption').innerHTML =
+    `<span class="title">${title}</span>
+     <span class="key"><span class="sw"></span>shown</span>
+     <span class="key"><span class="sw cond"></span>only while its condition holds</span>
+     <span class="key"><span class="sw compact"></span>compact face</span>
+     <span class="key"><span class="sw interrupt"></span>interrupt or cue</span>
+     <span class="key"><span class="sw slot"></span>empty slot (nothing to show)</span>`;
+}
+
+// ---------------------------------------------------------------- shared pieces
+/** P1: seat and helm authority on the left, clock and warp on the right. */
+function strip(left, right, dim = false) {
+  const d = box('', '', 0, 0, W, 26, 'full' + (dim ? ' dimmed' : ''), []);
+  d.style.padding = '3px 12px';
+  d.insertAdjacentHTML('beforeend',
+    `<span class="ln" style="position:absolute;left:12px;top:3px"><b style="font-size:9.5px;color:#5d6166">P1</b>  ${left}</span>` +
+    `<span class="ln" style="position:absolute;right:12px;top:3px">${right}</span>`);
+}
+function emptySlots(left = true, right = true) {
+  if (left) box('P2', 'Caution and warning (empty: nothing wrong)', 12, 38, 308, 40, 'slot');
+  if (right) box('P4', 'Message feed (empty)', 960, 38, 308, 40, 'slot');
+}
+/** H4's compact lights. The starter corvette has no shield emitter, so three by default. */
+function shipLights(shields = false) {
+  box('H4', 'Ship condition (compact)', 12, 748, 308, 40, 'compact',
+    [shields ? '○ HULL  ○ SHIELDS  ○ POWER  ○ LIFE SUP' : '○ HULL     ○ POWER     ○ LIFE SUP']);
+}
+/** The starter corvette's deck at the default zoom: two rooms, HOLD aft (left) and BRIDGE forward. */
+function deckPlan() {
+  const x0 = 380, y0 = 300, t = 32.5;           // 16 x 6 tiles
+  rect(x0, y0, 16 * t, 6 * t, { fill: '#41454b' });
+  line(x0 + 8 * t, y0, x0 + 8 * t, y0 + 3.6 * t, '', 2, '#9aa0a6');
+  line(x0 + 8 * t, y0 + 4.6 * t, x0 + 8 * t, y0 + 6 * t, '', 2, '#9aa0a6');   // the door
+  wtext(x0 + 6, y0 + 6 * t - 16, 'HOLD', 'room'); wtext(x0 + 8 * t + 6, y0 + 6 * t - 16, 'BRIDGE', 'room');
+  for (const [x, y, w, h] of [[5, 1, 3, 2], [5, 3, 3, 2]]) rect(x0 + x * t, y0 + y * t, w * t, h * t, { stroke: '#6f747a' }); // cargo bays
+  rect(x0 + 14 * t, y0 + 2 * t, 2 * t, 2 * t, { stroke: '#6f747a' }); wtext(x0 + 14 * t + 4, y0 + 2 * t + 4, 'reactor', 'room');
+  rect(x0 + 9 * t, y0 + 1 * t, t, t, { stroke: '#9aa0a6' }); wtext(x0 + 9 * t - 2, y0 + 2, 'helm', 'room');
+  wtext(x0, y0 + 6 * t + 4, 'grey room names are for reference only: the game draws none', 'room');
+}
+function hatch(x, y, w, h, gap = 10) {
+  for (let i = -h; i < w; i += gap) {
+    const x1 = Math.max(x, x + i), y1 = y + Math.max(0, -i), x2 = Math.min(x + w, x + i + h), y2 = y + Math.min(h, w - i);
+    line(x1, y1, x2, y2, '', 1, '#6f747a');
+  }
+}
+
+const layouts = {
+  '01': ['Helm, cruise', () => {
+    strip('HELM', 'Day 0 · 00:33     1x');
+    emptySlots();
+    stack(12, 194, [
+      ['P5', 'Objective (compact)', 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 5.2 d left']],
+      ['H2', 'Navigation', 'full', [
+        'ORBIT  Earth · alt 400 km',
+        '       Pe 397 km  T-8:40',
+        'NAV    Shackleton Ice',
+        '       384,000 km · at the Moon',
+        '       arrival T-4.2 d',
+        'NEXT   burn 1/1 · T-12:05',
+        '       3,084 m/s · helm flies it',
+        'PLAN   Δv 3,877 · leaves 1,729 m/s']],
+    ]);
+    box('H1', 'Flight display', 440, 688, 400, 100, 'full', [
+      'ORBIT · auto                 7,672 m/s',
+      '▢main ▢turn ▢strafe          assist ON',
+      'Δv 5,606 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
+    shipLights();
+    box('H5', 'Contact scope · 5 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope (cruise, 5 km: the smallest step that holds every contact): Highport and the Hauler Kestrel, 3 km off, 60% out' });
+    centreClear(); ship(640, 400); velocity(640, 400);
+    edge(1100, 300, '◌ Shackleton Ice →');
+  }],
+  '02': ['Helm, time warp', () => {
+    strip('HELM', 'Day 2 · 21:45     1,000x rails');
+    emptySlots();
+    stack(12, 194, [
+      ['P5', 'Objective', 'full', ['Deliver 40 Food', '→ Shackleton Ice', '2.3 d left']],
+      ['H2', 'Navigation (warp face)', 'full', [
+        'ORBIT  Earth · alt 333,000 km',
+        'NAV    Shackleton Ice · 95,000 km',
+        '^NEXT   Moon SOI      T-9 h 30 m  ▸',
+        '^       capture       T-1.2 d     ▸',
+        '^       arrival       T-1.3 d     ▸',
+        'PLAN   Δv 793 · leaves 1,729 m/s']],
+    ]);
+    box('H1', 'Flight (warp)', 540, 757, 200, 31, 'compact', ['ORBIT   Δv 2,522 m/s']);
+    shipLights();
+    centreClear(); ship(640, 400);
+    edge(1100, 300, '◌ Shackleton Ice →');
+  }],
+  '03': ['Helm, docking approach', () => {
+    strip('HELM', 'Day 0 · 00:41     1x');
+    emptySlots(true, false);
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Station: Highport gives clearance:', '  port 2 is armed for you']);
+    const h3 = box('H3', 'Docking display', 440, 598, 400, 190, 'full', ['Port (S) → Highport #2 · armed'],
+      { h: 92, text: 'alignment picture (0.4 m left, 2° off)   |   closing gauge: 120 m, 6.2 m/s against a safe 4.9, in the FAST band' });
+    addLines(h3, ['clearance granted · contact T-19 s', '▣main ▢turn ▢strafe · assist ON · Δv 6,070']);
+    chip(704, 601, 132, 'MASTER CAUTION');
+    shipLights();
+    box('H5', 'Contact scope · 2 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope (auto range 2 km)' });
+    // world: station and corridor
+    rect(560, 70, 160, 120, { fill: '#41454b' }); wtext(566, 74, 'Highport', 'tag');
+    line(640, 190, 640, 380, '6 4', 1.4); line(620, 190, 620, 380, '2 6'); line(660, 190, 660, 380, '2 6');
+    wtext(668, 260, 'W4 corridor (fast)');
+    ship(640, 410); navMark(640, 130);
+  }],
+  '04': ['Helm, combat (a gunship: it has a shield emitter)', () => {
+    strip('HELM          BATTLE STATIONS', 'Day 0 · 00:41     1x');
+    box('P3', 'Threat alert', 390, 38, 500, 60, 'interrupt', ['#2 MISSILES INBOUND · T-4 s', 'decoy ready (F) · point defense engaging']);
+    box('P2', 'Caution and warning', 12, 38, 308, 0, 'cond tight', ['^◆ BREACH      ENGINES    ●']);
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Gunnery: 3 hits on Raider']);
+    box('H2', 'Navigation (compact)', 12, 194, 308, 0, 'compact', ['NAV    Shackleton Ice · 384,000 km']);
+    stack(960, 194, [
+      ['H6', 'Lock card', 'full', ['LOCK  Raider', '      HOSTILE   ◆ FIRING ON YOU', '      3.4 km · closing 12 m/s', '      shot 2.2 s · hit 62% fair'], 110],
+      ['H7', 'Armament', 'full', ['GUNS   ready · you fire', 'MSL    7 left · ready', 'SHLD   raised · trim bow'], 70],
+    ]);
+    const h4 = box('H4', 'Ship condition (expanded: the hull light is lit)', 12, 558, 308, 230, 'full', [],
+      { h: 118, text: 'ship plan: the breach in ENGINES, the crew sealing it, hit flashes' });
+    addLines(h4, ['◆ HULL     ▮▮▮▮▮▮▮▮▯▯ 81%', '○ SHIELDS  ▮▮▮▮▮▮▮▮▯▯ 77%', '○ POWER    store 92% · 3.0 MW', '○ LIFE SUP tanks 100%']);
+    box('H1', 'Flight display', 440, 688, 400, 100, 'full', [
+      'LOCK · Raider · auto            12 m/s',
+      '▣main ▢turn ▣strafe          assist ON',
+      'Δv 6,831 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
+    chip(682, 760, 154, 'MASTER WARN BREACH');
+    box('H5', 'Contact scope · 5 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope: the raider and 2 missiles' });
+    centreClear(); ship(640, 400); velocity(640, 400);
+    contact(870, 300, 'diamond', 'Raider'); lockMark(870, 300);
+    line(860, 306, 690, 392, '5 5', 1.2, '#e0e3e6'); line(880, 320, 700, 405, '5 5', 1.2, '#e0e3e6');
+    wtext(760, 352, 'W6 missile tracks');
+  }],
+  '05': ['Fire control, combat (a gunship)', () => {
+    strip('FIRE CONTROL    Helm: Bea · holding heading    BATTLE STATIONS', 'Day 0 · 00:44     1x');
+    box('P3', 'Threat alert (fire control: count and decoy only)', 390, 38, 500, 60, 'interrupt', ['#1 MISSILE INBOUND', 'decoy ready (F)']);
+    box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Gunnery: 2 hits on Raider']);
+    box('F4', 'Threat list', 12, 194, 308, 0, 'cond', ['MSL   T-9 s    Raider     PD on', 'SHIP  Raider 2   14 km   closing']);
+    box('F1', 'Lock card, full', 960, 194, 308, 140, 'full', [
+      'LOCK  Raider',
+      '      HOSTILE   ◆ FIRING ON YOU',
+      '      3.4 km · closing 12 m/s',
+      '      12 m/s rel · course 235°',
+      '      shot 2.2 s',
+      '      kiting at gun range',
+      '      engine damaged']);
+    const f3 = box('F3', 'Shield control', 12, 558, 308, 186, 'full', ['230 of 300 kg · raised · trim bow'],
+      { h: 96, text: 'shield ring, 8 sectors; a click on a side leans the shield there' });
+    addLines(f3, ['emitter (S)  holding · heat 40%']);
+    box('H4', 'Ship condition (no plan, no shields)', 12, 748, 308, 40, 'compact', ['○ HULL     ○ POWER     ○ LIFE SUP']);
+    box('F2', 'Weapons rack', 330, 676, 620, 112, 'full', [
+      '▶ NOSE      Heavy Cannon      ready            62% fair  you',
+      '  FWD PORT  Autocannon Mk1    engaging MSL               PD',
+      '  FWD STBD  Autocannon Mk1    ready                      PD',
+      '▶ AFT PORT  Harpoon Launcher  ready · 3 left             you',
+      '▶ AFT STBD  Harpoon Launcher  ready · 4 left             you']);
+    box('H5', 'Contact scope · 5 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope: the raider and the missile; Raider 2 is beyond 5 km' });
+    centreClear(); ship(640, 400);
+    contact(870, 300, 'diamond', 'Raider'); lockMark(870, 300);
+    contact(905, 470, 'diamond', 'Raider 2');
+    line(682, 392, 860, 296, '', 1, '#9ed2a0'); line(682, 392, 880, 316, '', 1, '#9ed2a0');
+    line(700, 380, 760, 330, '2 4'); line(700, 420, 770, 450, '2 4'); wtext(700, 452, 'W5 arcs, hit lanes');
+  }],
+  '06': ['Deck', () => {
+    strip('DECK      Helm: Bea · holding heading', 'Day 0 · 00:58     1x');
+    emptySlots();
+    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 5.2 d left']);
+    deckPlan();
+    circ(712, 372, 6, { fill: '#d8dbde' }); wtext(722, 366, 'captain');
+    circ(470, 430, 5, { fill: '#9aa0a6' }); wtext(480, 424, 'Ada');
+    box('P6', 'Prompt (anchored)', 640, 248, 196, 0, 'cond', ['Helm · [E] sit and fly']);
+    box('D2', 'Inspect card (pinned)', 480, 524, 230, 0, 'cond', ['Ada · Engineer', 'OK · resting', 'suit off · morale 70%', '^[Ship › Crew]']);
+    line(470, 436, 500, 524, '2 3');
+    wtext(380, 640, 'The deck is the display: fire, smoke, crew and damage are drawn in the world.');
+  }],
+  '07': ['Deck, emergency', () => {
+    strip('DECK      Helm: nobody      BATTLE STATIONS', 'Day 0 · 01:12     1x', true);
+    box('X3', 'Emergency card', 390, 38, 500, 0, 'interrupt', [
+      '#SHIP DISABLED: no power',
+      '^Abandon ship · [P] twice',
+      '^Call a tow · [B] twice · 3,400 cr, 3 standing']);
+    box('P2', 'Caution and warning (stays lit under X3)', 12, 38, 308, 150, 'cond tight', [
+      '^◆ EMERG O2               YOU',
+      '^◆ NO POWER    damaged    YOU',
+      '^◆ BREACH      HOLD       ‖',
+      '^◆ CREW CRIT   Ada        ●   1:40',
+      '^◆ FIRE        BRIDGE     ●',
+      '^+ 1 more: SMOKE']);
+    box('P4', 'Message feed (routine messages wait in combat)', 960, 38, 308, 40, 'slot');
+    deckPlan();
+    hatch(770, 301, 129, 193);                                       // fire, bridge forward
+    rect(381, 301, 258, 193, { stroke: '#c9ccd0', 'stroke-dasharray': '2 3' }); // vacuum: the hold
+    circ(712, 372, 6, { fill: '#d8dbde' }); wtext(722, 366, 'captain');
+    circ(810, 370, 5, { fill: '#9aa0a6' });   // Bea at the fire
+    circ(560, 440, 6, { fill: '#9aa0a6' }); circ(582, 440, 5, { fill: '#9aa0a6' });   // Ada down, Cole tending Ada
+    tag(800, 314, 'FIRE'); tag(800, 446, 'SMOKE'); tag(400, 330, 'VACUUM'); tag(548, 456, 'Ada');
+    wtext(380, 552, 'D3 hazard tags: the whole corvette is in view, so nothing needs an edge pointer');
+    chip(560, 681, 160, 'MASTER WARN BREACH');
+    box('H4', 'Ship condition (deck: no plan)', 12, 648, 308, 67, 'full', [
+      '○ HULL     ▮▮▮▮▮▮▮▮▯▯ 81%',
+      '◆ POWER    store 0% · 0 of 3.0 MW',
+      '◆ LIFE SUP EMERGENCY 42 kg']);
+    box('D1', 'Captain vitals', 12, 721, 308, 67, 'full', ['YOU    light wound', 'SUIT   on · air 9:40', 'HERE   thin air']);
+  }],
+  '08': ['Docked', () => {
+    strip('HELM', 'Day 0 · 00:08     1x');
+    box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Log: autosaved', 'Station: Docked at Highport']);
+    box('P5', 'Objective (compact)', 12, 194, 308, 0, 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 5.2 d left']);
+    box('X1', 'Station panel', 960, 194, 308, 260, 'full', [
+      'HIGHPORT · port 2',
+      'Terran Patrol Authority',
+      'standing +0',
+      '^[T] Market',
+      '^[Y] Yard · tanks 72%',
+      '^[J] Missions · 4 offers',
+      'Hire: 3 looking for a berth',
+      'Credits 5,000 cr · hold 12/40 m³',
+      '^[U] Undock']);
+    shipLights();
+    rect(560, 120, 160, 160, { fill: '#41454b' }); wtext(566, 124, 'Highport', 'tag');
+    ship(640, 330);
+  }],
+  '13': ['Boarding (latched to a taken pirate)', () => {
+    strip('HELM', 'Day 6 · 10:15     1x');
+    box('P2', 'Caution and warning (empty)', 12, 38, 308, 40, 'slot');
+    box('P4', 'Message feed', 960, 38, 308, 0, 'cond', ['Boarding: Pirate raider 3', '  is taken: 3 held']);
+    box('P5', 'Objective (not drawn: the bounty is paid)', 12, 194, 308, 40, 'slot');
+    box('X2', 'Boarding panel (H6 gives way: the raider is the Lock)', 960, 194, 308, 0, 'full', [
+      'BOARD  Pirate raider 3 · latched',
+      '       taken: crew surrendered',
+      'PARTY  1 · coming home',
+      'SALV   10 parts · 7,550 cr',
+      'HELD   3 · 4 berths free',
+      '^[K] Boarding       [U] Cast off']);
+    shipLights();
+    ship(600, 405);
+    rect(558, 364, 84, 26, { fill: '#3a3d42', 'stroke-dasharray': '4 3' });
+    el('polygon', { points: `558,364 544,377 558,390`, fill: '#3a3d42', stroke: 'var(--world-line)', 'stroke-dasharray': '4 3' });
+    wtext(560, 344, 'Pirate raider 3', 'tag'); lockMark(600, 377);
+    wtext(470, 470, 'latched port to port: the raider lies over the port side, nose aft;', '');
+    wtext(470, 486, 'the ship can\'t fly, so the flight instruments retire as when docked', '');
+  }],
+  '09': ['Map (full-screen mode)', () => {
+    strip('HELM', 'Day 0 · 00:33     1x');
+    box('M1', 'Map (no tabs)', 0, 26, W, 30, 'mode', ['Earth system']);
+    box('', 'View', 320, 56, 640, 34, 'mode', ['^[Centre: Earth]   [Fit]   [All traffic]']);
+    box('', 'Plan', 0, 56, 320, 718, 'mode', [
+      'ORBIT NOW  Earth',
+      'Pe 397 km  T-8:40',
+      'period 1 h 32 m',
+      '',
+      'BURNS',
+      '▶ 1  T-12:05  3,084 m/s  pro 3,084',
+      '~     then at the Moon: capture,',
+      '~     about 793 m/s at T-4.1 d,',
+      '~     planned at the crossing',
+      '',
+      'SELECTED  burn 1 → Ap 378,000 km',
+      '          Moon SOI T-3.3 d',
+      '',
+      'PLAN  Δv 3,877 of 5,606 m/s',
+      '      arrival T-4.2 d',
+      '',
+      '^[Helm flies burns]  [Autopilot]',
+      '^[Warp to next]   [Delete burn]',
+      '^[Clear all]']);
+    box('', 'Target and traffic', 960, 56, 320, 718, 'mode', [
+      'NAV  Shackleton Ice',
+      'ice mine · 384,000 km',
+      'at the Moon · arrival T-4.2 d',
+      '^[Next target]',
+      '^[Plan]  [Accept]  [Discard]',
+      '~Accept, Discard: nothing proposed',
+      '',
+      'CONTACTS         by distance ▾',
+      '  Highport             3.0 km',
+      '  Hauler Kestrel       3.1 km',
+      '  Deepwell Depot     9,800 km',
+      '  Anvil Yards       18,400 km',
+      '',
+      'LAYERS',
+      '^☑ stations  ☑ haulers  ☑ pirates',
+      '^☑ derelicts ☑ objectives ☐ tension']);
+    box('', 'Timeline', 320, 684, 640, 90, 'mode', [
+      'now ──▲burn 1───────────◇Moon SOI───△capture─●arrival──■deadline',
+      '~      T-12:05           T-3.3 d     T-4.1 d  T-4.2 d   T-5.2 d',
+      '~△ an estimate until the crossing plans it. A click centres the map',
+      '~on an event; each future one has a warp-to']);
+    box('', 'foot: the one-line feed and the close keys', 0, 774, W, 26, 'mode',
+      ['Log: autosaved' + ' '.repeat(96) + '[M] close · [Esc]']);
+    // At Fit, 780 km a unit: Earth at the left focus, the Moon 484 units out
+    circ(416, 300, 484, { 'stroke-dasharray': '2 6' });                                    // the Moon's orbit
+    el('ellipse', { cx: 653, cy: 300, rx: 247, ry: 64, fill: 'none', stroke: '#d8dbde', 'stroke-dasharray': '7 5' }); // after burn 1
+    circ(416, 300, 8, { fill: '#9aa0a6' }); wtext(372, 314, 'Earth');
+    // The ghost: the Moon and its sphere where they will be at the leg's closest approach (T-4.1 d), 0.15 rad
+    // past the apoapsis; the path meets it. The Moon now is 54° back along its orbit (13.2° a day)
+    circ(894, 226, 85, { 'stroke-dasharray': '5 4', stroke: '#7d8288' }); circ(894, 226, 4, { 'stroke-dasharray': '2 2' });
+    wtext(540, 150, 'ghost: the Moon at closest approach, T-4.1 d');
+    circ(757, 643, 5, { fill: '#d8dbde' }); navMark(757, 643);
+    wtext(530, 636, 'the Moon now, the Nav on it', 'tag');
+    wtext(400, 278, '▲ burn 1'); wtext(540, 210, 'planned path, into the ghost\'s sphere');
+    wtext(330, 590, 'the capture and the approach are drawn once the crossing plans them');
+  }],
+  '10': ['Station (docked: a panel over the docked view)', () => {
+    strip('HELM', 'Day 0 · 00:15     1x');
+    rect(560, 440, 160, 160, { fill: '#41454b' }); wtext(566, 444, 'Highport', 'tag');
+    ship(640, 650);
+    wtext(380, 720, 'the docked view stays in sight below the panel; the HUD hides as for a full-screen mode');
+    box('M3', 'Station (a panel, 1,120 wide, as tall as its tab)', 80, 60, 1120, 34, 'mode',
+      ['HIGHPORT     [1] Market   [2] Yard   [3] Missions   [4] Hire']);
+    box('', 'Market', 80, 94, 800, 166, 'mode', [
+      'COMMODITY               STOCK     BUY    SELL  HELD   ON ORDER',
+      '^Water                     420   14 cr   12 cr     0   –      [Buy 1] [Buy 10] [Sell 1] [Sell all]',
+      '^Food                    2,600   36 cr   32 cr    12   –      [Buy 1] [Buy 10] [Sell 1] [Sell all]',
+      '^Machinery                  20  680 cr  620 cr     0   –      [Buy 1] [Buy 10]',
+      '',
+      'FOR YOUR CONTRACTS',
+      'Deliver 40 Food → Shackleton Ice · 12 of 40 aboard · 5.2 d left']);
+    box('', 'Rail', 880, 94, 320, 166, 'mode', [
+      'Credits      5,000 cr',
+      'Standing     +0',
+      'Hold         12 / 40 m³',
+      'Tanks        propellant 72%',
+      '             oxygen 100%']);
+    box('', 'foot: the one-line feed (nothing new since docking) and the close keys', 80, 260, 1120, 26, 'mode',
+      [' '.repeat(88) + '[T] close · [Esc]']);
+  }],
+  '11': ['Ship, systems tab (full-screen mode)', () => {
+    strip('DECK      Helm: Bea · holding heading      BATTLE STATIONS      ◆ 1 · ▲ 2', 'Day 0 · 00:20     1x');
+    box('M2', 'Ship', 0, 26, W, 34, 'mode', ['PATROL CORVETTE    [1] Systems   [2] Crew   [3] Cargo   [4] Loadout']);
+    box('', 'Plan', 0, 60, 700, 440, 'mode', [], { h: 404, text: 'the ship plan at large scale: every system by state, hazards, crew and their work' });
+    box('', 'Systems', 700, 60, 580, 440, 'mode', [
+      'SYSTEM                      HEALTH  POWER   STATE',
+      '^Reactor M                    100%   –       on        [off] twice',
+      '^Engines ×2                   100%   ok      on        [off]',
+      'RCS ×8                          –   –       7 on · 1 stopped',
+      '^Coilgun Mk1 (NOSE)           100%   ok      on        [off]',
+      '^Autocannon Mk1 (FWD PORT)     20%   ok      damaged   [off]',
+      '^Autocannon Mk1 (FWD STBD)    100%   none    cut off   [off]',
+      '^Harpoon Launcher (AFT PORT)  100%   ok      on        [off]',
+      '^Laser Mk1 (AFT STBD)         100%   ok      on        [off]',
+      '^Life support                 100%   ok      on        [off]',
+      '...']);
+    box('', 'Damage control', 0, 500, 700, 274, 'mode', [
+      'TASK                              WHERE        WHO',
+      'Repair Autocannon Mk1 (FWD PORT)  BRIDGE       Ada',
+      'Seal breach                       HOLD         waits: under fire',
+      'Repair RCS thruster               outside      waits: battle stations',
+      '',
+      '~One hit wrecked the hull tile under the HOLD\'s aft port RCS quad: the breach,',
+      '~the stopped thruster and Cole\'s light wound. Work within 2 tiles of where',
+      '~crew were hit waits for the fight to end. A cut conduit is no crew job: only',
+      '~a yard repairs it, so it shows under Power.']);
+    box('', 'Power', 700, 500, 580, 274, 'mode', [
+      'CIRCUIT 1   reactor M · 3.0 of 3.0 MW',
+      '            store ▮▮▮▮▮▮▮▮▯▯ 80%',
+      'CUT OFF     Autocannon Mk1 (FWD STBD): no reactor reaches it',
+      '',
+      'One cut conduit in the BRIDGE strands it. The crew can',
+      'only reset a short; a yard repairs a cut (400 cr).']);
+    box('', 'foot: the one-line feed and the close keys', 0, 774, W, 26, 'mode',
+      ['Crew: Cole is lightly wounded and working slower' + ' '.repeat(62) + '[I] close · [Esc]']);
+  }],
+  '12': ['Orders menu (helm, cruise)', () => {
+    strip('HELM', 'Day 0 · 00:33     1x');
+    emptySlots();
+    stack(12, 194, [
+      ['P5', 'Objective (compact)', 'compact', ['Deliver 40 Food', '→ Shackleton Ice · 5.2 d left']],
+      ['H2', 'Navigation', 'full', [
+        'ORBIT  Earth · alt 400 km',
+        '       Pe 397 km  T-8:40',
+        'NAV    Shackleton Ice',
+        '       384,000 km · at the Moon',
+        '       arrival T-4.2 d',
+        'NEXT   burn 1/1 · T-12:05',
+        '       3,084 m/s · helm flies it',
+        'PLAN   Δv 3,877 · leaves 1,729 m/s']],
+    ]);
+    box('C1', 'Orders menu (O)', 330, 430, 620, 250, 'cond', [
+      '^HELM       [1] Fly the planned burns   [2] Match velocity •',
+      '^           [3] Hold position •         [4] Approach 500 m •',
+      '^           [5] Dock at Nav •           [0] Cancel',
+      '^AUTOPILOT  [6] off',
+      '^SHIELDS    [9] raise •   [8] trim •',
+      '^CREW       suits at battle stations: on    hold all in from EVA: off',
+      '^SHIP       [P] abandon ship (guarded)      [B] call a tow • (guarded)',
+      '~• needs a Nav in the bubble: 2 3 4 5',
+      '~• no shield emitter aboard: 8 9',
+      '~• your ship can still fly home: B']);
+    box('H1', 'Flight display', 440, 688, 400, 100, 'full', [
+      'ORBIT · auto                 7,672 m/s',
+      '▢main ▢turn ▢strafe          assist ON',
+      'Δv 5,606 m/s   ▮▮▮▮▮▮▮▯▯▯ 72%']);
+    shipLights();
+    box('H5', 'Contact scope · 5 km', 1068, 588, 200, 200, 'full', [], { h: 176, text: 'scope (cruise, 5 km: the smallest step that holds every contact): Highport and the Hauler Kestrel, 3 km off, 60% out' });
+    ship(640, 380); velocity(640, 380);
+  }],
+};
+
+const n = new URLSearchParams(location.search).get('n') || '01';
+const [title, draw] = layouts[n];
+draw();
+caption(`${n}  ${title}`);
+document.title = `${n} ${title}`;
+window.LAYOUTS = Object.keys(layouts);
+
+/** For render.js: every box whose text runs past its edges, so a budget break can't hide. */
+window.overflows = () => {
+  const out = [];
+  for (const b of document.querySelectorAll('.b')) {
+    const r = b.getBoundingClientRect();
+    const name = (b.querySelector('.lg') || b).textContent.trim().slice(0, 40);
+    for (const c of b.querySelectorAll('.ln, .ph')) {
+      const q = c.getBoundingClientRect();
+      const right = c.classList.contains('ln') ? q.left + c.scrollWidth : q.right;
+      if (right > r.right - 2 || q.bottom > r.bottom - 1) out.push(`${name}: "${c.textContent.slice(0, 60)}"`);
+    }
+  }
+  return out;
+};
+</script>
+</body>
+</html>
