@@ -35,7 +35,9 @@ public final class WindowScreens {
     private final ShipyardPage shipyard = new ShipyardPage(false), prize = new ShipyardPage(true);
     private final MissionsPage missions = new MissionsPage(false), contracts = new MissionsPage(true);
     private final CrewPage crew = new CrewPage(false), hire = new CrewPage(true);
-    private final SystemsPage systems = new SystemsPage();
+    /** Each fire's tiles against 10 s before, for the systems page, watched every frame. */
+    private final FireTrend fires = new FireTrend();
+    private final SystemsPage systems = new SystemsPage(fires);
     private final CargoPage cargo = new CargoPage();
     private final BoardingPage boardingPage = new BoardingPage();
     /** The fight's record for the log: each condition as it is raised and clears, watched every frame. */
@@ -289,6 +291,7 @@ public final class WindowScreens {
     public void update(float delta) {
         if (host == null) return;
         conditions.update(host.data().alerts, host.data().weaponFrame.mounts, host.data().ctx.simSeconds);
+        fires.update(host.data().alerts, host.data().ctx.simSeconds);
         if (telex.visible) {
             if (host.data().gameOver.shown) telex.show(host.data().gameOver, host.data().ctx.simSeconds);
             telex.update(delta);

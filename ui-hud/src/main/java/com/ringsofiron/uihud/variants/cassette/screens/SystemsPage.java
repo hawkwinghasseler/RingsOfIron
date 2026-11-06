@@ -4,9 +4,12 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ObjectMap;
+import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.LifeSupportSystem;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.RcsThruster;
+import com.ringsofiron.interiorgrid.RoomNames;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
@@ -26,8 +29,10 @@ import java.util.Locale;
  * system lit by its state; every system on a ledger tube with its health, its power and its state,
  * and its switch on a soft key (the reactor's under a guard, since switching it off darkens the ship;
  * a group's switching the group, and opening to list each with its own; the RCS blocks with none);
- * the damage control board, every hazard and repair job the game raises with who has it; and the
- * power: each circuit's reactors, output against rating and store, and what no reactor reaches.
+ * the damage control board, every hazard and repair job the game raises with who has it, a fire by
+ * its tiles burning and whether it is spreading or shrinking (Task v16); the power: each circuit's
+ * reactors, output against rating and store, and what no reactor reaches; and life support: which
+ * rooms it puts air into and why not the rest, and the oxygen tanks.
  * The switches are the classic console window's ({@code SubsystemComponent.switchedOn}).
  */
 final class SystemsPage extends ListPage {
@@ -42,6 +47,12 @@ final class SystemsPage extends ListPage {
     private final ObjectMap<String, AlertRegistry.Level> troubled = new ObjectMap<>();
     private HudData data;
     private final Ledger D = new Ledger(), W = new Ledger();
+    private final FireTrend fires;
+    private final Array<Compartment> fed = new Array<>(), venting = new Array<>();
+    private final Array<String> roomList = new Array<>(), fedList = new Array<>(), ventList = new Array<>();
+    /** Life support's line, and whether it says a room gets no air. */
+    private String air = "";
+    private boolean airShort;
     private Boards b;
     private ShipGridComponent grid;
     // The plan as last drawn: its origin, a tile's size, and whether it stands bow up (else bow to the right)
@@ -49,8 +60,9 @@ final class SystemsPage extends ListPage {
     private boolean turned;
     private int gw, gh;
 
-    SystemsPage() {
+    SystemsPage(FireTrend fires) {
         super("SYSTEMS", "SHIP", ClassicWindow.CREW);
+        this.fires = fires;
     }
 
     @Override
@@ -76,6 +88,7 @@ final class SystemsPage extends ListPage {
         keepSelection();
         jobs(d == null ? null : d.alerts, jobs);
         data = d;
+        lifeSupport(d == null ? null : d.roomNames());
         troubled.clear();
         for (int i = 0; i < jobs.size; i++) {
             AlertRegistry.Alert a = jobs.get(i);
@@ -108,8 +121,72 @@ final class SystemsPage extends ListPage {
         }
     }
 
-    /** A job in the board's words: "FIRE", "HULL BREACH", a system by its name and state ("ENGINE SHORTED"). */
+    /** Life support's line from the ship as it is now: the rooms it reaches, by name. */
+    private void lifeSupport(RoomNames names) {
+        int fitted = 0;
+        for (int i = 0; i < found.size; i++) if (found.get(i).type == SubsystemComponent.SubsystemType.LIFE_SUPPORT) fitted++;
+        LifeSupportSystem.reach(grid, found, fed, venting);
+        roomList.clear();
+        fedList.clear();
+        ventList.clear();
+        if (grid != null && names != null) {
+            Array<Compartment> rooms = names.rooms(grid);
+            for (int i = 0; i < rooms.size; i++) named(names, rooms.get(i), roomList);
+            for (int i = 0; i < fed.size; i++) named(names, fed.get(i), fedList);
+            for (int i = 0; i < venting.size; i++) named(names, venting.get(i), ventList);
+        }
+        air = air(fitted, roomList, fedList, ventList);
+        airShort = air.startsWith("NO ") || air.contains(":");
+    }
+
+    /** Adds {@code c}'s name to {@code out}: a room the screen talks about, so not an airlock, pumped down on purpose. */
+    private void named(RoomNames names, Compartment c, Array<String> out) {
+        String n = names.of(grid, c);
+        if (!n.isEmpty() && !n.startsWith("AIRLOCK") && !out.contains(n, false)) out.add(n);
+    }
+
+    /**
+     * What life support does for the ship's rooms (Task v16), with {@code fitted} units aboard: of
+     * {@code rooms}, the ones it puts air into ({@code fed}) and those it reaches that vent to space
+     * ({@code venting}); any other is behind a shut door, since it reaches only through open ones.
+     * "AIR TO BRIDGE AND HOLD"; "AIR TO THE HOLD ONLY: BRIDGE VENTING"; "AIR TO THE BRIDGE ONLY:
+     * HOLD BEHIND A SHUT DOOR"; "NO AIR: LIFE SUPPORT DOWN" with no unit working.
+     */
+    static String air(int fitted, Array<String> rooms, Array<String> fed, Array<String> venting) {
+        if (fitted == 0) return "NO LIFE SUPPORT ABOARD";
+        if (fed.size == 0 && venting.size == 0) return "NO AIR: LIFE SUPPORT DOWN";
+        Array<String> shut = new Array<>();
+        for (int i = 0; i < rooms.size; i++) {
+            String r = rooms.get(i);
+            if (!fed.contains(r, false) && !venting.contains(r, false)) shut.add(r);
+        }
+        if (venting.size == 0 && shut.size == 0) {
+            if (fed.size == 1) return "AIR TO THE " + fed.first();
+            return fed.size <= 3 ? "AIR TO " + list(fed) : "AIR TO ALL " + fed.size + " ROOMS";
+        }
+        String head = fed.size == 0 ? "NO AIR" : fed.size == 1 ? "AIR TO THE " + fed.first() + " ONLY" : "AIR TO " + list(fed) + " ONLY";
+        StringBuilder why = new StringBuilder(head).append(": ");
+        if (venting.size > 0) why.append(list(venting)).append(" VENTING");
+        if (shut.size > 0) {
+            if (venting.size > 0) why.append(", ");
+            why.append(list(shut)).append(shut.size == 1 ? " BEHIND A SHUT DOOR" : " BEHIND SHUT DOORS");
+        }
+        return why.toString();
+    }
+
+    /** "BRIDGE", "BRIDGE AND HOLD", "BRIDGE, HOLD AND ENGINES". */
+    static String list(Array<String> names) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < names.size; i++) {
+            if (i > 0) sb.append(i == names.size - 1 ? " AND " : ", ");
+            sb.append(names.get(i));
+        }
+        return sb.toString();
+    }
+
+    /** A job in the board's words: "FIRE, 3 TILES", "HULL BREACH", a system by its name and state ("ENGINE SHORTED"). */
     static String task(AlertRegistry.Alert a, ShipSystems systems) {
+        if (a.id.startsWith("fire:")) return "FIRE, " + Math.max(1, a.count) + (a.count > 1 ? " TILES" : " TILE");
         if (a.id.startsWith("sys:")) {
             ShipSystems.Sys y = systems == null ? null : systems.at(a.tileX, a.tileY);
             return y != null ? y.name + " " + y.state.label : Fmt.upper(a.text.isEmpty() ? a.code : a.text);
@@ -267,7 +344,12 @@ final class SystemsPage extends ListPage {
                 Color ink = warn ? RED : a.level == AlertRegistry.Level.CAUTION ? AMBER : DIM;
                 if (warn) D.warning(p, 1, r, RED);
                 else if (a.level == AlertRegistry.Level.CAUTION) D.caution(p, 1, r, AMBER);
-                D.at(p, 3, r, Ledger.cut(task(a, systems), whereAt - 4), ink);
+                String t = task(a, systems);
+                if (fires != null && a.id.startsWith("fire:")) {
+                    String course = fires.trend(a.id, a.count, data == null ? 0 : data.ctx.simSeconds);
+                    if (!course.isEmpty()) t = t + " · " + Fmt.upper(course);
+                }
+                D.at(p, 3, r, Ledger.cut(t, whereAt - 4), ink);
                 D.at(p, whereAt, r, Ledger.cut(place(a, systems), 11), ink);
                 String who = who(a);
                 D.at(p, whoAt, r, who, a.handling == 0 ? RED : ink);
@@ -286,13 +368,16 @@ final class SystemsPage extends ListPage {
         W.bar(p, 0);
         W.rev(p, 1, 0, "POWER");
         if (f != null && f.circuits.size > 0) W.revRight(p, cols - 1, 0, watts(f.outputWatts) + " OF " + watts(f.ratedWatts));
+        // The last two rows are life support's
+        int last = rows - 3;
+        lifeSupport(p, rows - 2, cols);
         int r = 1;
         if (f == null || f.circuits.size == 0) {
-            W.at(p, 1, 2, "NO REACTOR FEEDS THE SHIP", RED);
+            W.at(p, 1, Math.min(2, last), "NO REACTOR FEEDS THE SHIP", RED);
             W.over(p);
             return;
         }
-        for (int i = 0; i < f.circuits.size && r < rows; i++, r++) {
+        for (int i = 0; i < f.circuits.size && r <= last; i++, r++) {
             PowerStatusProvider.Circuit c = f.circuits.get(i);
             Color ink = c.reactors == 0 || c.outputWatts <= 0 ? RED : AMBER;
             W.at(p, 1, r, "CIRCUIT " + (i + 1), ink);
@@ -310,7 +395,7 @@ final class SystemsPage extends ListPage {
         }
         // What isn't working for want of power, or tripped or stunned off its circuit
         boolean any = false;
-        for (int i = 0; i < f.faults.size && r < rows; i++) {
+        for (int i = 0; i < f.faults.size && r <= last; i++) {
             PowerStatusProvider.SystemRow s = f.faults.get(i);
             String why = why(s);
             if (why == null) continue;
@@ -324,8 +409,25 @@ final class SystemsPage extends ListPage {
             W.at(p, 35, r, Ledger.cut(why, cols - 36), ink);
             r++;
         }
-        if (!any && r < rows) W.at(p, 1, r, "EVERY SYSTEM SWITCHED ON HAS POWER", DIM);
+        if (!any && r <= last) W.at(p, 1, r, "EVERY SYSTEM SWITCHED ON HAS POWER", DIM);
         W.over(p);
+    }
+
+    /** Life support on rows {@code r} and the one under it: its bar with the oxygen tanks, then the rooms it puts air into. */
+    private void lifeSupport(YardPaint p, int r, int cols) {
+        W.bar(p, r);
+        W.rev(p, 1, r, "LIFE SUPPORT");
+        HudData d = b == null ? null : b.data;
+        String tanks = d == null ? "" : tanks(d.shipStatus.oxygen, d.shipStatus.emergencyOxygenKg);
+        if (!tanks.isEmpty()) W.revRight(p, cols - 1, r, tanks);
+        W.at(p, 1, r + 1, Ledger.cut(air, cols - 2), airShort ? RED : AMBER);
+    }
+
+    /** The oxygen tanks on the life support bar: "O2 TANKS 72%", or "EMERGENCY O2 42 KG" once they are dry. */
+    static String tanks(float oxygen, double emergencyKg) {
+        if (!Double.isNaN(emergencyKg)) return "EMERGENCY O2 " + Math.round(emergencyKg) + " KG";
+        if (Float.isNaN(oxygen)) return "";
+        return "O2 TANKS " + Math.round(oxygen * 100f) + "%";
     }
 
     /** What the power board says of a system not working, or null for what isn't its business. */

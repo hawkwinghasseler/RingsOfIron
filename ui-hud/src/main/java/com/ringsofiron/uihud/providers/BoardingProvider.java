@@ -43,6 +43,14 @@ public interface BoardingProvider {
         public boolean toggleable = true;
         /** Already off its hull, on its way home or in the hold. */
         public boolean off;
+        /**
+         * Before it is marked, a part the link can't reach says so: "EVA only" latched on, where
+         * nobody can get to it from inside, and "latch on" standing off, where it is inside the
+         * hull. Empty when it can be reached, or once it is marked, when {@link #status} says it.
+         */
+        public String reach = "";
+        /** The game's whole reason for {@link #reach}: "inside the hull: latch on to strip it". */
+        public String reachWhy = "";
     }
 
     final class Cargo {

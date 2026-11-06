@@ -35,6 +35,8 @@ abstract class ListPage extends Page {
     private final String[] keyLabel = new String[MAX_KEYS], keyRefusal = new String[MAX_KEYS], keyAsk = new String[MAX_KEYS];
     private final boolean[] keyGuarded = new boolean[MAX_KEYS];
     private int keyCount;
+    /** A word on the selected row that the soft row gives while none of its keys is refused. */
+    private String keyNote;
     private int guardKey = -1;
     private float guardAt, now;
     /** Where the soft keys start, and their width, as last drawn. */
@@ -84,6 +86,14 @@ abstract class ListPage extends Page {
         if (softKey(label, refusal, true)) keyAsk[keyCount - 1] = ask;
     }
 
+    /**
+     * A word for the selected row that the soft row gives at its left while none of its keys is
+     * refused: why an order that can be given will wait, say.
+     */
+    final void note(String text) {
+        keyNote = text;
+    }
+
     private boolean softKey(String label, String refusal, boolean guarded) {
         if (keyCount >= MAX_KEYS) return false;
         keyLabel[keyCount] = label;
@@ -96,6 +106,7 @@ abstract class ListPage extends Page {
 
     private void sayKeys() {
         keyCount = 0;
+        keyNote = null;
         keys();
         if (focusKey >= keyCount) focusKey = keyCount - 1;
     }
@@ -288,6 +299,7 @@ abstract class ListPage extends Page {
         float yy = L.base(r);
         String reason = focusKey >= 0 && focusKey < keyCount ? keyRefusal[focusKey] : null;
         for (int k = 0; k < keyCount && reason == null; k++) reason = keyRefusal[k];
+        if (reason == null) reason = keyNote;
         if (reason != null) {
             int room = (int) ((x0 - L.cx(0)) / Ledger.COL) - 2;
             L.at(p, 0, r, Ledger.cut(" " + reason, room), DIM);

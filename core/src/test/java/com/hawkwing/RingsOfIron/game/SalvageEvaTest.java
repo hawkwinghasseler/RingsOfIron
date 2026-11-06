@@ -144,6 +144,13 @@ class SalvageEvaTest {
         assertTrue(board().disabled, "the boarding board says the latched craft is beaten");
         Salvage.Part engine = engine();
         MountFootprint f = engine.system.footprint;
+        // The board says so before the part is marked, where the game finds out once its strip is ordered
+        BoardingProvider.Part before = row(f);
+        assertNotNull(before);
+        assertEquals("EVA only", before.reach);
+        assertTrue(before.reachWhy.contains("stand off alongside"), before.reachWhy);
+        assertTrue(before.toggleable, "it can still be marked");
+        assertTrue(world.salvage.reachable(game.player, game.raider, -1, -1), "nothing there: nothing to say");
 
         String said = world.salvage.mark(game.player, f.originX, f.originY);
         assertTrue(said.startsWith("Engineers ordered to strip"), said);
@@ -164,6 +171,7 @@ class SalvageEvaTest {
         BoardingProvider.Part row = row(f);
         assertNotNull(row);
         assertEquals(status, row.status);
+        assertEquals("", row.reach, "marked, its status says it");
         assertTrue(row.toggleable, "the player can still call it off");
         assertFalse(game.raider.getComponent(SalvagedComponent.class) != null
                 && game.raider.getComponent(SalvagedComponent.class).has(f.originX, f.originY));
@@ -224,5 +232,7 @@ class SalvageEvaTest {
         assertNotNull(row);
         assertFalse(row.toggleable);
         assertTrue(row.status.contains("latch on"), row.status);
+        assertEquals("latch on", row.reach);
+        assertEquals(row.status, row.reachWhy);
     }
 }
