@@ -11,6 +11,7 @@ import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.data.MessageFeed.Message;
 import com.ringsofiron.uihud.providers.ContactProvider.Contact;
 import com.ringsofiron.uihud.providers.ContactProvider.Kind;
+import com.ringsofiron.uihud.providers.ObjectiveProvider.Objective;
 import com.ringsofiron.uihud.providers.StationBoardProvider.Hand;
 import com.ringsofiron.uihud.providers.StationBoardProvider.Post;
 import com.ringsofiron.uihud.providers.StationBoardProvider.Seat;
@@ -18,6 +19,8 @@ import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.variants.cassette.YardText;
 
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Where each alert and notice goes in the stations spec (sections 7 and 13): the annunciator's six
@@ -44,6 +47,8 @@ final class StationAlerts {
     static final float RESPONSE_WINDOW = 0.6f;
     /** Callouts from one station come at most this often; the rest go to the log only (13.5). */
     static final float STATION_QUIET = 3f;
+    /** Seconds a contract no longer held waits for the notice of its end, to be named in it. */
+    static final float ENDED_KEPT = 10f;
 
     /** One annunciator tile: a tag on its lens, a value on its flaps. */
     static final class Tile {
@@ -106,6 +111,10 @@ final class StationAlerts {
     private final Kinds kinds = new Kinds();
     /** No reactor running, this frame. */
     private boolean blackout;
+    /** The contracts held, and those just ended waiting for their notice (13.5). */
+    private final Array<Held> held = new Array<>(), ended = new Array<>(), spareHeld = new Array<>();
+    /** What a station last answered the helm's crew ("" for nothing), so each answer is heard once. */
+    private String stationHeard = "";
 
     StationAlerts() {
         for (int i = 0; i < stationSaid.length; i++) stationSaid[i] = -100f;
@@ -160,7 +169,10 @@ final class StationAlerts {
         }
 
         annunciator(d, all, blackout, emitter);
+        contracts(d);
+        boolean first = !primed;
         notices(d, guide);
+        answers(d, first);
         for (int i = lines.size - 1; i >= 0; i--) if (clock - lines.get(i).born > lines.get(i).hold) lines.removeIndex(i);
         if (clock - responseAt > RESPONSE_SECONDS) response = "";
     }
@@ -651,26 +663,240 @@ final class StationAlerts {
         if (text.startsWith("MISSILE WARNING") || text.startsWith("Propellant low")) return;
         // The status strip and Command's callout carry the ship's disablement; the game's own line is the log's
         if (text.startsWith("Your ship is disabled")) return;
+        String tag = null, who = "SHIP", body = text;
+        // A contract's end is the captain's, by the contract's name; a station speaks in its own (13.5)
+        String end = contractEnd(text, endedName(text));
+        String[] station = end == null ? stationSays(text) : null;
+        if (end != null) {
+            tag = Station.CMD.tag;
+            body = end;
+        } else if (station != null) {
+            tag = Station.COMMS.tag;
+            who = station[0];
+            body = station[1];
+        }
         if (clock - lastKey <= RESPONSE_WINDOW) {
-            response = text;
+            response = end != null ? end : text;
             responseAt = clock;
             return;
         }
-        String who = "SHIP", body = text;
-        int colon = text.indexOf(": ");
-        if (colon > 0 && colon <= 20 && !text.substring(0, colon).matches(".*\\d.*")) {
-            who = text.substring(0, colon);
-            body = text.substring(colon + 2);
-        }
-        String tag = tagOf(who, body);
-        if (Station.byTag(who) != null) {
-            // "Helm: approaching Highport": the station is the tag; the ship says it
-            who = "SHIP";
+        if (tag == null) {
+            // "Helm: approaching Highport", "Bea: holding position.": a speaker is one word, so "Patrol
+            // passed: ..." or "Word on the lanes: ..." is the ship's; a station may have more, addressing
+            // the ship ("Selene Yard: your ship is venting at the berth")
+            int colon = text.indexOf(": ");
+            String speaker = colon > 0 ? text.substring(0, colon) : "";
+            boolean one = colon <= 20 && speaker.indexOf(' ') < 0 && !speaker.matches(".*\\d.*");
+            boolean addressed = colon <= 40 && text.startsWith("your ship", colon + 2);
+            if (colon > 0 && (one || addressed)) {
+                who = speaker;
+                body = text.substring(colon + 2);
+            }
+            tag = tagOf(who, body);
+            if (Station.byTag(who) != null) {
+                // "Helm: approaching Highport": the station is the tag; the ship says it
+                who = "SHIP";
+            }
         }
         Level level = m.level == Level.WARNING ? Level.CAUTION : Level.ADVISORY;
         Station st = Station.byTag(tag);
-        say(tag, who, body, level, level == Level.ADVISORY ? (m.important ? 8f : HOLD_ADVISORY) : HOLD_ALERT, st == null ? null : st.pages()[0]);
+        Page home = end != null ? Page.CONTRACTS : st == null ? null : st.pages()[0];
+        say(tag, who, body, level, level == Level.ADVISORY ? (m.important ? 8f : HOLD_ADVISORY) : HOLD_ALERT, home);
         if (m.count > 1) lines.peek().count = m.count;
+    }
+
+    // --- What a station says (13.5) --------------------------------------------------------------
+
+    private static final Pattern GIVES = Pattern.compile("(.+?) gives clearance: port (\\d+) is armed for you");
+    private static final Pattern REFUSES = Pattern.compile("(.+?) refuses docking clearance(?: \\((.+)\\))?; port armed");
+    private static final Pattern NO_PORT = Pattern.compile("(.+?) has no free (\\S+) port; port armed");
+    /** The helm's dock order as the game words it while a crew member flies it ({@code HelmOrders.describe}). */
+    private static final Pattern HELM_DOCK = Pattern.compile(
+            "Helm: docking at (.+): (?:cleared for port (\\d+)|(refused clearance); holding off|no free port; holding off)");
+
+    /**
+     * A station's answer in its own name and words, {who, what}: "Highport gives clearance: port 2 is
+     * armed for you" is "Highport: clearance granted, port 2." (7.2). Null when the text is no station's.
+     */
+    static String[] stationSays(String text) {
+        Matcher m = GIVES.matcher(text);
+        if (m.matches()) return new String[]{m.group(1), "clearance granted, port " + m.group(2) + "."};
+        m = REFUSES.matcher(text);
+        if (m.matches()) return new String[]{m.group(1), "clearance refused" + (m.group(2) == null ? "" : ": " + m.group(2)) + "."};
+        m = NO_PORT.matcher(text);
+        if (m.matches()) return new String[]{m.group(1), "no free " + m.group(2) + " port."};
+        return null;
+    }
+
+    /**
+     * What the station answered the helm's crew on a dock order, {who, what}, or null: heard on deck,
+     * since the game posts no notice for it ("Helm: docking at Highport: cleared for port 2").
+     */
+    static String[] stationAnswered(String helmOrder) {
+        Matcher m = HELM_DOCK.matcher(helmOrder);
+        if (!m.matches()) return null;
+        String said = m.group(2) != null ? "clearance granted, port " + m.group(2) + "."
+                : m.group(3) != null ? "clearance refused." : "no free port.";
+        return new String[]{m.group(1), said};
+    }
+
+    /** A new answer to the helm's crew is a COMMS line in the station's name; {@code first} only notes it. */
+    private void answers(HudData d, boolean first) {
+        String[] a = stationAnswered(d.ctx.helmOrder);
+        String heard = a == null ? "" : a[0] + ": " + a[1];
+        if (heard.equals(stationHeard)) return;
+        stationHeard = heard;
+        if (a == null || first) return;
+        say(Station.COMMS.tag, a[0], a[1], Level.ADVISORY, HOLD_ADVISORY, Station.COMMS.pages()[0]);
+    }
+
+    // --- Contracts' ends (13.5) ------------------------------------------------------------------
+
+    /** A contract held, by what a CMD line calls it. */
+    private static final class Held {
+        String title = "", kind = "", giver = "", station = "", name = "";
+        double reward;
+        /** Real seconds when it was last seen held, once it has ended. */
+        float goneAt;
+        boolean seen;
+
+        void set(Objective o) {
+            if (!title.equals(o.title) || !kind.equals(o.kind)) name = contractName(o.title, o.kind);
+            title = o.title;
+            kind = o.kind;
+            giver = o.giver;
+            station = o.station;
+            reward = o.reward;
+            seen = true;
+        }
+
+        /** The same contract, its title changed as it goes ("Patrol: back to Highport"). */
+        boolean same(Objective o) {
+            return kind.equals(o.kind) && giver.equals(o.giver) && station.equals(o.station);
+        }
+    }
+
+    /** Notes the contracts held this frame: one held before and not now has ended, and waits for its notice. */
+    private void contracts(HudData d) {
+        Array<Objective> now = d.objectiveFrame.objectives;
+        for (Held h : held) h.seen = false;
+        for (int i = 0; i < now.size; i++) {
+            Objective o = now.get(i);
+            Held h = null;
+            for (Held x : held) if (!x.seen && x.title.equals(o.title) && x.kind.equals(o.kind)) { h = x; break; }
+            if (h == null) for (Held x : held) if (!x.seen && x.same(o)) { h = x; break; }
+            if (h == null) {
+                h = spareHeld.size > 0 ? spareHeld.pop() : new Held();
+                h.title = h.kind = "";
+                held.add(h);
+            }
+            h.set(o);
+        }
+        for (int i = held.size - 1; i >= 0; i--) {
+            Held h = held.get(i);
+            if (h.seen) continue;
+            held.removeIndex(i);
+            h.goneAt = clock;
+            ended.add(h);
+        }
+        for (int i = ended.size - 1; i >= 0; i--) if (clock - ended.get(i).goneAt > ENDED_KEPT) spareHeld.add(ended.removeIndex(i));
+    }
+
+    private static final Pattern DONE = Pattern.compile("Contract done: (.*)\\. Paid ([\\d,]+) cr, standing ([+-]\\d+) with .+");
+    private static final Pattern BROKEN = Pattern.compile("Contract (failed|abandoned): (.*)\\. Standing ([+-]\\d+) with .+");
+    private static final Pattern CALLED_OFF = Pattern.compile("Contract called off: (.*)");
+
+    /**
+     * The name of the contract a notice ends, taken from those just ended: the one that paid what the
+     * notice says if there is one, else the latest; "Contract" when none is known. "" for no contract's end.
+     */
+    private String endedName(String text) {
+        if (!text.startsWith("Contract ")) return "";
+        Matcher m = DONE.matcher(text);
+        boolean done = m.matches();
+        // "Contract taken" ends nothing
+        if (!done && !BROKEN.matcher(text).matches() && !CALLED_OFF.matcher(text).matches()) return "";
+        long paid = done ? Long.parseLong(m.group(2).replace(",", "")) : -1L;
+        Held best = null;
+        for (Held h : ended) {
+            boolean pays = paid >= 0 && Math.round(h.reward) == paid;
+            boolean bestPays = best != null && paid >= 0 && Math.round(best.reward) == paid;
+            if (best == null || pays && !bestPays || pays == bestPays && h.goneAt >= best.goneAt) best = h;
+        }
+        if (best == null) return "Contract";
+        ended.removeValue(best, true);
+        spareHeld.add(best);
+        return best.name;
+    }
+
+    /**
+     * A contract's end as Command's line (13.5): the contract by its target and kind, how it ended,
+     * and what it paid or cost. "Contract done: Raider of the Void Raiders is beaten. Paid 7,500 cr,
+     * standing +6 with Terran Patrol Authority" is "Raider bounty done: +7,500 cr, +6 standing."; a
+     * failure gives its reason in place of the pay. The whole sentence stays in the log. Null when the
+     * text is no contract's end.
+     */
+    static String contractEnd(String text, String name) {
+        if (name == null || name.isEmpty()) name = "Contract";
+        Matcher m = DONE.matcher(text);
+        if (m.matches()) return name + " done: +" + m.group(2) + " cr" + standing(", ", m.group(3)) + ".";
+        m = BROKEN.matcher(text);
+        if (m.matches()) {
+            if (m.group(1).equals("abandoned")) return name + " given up" + standing(": ", m.group(3)) + ".";
+            return name + " failed: " + m.group(2) + standing(", ", m.group(3)) + ".";
+        }
+        m = CALLED_OFF.matcher(text);
+        if (m.matches()) return name + " called off: " + m.group(1) + ".";
+        return null;
+    }
+
+    /** ", +6 standing", or "" when it moved none. */
+    private static String standing(String lead, String signed) {
+        int n = Integer.parseInt(signed.startsWith("+") ? signed.substring(1) : signed);
+        return n == 0 ? "" : lead + (n > 0 ? "+" : "") + n + " standing";
+    }
+
+    private static final Pattern DELIVER = Pattern.compile("Deliver \\d+ (.+) to .+");
+    private static final Pattern ESCORT = Pattern.compile("Escort (.+?) to .+");
+    private static final Pattern BOUNTY = Pattern.compile("Bounty: (.+?)(?: \\(.*\\))?");
+    private static final Pattern PATROL = Pattern.compile("Patrol out to (.+) and back");
+    private static final Pattern RESCUE = Pattern.compile("Rescue \\d+ from (.+)");
+    private static final Pattern RECOVER = Pattern.compile("Recover \\d+ (.+) from .+");
+    private static final Pattern BRING = Pattern.compile("Bring \\d+ (.+?) to .+");
+    private static final Pattern CONVOY = Pattern.compile("Convoy of \\d+ to (.+)");
+    private static final Pattern DEFEND = Pattern.compile("Defend (.+) from \\d+ raiders?");
+    private static final Pattern FIND = Pattern.compile("Find (.+)");
+    private static final Pattern RAID = Pattern.compile("Raid (.+)");
+
+    /**
+     * What a CMD line calls a contract (13.5): its target and kind, from the board's title. "Bounty:
+     * Raider of the Void Raiders" is "Raider bounty", "Deliver 40 Food to Highport" "Food delivery",
+     * "Defend Highport from 3 raiders" "Highport defence"; a title with no target left in it (a patrol
+     * on its way back) is its kind.
+     */
+    static String contractName(String title, String kind) {
+        Matcher m;
+        if ((m = DELIVER.matcher(title)).matches()) return m.group(1) + " delivery";
+        if ((m = ESCORT.matcher(title)).matches()) return named(m.group(1)) + " escort";
+        if ((m = BOUNTY.matcher(title)).matches()) return named(m.group(1)) + " bounty";
+        if ((m = PATROL.matcher(title)).matches()) return named(m.group(1)) + " patrol";
+        if ((m = RESCUE.matcher(title)).matches()) return named(m.group(1)) + " rescue";
+        if ((m = RECOVER.matcher(title)).matches()) return m.group(1) + " recovery";
+        if ((m = BRING.matcher(title)).matches()) return m.group(1).equals("survivors") ? "Rescue" : m.group(1) + " recovery";
+        if ((m = CONVOY.matcher(title)).matches()) return named(m.group(1)) + " convoy";
+        if ((m = DEFEND.matcher(title)).matches()) return named(m.group(1)) + " defence";
+        if ((m = FIND.matcher(title)).matches()) return named(m.group(1)) + " search";
+        if ((m = RAID.matcher(title)).matches()) return named(m.group(1)) + " raid";
+        if (title.startsWith("Operation: ")) return "Operation " + title.substring("Operation: ".length());
+        return kind.isEmpty() ? "Contract" : kind;
+    }
+
+    /** A name as short as the line can carry it: "Raider of the Void Raiders" is "Raider", "the ace Red Jack" "Red Jack". */
+    static String named(String name) {
+        String n = name.startsWith("the ace ") ? name.substring("the ace ".length()) : name;
+        int of = n.indexOf(" of the ");
+        if (of > 0) n = n.substring(0, of);
+        return n.isEmpty() ? n : Character.toUpperCase(n.charAt(0)) + n.substring(1);
     }
 
     /** The station a notice belongs to, by what it is about. */
@@ -678,6 +904,11 @@ final class StationAlerts {
         Station named = Station.byTag(who);
         if (named != null) return named.tag;
         String t = body.toLowerCase(Locale.ROOT);
+        // The pirates' news is the captain's, whatever raider or base it names (13.4)
+        if (has(t, "robbed", "the ace ", "an ace", "word on the lanes", "pirate base located", "on the traffic map",
+                "moved back into", "the raid on ", "got away from you") || t.endsWith(" has fallen") || t.contains(" has fallen: ")) {
+            return Station.CMD.tag;
+        }
         if (has(t, "clearance", "docking", "docked", "undock", "berth", "beacon", "tow", "port ", "station")) return Station.COMMS.tag;
         if (has(t, "burn", "warp", "orbit", "transfer", "autopilot", "course", "arriv", "plan")) return Station.NAV.tag;
         if (has(t, "missile", "target", "gun", "pirate", "raider", "hostile", "decoy", "shield", "surrender", "struck", "boarding", "salvo", "locked", "lock on")) return Station.TAC.tag;

@@ -98,13 +98,34 @@ final class TacticalCluster extends YardPart {
         String closing = Float.isNaN(t.closing) || Math.abs(t.closing) < 0.5f ? ""
                 : (t.closing > 0f ? "  closing " : "  opening ") + Math.round(Math.abs(t.closing)) + " m/s";
         String hull = Float.isNaN(t.hull) ? "" : "  hull " + Math.round(t.hull * 100f) + "%";
-        String state = t.state.isEmpty() || t.state.equals("fit") ? "" : "  " + t.state;
+        String said = state(t.state);
+        String state = said.isEmpty() ? "" : "  " + said;
         // Short of room, after the name's letters the relation goes (the tube's colour and the world's
         // marker say it), then the hull; the range, the closing and the state stay
         String rest = rel + range + closing + hull + state;
         if (rest.length() + NAME_AT_LEAST > budget) rest = range + closing + hull + state;
         if (rest.length() + NAME_AT_LEAST > budget) rest = range + closing + state;
         return Hardware.squeeze(t.label, budget, rest);
+    }
+
+    /**
+     * The target's state in the game's words (8.3, rounds 17 and 18), from what the markers say:
+     * breaking off; disabled, as {@code DisabledComponent.Reason.label} words it (reactor down, crew
+     * down, hull broken, surrendered, abandoned, wreck); silenced, for a fallen base's battery. "" while
+     * it flies and fights.
+     */
+    static String state(String s) {
+        switch (s) {
+            case "running": return "breaking off";
+            case "struck": return "surrendered";
+            case "silenced": return "silenced";
+            case "NO_POWER": return "reactor down";
+            case "NO_CREW": return "crew down";
+            case "HULL": return "hull broken";
+            case "ABANDONED": return "abandoned";
+            case "WRECKED": return "wreck";
+            default: return "";
+        }
     }
 
     /** The letters of the target's name kept before anything after it gives way. */

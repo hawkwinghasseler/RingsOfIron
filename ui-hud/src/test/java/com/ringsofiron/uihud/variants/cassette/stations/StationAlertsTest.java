@@ -5,11 +5,13 @@ import com.ringsofiron.uihud.data.AlertRegistry.Category;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.AlertRegistry.TimerKind;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.providers.ObjectiveProvider.Objective;
 import com.ringsofiron.uihud.variants.cassette.stations.StationAlerts.Tile;
 import org.junit.jupiter.api.Test;
 
 import java.util.function.Consumer;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -245,5 +247,131 @@ class StationAlertsTest {
         assertEquals("", a.response);
         assertEquals(1, a.lines.size);
         assertEquals("Bea", a.lines.first().who);
+    }
+
+    private Objective hold(String title, String kind, double reward) {
+        Objective o = d.objectiveFrame.add();
+        o.title = title;
+        o.kind = kind;
+        o.giver = "patrol";
+        o.station = "Highport";
+        o.reward = reward;
+        return o;
+    }
+
+    @Test
+    void aContractsEndIsCommandsLineByTheContractsName() {
+        hold("Bounty: Raider of the Void Raiders (robbed 3 freighters, last of Food)", "Bounty", 7500);
+        Objective food = hold("Deliver 40 Food to Shackleton Ice", "Delivery", 3000);
+        frame(0.1f, x -> { });
+        // A delivery's title counts down as it goes; it is the same contract
+        food.title = "Deliver 20 Food to Shackleton Ice";
+        for (int i = 0; i < 10; i++) frame(0.1f, x -> { });
+        d.objectiveFrame.clear();
+        d.messages.add("Contract done: delivered. Paid 3,000 cr, standing +5 with Selene Combine", Level.ADVISORY, now + 0.05);
+        d.messages.add("Contract done: Raider of the Void Raiders is beaten. Paid 7,500 cr, standing +6 with Terran Patrol Authority",
+                Level.ADVISORY, now + 0.05);
+        frame(0.1f, x -> { });
+        assertEquals(2, a.lines.size);
+        // Each is named by what it paid, whichever ended first
+        assertEquals("CMD", a.lines.get(0).tag);
+        assertEquals("SHIP", a.lines.get(0).who);
+        assertEquals("Raider bounty done: +7,500 cr, +6 standing.", a.lines.get(0).text);
+        assertEquals("Food delivery done: +3,000 cr, +5 standing.", a.lines.get(1).text);
+        assertEquals(Page.CONTRACTS, a.lines.get(1).home);
+        // With none known to have ended, it is just a contract; a failure gives its reason for the pay
+        d.messages.add("Contract failed: out of time. Standing -3 with Terran Patrol Authority", Level.ADVISORY, now + 0.05);
+        frame(0.1f, x -> { });
+        assertEquals("Contract failed: out of time, -3 standing.", a.lines.peek().text);
+        // "Contract taken" ends nothing, and is no contract's end line
+        assertEquals(null, StationAlerts.contractEnd("Contract taken", "Contract"));
+        assertEquals("Highport defence given up: -2 standing.",
+                StationAlerts.contractEnd("Contract abandoned: abandoned. Standing -2 with Selene Combine", "Highport defence"));
+        assertEquals("Kestrel escort called off: Kestrel is gone.",
+                StationAlerts.contractEnd("Contract called off: Kestrel is gone", "Kestrel escort"));
+    }
+
+    @Test
+    void aContractIsNamedByItsTargetAndKind() {
+        assertEquals("Raider bounty", StationAlerts.contractName("Bounty: Raider of the Void Raiders", "Bounty"));
+        assertEquals("Red Jack bounty", StationAlerts.contractName("Bounty: the ace Red Jack of the Void Raiders (robbed 6 freighters)", "Bounty"));
+        assertEquals("Food delivery", StationAlerts.contractName("Deliver 40 Food to Shackleton Ice", "Delivery"));
+        assertEquals("Kestrel escort", StationAlerts.contractName("Escort Kestrel to Highport", "Escort"));
+        assertEquals("Shackleton Ice patrol", StationAlerts.contractName("Patrol out to Shackleton Ice and back", "Patrol"));
+        assertEquals("Patrol", StationAlerts.contractName("Patrol: back to Highport", "Patrol"));
+        assertEquals("Mary Ann rescue", StationAlerts.contractName("Rescue 3 from Mary Ann", "Rescue"));
+        assertEquals("Rescue", StationAlerts.contractName("Bring 3 survivors to Highport", "Rescue"));
+        assertEquals("Water recovery", StationAlerts.contractName("Recover 20 Water from Mary Ann", "Recovery"));
+        assertEquals("Water recovery", StationAlerts.contractName("Bring 20 Water to Highport", "Recovery"));
+        assertEquals("Highport convoy", StationAlerts.contractName("Convoy of 3 to Highport", "Convoy"));
+        assertEquals("Highport defence", StationAlerts.contractName("Defend Highport from 3 raiders", "Defend"));
+        assertEquals("Highport defence", StationAlerts.contractName("Defend Highport from 1 raider", "Defend"));
+        assertEquals("Black Rock search", StationAlerts.contractName("Find Black Rock", "Recon"));
+        assertEquals("Black Rock raid", StationAlerts.contractName("Raid Black Rock", "Raid"));
+    }
+
+    @Test
+    void aStationSpeaksInItsOwnName() {
+        assertArrayEquals(new String[]{"Highport", "clearance granted, port 2."},
+                StationAlerts.stationSays("Highport gives clearance: port 2 is armed for you"));
+        assertArrayEquals(new String[]{"Shackleton Ice", "clearance refused: hostile act."},
+                StationAlerts.stationSays("Shackleton Ice refuses docking clearance (hostile act); port armed"));
+        assertArrayEquals(new String[]{"Highport", "clearance refused."},
+                StationAlerts.stationSays("Highport refuses docking clearance; port armed"));
+        assertArrayEquals(new String[]{"Highport", "no free M port."}, StationAlerts.stationSays("Highport has no free M port; port armed"));
+        assertNull(StationAlerts.stationSays("Docked at Highport"));
+        // Heard on deck: a notice that comes by itself is a COMMS line in the station's name
+        frame(0.1f, x -> { });
+        for (int i = 0; i < 10; i++) frame(0.1f, x -> { });
+        d.messages.add("Highport gives clearance: port 2 is armed for you", Level.ADVISORY, now + 0.05);
+        frame(0.1f, x -> { });
+        assertEquals("COMMS", a.lines.peek().tag);
+        assertEquals("Highport", a.lines.peek().who);
+        assertEquals("clearance granted, port 2.", a.lines.peek().text);
+        // A station with a name of two words, addressing the ship
+        d.messages.add("Selene Yard: your ship is venting at the berth. Time warp waits until it is patched or repaired",
+                Level.WARNING, now + 0.05);
+        frame(0.1f, x -> { });
+        assertEquals("COMMS", a.lines.peek().tag);
+        assertEquals("Selene Yard", a.lines.peek().who);
+    }
+
+    @Test
+    void whatTheStationAnswersTheHelmsCrewIsHeardOnceOnDeck() {
+        d.ctx.helmOrder = "Helm: docking at Highport: closing on Highport";
+        frame(0.1f, x -> { });
+        frame(0.1f, x -> { });
+        assertEquals(0, a.lines.size);
+        d.ctx.helmOrder = "Helm: docking at Highport: cleared for port 2";
+        frame(0.1f, x -> { });
+        assertEquals(1, a.lines.size);
+        assertEquals("COMMS", a.lines.first().tag);
+        assertEquals("Highport", a.lines.first().who);
+        assertEquals("clearance granted, port 2.", a.lines.first().text);
+        frame(0.1f, x -> { });
+        assertEquals(1, a.lines.first().count, "said once, not every frame");
+        assertArrayEquals(new String[]{"Highport", "clearance refused."},
+                StationAlerts.stationAnswered("Helm: docking at Highport: refused clearance; holding off"));
+        assertNull(StationAlerts.stationAnswered("Helm order (docking at Highport: cleared for port 2) waits for a helmsman"));
+    }
+
+    @Test
+    void thePiratesNewsIsTheCaptainsAndTheFightTacticals() {
+        assertEquals("CMD", StationAlerts.tagOf("SHIP", "Pirate raider 6 robbed Kestrel of 40 Food"));
+        assertEquals("CMD", StationAlerts.tagOf("SHIP", "The ace Red Jack is beaten: a spare Heavy Cannon is crated in its hold"));
+        assertEquals("CMD", StationAlerts.tagOf("SHIP", "Pirate raider 6 got away from you: it flies as the ace Red Jack now"));
+        assertEquals("CMD", StationAlerts.tagOf("SHIP", "Black Rock has fallen"));
+        assertEquals("CMD", StationAlerts.tagOf("SHIP", "Raiders have moved back into Black Rock: the pirates have a base again"));
+        assertEquals("CMD", StationAlerts.tagOf("SHIP", "Pirate base located: Black Rock, now on the traffic map"));
+        assertEquals("TAC", StationAlerts.tagOf("SHIP", "Pirate raider 6 is breaking off"));
+        assertEquals("TAC", StationAlerts.tagOf("SHIP", "Black Rock scrambles 2 raiders against you"));
+        // "Word on the lanes" is no one's name
+        frame(0.1f, x -> { });
+        for (int i = 0; i < 10; i++) frame(0.1f, x -> { });
+        d.messages.add("Word on the lanes: the ace Red Jack flies a pirate gunship now", Level.ADVISORY, now + 0.05);
+        frame(0.1f, x -> { });
+        assertEquals("CMD", a.lines.peek().tag);
+        assertEquals("SHIP", a.lines.peek().who);
+        assertEquals("Word on the lanes: the ace Red Jack flies a pirate gunship now", a.lines.peek().text);
     }
 }

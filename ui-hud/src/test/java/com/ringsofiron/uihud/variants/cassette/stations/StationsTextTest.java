@@ -56,6 +56,14 @@ class StationsTextTest {
         assertEquals("PIRATE RAIDER 6  hostile  5.0 km  closing 50 m/s  hull 45%", TacticalCluster.target(t, 80));
         assertEquals("PIRATE RAID…  5.0 km  closing 50 m/s  hull 45%", TacticalCluster.target(t, 46));
         assertEquals("PIRATE RAIDER 6  5.0 km  closing 50 m/s", TacticalCluster.target(t, 39));
+        // Its state in the game's words, never the reason's code name
+        t.hull = Float.NaN;
+        t.state = "NO_POWER";
+        assertEquals("PIRATE RAIDER 6  hostile  5.0 km  closing 50 m/s  reactor down", TacticalCluster.target(t, 80));
+        t.state = "running";
+        assertEquals("PIRATE RAIDER 6  hostile  5.0 km  closing 50 m/s  breaking off", TacticalCluster.target(t, 80));
+        assertEquals("surrendered", TacticalCluster.state("struck"));
+        assertEquals("", TacticalCluster.state("fit"));
     }
 
     @Test
