@@ -184,6 +184,41 @@ call `getManeuverMap().setCanvasInsets(left, top, right, bottom)` (UI units). Th
 and centre in what is left, and the scale bar and title sit there. The insets go back to 0 when the
 variant changes.
 
+### The menus
+
+The menus around the game are the shell's, not windows: the main menu before any game, the pause
+menu over one, and what they open (`ShellScreen`): new game, load, save, settings, and the dialog
+that asks before mod scripts run. A variant gives them its own look with `shellLook()`, which
+returns a `ShellLook`; null keeps the classic menus.
+
+- **When the look is made**: the shell asks a fresh instance of the variant, one it never
+  attaches, as soon as the variant is picked: at launch, or on Apply in the settings. So make the
+  look's fonts and skin in `shellLook()`, not in `attach`. The shell disposes the look when another
+  variant is picked, and the look disposes what it made.
+- **`skin()`**: the menus are built from it as they always are, under the classic skin's style
+  names, so each label, button, field and list takes its fonts, colours and frames. It needs those
+  names: the `panel` drawable behind each menu; the label styles `display` (the game's title),
+  `heading`, `title`, `default`, `dim` and `warn`; the text button styles `menu`, `toggle` and
+  `default`; and the default styles of `TextField`, `SelectBox`, `CheckBox`, `Slider`
+  (`default-horizontal`), `ScrollPane` and `Window`. `HudSkin.create()` makes each of them for the
+  classic look.
+- **`rescale(uiScale)`**: draw the text at the UI scale, as `HudSkin.rescale` does for the classic
+  skin. It is called once when the look is made and again when the scale changes; true lays the
+  menus out again.
+- **`backdrop(batch, width, height, delta)`**: draw behind the main menu, over the whole screen.
+  `pauseBackdrop` draws over the paused game, under the pause menu. False keeps the classic drifting
+  stars and planet, or the classic dimming.
+- **`dress(screen, panel, root)`**: once a menu is built, dress it: a frame, a header, a legend of
+  soft keys. `panel` is the menu's own table and `root` the table filling the screen around it. For
+  the mod scripts dialog, `panel` is the dialog and `root` is null: it floats over the game.
+
+The shell keeps what the menus hold, what their buttons do and their keys: Esc backs out, and the
+arrow keys, Enter and the pad move between the buttons. A look that throws, or has no skin, leaves
+the classic menus up until the variant is picked again.
+
+The ship editor that the yard's Rebuild decks opens draws itself, outside Scene2D, and has no hook
+yet.
+
 ## The common data layer
 
 `host.data()` is one `HudData`, refreshed once a frame before `update`. A variant reads it and never

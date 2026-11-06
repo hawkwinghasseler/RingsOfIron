@@ -89,9 +89,10 @@ public final class GameBootstrap {
 
         GameWorld.Modules modules = new GameWorld.Modules();
         // Content loads on this thread, so the dialog cannot block: scripts wait, and run once the
-        // player allows them. "Remember" answers are kept between launches.
+        // player allows them. "Remember" answers are kept between launches. It takes the look of the
+        // shell's menus for the HUD variant picked.
         modules.modTrust = new ModTrustDialog(hud.getStage(), hud.getSkin(),
-                Gdx.app.getPreferences("RingsOfIron"))
+                Gdx.app.getPreferences("RingsOfIron"), () -> options.menuLook == null ? null : options.menuLook.get())
                 .onDecision(allowed -> {
                     if (allowed && world != null && world.getContent() != null) world.getContent().runDeferredScripts();
                 });

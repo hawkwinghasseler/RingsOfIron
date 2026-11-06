@@ -136,4 +136,14 @@ public interface HudVariant {
     default MapPainter mapPainter() {
         return null;
     }
+
+    /**
+     * How the game's menus look with this variant picked ({@link ShellLook}): the main menu, new game,
+     * pause, load, save, settings and the mod scripts dialog. Null keeps the classic menus. The game
+     * asks a fresh instance that it never attaches, as soon as the variant is picked (on the main
+     * menu, before any game), so make the look's own fonts and skin in it, not in {@link #attach}.
+     */
+    default ShellLook shellLook() {
+        return null;
+    }
 }

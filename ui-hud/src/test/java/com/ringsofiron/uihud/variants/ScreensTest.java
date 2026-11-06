@@ -257,5 +257,6 @@ class ScreensTest {
             assertFalse(v.showing(w), w.name());
         }
         assertNull(v.mapPainter(), "the classic map's look");
+        assertNull(v.shellLook(), "the classic menus");
     }
 }
