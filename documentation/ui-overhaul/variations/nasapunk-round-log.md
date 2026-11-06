@@ -12,7 +12,7 @@ at 1280 x 800.
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18 | Converged in round 5; S7 to S9 drawn in round 7, and S5 to S8 redrawn for the crewless Raider |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17; C11 at 18 | Converged in round 5, and again at versions 13 to 18 in round 7; C11's questions and the crewless Raider are with the designer |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 14 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 14 in round 7 |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 15 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 15 in round 7 |
 
 ## Round 1 (3 November 2026)
 
@@ -524,7 +524,17 @@ of 8, Ada is idle, the game's word for it (`Idle`), and Cole's record is one shi
 marine skill at its starting 50. T8's log loses the forced airlock and the prisoners, and the Raider
 is taken 36 s after the latch, with the laser in the hold two minutes on. T10 loses the prisoners in
 the hold and gains the point-defense line under V. The same finding takes the prisoners out of my
-stations screens, and the context screens wait on their designer.
+stations screens, and the context screens wait on their designer. Drawing round 14 raised two
+points.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Task (BRD) | The taken wireframe keeps `[Recall all]`, but the game refuses a recall once the ship is taken (`Boarding.recall`: "No boarding under way"), and an undefended ship never had a party. T5 leaves it out | Round 15: gone; ACROSS lists the people across with what they do, and nothing more, and clicking a marked part calls its work off (`Salvage.mark` toggles it) |
+| Task (BRD) | The game finds a part out of reach only once its strip is ordered (`Salvage`), so the Raider's engines, outside the stern wall, read as strippable until a mark is spent on them. Could the list run the reach check before marking? | Round 15: latched on, a part nobody can get to from inside reads `EVA only` (`Salvage.reachable`, which section 13 asks to expose), and standing off, one inside the hull reads `latch on` (`Salvage.onHull`); selected, either gives the full reason |
+
+**Round 15** took both, and T5 is redrawn to it: its engines read EVA ONLY again, now from the
+spec, and Enter on a marked part calls its work off. My deviation for the missing Recall all is
+gone, since the spec now has none.
 
 **The slate's Log and the gun panel.** S8 draws the slate on its Log tab, docked after the fight,
 the latch and the way home, and S9 the gun panel at the forward starboard autocannon, docked. The

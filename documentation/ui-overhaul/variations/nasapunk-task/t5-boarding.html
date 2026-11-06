@@ -15,7 +15,9 @@
 // spec round 14), and the salvage is under way. Ada strips the laser, and Cole waits beside the
 // mount to carry it home. The panel runs down the right side so the deck stays in sight, and on the
 // latched ship's deck the workers carry their work tags (OVL's deck set) and the marked parts their
-// cyan outlines.
+// cyan outlines. Once taken there is no recall (Boarding.recall), so ACROSS says only what each
+// person does, and latched on, nobody can get to the engines from inside, since they hang outside
+// the stern wall, so they read EVA ONLY before they are marked (round 15, Salvage.reachable).
 //
 // The raider is the game's (GameScenario's corvette_raider): the player's corvette refitted by
 // pirates, so its plan is the corvette's, two rooms either side of one door. Docked ships lie half
@@ -85,7 +87,9 @@ s += du(864, 72, 408, 688, {
     g += val(L, gy + 166, 'ADA') + note(L + 44, gy + 166, 'ENGINEER') + val(R, gy + 166, 'STRIPPING THE LASER', { anchor: 'end', bold: false });
     g += val(L, gy + 184, 'COLE') + note(L + 44, gy + 184, 'MARINE') + val(R, gy + 184, 'WAITING TO CARRY', { anchor: 'end', bold: false });
     // the salvage, most valuable first: a mark box (cyan, filled) on what is marked to strip; Enter
-    // marks the cursor's part or leaves it. The four dearest show, and the last row opens the rest
+    // marks the cursor's part, or calls off a marked part's work (Salvage.mark toggles it). A part
+    // the link can't reach says so before it is marked. The four dearest show, and the last row
+    // opens the rest
     g += divider(gx, gy + 210, gw, 'SALVAGE');
     const box = (y, on) => rect(L, y - 9.5, 9, 9, on ? { fill: C.cyan } : { stroke: C.dim, sw: 1.2 });
     const cols = [{ t: 'PART', w: 148 }, { t: 'CR', w: 44, align: 'right' }, { t: 'WORK', w: 48, align: 'right' }, { t: '', w: 104, align: 'right' }];
@@ -93,7 +97,7 @@ s += du(864, 72, 408, 688, {
       ['LASER MK1', '2 250', '10 S', 'STRIPPING 40%', true],
       ['REACTOR', '2 000', '40 S', '', false],
       ['HARPOON LAUNCHER', '1 500', '10 S', 'MARKED', true],
-      ['ENGINE', '1 250', '20 S', '', false],
+      ['ENGINE', '1 250', '20 S', 'EVA ONLY', false],
     ];
     const gr = grid(L + 16, gy + 230, cols, parts.map(([n, cr, wk, st, m]) => ({
       cells: [n, cr, wk, { t: st, c: m ? C.cyan : C.dim, size: 12, bold: true }],

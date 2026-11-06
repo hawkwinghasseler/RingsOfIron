@@ -1,6 +1,6 @@
 # Nasa-punk × Task-driven
 
-The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 14 now, on
+The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 15 now, on
 branch `claude/project-thread-nfiuf0`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
@@ -108,7 +108,10 @@ parts marked to strip carry cyan outlines. The state reads TAKEN with nobody abo
 beaten it. The salvage list is the game's, most valuable first, in its names and statuses, each
 part priced at a twentieth of its price new with a tile's 10 s of work. The four dearest show, and
 the last row opens the other eleven. A mark box sits on each part, filled cyan once it is marked;
-Enter marks the cursor's row, and the scratchpad says what that will do. The cargo is the Raider's
+Enter marks the cursor's row, or calls off a marked part's work, and the scratchpad says what that
+will do. A part the link can't reach says so before it is marked (round 15): latched on, nobody can
+get to the engines from inside, so they read EVA ONLY. Once taken there is no recall, so ACROSS
+says only what each person does. The cargo is the Raider's
 empty hold, with ours after all of it, and the prisoners section says nobody was aboard. The prize
 is what a station within 2 km pays: 10 650 CR whole, or 2 760 once the marked parts are off, in
 amber, since each gun taken off takes its price with it. At Highport it can be turned in for the
@@ -249,8 +252,6 @@ Resolved without a change:
 - **Warp reads `1×`** with the multiplication sign, where the spec writes `1x`.
 - **BRD is 408 wide**, where the wireframe's is 360, so the game's longest salvage status
   (`stripping 40%`) fits beside the work and the price. Its bezel takes 24 of that.
-- **BRD's taken phase has no Recall all.** The game refuses it once the ship is taken ("No boarding
-  under way"), and an undefended ship was taken with no party to recall.
 - **Countdowns are M:SS** (`IMPACT 0:03`, `CPA 0.6 KM  T−1:15`), where the spec writes seconds.
 - **The log's clearing time has seconds** (`CLEARED 12:14:31`), where the spec writes `cleared
   14:31`: the log's own stamps carry seconds, and a missile's warning clears within its minute.
