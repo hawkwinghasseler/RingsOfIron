@@ -22,9 +22,10 @@
 // full (round 9): the bounty taken and done, by the title the game gives it, which names the
 // target's faction (ContractPostings: "Raider of the Void Raiders"), done the moment its ship
 // is beaten and paid at once, 7 500 CR and +6 with the Patrol; the disablement (GameBootstrap); the
-// collar (PlayerDocking); the forced airlock and the taking (Boarding: the Raider's four less Crew 2, who
-// died of the wound, are held); the prisoners brought aboard (Prisoners); the laser stripped and
-// stowed (Salvage, at a twentieth of its price); and Highport's clearance, port 2 for the
+// collar (PlayerDocking); the taking, which the first strip order made, since the Raider flies with
+// nobody aboard (Boarding.takeUndefended, task spec round 14), so no airlock was forced and nobody is
+// held; the laser stripped and stowed (Salvage, at a twentieth of its price) within two minutes of
+// it, a tile's 10 s of work and the walk there and back; and Highport's clearance, port 2 for the
 // corvette's S port. Thousands take the style's thin space, and a unit after a number is the word
 // list's (CR).
 //
@@ -55,12 +56,10 @@ s += consoleBody(8, 96, 1264, 698, { plate: 'SHIP\'S BOOK', sub: 'PATROL CORVETT
 const DAY3 = [
   ['14:20:31', '', 'Docked at Highport'],
   ['14:16:50', '', 'Highport gives clearance: port 2 is armed for you'],
-  ['13:02:15', '', 'Undocked from Raider'],
-  ['12:58:40', '', 'The Laser Mk1 is in the hold (sells for 2 250 CR)'],
-  ['12:58:22', '', 'The Laser Mk1 is off Raider; it\'s being carried home'],
-  ['12:44:10', '', '3 prisoners brought aboard'],
-  ['12:40:05', '', 'Raider is taken: 3 held'],
-  ['12:31:50', '', 'The airlock door of Raider is forced open'],
+  ['12:33:05', '', 'Undocked from Raider'],
+  ['12:32:20', '', 'The Laser Mk1 is in the hold (sells for 2 250 CR)'],
+  ['12:31:41', '', 'The Laser Mk1 is off Raider; it\'s being carried home'],
+  ['12:30:48', '', 'Raider is taken'],
   ['12:30:12', '', 'Docked at Raider'],
   ['12:29:40', '', 'Your collar has hold of Raider; drawing in'],
   ['12:16:02', 'i', 'Contract done: Raider of the Void Raiders is beaten. Paid 7 500 CR, standing +6 with Terran Patrol Authority'],
@@ -72,7 +71,7 @@ const DAY3 = [
   ['09:12:20', '', 'Contract taken: Bounty: Raider of the Void Raiders'],
 ];
 // what the log holds: four days, day 3's above and days 0 to 2 below them, by filter
-const BY = { ALERTS: 8, IMPORTANT: 4, INFO: 61 }, HELD = BY.ALERTS + BY.IMPORTANT + BY.INFO;
+const BY = { ALERTS: 8, IMPORTANT: 4, INFO: 59 }, HELD = BY.ALERTS + BY.IMPORTANT + BY.INFO;
 
 // ---- BOOK.H, where you are, and what the log holds ----
 s += du(16, 118, 1248, 62, {

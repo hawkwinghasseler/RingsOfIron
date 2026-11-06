@@ -1,6 +1,6 @@
 # Nasa-punk × Task-driven
 
-The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 13 now, on
+The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 14 now, on
 branch `claude/project-thread-nfiuf0`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
@@ -99,18 +99,21 @@ degrees in the 3.8 days the transfer takes.
 
 ![Boarding, taken](t5-boarding.png)
 
-**T5, BRD in its third phase: taken (section 7).** The party took the Raider and went home,
-and the salvage is under way. The panel runs down the right side so the deck stays in sight, and
-the raider lies the way the game docks two ships, half a turn round over the corvette's port side.
-On its deck the workers carry their work tags (Ada stripping the laser, Cole carrying the ore
-across the collar), and the parts marked to strip carry cyan outlines. The salvage list is the
-game's, dearest first, priced at a twentieth of each part's price. A mark box sits on each part
-that can be marked, filled cyan once it is; the engines hang outside the hull and come off only on
-EVA, so they have none and say so. Enter marks the cursor's row, and the scratchpad says what that
-will do. The prize sells for 21 000 CR whole and 8 400 once a part is off, the second line in
-amber, since Ada's laser is the first part. Prisoners are shown against the free berths, and the
-cargo with the hold after all of it. OBJ is hidden: a bounty is paid the moment its ship is
-beaten, so nothing is held, and TURN IN under PRIZE is the yard's, for the ship itself.
+**T5, BRD in its third phase: taken (section 7).** The Raider flies with nobody aboard and carries
+no cargo, so no party went: the first part marked took it (round 14), and the salvage is under way.
+The panel runs down the right side so the deck stays in sight, and the raider lies the way the game
+docks two ships, half a turn round over the corvette's port side. On its deck the workers carry
+their work tags (Ada stripping the laser, Cole beside the mount waiting to carry it home), and the
+parts marked to strip carry cyan outlines. The state reads TAKEN with nobody aboard, and what had
+beaten it. The salvage list is the game's, most valuable first, in its names and statuses, each
+part priced at a twentieth of its price new with a tile's 10 s of work. The four dearest show, and
+the last row opens the other eleven. A mark box sits on each part, filled cyan once it is marked;
+Enter marks the cursor's row, and the scratchpad says what that will do. The cargo is the Raider's
+empty hold, with ours after all of it, and the prisoners section says nobody was aboard. The prize
+is what a station within 2 km pays: 10 650 CR whole, or 2 760 once the marked parts are off, in
+amber, since each gun taken off takes its price with it. At Highport it can be turned in for the
+bounty's +6 instead. OBJ is hidden: a bounty is paid the moment its ship is beaten, so nothing is
+held.
 
 ![Station terminal, contracts](t6-terminal.png)
 
@@ -138,16 +141,14 @@ short. TAKE (Enter) and SHOW ROUTE (M) are keys under the glass.
 **T7, BOOK on its CREW tab, docked at Highport after T5.** The terminal's frame again, with the
 ship, its berths, the week's wages and the medical stores in the header. The crew are the
 service's, so they draw no wage. Each row has the role, the condition as the game words it, the
-job now and where, in the game's words, and morale. An engineer never mans a console, so Ada is
-treating a patient, Crew 3, since a ship's crew care for the prisoners they hold, and the rest man
-them, a crewman the helm and a marine the weapons. The Raider's three surviving crew are aboard as
-prisoners under the names the game gives a raider's crew, taking berths (7 of the corvette's 8,
-the captain's among them). Highport is the sponsor's, so each can be handed over for 400 CR and +1
-standing, and Crew 4, the one outlaw in three, offers to join. The orders for everyone sit under
-them: EVA, suits at battle stations, and where to hire. Cole's page has the four skills as bars,
-the marine skill grown from 50 by the boarding; the light wound, which slows the work and heals by
-itself; the job, and the suit in its locker with its 10:00 of air; the history as the game counts
-it; and what a marine takes on. LET GO and SEND OUT are its keys. SEND OUT is dark, since the only
+job now and where, in the game's words, and morale. An engineer never mans a console, and with
+nothing to mend Ada is idle; the rest man them, a crewman the helm and a marine the weapons. The
+four aboard take 4 of the corvette's 8 berths. The Raider flew with nobody aboard (round 14), so no
+prisoners are held, and their section says so. The orders for everyone sit under them: EVA, suits
+at battle stations, and where to hire. Cole's page has the four skills as bars; the light wound,
+which slows the work and heals by itself; the job, and the suit in its locker with its 10:00 of
+air; the history as the game counts it, one ship beaten and no boarding; and what a marine takes
+on. LET GO and SEND OUT are its keys. SEND OUT is dark, since the only
 work outside in a marine's trade is fetching someone adrift, and there is none.
 
 ![The ship's book, log](t8-book-log.png)
@@ -159,9 +160,9 @@ filtered on the soft keys under the glass, ALERTS, IMPORTANT and INFO, each lit 
 keeps the last 500 entries and is saved with the game, and the header counts what it holds by
 filter. The notices are the game's own words, with ships named in full: the bounty taken at 09:12
 and done the moment the Raider was beaten, by the game's title, which names the target's faction, paid at
-once (7 500 CR and +6 with the Patrol); the disablement, the collar, the forced airlock, the
-taking, the prisoners brought aboard, the laser stripped and stowed, and Highport's clearance for
-port 2. An alert is logged once, as it was raised, in its full text: its code, what and where,
+once (7 500 CR and +6 with the Patrol); the disablement, the collar, the taking, which the first
+strip order made since nobody was aboard, the laser stripped and stowed within two minutes, and
+Highport's clearance for port 2. An alert is logged once, as it was raised, in its full text: its code, what and where,
 then the action it named, dim, since that was the advice of the moment, with the band's level as
 its mark, ◆ a warning and ▲ a caution. When it cleared, its entry gained the time at the right,
 rather than a second entry. The game's warning notices are their alerts: Cole's serious wound is
@@ -195,11 +196,13 @@ where the hull meets space, on a leader from the mount, so the deck stays in sig
 of the screen stays the world's; walking away closes it, and so does Esc. It is the prompt's plate
 grown: the mount's name as WPN gives it, engraved beside the kapton strip; health, power (circuit
 1, the ship's one) and state on the glass; and the keys as caps with their verbs, Enter to switch
-it off under a toggle that shows where the switch stands, and V to take the gun. While the panel is
+it off under a toggle that shows where the switch stands, and V to take the gun. It is a
+point-defense gun, so a dim line under V says what taking it costs (round 14): in hand, it hunts no
+missile. While the panel is
 open it carries those keys, so the prompt stands down rather than repeat them, and the hint line
 keeps Esc, walking and F1. The rest of the HUD is what the spec shows docked with nothing wrong:
-the clock, and the lamps with CREW lit softly for the light wounds and the prisoner Ada is
-treating in the hold. OBJ, NTF, HLM and PER have nothing to say, so they are hidden.
+the clock, and the lamps with CREW lit softly for Cole's light wound; Ada, with nothing to mend,
+stands idle in the hold. OBJ, NTF, HLM and PER have nothing to say, so they are hidden.
 
 ## Round 6 critique
 

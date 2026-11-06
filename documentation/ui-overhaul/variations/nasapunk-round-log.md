@@ -12,7 +12,7 @@ at 1280 x 800.
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18 | Converged in round 5; S7 to S9 drawn in round 7 |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 17; C11 at 18 | Converged in round 5, and again at versions 13 to 18 in round 7; C11's questions and the crewless Raider are with the designer |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 13 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 13 in round 7 |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 14 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 14 in round 7 |
 
 ## Round 1 (3 November 2026)
 
@@ -487,7 +487,7 @@ words for it, and Crew 3's wound is being treated (`CrewMedical.condition`).
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Task (CON) | A point-defense gun's panel could say what taking it costs: while the captain sits at a mount, that mount is in hand and hunts no missile (`PlayerGunnery.inHand`), so its side has only the other autocannon, which can't see across the hull. The stations spec's gun panel says so (10.2); CON lists only the switch and `V  take the gun` | |
+| Task (CON) | A point-defense gun's panel could say what taking it costs: while the captain sits at a mount, that mount is in hand and hunts no missile (`PlayerGunnery.inHand`), so its side has only the other autocannon, which can't see across the hull. The stations spec's gun panel says so (10.2); CON lists only the switch and `V  take the gun` | Round 14: under `V  take the gun`, a point-defense gun's panel reads `point defense: in hand, it hunts no missile`, and the starter corvette's other autocannon can't cover that side |
 
 **C11, the inspect card on a gun.** The consoles row had no context screen, since the context spec
 gives a gun no panel: E at a gun takes it, and the system's numbers and switch are the inspect
@@ -507,6 +507,24 @@ context screens draw too: First Play's Raider flies with nobody aboard.
 | Context (P1) | The helm field while docked: the game's bridge line has no docked case, so a helmsman at the helm "holds the heading" (`GameHudText.bridgeLine`). C11 draws that. Should it be empty, or say docked? | |
 | Context (H7, P6) | H7 says a point-defense mount is never in hand, but at a gun seat the game puts that gun in hand, point defense too (`PlayerGunnery.inHand`), and a gun aimed by hand hunts no missile. P6 at a point-defense gun could say what taking it costs, as the task and stations specs now do | |
 | Context (X2, 11.13) | First Play's Raider flies with nobody aboard: `GameScenario` spawns it with no crew and no cargo, while `HostileSpawns` crews the rails' pirates. Once it is disabled, the first strip order takes it (`Boarding.takeUndefended`), with no party, no defender, no prisoner and no cargo. X2's sample and 11.13, and so C4 and C6, assume a crewed Raider; a rails pirate ("Pirate raider 3") would have one. 11.13's P5 also keeps a bounty step, but the game pays a bounty the moment its ship is beaten (`ContractBoard`) | |
+
+**Round 14** took the CON note, and the designer's own review against the code found two more
+things on drawn screens. TGT's states follow the game: a hostile with nothing locked is `not
+engaged`, which the Raider stays until the captain fires on it, so T2's Raider, firing on the ship,
+is still `fighting`. And First Play's Raider flies with nobody aboard and carries no cargo
+(`GameScenario`), so the first strip order takes it (`Boarding.takeUndefended`), with no party, no
+prisoners and an empty hold. T5, T7, T8 and T10 are redrawn to it. T5's state is TAKEN with nobody
+aboard. Ada strips the laser while Cole waits beside the mount to carry it, the list shows the four
+dearest parts at round 14's prices and work with a row for the other eleven, and the prize reads
+10 650 whole and 2 760 once the marked laser and harpoon launcher are off. Its engines lose the EVA
+ONLY I had given them: the game finds a part out of reach only once its strip is ordered
+(`Salvage`), so an unmarked engine reads as strippable, as the sample has it. The panel is now 408
+wide, so the game's longest status fits beside the work. T7 holds no prisoners, so the berths are 4
+of 8, Ada is idle, the game's word for it (`Idle`), and Cole's record is one ship beaten, with the
+marine skill at its starting 50. T8's log loses the forced airlock and the prisoners, and the Raider
+is taken 36 s after the latch, with the laser in the hold two minutes on. T10 loses the prisoners in
+the hold and gains the point-defense line under V. The same finding takes the prisoners out of my
+stations screens, and the context screens wait on their designer.
 
 **The slate's Log and the gun panel.** S8 draws the slate on its Log tab, docked after the fight,
 the latch and the way home, and S9 the gun panel at the forward starboard autocannon, docked. The
