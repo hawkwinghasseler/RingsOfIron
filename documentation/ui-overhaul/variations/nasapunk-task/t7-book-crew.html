@@ -21,10 +21,11 @@
 // or reads New (every second of work also raises engineering, so Cole, with none, is still at 50); a
 // condition is OK or unconscious with the health left, a light wound with it, or a serious or
 // critical wound with what is being done about it. The job is the game's own words for it
-// (CrewTasks): with nothing to do, an engineer is idle, since an engineer never mans a console (a
-// damaged system is mended in seconds, and the rest of the damage is the yard's), and the rest man
-// the consoles (a crewman the helm, a marine the weapons); a suit goes back to its locker, which
-// fills it. Prisoners take berths (4 aboard and 3 held of the corvette's 8). A
+// (CrewTasks): an engineer never mans a console (a damaged system is mended in seconds, and the
+// rest of the damage is the yard's), so Ada, free, is treating a patient, Crew 3, since a ship's
+// crew care for the prisoners they hold, a serious wound first (CrewHealthSystem), and the rest man
+// the consoles (a crewman the helm, a marine the weapons), where the lightly wounded see to
+// themselves; a suit goes back to its locker, which fills it. Prisoners take berths (4 aboard and 3 held of the corvette's 8). A
 // raider's crew are named Crew 1 to 4 by the game, and Crew 2 died of the wound; at one of the
 // sponsor's stations a prisoner the sponsor wants is handed over for 400 CR and +1 standing; and one
 // outlaw in three offers to join, by a hash of the name and role, which picks Crew 4. Send out
@@ -74,16 +75,16 @@ const list = du(16, 228, 760, 558, {
     const L = gx + 14;
     const cols = [{ t: 'NAME', w: 78 }, { t: 'ROLE', w: 96 }, { t: 'CONDITION', w: 150 }, { t: 'JOB NOW', w: 214 }, { t: 'WHERE', w: 70 }, { t: 'MORALE', w: 66, align: 'right' }];
     const gr = grid(L, gy + 54, cols, [
-      [{ t: 'ADA', bold: true }, 'ENGINEER', 'OK 100%', 'IDLE', 'HOLD', '72%'],
+      [{ t: 'ADA', bold: true }, 'ENGINEER', 'OK 100%', 'TREATING A PATIENT', 'HOLD', '72%'],
       [{ t: 'BEA', bold: true }, 'CREWMAN', 'OK 100%', 'MANNING THE HELM', 'BRIDGE', '70%'],
       { cells: [{ t: 'COLE', bold: true }, 'MARINE', 'LIGHT WOUND 64%', 'MANNING THE WEAPONS', 'BRIDGE', '78%'], cursor: true },
     ], { rule: 0, rh: 24 });
     g += gr.svg;
     // the prisoners: theirs, and what can be done with them here
     g += divider(gx, gy + 170, gw, 'PRISONERS  ·  THE RAIDER VEX\'S CREW');
-    const pr = grid(L, gy + 196, [{ t: 'NAME', w: 132 }, { t: 'FACTION, ROLE', w: 196 }, { t: 'CONDITION', w: 150 }, { t: 'HERE', w: 196, align: 'right' }], [
+    const pr = grid(L, gy + 196, [{ t: 'NAME', w: 92 }, { t: 'FACTION, ROLE', w: 180 }, { t: 'CONDITION', w: 236 }, { t: 'HERE', w: 210, align: 'right' }], [
       [{ t: 'CREW 1', bold: true }, 'VOID RAIDERS, CREWMAN', 'OK 100%', 'HAND OVER'],
-      [{ t: 'CREW 3', bold: true }, 'VOID RAIDERS, ENGINEER', 'SERIOUS WOUND, DOWN', 'HAND OVER'],
+      [{ t: 'CREW 3', bold: true }, 'VOID RAIDERS, ENGINEER', 'SERIOUS WOUND, BEING TREATED', 'HAND OVER'],
       [{ t: 'CREW 4', bold: true }, 'VOID RAIDERS, MEDIC', 'LIGHT WOUND 55%', { t: 'HAND OVER · OFFERS TO JOIN', c: C.white }],
     ], { rule: 0, rh: 24 });
     g += pr.svg;

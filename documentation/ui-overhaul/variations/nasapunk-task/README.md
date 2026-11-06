@@ -30,7 +30,8 @@ quarter so the lamps' 12-unit legends fit their lenses.
 | HLM helm status (Z8) | A mode strip: who has the helm, and the order in an FMA box (green while it flies, white while it holds or waits). At gunnery it spans the gap between SHIP and WEAPONS, so an order with a whole contact name fits. |
 | WPN weapons (Z7) | A DU: one row per mount (where, what, who works it, state, time of flight), with the decoy as the last row, worked by hand like the launcher. |
 | SNS scope (Z7 corner) | A scope DU. The range is automatic, with − and + caps either side of its figure to override it, as the game's scope has them; the count of hostiles on its own row under the scope, so nothing moves when one appears. |
-| Interaction prompt | A bezel plate: the object's name once, then each key with its verb (`WEAPONS CONSOLE  E OPEN  V SIT`). |
+| Interaction prompt | A bezel plate: the object's name once, then each key with its verb (`WEAPONS CONSOLE  V SIT`). |
+| CON console panel | The prompt's plate grown: the system's name engraved beside the kapton strip, a glass with health, power and state, and the keys as caps with their verbs, the switch's under a toggle that shows where it stands. |
 | HNT hints (Z9) | Key caps with their verbs. |
 
 ## Screens
@@ -67,8 +68,8 @@ are lit.
 vents with nobody free to patch it; a short has cut power to the bridge and Ada resets it, the
 progress on its tag. No warning, three cautions in their short forms, in the spec's order of
 severity. On deck the deck is the schematic, so Z5 is empty and FLT, WPN and SNS are hidden; the
-console prompt names the weapons console once, then E OPEN and V SIT, so the hint line doesn't
-repeat them. The hit left two light wounds, the captain's and Bea's, so CREW is lit softly as an
+console prompt names the weapons console once, then V SIT, since the weapons console opens no
+panel and E sits there too, so the hint line doesn't repeat it. The hit left two light wounds, the captain's and Bea's, so CREW is lit softly as an
 advisory and the suit's display reads LIGHT WOUND; Bea's is the news slip, the game's own words,
 the captain's having had its five seconds. The objective is spec round 11's urgent food delivery to
 Shackleton Ice, by the game's title, LATE in amber before its 2D 9H, since the plan arrives after
@@ -134,8 +135,9 @@ short. TAKE (Enter) and SHOW ROUTE (M) are keys under the glass.
 **T7, BOOK on its CREW tab, docked at Highport after T5.** The terminal's frame again, with the
 ship, its berths, the week's wages and the medical stores in the header. The crew are the
 service's, so they draw no wage. Each row has the role, the condition as the game words it, the
-job now and where, in the game's words, and morale. With nothing to do, Ada is idle, since an
-engineer never mans a console, and the rest man them, a crewman the helm and a marine the weapons. Vex's three surviving crew are aboard as
+job now and where, in the game's words, and morale. An engineer never mans a console, so Ada is
+treating a patient, Crew 3, since a ship's crew care for the prisoners they hold, and the rest man
+them, a crewman the helm and a marine the weapons. Vex's three surviving crew are aboard as
 prisoners under the names the game gives a raider's crew, taking berths (7 of the corvette's 8,
 the captain's among them). Highport is the sponsor's, so each can be handed over for 400 CR and +1
 standing, and Crew 4, the one outlaw in three, offers to join. The orders for everyone sit under
@@ -180,6 +182,20 @@ helm orders and a destination; the map's keys are its buttons, the bumpers stepp
 destination and the triggers warp; the book's bumpers step its tabs; and the pause menu holds
 Controls and Load. One action is left with a dash: no pad button cuts a door.
 
+![Console panel at a gun](t10-console-gun.png)
+
+**T10, CON at a gun, docked at Highport as in T7.** The captain has walked forward to the
+starboard autocannon and pressed E. The panel is anchored beside the console, below the mount
+where the hull meets space, on a leader from the mount, so the deck stays in sight and the middle
+of the screen stays the world's; walking away closes it, and so does Esc. It is the prompt's plate
+grown: the mount's name as WPN gives it, engraved beside the kapton strip; health, power (circuit
+1, the ship's one) and state on the glass; and the keys as caps with their verbs, Enter to switch
+it off under a toggle that shows where the switch stands, and V to take the gun. While the panel is
+open it carries those keys, so the prompt stands down rather than repeat them, and the hint line
+keeps Esc, walking and F1. The rest of the HUD is what the spec shows docked with nothing wrong:
+the clock, and the lamps with CREW lit softly for the light wounds and the prisoner Ada is
+treating in the hold. OBJ, NTF, HLM and PER have nothing to say, so they are hidden.
+
 ## Round 6 critique
 
 Round 8 of the spec took all three round 4 notes: the scope's − and + are back, the 5 km step's
@@ -220,6 +236,8 @@ Resolved without a change:
 
 ## Deviations from the spec
 
+- **The interaction prompt stands down while a console panel is open.** The panel shows the same
+  keys (CON's switch and `V  take the gun`), and the spec has no key repeat on screen (HNT).
 - **Warp reads `1×`** with the multiplication sign, where the spec writes `1x`.
 - **Countdowns are M:SS** (`IMPACT 0:03`, `CPA 0.6 KM  T−1:15`), where the spec writes seconds.
 - **The log's clearing time has seconds** (`CLEARED 12:14:31`), where the spec writes `cleared

@@ -1,0 +1,98 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Task: console panel at a gun</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="task.js"></script>
+<script>
+// CON, the console panel (task spec, section 7), at a gun: docked at Highport on day 3, as in T7,
+// the captain has walked forward to the starboard autocannon's mount and pressed E. The panel is
+// anchored beside the console, below the mount where the starboard hull meets space, not in the
+// middle of the screen; it closes when the captain walks away, or with Esc (the closing order).
+//
+// It replaces today's console window at a gun (ConsoleWindow, titled "Gun": the console id, the
+// system, its health and state, a Switch off button, and "Take the gun [V]", centred on the
+// screen), in the spec's words: the system's name, health, power (its circuit, or none), state
+// (on, off, shorted, stunned) and its one switch, and at a gun, V takes it. The mount is named as
+// WPN names it (FWD STBD autocannon). The panel is the INT prompt's plate grown: the name engraved
+// on the bezel with its kapton strip, a glass for the numbers, and the two keys as caps with their
+// verbs, the switch's under a toggle that shows where it stands. Enter throws the switch and V
+// takes the gun (T9's CONSOLE rows); while the panel is open it carries those keys, so the prompt
+// it opened from stands down rather than repeat them.
+//
+// All of it is the game's: the corvette's five mounts, this one an Autocannon Mk1 on circuit 1, the
+// ship's one circuit (weapons.toml, ships.toml); nothing is wrong with it. The people are T7's: Bea
+// at the helm and Cole, lightly wounded, at the weapons console, seeing to the wound there
+// (CrewHealthSystem); Ada in the hold treating Crew 3, the prisoner seriously wounded, since a ship's
+// crew care for the prisoners they hold; Crew 1 and Crew 4 held beside them. The light wounds and
+// the one being treated light the CREW lamp's advisory. Docked, with no contract held and nothing
+// fresh to tell, OBJ, NTF and HLM are hidden, and PER too: the captain is unhurt, unsuited and in
+// good air.
+let s = space({ planet: false, seed: 13 });
+
+// The world: the camera on the captain by the starboard autocannon's mount (chassis 14, 1)
+const AV = [13.55, 1.6];
+const K = 60, OX = 640 - AV[0] * K, OY = 400 - (6 - AV[1]) * K, X = tx => OX + tx * K, Y = ty => OY + (6 - ty) * K;
+// Highport's arm, latched to the port side's collar
+{
+  const ax = X(7.3), aw = X(9.7) - X(7.3);
+  s += rect(ax, -4, aw, Y(6) + 8, { fill: '#3E434A', stroke: '#24282C', sw: 1.5 });
+  for (let yy = Y(6) - 30; yy > 0; yy -= 30) s += line(ax + 2, yy, ax + aw - 2, yy, '#2E3237', 2);
+  s += line(ax + 10, -4, ax + 10, Y(6), '#4D535B', 1.5) + line(ax + aw - 10, -4, ax + aw - 10, Y(6), '#4D535B', 1.5);
+  s += rect(X(7.1), Y(6) - 12, X(9.9) - X(7.1), 14, { fill: '#30353B', stroke: '#1E2125', sw: 1.5 });
+}
+s += corvetteDeck(OX, OY, K, {
+  id: 't10',
+  // Ada kneeling by Crew 3; Bea at the helm; Cole at the weapons console
+  crew: [[4.62, 1.62], [10.25, 4.55], [10.3, 3.45]],
+  held: [[3.55, 4.5], [4.5, 4.45]],
+  avatar: AV,
+  labels: true, labelAt: { bridge: [11.6, 2.75] },
+});
+// Crew 3, a prisoner seriously wounded and down, lying in the hold in the raiders' grey
+s += `<g transform="rotate(4 ${X(3.75)} ${Y(1.5)})"><ellipse cx="${X(3.75)}" cy="${Y(1.5)}" rx="${K * 0.44}" ry="${K * 0.2}" fill="#7D8590" stroke="#1A1A1A" stroke-width="1"/><circle cx="${X(3.75) - K * 0.4}" cy="${Y(1.5)}" r="${K * 0.16}" fill="#C99A78" stroke="#1A1A1A" stroke-width="0.8"/></g>`;
+
+// ---- the fixed zones: the clock, and the lamps with CREW's advisory ----
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
+s += annunciatorPanel({ CREW: 'advisory' });
+
+// ---- CON, anchored beside the mount ----
+const MX = X(14.5), MY = Y(1.5);
+const P = { x: 712, y: 528, w: 280, h: 188 };
+// the leader from the mount's rim to the panel, in the world overlays' white
+s += haloed((c, w) => line(MX, MY + 0.42 * K, P.x + 30, P.y, c, w), C.white, 1) + `<circle cx="${MX}" cy="${MY + 0.42 * K}" r="2.5" fill="${C.white}"/>`;
+{
+  const { x, y, w, h } = P;
+  s += bezelBody(x, y, w, h, 4) + fastener(x + 7, y + 7) + fastener(x + w - 7, y + 7) + fastener(x + 7, y + h - 7) + fastener(x + w - 7, y + h - 7);
+  // the name, engraved on the bezel beside the prompt's kapton strip
+  s += rect(x + 16, y + 9, 3, 14, { fill: C.kapton }) + text(x + 25, y + 21, 'FWD STBD AUTOCANNON', { size: 12, bold: true, fill: C.stencil, track: 1 });
+  // the glass: health, power, state
+  const gx = x + 12, gy = y + 31, gw = w - 24, gh = 78;
+  s += rect(gx, gy, gw, gh, { fill: C.glass }) + rect(gx + 0.5, gy + 0.5, gw - 1, gh - 1, { stroke: '#0E141A', sw: 1 });
+  const row = (yy, k, v) => text(gx + 12, yy, k, { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + text(gx + 96, yy, v, { size: S_DATA, bold: true, fill: C.white, track: 0.4 });
+  s += row(gy + 22, 'HEALTH', '100%') + row(gy + 45, 'POWER', 'CIRCUIT 1') + row(gy + 68, 'STATE', 'ON');
+  // the switch: a toggle seen from the front, its lever up for on, ON and OFF engraved either side
+  const tx = x + 40, ty = y + 150;
+  s += text(tx, ty - 23, 'ON', { size: 9, bold: true, fill: C.stencil, anchor: 'middle', track: 1, legend: true });
+  s += text(tx, ty + 30, 'OFF', { size: 9, bold: true, fill: C.stencil, anchor: 'middle', track: 1, legend: true });
+  s += `<circle cx="${tx}" cy="${ty}" r="10" fill="#1F2226" stroke="#4A5058" stroke-width="1.2"/><circle cx="${tx}" cy="${ty}" r="5.5" fill="#2A2E33" stroke="#15171A" stroke-width="1"/>`;
+  s += line(tx, ty, tx, ty - 15, '#15171A', 4.5) + line(tx, ty, tx, ty - 15, '#D2D5CF', 3) + `<circle cx="${tx}" cy="${ty - 16}" r="3" fill="#D2D5CF" stroke="#15171A" stroke-width="0.8"/>`;
+  // the two keys, as caps with their verbs: Enter throws the switch, V takes the gun
+  const cap = (cx, cy, k, v) => {
+    const kw = tw(k, 12, true) + 14;
+    return softKey(cx, cy - 13, kw, 18, false) + text(cx + kw / 2, cy, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' })
+      + text(cx + kw + 8, cy, v, { size: TB, bold: true, fill: C.white, track: 0.4 });
+  };
+  s += cap(x + 70, ty - 6, 'ENTER', 'SWITCH OFF') + cap(x + 70, ty + 22, 'V', 'TAKE THE GUN');
+}
+
+// E opened the panel and V is on it, so the hint line carries the rest
+s += hintLine([['ESC', 'CLOSE'], ['W/A/S/D', 'WALK'], ['F1', 'CONTROLS']]);
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

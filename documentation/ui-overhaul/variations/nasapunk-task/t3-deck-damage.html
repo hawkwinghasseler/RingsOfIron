@@ -28,7 +28,9 @@ s += corvetteDeck(OX, OY, K, {
 s += hazardTag(X(6.6), Y(1.4), 296, 672, 'caution', 'FIRE  MEDIUM', { progress: 0.35 });
 s += hazardTag(X(10.5), Y(1.3), 552, 672, 'caution', 'SHORT', { progress: 0.6, w: 92 });
 s += hazardTag(X(13.5), Y(0) + 6, 796, 672, 'caution', 'BREACH  VENTING', { nobody: true });
-s += O.prompt(X(14.6), Y(3.6) - 13, 'WEAPONS CONSOLE', [['E', 'OPEN'], ['V', 'SIT']]);
+// INT: the weapons console opens no panel, since E and V both sit there (CON), so its prompt names
+// the one verb, as the spec's `Helm   V sit` does
+s += O.prompt(X(13.95), Y(3.6) - 13, 'WEAPONS CONSOLE', [['V', 'SIT']]);
 
 s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×', note: 'HELD: FIRE ABOARD' });
 // three cautions, and CREW advisory: the hit left two light wounds, yours and Bea's, which slow
