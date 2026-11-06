@@ -206,8 +206,7 @@ final class BoardingPage extends ListPage {
             case PART: {
                 Part pt = bb.parts.get(refs.get(sel));
                 softKey(pt.marked ? "CALL OFF" : "MARK", partRefusal(bb, pt));
-                // A part that can be marked but will wait for an EVA says why before it is
-                if (!pt.marked && pt.toggleable && !pt.reachWhy.isEmpty()) note(Fmt.upper(pt.reachWhy));
+                note(partNote(pt, L.cols - 49));
                 return;
             }
             case CARGO:
@@ -270,6 +269,16 @@ final class BoardingPage extends ListPage {
     static String partState(Part pt) {
         if (!pt.marked && !pt.reach.isEmpty()) return pt.reach;
         return pt.status.isEmpty() ? "--" : pt.status;
+    }
+
+    /**
+     * What the soft row says of the selected part beside its key, in capitals, or null: before it
+     * is marked, why one that can be marked will wait for an EVA; once marked, the game's word on
+     * how it stands, whole, where the list's state column ({@code stateCols} wide) cuts it short.
+     */
+    static String partNote(Part pt, int stateCols) {
+        if (!pt.marked) return pt.toggleable && !pt.reachWhy.isEmpty() ? Fmt.upper(pt.reachWhy) : null;
+        return pt.status.length() > stateCols ? Fmt.upper(pt.status) : null;
     }
 
     /** Why a part's mark can't be set or called off now, in capitals; null when it can. */
