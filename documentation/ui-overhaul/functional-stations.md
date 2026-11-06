@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 17.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 18.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -216,7 +216,7 @@ Fallback rules, so no hull loses a function:
 | Symbology | Hostile brackets with class; lead reticle and intercept lines showing the hit chance (`FireArcOverlay`); fire arcs of guns in hand; threat tracks with impact cross (`ThreatOverlay`); point-defense kill marks; picture-in-picture optics on the target |
 | MFD pages | SENSORS (radar scope and contact list), WEAPONS (mounts: weapon, ammunition where limited, state, who works it and so how it fires; each gun's time of flight and hit chance on the target), DEFENSE (shield coverage around the hull, mass, trim, emitters, on a hull with an emitter; decoys; point defense) |
 | Console panel tab | **Tactical board**: SENSORS' contact table at full size, WEAPONS with the hold-fire switch, DEFENSE |
-| Manned by crew | Marines take the weapons console first and then the guns; crewmen take them after the helm (`CrewRole`). Gunners fire at will on hostiles in range (`GunCrews`); launchers wait for the captain's word, and point defense picks its own missiles whoever is aboard. Callouts: hostile in range, missile down, gun out of action, and what hostiles do, in the game's words (13.4): "Raider cuts thrust and surrenders", "Raider is breaking off". A hit on the target is not called out; the game posts nothing for one, and it shows in the world |
+| Manned by crew | Marines take the weapons console first and then the guns; crewmen take them after the helm (`CrewRole`). Gunners fire at will on hostiles in range (`GunCrews`), but never on a disabled ship, whatever disabled it, nor on a fallen base's silenced battery (`GunCrews.hostile`). The player's trigger still fires on one, and an aimed shot at a surrendered pirate brings it back into the fight (`HostileTargeting`). Launchers wait for the captain's word, and point defense picks its own missiles whoever is aboard. Callouts: hostile in range, missile down, gun out of action, and what hostiles do, in the game's words (13.4): "Raider cuts thrust and surrenders", "Pirate raider 3 is breaking off". A hit on the target is not called out; the game posts nothing for one, and it shows in the world |
 | Alerts owned | Missile inbound; fired upon; boarders latched (`PirateBoarding`); shield emitter tripped; shield cloud low; launcher empty; gun destroyed or stunned |
 | Data | `TargetingProvider` (`CombatTargetingProvider`), `ThreatProvider`, `RadarSystem`, `PlayerGunnery`, `GunCrews`, `ShieldModel` (new provider), `HostileTargeting`, `PirateBoarding` |
 
@@ -449,7 +449,7 @@ At this seat the player has every gun and launcher in hand except point defense,
 
 | Slot | Content |
 |---|---|
-| **Target** | The locked target: name, class, range, closing, and its state where known: breaking off (`HostileComponent.brokeOff`); disabled, in the game's words (`DisabledComponent.Reason.label`: reactor down, crew down, hull broken, surrendered, abandoned, wreck); or venting. Hit chance and time of flight are not here: each gun has its own (its chip; the WEAPONS page) |
+| **Target** | The locked target: name, class, range, closing, and its state where known: breaking off (`HostileComponent.brokeOff`); disabled, in the game's words (`DisabledComponent.Reason.label`: reactor down, crew down, hull broken, surrendered, abandoned, wreck); silenced, for a fallen base's battery; or venting. The crews hold fire on a disabled or silenced target (5.4). Hit chance and time of flight are not here: each gun has its own (its chip; the WEAPONS page) |
 | **Guns in hand** | A chip per gun the player fires, named by where it sits (13.2: NOSE, AFT STBD). Its state: ready; reloading, with seconds; charging, waiting for the circuit's store to hold a shot (a shot takes its whole energy at once); for a beam, burning, with the share of its draw the circuit gives it (a beam takes what power it can get and burns that much weaker); out of arc; out of reach (a beam past its range); no power; shorted, with the seconds until its breaker recloses (sooner if the crew reset it); stunned, with seconds; destroyed. Its own chance to hit the locked target (`HitChance`, as the fire arcs reckon it): each gun has its own, since a coilgun's round flies and a beam's does not. And the name of a crew member seated at that gun, whose skill it then shoots with; with nobody there it shoots at half the player's (`GunCrews.REMOTE_SKILL`) |
 | **Point defense** | One chip for every point-defense mount: PD AUTO, and "engaging" while they fire on missiles. While a mount is not working, how many are ("PD AUTO 1 of 2") and the mount's name and state |
 | **Launchers** | A chip per launcher, by position: missiles left of its magazine ("MSL 4 of 4"), ready or seconds, and how many one press throws ("salvo 4": up to four, `PlayerGunnery.SALVO`, which on the corvette is the whole magazine) |
@@ -591,14 +591,14 @@ The captain's own panel, anywhere aboard. Its title bar carries the captain's ra
 | EVA | Who is outside, tethered or adrift, their air; hold everyone in; send out, call in |
 | Boarding | When latched: the other ship's state, the boarding party (send, recall), then what can be stripped and carried over (`BoardingWindow`) |
 | Prisoners | When held: who, faction, what can be done with them here |
-| Contracts | Held: what, time left, where; set as nav target; give up |
+| Contracts | Held: what, time left, where; set as nav target; give up. Ended (`ContractBoard.history`): how each ended, what it paid or cost and with whom, in the board's whole sentence |
 | Career | Rank, sponsor, standing per faction, weekly budget and next payday, record; faction tension |
 | Log | What happened aboard, newest first, the last 500 lines; filters by station and severity (below) |
 
 **The Log** holds one line for each event, newest first:
 
 - Each alert when it is raised: the words of its callout if one was spoken, else the alert's own text (13.7), with the alert's severity mark. An alert revised in place (13.3) rewrites its line; one that escalates adds a line at the new severity.
-- Each alert when it clears: its record (13.7), with the same mark, hollow. A notice of the same event is that record, not a line of its own. So "Raider is breaking off" (`HostileTraffic`), heard in the fight, is its own advisory line, since PIRATES cleared when the Raider closed to 50 km (13.4); but when the last pirate inbound turns back before it closes, its notice is the PIRATES record, "Pirates broke off after 8:00".
+- Each alert when it clears: its record (13.7), with the same mark, hollow. A notice of the same event is that record, not a line of its own. So "Pirate raider 3 is breaking off" (`HostileTraffic`), heard in the fight, is its own advisory line, since PIRATES cleared when it closed to 50 km (13.4); but when the last pirate inbound turns back before it closes, its notice is the PIRATES record, "Pirates broke off after 8:00". First Play's Raider is not a pirate on the rails: it posts no intercept and never breaks off, but fights until it is beaten or surrenders.
 - Each advisory, and each crew line answering an order ("HELM  Bea: holding your heading, Captain."), with its station tag and speaker as in the ticker. A repeat within its hold counts ("x3") instead of adding a line.
 - Not responses (13.6).
 
@@ -837,6 +837,7 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 - Every callout fits 50 characters after the station tag, the speaker's name included (7.2).
 - A callout carries no countdown. Spoken once, a number is stale a second later and would disagree with the tile or page beside it, where the countdown ticks.
 - Callouts are limited to one per station every 3 s; the rest go to the log only.
+- A contract's end is a CMD line that names the contract by its target and kind, says how it ended, and gives what it paid or cost. Today's sentence runs to 108 characters ("Contract done: Raider of the Void Raiders is beaten. Paid 7,500 cr, standing +6 with Terran Patrol Authority"), so the line is "CMD  SHIP: Raider bounty done: +7,500 cr, +6 standing." A failure gives its reason in place of the pay. The whole sentence stays on the slate's Contracts tab, under Ended (10.4).
 - Today's notices reach the ticker as advisories under the station 13.4 gives them (COMMS for clearance, latching and undocking, yard work and salvage; NAV for burns due, SOI changes and warp dropped; TAC for what raiders do in a fight and other ships disabled or surrendering; CMD for contracts, promotion, payday, boarding progress and the pirates' news). The speaker follows the first rule above, so with nobody at Comms the latch is "COMMS  SHIP: docked at Highport, port 2." What a station says is in its own name, since it is the station speaking: "COMMS  Highport: clearance granted, port 2." The line is the notice's own text where it fits 50 characters, and a shorter one written when its system moves to the `AlertBus` where it doesn't. A notice still posted without a station (`NoticeLog.post`, 19) goes under CMD, the captain's own.
 
 ### 13.6 Responses
@@ -1284,6 +1285,14 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 18 (Nasa-punk artist's check of the First Play fight)
+
+| Problem found | Change |
+|---|---|
+| Round 17's breaking-off example named First Play's Raider, which the rails code never flies: it posts no intercept and never breaks off, and fights until it is beaten or surrenders | The example is a pirate on the rails, "Pirate raider 3 is breaking off" (5.4, 10.4) |
+| A bounty pays the moment its target is beaten, and today's line for it runs to 108 characters | A contract's end names the contract, how it ended and what it paid: "CMD  SHIP: Raider bounty done: +7,500 cr, +6 standing." The slate's Contracts tab keeps the whole sentence, under Ended (10.4, 13.5) |
+| The spec didn't say that crews hold fire on a beaten ship, or that a fallen base's batteries fall silent | Gunners never fire at will on a disabled ship or a silenced battery (`GunCrews.hostile`); the trigger still fires, and an aimed shot at a surrendered pirate brings it back into the fight. The target's states include silenced (5.4, 8.3) |
 
 ### Round 17 (Nasa-punk artist's points from drawing the Log)
 
