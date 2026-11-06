@@ -113,6 +113,8 @@
   def('¢', '..#.. .###. #.#.. #.#.. #.#.. .###. ..#..');
   def('♦', '..... ..#.. .###. ##### .###. ..#.. .....');
   def('●', '..... .###. ##### ##### ##### .###. .....');
+  def('‖', '.#.#. .#.#. .#.#. .#.#. .#.#. .#.#. .#.#.');
+  def('»', '..... #.#.. .#.#. ..#.# .#.#. #.#.. .....');
 
   // ---------------------------------------------------------------- segment masks
   const SEG7 = {
@@ -358,6 +360,7 @@
       for (const ch of String(str)) {
         if (ch === '.' && cells.length) { cells[cells.length - 1].dp = true; continue; }
         if (ch === ':' && cells.length) { cells[cells.length - 1].colon = true; continue; }
+        if (ch === ',' && cells.length) { cells[cells.length - 1].comma = true; continue; }
         cells.push({ ch });
       }
       const n = o.cells ?? cells.length;
@@ -385,6 +388,13 @@
         if (o.dp !== false) {
           const dp = [[w + h * 0.06, h - t], [w + h * 0.06 + t, h - t], [w + h * 0.06 + t, h], [w + h * 0.06, h]].map(p => shear(p[0], p[1], ox));
           if (cell.dp && !this.dark) { litCtx.fillStyle = lit; poly(litCtx, dp); } else if (ghost && o.dpGhost) { this.base.fillStyle = ghostStyle(o.color); poly(this.base, dp); }
+        }
+        // the thousands mark, as a calculator's tube has it: the point with a tail below the baseline
+        if (cell.comma && !this.dark) {
+          const px = w + h * 0.06;
+          litCtx.fillStyle = lit;
+          poly(litCtx, [[px, h - t], [px + t, h - t], [px + t, h], [px, h]].map(p => shear(p[0], p[1], ox)));
+          poly(litCtx, [[px + t * 0.35, h], [px + t, h], [px + t * 0.35, h + t * 1.5], [px - t * 0.3, h + t * 1.5]].map(p => shear(p[0], p[1], ox)));
         }
         if (cell.colon) {
           for (const cy of [h * 0.3, h * 0.7]) {

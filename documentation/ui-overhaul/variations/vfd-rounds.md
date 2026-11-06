@@ -4,11 +4,25 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
-| Ship stations | `functional-stations.md` round 14 | Converged in round 7: C's closest approach, and the lead reticle on the target |
-| Context-driven | `functional-context.md` version 9 | Converged in round 8: version 9 took both of round 7's notes, each as FILAMENT had drawn it |
-| Task-driven | `functional-task.md` round 9 | Converged in round 9: the helm holds the heading under fire, warp held by the fire aboard, the 5 km scope at rest |
+| Ship stations | `functional-stations.md` round 14 | Converged in round 7; round 10 adds the panels: the Plot, the station link, the slate |
+| Context-driven | `functional-context.md` version 13 | Reopened in round 10: the HUD screens redrawn for versions 10 to 13, the map, station and boarding modes drawn; two notes out, and M2 to draw |
+| Task-driven | `functional-task.md` round 9 | Converged in round 9; round 10 adds the map, the station terminal, the ship's book and boarding |
 
 A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 10
+
+**The screens beyond the flight HUD.** The overhaul had covered the flight HUD and left the windows, the map and the menus classic. Each variation now draws its spec's versions of them, and what is the same under every spec (the shell's menus and the printed cards) is drawn once in the guide's new section 18, with the rules all of them share: four housings (terminal, plot, slate, card), the terminal's page and soft keys, the mode frame, the plot's line and label rules and its timeline, setup mode, and what the game's hooks let a build reach.
+
+**Stations** (round 14, unchanged): the Plot on its Plan page, the station link from the deck, the slate seated.
+
+**Context** (versions 10 to 13). The helm, emergency and boarding screens follow the game's geography and crews: the Nav at the Moon 384,000 km off with its arrival, burn 1 of 1 and the plan's Δv; the cruise scope at the 5 km step that holds Highport and the Kestrel; P2's Held, `‖`; X2's party, Cole alone and coming home. The map (M1), the station (M3) and boarding (M4) are drawn in the mode frame; the ship mode (M2), whose wireframe version 13 last changed, is next.
+
+**Task** (round 9, unchanged): the map, the station terminal, the ship's book and the boarding panel.
+
+**Renderer and guide.** Seven segments take a thousands comma that takes no cell (5.1), now on every sheet; the ROM gains `‖` and `»`; a plot label clears its ground and its leader never crosses its text (18.3). Drawing the map found labels crossing the Moon's orbit and a leader hidden in the sphere's edge; the boarding plan's people are a quarter of a tile, the size a person is at that scale.
+
+**Sent to the designers.** Context: M1's ghost (the game's map draws the Moon now and where the leg meets it; wireframe 09 draws one Moon), and M1's Nav card (the table's closest approach against the wireframe's arrival).
 
 ## Round 9
 

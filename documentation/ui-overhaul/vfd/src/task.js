@@ -321,7 +321,7 @@
     // delta-v left, with what home takes as a notch and what the plan needs as a bracket
     const b = y + 86;
     let vx = x + 10 + S.legend(x + 10, b, 'ΔV', { level: 'dim' }) + 6;
-    vx += S.seg7(vx, b - 15, 15, String(d.dv), { cells: 5, level: 'norm' }) + 8;
+    vx += S.seg7(vx, b - 15, 15, d.dv.toLocaleString('en-US'), { cells: 5, level: 'norm' }) + 8;
     vx += S.legend(vx, b, 'M/S', { level: 'dim' }) + 10;
     const hx0 = x + w - 10 - S.seg7Width(12, 4), hl = S.legendWidth('HOME');
     const bx = vx, bw = hx0 - 6 - hl - 12 - bx, by = b - 9;
@@ -330,7 +330,7 @@
     S.rectLit(hx - 0.7, by + 10, 1.4, 5, { level: 'norm' });
     S.dot(hx - 2.2, by + 12, { size: 1.1, level: 'norm' }); S.dot(hx + 2.2, by + 12, { size: 1.1, level: 'norm' });
     S.legend(hx0 - 6 - hl, b, 'HOME', { level: 'dim' });
-    S.seg7(hx0, b - 12, 12, String(d.home), { cells: 4, level: 'dim' });
+    S.seg7(hx0, b - 12, 12, d.home.toLocaleString('en-US'), { cells: 4, level: 'dim' });
   }
   // HLM: who flies and the standing order, one line; never a countdown.
   // Two rows: who has the helm, then the standing order in a window as wide as the slab, so the spec's orders
@@ -512,6 +512,291 @@
     ntf(S, oy + 12, ['PAYDAY: 2,000 CR']);
     hlm(S, 420, 718, 440, { who: 'BEA', order: 'HOLDING HEADING' });
     hnt(S, [['W A S D', 'WALK'], ['O', 'LIGHTS'], ['F1', 'CONTROLS']]);
+    S.finish();
+  };
+
+  // ================================================================== Screens (functional-task.md section 7)
+  // Every screen keeps CHR and the message centre above it (Z1 and Z2); the rest of the screen is the
+  // screen's. Section 18 of the guide: the map is a plot, the terminal and the panels are terminals, the
+  // book is the captain's LCD slate.
+  const SC = SCR;
+  function screenTop(S, d = {}) {
+    K.plate(S, LX, 14, CW, 52, { pad: 6, radius: 8 });
+    chr(S, d.chr || { day: '3', time: '14:22:05', warp: '1' });
+    band(S, d.band || {});
+  }
+  // a panel of the map: a module with its name lit at L1 in its first row and its keys in its last
+  function pane(S, x, y, w, h, name, o = {}) {
+    K.plate(S, x, y, w, h, { pad: 5, radius: 6 });
+    S.module(x, y, w, h, { filaments: Math.max(1, Math.round(h / 60)) });
+    S.legend(x + 8, y + 17, name, { size: 13, level: 'dim', ghost: false });
+    if (o.keys) { let kx = x + 8; for (const [k, t] of o.keys) kx = SC.capWord(S, kx, y + h - 24, k, t, { level: 'norm' }) - 6; }
+  }
+  const T = (S, x, y, str, o = {}) => S.dm(x, y, str, { pitch: P, level: o.level ?? 'norm', ghost: o.ghost ?? false, cells: o.cells, align: o.align, color: o.color, inverse: o.inverse });
+
+  // ------------------------------------------------------------------ MAP
+  SCREENS['tk-map'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 12, stars: 200 });
+    screenTop(S);
+    const px = 16, py = 124, pw = 932, ph = 556;
+    K.plate(S, px, py, pw, ph, { pad: 6, radius: 8 });
+    SC.orbitTransfer(S, px, py, pw, ph, { sel: 2, proposal: true, ex: 0.36, ey: 0.6 });
+    // the header row on the plot's glass: where, and the close keys
+    S.seg14(px + 14, py + 12, 13, 'EARTH SYSTEM', { level: 'norm' });
+    let kx = px + pw - 14 - 150;
+    kx = SC.capWord(S, kx, py + 10, ['M'], 'OR');
+    SC.capWord(S, kx - 8, py + 10, ['ESC'], 'CLOSE');
+    // MAP.6 the layers: toggle keys with their LEDs, green while the layer shows
+    const lw = 404, lx = px + pw - lw - 12, ly = py + ph - 48;
+    K.plate(S, lx, ly, lw, 38, { pad: 4, radius: 5 });
+    S.module(lx, ly, lw, 14, { filaments: 0, glare: false });
+    [['STATIONS', true], ['TRAFFIC', true], ['PIRATES', true], ['DERELICTS', false], ['TENSION', false]].forEach(([t, on], i) => {
+      const sx = lx + i * (lw / 5), kw = lw / 5 - 8;
+      T(S, sx + (lw / 5 - SC.width(t.length)) / 2, ly + 3, t, { level: on ? 'norm' : 'dim' });
+      S.key(sx + 4, ly + 18, kw, 18, '', { size: 12 });
+      S.led(sx + kw - 2, ly + 27, 'green', on);
+    });
+
+    // the right column: MAP.1 to MAP.4
+    const x = RX, w = CW, cx = x + 8;
+    pane(S, x, 124, w, 150, 'DESTINATION', { keys: [[['Q'], 'NEXT'], [['SHIFT', 'Q'], 'BACK'], [['L'], 'LIST']] });
+    S.dm(cx, 146, 'SHACKLETON ICE', { pitch: 2, level: 'full', ghost: false });
+    T(S, cx, 168, 'SELENE COMBINE   NEUTRAL', { level: 'dim' });
+    T(S, cx, 182, 'SERVES  DELIVERY CONTRACT', { level: 'dim' });
+    S.legend(cx, 216, 'DIST', { size: 13, level: 'dim' });
+    S.seg7(cx + 40, 199, 17, '385,479', { cells: 7, level: 'norm' });
+    S.legend(cx + 40 + S.seg7Width(17, 7) + 6, 216, 'KM', { size: 13, level: 'dim' });
+
+    pane(S, x, 286, w, 214, 'PLAN', { keys: [[[';'], 'PLAN'], [['ENTER'], 'ACCEPT'], [['BKSP'], 'DROP']] });
+    T(S, cx + 44, 290, 'PROPOSAL: 2 BURNS', { level: 'norm' });
+    S.legend(cx, 322, 'ΔV', { size: 13, level: 'dim' });
+    S.seg7(cx + 24, 306, 16, '3,912', { cells: 4, level: 'norm' });
+    S.legend(cx + 24 + S.seg7Width(16, 4) + 6, 322, 'OF', { size: 13, level: 'dim' });
+    S.seg7(cx + 24 + S.seg7Width(16, 4) + 28, 306, 16, '7,007', { cells: 4, level: 'norm' });
+    S.legend(x + w - 8, 322, 'M/S', { size: 13, level: 'dim', align: 'right' });
+    S.bar(cx, 330, w - 16, 5, 30, 3912 / 7007, { level: 'norm', gap: 1.4 });
+    T(S, cx, 342, 'AFTER IT 3,095    HOME THEN 520', { level: 'dim' });
+    T(S, cx, 358, 'ARRIVES  DAY 7 09:40');
+    T(S, cx, 372, 'DEADLINE DAY 6 11:00');
+    K.pip(S, cx + 3, 391, 'amber', true); K.pip(S, cx + 12, 391, 'red', false);
+    T(S, cx + 22, 386, 'LATE BY 22H 40M', { level: 'full' });
+    T(S, cx, 408, '1  T-1:29:51   3,084  PRO', {});
+    T(S, cx, 422, '2  T-3D 17H      828  RETRO', { level: 'norm', inverse: [0, 28] });
+    T(S, cx, 444, 'PG 1/1', { level: 'dim' });
+
+    pane(S, x, 512, w, 84, 'FLY IT');
+    T(S, cx + 56, 516, 'BURN 1 FLOWN BY BEA');
+    SC.capWord(S, cx, 536, ['/'], 'WARP TO BURN 1');
+    SC.capWord(S, cx, 560, ['6'], 'AUTOPILOT');
+    T(S, x + w - 8 - SC.width(5), 564, 'READY', { level: 'norm' });
+
+    pane(S, x, 608, w, 72, 'SELECTED');
+    T(S, cx + 76, 612, 'BURN 2', { level: 'full' });
+    S.legend(cx, 646, 'PRO', { size: 13, level: 'dim' });
+    S.seg7(cx + 30, 631, 15, '-828.0', { cells: 6, level: 'norm' });
+    S.legend(cx + 150, 646, 'RAD', { size: 13, level: 'dim' });
+    S.seg7(cx + 180, 631, 15, '+0.0', { cells: 4, level: 'norm' });
+    T(S, cx, 656, 'DRAG A HANDLE · SHIFT FINER', { level: 'dim' });
+
+    // MAP.5 the plan's timeline
+    K.plate(S, 16, 694, 1248, 92, { pad: 6, radius: 8 });
+    S.module(16, 694, 1248, 92, { filaments: 2 });
+    S.legend(24, 711, 'TIMELINE', { size: 13, level: 'dim', ghost: false });
+    T(S, 104, 701, 'LOG SCALE, NOW TO ARRIVAL · CLICK CENTRES · DOUBLE-CLICK WARPS', { level: 'dim' });
+    SC.timeline(S, 24, 722, 1232, [
+      { t: 1.5, label: 'BURN 1  1.5H' }, { t: 69.6, label: 'DEADLINE 2.9D', deadline: true },
+      { t: 79.2, label: 'SOI MOON 3.3D' }, { t: 88.8, label: 'BURN 2 3.7D' }, { t: 91.2, label: 'ARRIVE 3.8D' },
+    ], { t0: 6 });
+    S.finish();
+  };
+
+  // ------------------------------------------------------------------ TRM, the station terminal
+  // One terminal for everything the station offers: page keys along the top edge (a page this station
+  // doesn't offer is a blank key in its fixed home), the berth on the header row, the list and the detail
+  // on a ghost grid of cells, action keys along the bottom edge.
+  SCREENS['tk-terminal'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 12, stars: 200 });
+    screenTop(S);
+    const g = SC.terminal(S, 16, 124, 1248, 664, {
+      pages: [{ t: 'CONTRACTS', k: 'J', active: true }, { t: 'MARKET', k: 'T' }, { t: 'YARD', k: 'Y' }, null, { t: 'CREW', k: 'I' }], pageSlots: 8,
+      keys: [{ t: 'TAKE', k: 'ENTER' }, { t: 'SHOW ROUTE', k: 'R' }, { t: 'SORT', k: 'S' }, null, null, null, null, { t: 'CLOSE', k: 'ESC' }],
+    });
+    const x0 = g.x + 14, top = g.top + 8;
+    // the header row: where, whose, and the figures that bound every choice here
+    S.seg14(x0, top, 16, 'HIGHPORT', { level: 'full' });
+    T(S, x0 + S.seg14Width(16, 8) + 14, top + 3, 'TERRAN PATROL AUTHORITY · YOUR SPONSOR', { level: 'dim' });
+    let fx = g.x + g.w - 14;
+    // a figure: its legend, the seven-segment value and its unit; "6 OF 40" for a count against a limit
+    const fig = (label, val, cells, unit, of) => {
+      const lg = (t2) => { fx -= S.legendWidth(t2, { size: 13 }); S.legend(fx, top + 16, t2, { size: 13, level: 'dim' }); };
+      if (unit) { lg(unit); fx -= 5; }
+      if (of) { fx -= S.seg7Width(16, of[1]); S.seg7(fx, top, 16, of[0], { cells: of[1], level: 'norm' }); fx -= 5; lg('OF'); fx -= 5; }
+      fx -= S.seg7Width(16, cells); S.seg7(fx, top, 16, val, { cells, level: 'norm' }); fx -= 6;
+      lg(label); fx -= 22;
+    };
+    fig('CONTRACTS', '1', 1, null, ['3', 1]); fig('HOLD', '6', 2, 'M3', ['40', 2]); fig('CREDITS', '18,450', 6, 'CR'); fig('STANDING', '22', 3);
+    S.rectLit(g.x + 8, top + 26, g.w - 16, 0.8, { ghostOnly: true, k: 2.2 });
+    // the list: offers, operations first; every column counted in cells, numbers right-aligned
+    const ly = top + 40, lg = SC.grid(S, x0, ly, 84, 18), dv = x0 + 86 * 9;
+    lg.text(2, 0, 'OFFERS  5 TODAY, 1 OPERATION', { level: 'norm' });
+    lg.text(62, 0, 'SORT ◀ PAY ▶', { level: 'dim', cells: 22, align: 'right' });
+    const C = [['TYPE', 2, 7], ['JOB', 10, 30], ['PAY', 41, 7, 'r'], ['STDG', 49, 5, 'r'], ['TIME', 55, 7], ['REACH', 63, 21]];
+    C.forEach(([h, c, n, a]) => S.legend(lg.cx(a ? c + n : c) - (a ? 1.5 : 0), lg.ry(2) + 9, h, { size: 13, level: 'dim', align: a ? 'right' : 'left', ghost: false }));
+    const rows = [
+      [null, ['OPER.', 'CLEAR THE LANES (1/3)', '8,000', '+6', '--', 'LOCKED: LIEUTENANT'], 'dim'],
+      [null, ['BOUNTY', "RAIDER 'VEX' NEAR HIGHPORT", '5,000', '+6', '3D', 'HERE  OK']],
+      ['amber', ['DELIV.', 'FOOD TO SHACKLETON ICE', '1,240+', '+3', '2D 20H', '3.8 D  LATE 23H'], 'focus'],
+      [null, ['ESCORT', 'HAULER KESTREL TO ANVIL YARDS', '1,500', '+4', '2D', '2.1 H  OK  ΔV 3,000']],
+      [null, ['PATROL', 'DEEPWELL DEPOT AND BACK', '1,000', '+3', '2D', '2 H  OK  ΔV 1,860']],
+    ];
+    rows.forEach(([sev, cells, st], i) => {
+      const r = 4 + i * 2;
+      lg.pips(0, r, sev);
+      const line = SC.cols([['', 1], [cells[0], 8], [cells[1], 31], [cells[2], 7, 'r'], ['', 1], [cells[3], 5, 'r'], ['', 1], [cells[4], 8], [cells[5], 21]]);
+      if (st === 'focus') T(S, lg.cx(2), lg.ry(r), line.slice(0, 82), { level: 'norm', inverse: [0, 82] });
+      else T(S, lg.cx(2), lg.ry(r), line, { level: st === 'dim' ? 'dim' : 'norm' });
+    });
+    lg.text(2, 15, 'PG 1/1', { level: 'dim' });
+    lg.text(2, 17, "REACH: TRAVEL TIME AND ΔV FROM HERE, AGAINST ΔV LEFT AND THE DEADLINE", { level: 'dim' });
+    // the detail: the focused offer's full terms
+    S.rectLit(dv - 6, ly, 0.8, g.bottom - ly - 10, { ghostOnly: true, k: 2.2 });
+    const dx = dv + 8, dg = SC.grid(S, dx, ly, Math.floor((g.x + g.w - 14 - dx) / 9), 30);
+    S.dm(dx, ly, 'DELIVERY: FOOD TO SHACKLETON ICE', { pitch: 2, level: 'full', ghost: false });
+    const F = (r, label, val, o = {}) => {
+      S.legend(dx, dg.ry(r) + 9.5, label, { size: 13, level: 'dim', ghost: false });
+      dg.text(11, r, val, { level: o.level ?? 'norm' });
+    };
+    F(3, 'GIVER', 'HIGHPORT (SPONSOR)'); F(5, 'CARGO', '18 M3 FOOD, LOADED HERE'); F(7, 'PAY', '1,240 CR ON DELIVERY + SALE');
+    F(9, 'STANDING', '+3   FAIL -1.5'); F(11, 'DEADLINE', 'DAY 6 11:00  (2D 20H)');
+    F(14, 'ROUTE', 'SHACKLETON ICE, AT THE MOON'); dg.text(11, 15.5, 'TRANSFER ABOUT 3,900 M/S, 3.8 D', { level: 'dim' });
+    dg.text(11, 17, 'ARRIVE DAY 7 09:40', {}); dg.pips(31, 17, 'amber'); dg.text(34, 17, '22H 40M LATE', { level: 'full' });
+    F(19, 'HOLD', 'NEEDS 18 M3, 34 FREE: FITS');
+    // the decision's two numbers, big: what it pays, and the margin against its deadline
+    const by = dg.ry(23);
+    S.legend(dx, by + 26, 'PAY', { size: 13, level: 'dim' });
+    S.seg7(dx + 34, by, 26, '1,240', { cells: 5, level: 'norm' });
+    S.legend(dx + 34 + S.seg7Width(26, 5) + 6, by + 26, 'CR', { size: 13, level: 'dim' });
+    const mx = dx + 230;
+    S.legend(mx, by + 26, 'SPARE', { size: 13, level: 'dim' });
+    S.seg7(mx + 52, by, 26, '-22:40', { cells: 5, level: 'norm', color: 'amber' });
+    S.frameLit(mx + 46, by - 6, S.seg7Width(26, 5, { colons: 1 }) + 14, 38, 1.1, { color: 'amber', level: 'dim' });
+    S.finish();
+  };
+
+  // ------------------------------------------------------------------ BOOK, the ship's book
+  // The captain's own records: an LCD slate that reflects, its tabs on the side keys, dark on grey-green.
+  SCREENS['tk-book'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 12, stars: 200 });
+    screenTop(S);
+    const L = SC.slate(S, 16, 124, 1248, 664, {
+      brand: "SHIP'S BOOK", owner: 'CORVETTE · TERRAN PATROL', keysBottom: true, keyPitch: 44,
+      keysLeft: [{ k: '', t: 'SHIP' }, { k: 'I', t: 'CREW', active: true }, { k: 'J', t: 'CONTRACTS' }, { k: '', t: 'CAREER' }, { k: 'L', t: 'LOG' }],
+    });
+    const D = (x, y, str, o = {}) => SC.lcdDm(S, x, y, str, o);
+    const x0 = L.x + 104, y0 = L.y + 12;
+    SC.lcdRule(S, x0 - 10, L.y + 8, L.h - 16, true);
+    // the list: everyone aboard, the focused one inverse
+    S.lcdText(x0, y0 + 11, 'CREW', { size: 15 });
+    D(x0 + 56, y0 + 2, '4 ABOARD · 6 BERTHS · 630 CR A WEEK', { level: 'dim' });
+    const hy = y0 + 40, C = [['NAME', 0], ['ROLE', 6], ['CONDITION', 16], ['MORALE', 29], ['JOB NOW', 37], ['WAGE', 63]];
+    C.forEach(([h, c]) => S.lcdText(x0 + 22 + c * 9, hy, h, { size: 12, ink: 'rgba(26,32,22,0.6)' }));
+    const crew = [
+      ['ADA', 'ENGINEER', 'FIT', 0.72, 'REPAIRING THE REACTOR', '180', null],
+      ['BEA', 'HELMSMAN', 'FIT', 0.68, 'AT THE HELM', '160', null],
+      ['COLE', 'MARINE', 'LIGHT WOUND', 0.55, 'RESTING, BERTH 2', '150', 'caution'],
+      ['DANA', 'GUNNER', 'FIT', 0.8, 'AT THE FWD GUN', '140', null],
+    ];
+    crew.forEach((r, i) => {
+      const ry = hy + 10 + i * 22, focus = i === 2;
+      SC.lcdPip(S, x0 + 4, ry + 5, r[6] === 'caution', false); SC.lcdPip(S, x0 + 13, ry + 5, r[6] === 'warning', true);
+      const line = SC.cols([[r[0], 6], [r[1], 10], [r[2], 13], ['', 8], [r[4], 26], [r[5], 4, 'r']]);
+      D(x0 + 22, ry, line, { inverse: focus ? [0, 67] : null });
+      SC.lcdBar(S, x0 + 22 + 29 * 9, ry + 1.5, 54, 7.5, 10, r[3], { inverse: focus });
+    });
+    const sy = hy + 10 + 4 * 22 + 16;
+    SC.lcdRule(S, x0, sy - 8, 620);
+    D(x0 + 22, sy, 'EVA        HELD, NOBODY OUTSIDE');
+    D(x0 + 22, sy + 16, 'SUITS      ON AT BATTLE STATIONS');
+    D(x0 + 22, sy + 32, 'PRISONERS  NONE ABOARD', { level: 'dim' });
+    D(x0 + 22, sy + 56, 'PG 1/1', { level: 'dim' });
+    // the detail: the focused person
+    const dx = x0 + 650;
+    SC.lcdRule(S, dx - 16, L.y + 8, L.h - 16, true);
+    D(dx, y0 + 2, 'COLE', { pitch: 2.5 });
+    D(dx + 70, y0 + 6, 'MARINE · SIGNED AT HIGHPORT', { level: 'dim' });
+    const F = (r, label, val, o = {}) => { S.lcdText(dx, y0 + 50 + r * 22 + 9, label, { size: 12, ink: 'rgba(26,32,22,0.6)' }); D(dx + 96, y0 + 50 + r * 22, val, o); };
+    F(0, 'GUNNERY', ''); SC.lcdBar(S, dx + 96, y0 + 51.5, 90, 7.5, 5, 0.6); D(dx + 196, y0 + 50, '3');
+    F(1, 'MEDIC', ''); SC.lcdBar(S, dx + 96, y0 + 73.5, 90, 7.5, 5, 0.4); D(dx + 196, y0 + 72, '2');
+    F(2, 'ENGINES', ''); SC.lcdBar(S, dx + 96, y0 + 95.5, 90, 7.5, 5, 0.2); D(dx + 196, y0 + 94, '1');
+    F(4, 'CONDITION', 'LIGHT WOUND, HEALS IN 6 H'); SC.lcdPip(S, dx + 88, y0 + 50 + 4 * 22 + 5, true, false);
+    F(5, 'MORALE', '55, PAID UP TO DAY 7');
+    F(6, 'JOB NOW', 'RESTING, BERTH 2');
+    F(7, 'SUIT', 'STOWED, LOCKER 1');
+    F(8, 'WAGE', '150 CR A WEEK');
+    F(10, 'HISTORY', 'TWO BOARDINGS; WOUNDED ON');
+    D(dx + 96, y0 + 50 + 11 * 22, "DAY 2 TAKING THE RAIDER 'VEX'");
+    // the slate's keys, printed with their actions
+    SC.slateKeys(S, L.x + 104, L.y + L.h + 12, [{ k: 'O', t: 'SEND OUT' }, { k: 'C', t: 'CALL IN', dim: true }, { k: 'G', t: 'LET GO', dim: true }, { k: 'PG DN', t: 'NEXT PAGE', dim: true }]);
+    S.silk(L.x + L.w - 4, L.y + L.h + 18, 'LET GO WHILE DOCKED', { size: 12, color: '#5b6167', align: 'right' });
+    S.finish();
+  };
+
+  // ------------------------------------------------------------------ BRD, the boarding panel
+  // A terminal slab down the right side, so the latched ship stays in sight while the boarders work. It
+  // follows the boarding through its phases; here the raider is taken and the party is stripping it.
+  SCREENS['tk-boarding'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 44 });
+    await K.hull(S, 'raider', 470, 318, 0.1, 180, { filter: 'brightness(0.8)' });
+    await K.hull(S, 'corvette', 500, 396, 0.115, 0);
+    // the party, as world tags over the raider's deck where they work
+    K.label(S, 330, 228, ['ADA', 'STRIPPING THE LASER'], { pitch: 1.5, level: 'norm' });
+    K.label(S, 520, 262, ['COLE', 'CARRYING ORE'], { pitch: 1.5, level: 'norm' });
+    S.dotLine(352, 252, 380, 300, { layer: 'proj', step: 3, size: 1.1, level: 'dim' });
+    S.dotLine(540, 286, 520, 318, { layer: 'proj', step: 3, size: 1.1, level: 'dim' });
+    S.projectNow();
+    cluster(S, { chr: { day: '3', time: '14:22:05', warp: '1' }, ann: {} });
+    band(S, {});
+    hnt(S, [['K', 'BOARDING'], ['U', 'CAST OFF'], ['F1', 'CONTROLS']]);
+
+    const g = SC.terminal(S, 900, 124, 364, 628, {
+      keys: [{ t: 'STRIP', k: 'ENTER' }, { t: 'CARRY', k: 'C' }, { t: 'RECALL', k: 'R' }, { t: 'CLOSE', k: 'K' }],
+    });
+    const x0 = g.x + 10, gr = SC.grid(S, x0, g.top, 38, 40);
+    S.legend(x0, g.top + 11, 'BOARDING', { size: 13, level: 'dim', ghost: false });
+    S.dm(x0 + 84, g.top, "RAIDER 'VEX'", { pitch: 2, level: 'full', ghost: false });
+    const row = (r, a, b, o = {}) => { gr.text(0, r, a, { level: 'dim' }); gr.text(7, r, b, { level: o.level ?? 'norm' }); };
+    row(2, 'STATE', 'TAKEN (WAS: REACTOR DOWN)'); row(3, 'LINK', 'LATCHED, PORT TO PORT'); row(4, 'COST', 'NONE (OUTLAW)');
+    const head = (r, t) => { S.legend(x0, gr.ry(r) + 9.5, t, { size: 13, level: 'norm', ghost: false }); S.rectLit(x0 + S.legendWidth(t, { size: 13 }) + 8, gr.ry(r) + 5, g.w - 28 - S.legendWidth(t, { size: 13 }), 0.8, { ghostOnly: true, k: 2.2 }); };
+    head(6, 'PARTY');
+    gr.text(0, 7.5, 'ADA (ENGINEER)'); gr.text(17, 7.5, 'STRIPPING THE LASER', { level: 'dim' });
+    gr.text(0, 9, 'COLE (MARINE)'); gr.text(17, 9, 'CARRYING ORE ACROSS', { level: 'dim' });
+    head(11, 'SALVAGE');
+    S.legend(gr.cx(11) - 1.5 + 5 * 9, gr.ry(12.5) + 9, 'VALUE', { size: 13, level: 'dim', ghost: false, align: 'right' });
+    S.legend(gr.cx(23) - 1.5, gr.ry(12.5) + 9, 'WORK', { size: 13, level: 'dim', ghost: false, align: 'right' });
+    S.legend(gr.cx(29) - 1.5, gr.ry(12.5) + 9, 'HOLD', { size: 13, level: 'dim', ghost: false, align: 'right' });
+    const parts = [['LASER MK1', '2,250', '40 S', '1 M3', 'STRIP', true], ['HARPOON', '1,100', '30 S', '1 M3', 'MARKED'], ['REACTOR M', '1,800', '60 S', '2 M3', 'STRIP']];
+    parts.forEach(([n, v, w, h, st, f], i) => {
+      const line = SC.cols([[n, 11], [v, 5, 'r'], ['', 2], [w, 5, 'r'], ['', 1], [h, 5, 'r'], ['', 2], [st, 7]]);
+      gr.row(14 + i * 1.5, line, { cursor: f, focus: f, cells: 38 });
+    });
+    head(19, 'CARGO');
+    gr.text(0, 20.5, SC.cols([['ORE', 11], ['8 M3', 5, 'r'], ['', 2], ['960 CR', 6, 'r']]));
+    gr.text(0, 22, 'HOLD AFTER ALL OF IT', { level: 'dim' }); gr.text(21, 22, '18 OF 40 M3');
+    head(24, 'PRISONERS');
+    gr.text(0, 25.5, '3 ABOARD THE RAIDER'); gr.text(21, 25.5, 'BERTHS FREE 4', { level: 'dim' });
+    gr.text(0, 27, 'ALL FIT: B BRINGS THEM ABOARD', { level: 'dim' });
+    head(29, 'PRIZE');
+    gr.text(0, 30.5, 'HAND OVER AT A SHIPYARD', { level: 'dim' });
+    S.legend(x0, gr.ry(32.5) + 16, 'SALE', { size: 13, level: 'dim' });
+    S.seg7(x0 + 40, gr.ry(32.5), 16, '21,000', { cells: 5, level: 'norm' });
+    S.legend(x0 + 40 + S.seg7Width(16, 5) + 5, gr.ry(32.5) + 16, 'CR', { size: 13, level: 'dim' });
+    S.legend(x0 + 172, gr.ry(32.5) + 16, 'OR +', { size: 13, level: 'dim' });
+    S.seg7(x0 + 206, gr.ry(32.5), 16, '8', { cells: 1, level: 'norm' });
+    S.legend(x0 + 206 + S.seg7Width(16, 1) + 5, gr.ry(32.5) + 16, 'STANDING', { size: 13, level: 'dim' });
     S.finish();
   };
 

@@ -1,4 +1,4 @@
-// FILAMENT x Context-driven design (functional-context.md, version 9): two racks frame the view (the
+// FILAMENT x Context-driven design (functional-context.md, version 10): two racks frame the view (the
 // status strip on top, the seat's instruments along the bottom) and everything that comes and goes is a
 // slab that powers up in a fixed slot of its zone. Laid at the minimum sizes (guide section 15, spec 12.4):
 // column text is 5x7 at pitch 1.5, so a column's 34 characters are 34 cells of 9 units.
@@ -171,6 +171,7 @@
       if (c.kind === 'hostile') S.sprite(px, py, ['..#..', '.#.#.', '#####'], { center: true, pitch: 1.6, color: 'red', level: 'norm' });
       if (c.kind === 'missile') S.sprite(px, py, ['.#.', '###', '.#.'], { center: true, pitch: 1.3, color: 'red', level: 'full' });
       if (c.kind === 'neutral') S.sprite(px, py, ['.#.', '#.#', '.#.'], { center: true, pitch: 1.6, level: 'dim' });
+      if (c.kind === 'station') S.sprite(px, py, ['###', '#.#', '###'], { center: true, pitch: 1.6, level: 'dim' });
       if (c.lock) for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { S.dot(px + sx * 7, py + sy * 7, { size: 1.3, level: 'full' }); S.dot(px + sx * 5, py + sy * 7, { size: 1.3, level: 'full' }); S.dot(px + sx * 7, py + sy * 5, { size: 1.3, level: 'full' }); }
     }
     S.legend(cx, cy + r - 12, d.range, { align: 'center', level: 'dim' });
@@ -180,8 +181,10 @@
 
   // ------------------------------------------------------------------ P2 caution and warning
   // Six rows of 24 in fixed fields, a cell apart where a full code meets its detail: severity (two filtered
-  // columns), code 11 cells, detail 10, handling 3, timer 5. Handling: YOU inverse; a dot per crew member on it, from four a dot and the count; BACK and the
-  // recovery time across handling and timer.
+  // columns), code 11 cells, detail 10, handling 3, timer 5. Handling (version 11, four states): YOU inverse;
+  // ‖ while the crew hold back from it (held: at battle stations they keep clear of where crew were hit,
+  // and stay inside), lit at L2 since it is a fact about the crew, not a call on the captain; a dot per crew
+  // member on it, from four a dot and the count; BACK and the recovery time across handling and timer.
   function p2(S, rows, more) {
     const n = rows.length + (more ? 1 : 0), x = LX, y = 38, rh = 24;
     K.slab(S, x, y, CW, n * rh + 4, { pad: 5 });
@@ -193,6 +196,7 @@
       S.dm(x + 133.5, ty, r.detail || '', { pitch: P, cells: 10, level: 'dim' });
       const hx = x + 226.5, tx = x + 256;
       if (r.you) S.dm(hx, ty, 'YOU', { pitch: P, cells: 3, inverse: [0, 3], level: 'norm' });
+      else if (r.held) S.dm(hx, ty, '‖', { pitch: P, cells: 3, level: 'norm' });
       else if (r.crew) S.dm(hx, ty, r.crew > 3 ? '●' + r.crew : '●'.repeat(r.crew), { pitch: P, cells: 3, level: 'norm' });
       else if (r.back) S.legend(hx, sy + 12, 'BACK', { size: 12, level: 'dim' });
       else S.dm(hx, ty, '', { pitch: P, cells: 3 });
@@ -254,38 +258,30 @@
   }
 
   // ------------------------------------------------------------------ H2 navigation
-  // Labels are legends at L1, words dot matrix, numbers seven segments with their units as legends.
-  function h2(S, y, face, d) {
-    const x = LX, rows = face === 'compact' ? 1 : 9;
-    K.slab(S, x, y, CW, rows * ROW + 6, { pad: 5 });
+  // Labels are legends at L1, words dot matrix, numbers seven segments with their units as legends; a
+  // number past 999 carries the tube's thousands mark. The face is a list of rows, since which rows show
+  // depends on the plan (version 10): an apsis due after the next burn is left out, and a Nav around
+  // another body names the body and gives the arrival where one around this body gives closing and the
+  // closest approach. rows: [[label or null, parts], ...]; a part is ['l', text] a legend, ['n', digits,
+  // cells] seven segments, ['t', text, cells] dot matrix, ['gap', units].
+  function h2(S, y, rows) {
+    const x = LX;
+    K.slab(S, x, y, CW, rows.length * ROW + 6, { pad: 5 });
     const vx = x + 52;
     let ry = y + 3;
-    const lab = t => S.legend(x + 6, B(ry), t, { level: 'dim' });
-    // a run of parts along the row: ['l', text] legend, ['n', digits, cells] seven segments, ['t', text, cells] dot matrix
-    const run = (parts, at = vx) => {
-      let cx = at;
+    for (const [lab, parts] of rows) {
+      if (lab) S.legend(x + 6, B(ry), lab, { level: 'dim' });
+      let cx = vx;
       for (const [k, v, n, o = {}] of parts) {
         if (k === 'l') cx += S.legend(cx, B(ry), v, { level: 'dim', ...o }) + 4;
         else if (k === 'n') cx += S.seg7(cx, B(ry) - 12, 12, v, { cells: n, level: 'norm', ...o }) + 6;
         else if (k === 't') cx += S.dm(cx, B(ry) - 10.5, v, { pitch: P, cells: n, level: 'norm', ...o }) + 6;
         else if (k === 'gap') cx += v;
       }
-      K.fits(cx, x + CW - 2, 'H2 row ' + ry);
-      return cx;
-    };
-    if (face === 'compact') {
-      lab('NAV'); run([['t', d.nav, 16], ['n', d.navRange, 4], ['l', 'KM']]);
-      return;
+      K.fits(cx, x + CW - 2, 'H2 row ' + (lab || ry));
+      ry += ROW;
     }
-    lab('ORBIT'); run([['t', d.body, 7], ['l', 'ALT'], ['n', d.alt, 3], ['l', 'KM']]); ry += ROW;
-    run([['l', 'AP'], ['n', d.ap, 3], ['l', 'KM'], ['gap', 10], ['l', 'T-'], ['n', d.apT, 4]]); ry += ROW;
-    run([['l', 'PE'], ['n', d.pe, 3], ['l', 'KM'], ['gap', 10], ['l', 'T-'], ['n', d.peH, 1], ['l', 'H'], ['n', d.peM, 2], ['l', 'M']]); ry += ROW;
-    lab('NAV'); run([['t', d.nav, 16]]); ry += ROW;
-    run([['n', d.navRange, 4], ['l', 'KM'], ['gap', 6], ['l', 'CLOSING', 0, { lit: !d.opening, level: 'norm' }], ['l', 'OPENING', 0, { lit: !!d.opening, level: 'norm' }], ['n', d.rate, 3], ['l', 'M/S']]); ry += ROW;
-    run([['l', 'CLOSEST'], ['n', d.cpa, 3], ['l', 'KM'], ['gap', 6], ['l', 'T-'], ['n', d.cpaH, 1], ['l', 'H'], ['n', d.cpaM, 2], ['l', 'M']]); ry += ROW;
-    lab('NEXT'); run([['t', d.next, 8], ['gap', 6], ['l', 'T-'], ['n', d.nextT, 4]]); ry += ROW;
-    run([['n', d.nextDv, 3], ['l', 'M/S'], ['gap', 6], ['t', d.by, 13]]); ry += ROW;
-    lab('PLAN'); run([['l', 'ΔV'], ['n', d.need, 4], ['gap', 6], ['l', 'LEAVES'], ['n', d.leaves, 4], ['l', 'M/S'], ['gap', 6], ['l', 'SHORT', 0, { color: 'amber', lit: !!d.short, level: 'norm' }]]);
+    return y + rows.length * ROW + 6;
   }
 
   // ------------------------------------------------------------------ H6 lock card, H7 armament
@@ -361,9 +357,8 @@
     S.dm(vx, B(ry) - 10.5, d.state, { pitch: P, cells: 25, level: 'norm' });
     ry += ROW;
     lab('PARTY');
-    let cx = vx + S.seg7(vx, B(ry) - 12, 12, d.party, { cells: 1, level: 'norm' }) + 6;
-    cx += S.legend(cx, B(ry), 'ABOARD', { level: 'dim' }) + 8;
-    S.dm(cx, B(ry) - 10.5, d.partyState, { pitch: P, cells: 8, level: 'norm' });
+    let cx = vx + S.seg7(vx, B(ry) - 12, 12, d.party, { cells: 1, level: 'norm' }) + 8;
+    K.fits(cx + S.dm(cx, B(ry) - 10.5, d.partyState, { pitch: P, cells: 16, level: 'norm' }), x + CW - 4, 'X2 party');
     ry += ROW;
     lab('SALV');
     cx = vx + S.seg7(vx, B(ry) - 12, 12, d.marked, { cells: 1, level: 'norm' }) + 6;
@@ -428,14 +423,26 @@
 
     topRack(S, { seat: 'HELM', day: '0', time: '00:33', warp: '1' });
     bottomRack(S);
-    const p5y = p5(S, { l1: 'DELIVER 40 FOOD', l2: '→ SHACKLETON ICE', left: '1.4', unit: 'D LEFT' });
-    h2(S, p5y + 12, 'full', { body: 'EARTH', alt: '400', ap: '403', apT: '24:10', pe: '397', peH: '1', peM: '10',
-      nav: 'SHACKLETON ICE', navRange: '1240', opening: true, rate: '220', cpa: '3.2', cpaH: '2', cpaM: '05',
-      next: 'BURN 1/2', nextT: '12:05', nextDv: '420', by: 'HELM FLIES IT', need: '860', leaves: '380' });
+    const p5y = p5(S, { l1: 'DELIVER 40 FOOD', l2: '→ SHACKLETON ICE', left: '5.2', unit: 'D LEFT' });
+    // version 10: the Ap is left out (it comes 46 minutes after the Pe, past burn 1), and the Nav orbits
+    // the Moon, so its rows name the body and give the plan's arrival; the plan is one leg, one burn
+    h2(S, p5y + 12, [
+      ['ORBIT', [['t', 'EARTH', 7], ['l', 'ALT'], ['n', '400', 3], ['l', 'KM']]],
+      [null, [['l', 'PE'], ['n', '397', 3], ['l', 'KM'], ['gap', 10], ['l', 'T-'], ['n', '8:40', 4]]],
+      ['NAV', [['t', 'SHACKLETON ICE', 16]]],
+      [null, [['n', '384,000', 6], ['l', 'KM'], ['gap', 6], ['t', 'AT THE MOON', 11]]],
+      [null, [['l', 'ARRIVAL'], ['l', 'T-'], ['n', '4.2', 3], ['l', 'D']]],
+      ['NEXT', [['t', 'BURN 1/1', 8], ['gap', 6], ['l', 'T-'], ['n', '12:05', 4]]],
+      [null, [['n', '3,084', 4], ['l', 'M/S'], ['gap', 6], ['t', 'HELM FLIES IT', 13]]],
+      ['PLAN', [['l', 'ΔV'], ['n', '3,877', 4], ['gap', 6], ['l', 'LEAVES'], ['n', '1,729', 4], ['l', 'M/S'], ['gap', 6], ['l', 'SHORT', 0, { color: 'amber', lit: false, level: 'norm' }]]],
+    ]);
     h4Lights(S, 16, 744, [['HULL'], ['POWER'], ['LIFE SUP']]);
     cue(S, 640, 648, {});
-    h1(S, { frames: [['ORBIT', 'norm'], ['NAV', false], ['LOCK', false], ['PORT', false]], auto: true, speed: '7672', assist: true, dv: '1240', prop: 0.72 });
-    h5Key(S, 3);
+    h1(S, { frames: [['ORBIT', 'norm'], ['NAV', false], ['LOCK', false], ['PORT', false]], auto: true, speed: '7,672', assist: true, dv: '5,606', prop: 0.72 });
+    // the ship has just left Highport: it and the Hauler Kestrel, 3 km off, hold the scope open, and
+    // version 12's cruise range is the smallest step that holds every contact inside 50 km, so 5 km, with
+    // them 60% out (Highport astern, the hauler on the port quarter)
+    h5Scope(S, { heading: -6, range: '5 KM', contacts: [{ x: -0.597, y: -0.063, kind: 'station' }, { x: -0.475, y: -0.398, kind: 'neutral' }] });
     S.finish();
   };
 
@@ -472,7 +479,8 @@
     p2(S, [{ sev: 'warning', code: 'BREACH', detail: 'ENGINES', crew: 1 }]);
     p3(S, { count: '2', t: '4', decoy: 'READY', pd: true });
     p4(S, [['GUNNERY', '3 HITS ON RAIDER']]);
-    h2(S, 194, 'compact', { nav: 'SHACKLETON ICE', navRange: '1240' });
+    // compact: no event is due within 30 minutes, so the Nav and its distance
+    h2(S, 194, [['NAV', [['t', 'SHACKLETON ICE', 16], ['n', '384,000', 6], ['l', 'KM']]]]);
     const h7y = h6(S, 194, { name: 'RAIDER', state: 'HOSTILE', firing: true, range: '3.4', unit: 'KM', closing: 'closing', rate: '12', shot: '2.2', hit: '62', word: 'FAIR' });
     h7(S, h7y + 12, { guns: 'READY', who: 'YOU', msl: '7', reload: null, shields: 'RAISED', trim: 'BOW' });
     // H4 rose by itself: the breach lit the hull light. The plan is the gunship's own deck.
@@ -485,7 +493,7 @@
       ] });
     h4Lights(S, 16, 744, [['HULL', 'warning'], ['SHIELDS'], ['POWER'], ['LIFE SUP']]);
     cue(S, 640, 648, { warn: 'BREACH' });
-    h1(S, { frames: [['ORBIT', false], ['NAV', false], ['LOCK', 'norm'], ['PORT', false]], auto: true, name: 'RAIDER', speed: '12', assist: true, dv: '1240', prop: 0.72, thrust: { main: true } });
+    h1(S, { frames: [['ORBIT', false], ['NAV', false], ['LOCK', 'norm'], ['PORT', false]], auto: true, name: 'RAIDER', speed: '12', assist: true, dv: '6,831', prop: 0.72, thrust: { main: true } });
     // the 5 km step holds the raider (3.4 km) and the missiles (1.6 km) with room to spare
     h5Scope(S, { heading: -14, range: '5 KM', contacts: [{ x: 0.613, y: -0.292, kind: 'hostile', lock: true }, { x: 0.31, y: -0.077, kind: 'missile' }, { x: 0.331, y: -0.058, kind: 'missile' }, { x: -0.5, y: 0.45, kind: 'neutral' }] });
     S.finish();
@@ -512,11 +520,14 @@
     S.projectNow();
 
     topRack(S, { seat: 'DECK', authority: 'HELM: NOBODY', battle: true, day: '0', time: '01:12', warp: '1' });
+    // version 11's order: what needs the captain, then what the crew hold back from (Ada was hit in the
+    // HOLD, so its vacuum waits for the fight to end), then what crew are on (Ada's bleed-out is under the
+    // two minutes that send them in anyway)
     p2(S, [
       { sev: 'warning', code: 'EMERG O2', you: true },
-      { sev: 'warning', code: 'VACUUM', detail: 'HOLD', you: true },
       { sev: 'warning', code: 'NO POWER', detail: 'DAMAGED', you: true },
-      { sev: 'warning', code: 'CREW CRIT', detail: 'ADA', crew: 1, timer: '3:40' },
+      { sev: 'warning', code: 'VACUUM', detail: 'HOLD', held: true },
+      { sev: 'warning', code: 'CREW CRIT', detail: 'ADA', crew: 1, timer: '1:40' },
       { sev: 'warning', code: 'FIRE', detail: 'BRIDGE', crew: 1 },
     ], '+1 MORE: SMOKE');
     x3(S, { title: 'SHIP DISABLED: NO POWER', rows: [
@@ -552,9 +563,330 @@
     bottomRack(S, { tower: false });
     p4(S, [['BOARDING', 'THE RAIDER IS TAKEN']]);
     p5(S, { l1: 'BOUNTY: RAIDER · TAKEN', l2: '→ TURN IN AT HIGHPORT' });
-    x2(S, 194, { name: 'RAIDER', latched: true, state: 'TAKEN: CREW SURRENDERED', party: '2', partyState: 'HOLDING', marked: '3', off: '1', lots: '2', prisoners: true });
+    x2(S, 194, { name: 'RAIDER', latched: true, state: 'TAKEN: CREW SURRENDERED', party: '1', partyState: 'COMING HOME', marked: '3', off: '1', lots: '2', prisoners: true });
     h4Lights(S, 16, 744, [['HULL'], ['POWER'], ['LIFE SUP']]);
     cue(S, 640, 705, {});
+    S.finish();
+  };
+
+  // ================================================================== the full-screen modes (section 10)
+  // Every mode has the same frame: a title row with its tabs, the content, and a foot row with the feed's
+  // newest line and the keys that close it; P1, the top rack, stays above. FILAMENT houses each by what it
+  // is (guide section 18): the map is a plot with its panes, the station and boarding modes are terminals.
+  // The frame is one plate: the title row a strip of glass across its top, each tab a key in the bezel over
+  // the strip (its cap the tab's number, its label in the strip under it, inverse while its tab shows), and
+  // the foot a strip across its bottom with the close keys printed at its right.
+  const SC = SCR, KH = SC.KEY_H;
+  const T = (S, x, y, str, o = {}) => S.dm(x, y, str, { pitch: P, level: o.level ?? 'norm', ghost: o.ghost ?? false, cells: o.cells, align: o.align, color: o.color, inverse: o.inverse });
+  const rule = (S, x, y, w) => S.rectLit(x, y, w, 0.8, { ghostOnly: true, k: 2.2 });
+  const capsW = (S, caps) => [].concat(caps).reduce((a, c) => a + Math.max(18, S.legendWidth(c, { size: 12, weight: 600, condense: 0.86, track: 0.1 }) + 7) + 3, 0) + 3;
+  function modeFrame(S, x, y, w, h, o) {
+    const top = o.tabs ? KH + 9 : 0;
+    K.plate(S, x, y, w, h, { pad: 7, radius: 8 });
+    const ty = y + top, th = 30;
+    S.module(x, ty, w, th, { filaments: 0, glare: false, radius: 2 });
+    let tx = x + 12;
+    tx += S.seg14(tx, ty + 7, 16, o.title, { level: 'full' }) + 14;
+    if (o.sub) tx += T(S, tx, ty + 10, o.sub, { level: 'dim' }) + 34;
+    for (const tab of o.tabs || []) {
+      const lw = SC.width(tab.t.length), kw = Math.max(44, lw), slot = kw + 26;
+      S.key(tx + (slot - kw) / 2, y, kw, KH, tab.k, { size: 12 });
+      T(S, tx + (slot - lw) / 2, ty + 10, tab.t, { level: tab.active ? 'full' : 'norm', inverse: tab.active ? [0, tab.t.length] : null });
+      tx += slot;
+    }
+    K.fits(tx, x + w - 8, 'mode title row');
+    const fy = y + h - 26;
+    S.module(x, fy, w, 26, { filaments: 0, glare: false, radius: 2 });
+    const fx = x + 12 + T(S, x + 12, fy + 8, o.feed[0] + ':', { level: 'dim' }) + 9;
+    const fe = fx + T(S, fx, fy + 8, o.feed[1]);
+    // the keys that close it, right-aligned: its own key, or Esc
+    let kx = x + w - 12 - (capsW(S, o.close) + SC.width(2) + 14 + capsW(S, 'ESC') + SC.width(5));
+    K.fits(fe + 20, kx, 'mode foot row');
+    kx = SC.capWord(S, kx, fy + 4, [o.close], 'OR');
+    SC.capWord(S, kx, fy + 4, ['ESC'], 'CLOSE');
+    return { y: ty + th + 6, bottom: fy - 6 };
+  }
+  // a panel of glass in the frame, its name a legend in its first row
+  function pane(S, x, y, w, h, name) {
+    S.module(x, y, w, h, { filaments: Math.max(1, Math.round(h / 140)) });
+    if (name) S.legend(x + 10, y + 18, name, { size: 13, level: 'dim', ghost: false });
+  }
+  // a pane's section heading: the legend, then a ghost rule to the pane's edge
+  function head(S, x, y, x1, t) {
+    const lw = S.legendWidth(t, { size: 13 });
+    S.legend(x, y + 9.5, t, { size: 13, level: 'dim', ghost: false });
+    rule(S, x + lw + 8, y + 5, x1 - x - lw - 8);
+  }
+  // a printed key and its order, and what it is doing at the row's right end
+  function order(S, x, y, x1, cap, word, state, o = {}) {
+    SC.capWord(S, x, y, [].concat(cap), word, { level: o.level ?? 'norm' });
+    if (state) T(S, x1 - SC.width(state.length), y + 4, state, { level: o.on ? 'full' : 'dim' });
+  }
+
+  // ------------------------------------------------------------------ M1 Map (11.9)
+  // The plan to Shackleton Ice at the moment of 11.1: burn 1 planned, the capture at the Moon an estimate
+  // until the crossing plans it. The view row's keys sit in the bezel over the plot; the timeline runs to
+  // the contract's deadline. The map has no tabs, so the number keys keep the helm orders (1 and 6 here).
+  SCREENS['cx-map'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 12, stars: 200 });
+    topRack(S, { seat: 'HELM', day: '0', time: '00:33', warp: '1' });
+    const f = modeFrame(S, 12, 40, 1256, 748, { title: 'EARTH SYSTEM', feed: ['LOG', 'AUTOSAVED'], close: 'M' });
+    const top = f.y, bot = f.bottom;
+    // the plot, the view keys over it and the timeline under it
+    const px = 338, pw = 604, py = top + KH + 6, ph = bot - 90 - 6 - py;
+    SC.orbitLeg(S, px, py, pw, ph, { clearTop: 22 });
+    SC.keyStrip(S, px + 8, top, pw - 16, [{ t: 'CENTRE: EARTH' }, { t: 'FIT' }, { t: 'ALL TRAFFIC' }], { labelY: py + 6 });
+    const ty = bot - 90;
+    pane(S, px, ty, pw, 90, 'TIMELINE');
+    const tn = 'CLICK CENTRES THE MAP ON IT · » WARPS';
+    T(S, px + pw - 10 - SC.width([...tn].length), ty + 9, tn, { level: 'dim' });
+    SC.timeline(S, px + 10, ty + 28, pw - 20, [
+      { t: 0.2, label: ['BURN 1', 'T-12:05 »'] }, { t: 79.2, label: ['MOON SOI', 'T-3.3 D »'] },
+      { t: 98.4, label: ['CAPTURE', 'T-4.1 D »'], estimate: true }, { t: 100.8, label: ['ARRIVAL', 'T-4.2 D »'] },
+      { t: 124.8, label: ['DEADLINE', 'T-5.2 D »'], deadline: true },
+    ], { t0: 6 });
+
+    // the Plan pane, left
+    let x = 12, w = 320, x0 = x + 10, x1 = x + w - 10, y = top;
+    pane(S, x, y, w, bot - top, 'PLAN');
+    y += 30;
+    S.legend(x0, y + 9.5, 'ORBIT NOW', { size: 13, level: 'dim', ghost: false }); T(S, x0 + 96, y, 'EARTH');
+    T(S, x0, y + 18, 'PE 397 KM   T-8:40');
+    T(S, x0, y + 34, 'PERIOD 1 H 32 M', { level: 'dim' });
+    y += 58; head(S, x0, y, x1, 'BURNS'); T(S, x1 - SC.width(6), y, '1 OF 1', { level: 'dim' });
+    y += 20;
+    const bg = SC.grid(S, x0, y + 16, 33, 2);
+    [['#', 1], ['WHEN', 3], ['ΔV', 18, 'r'], ['PRO', 25, 'r'], ['RAD', 31, 'r']].forEach(([h, c, a]) =>
+      S.legend(bg.cx(a ? c + 1 : c) - (a ? 1.5 : 0), y + 9.5, h, { size: 13, level: 'dim', align: a ? 'right' : 'left', ghost: false }));
+    bg.row(0, SC.cols([['1', 2], ['T-12:05', 8], ['3,084', 7, 'r'], ['3,084', 7, 'r'], ['0', 6, 'r']]), { focus: true, cursor: true });
+    y += 40;
+    // the leg still to come: its capture, an estimate until the crossing plans it
+    T(S, x0, y, 'THEN AT THE MOON: CAPTURE,', { level: 'dim' });
+    T(S, x0, y + 14, 'ABOUT 793 M/S AT T-4.1 D,', { level: 'dim' });
+    T(S, x0, y + 28, 'PLANNED AT THE CROSSING', { level: 'dim' });
+    y += 52; head(S, x0, y, x1, 'SELECTED');
+    y += 20;
+    T(S, x0, y, 'BURN 1', { level: 'full' }); T(S, x0 + 62, y, '→ AP 378,000 KM');
+    T(S, x0 + 62, y + 16, 'MOON SOI T-3.3 D');
+    y += 40; head(S, x0, y, x1, 'PLAN');
+    y += 22;
+    let fx = SC.figure(S, x0, y, 18, '3,877', null, { label: 'ΔV', cells: 4 });
+    K.fits(SC.figure(S, fx + 8, y + 2, 16, '5,606', 'M/S', { label: 'OF', cells: 4 }), x1, 'M1 plan total');
+    y += 28;
+    S.bar(x0, y, x1 - x0, 6, 40, 3877 / 5606, { level: 'norm', gap: 1.2 });
+    y += 16;
+    T(S, x0, y, 'LEAVES 1,729 M/S', { level: 'dim' });
+    T(S, x0, y + 16, 'ARRIVAL T-4.2 D');
+    // the orders, at the pane's foot: the helm order running, the autopilot off
+    y = bot - 10 - 5 * 26;
+    head(S, x0, y - 22, x1, 'ORDERS');
+    order(S, x0, y, x1, '1', 'HELM FLIES BURNS', 'ON', { on: true });
+    order(S, x0, y + 26, x1, '6', 'AUTOPILOT', 'OFF');
+    order(S, x0, y + 52, x1, '/', 'WARP TO NEXT BURN');
+    order(S, x0, y + 78, x1, 'DEL', 'DELETE BURN');
+    order(S, x0, y + 104, x1, '', 'CLEAR ALL');
+
+    // the Target and traffic pane, right
+    x = 948; x0 = x + 10; x1 = x + w - 10; y = top;
+    pane(S, x, y, w, bot - top, 'TARGET AND TRAFFIC');
+    y += 30;
+    S.legend(x0, y + 12, 'NAV', { size: 13, level: 'dim', ghost: false });
+    S.dm(x0 + 40, y, 'SHACKLETON ICE', { pitch: 2, level: 'full', ghost: false });
+    T(S, x0, y + 24, 'ICE MINE · 384,000 KM');
+    T(S, x0, y + 38, 'AT THE MOON · ARRIVAL T-4.2 D', { level: 'dim' });
+    order(S, x0, y + 58, x1, 'Q', 'NEXT TARGET');
+    y += 94; head(S, x0, y, x1, 'TRANSFER');
+    y += 22;
+    let kx = SC.capWord(S, x0, y, [';'], 'PLAN');
+    kx = SC.capWord(S, kx, y, ['ENTER'], 'ACCEPT', { level: 'dim' });
+    K.fits(SC.capWord(S, kx, y, ['BKSP'], 'DISCARD', { level: 'dim' }) - 14, x1, 'M1 transfer keys');
+    T(S, x0, y + 26, 'ACCEPT, DISCARD: NOTHING PROPOSED', { level: 'dim' });
+    y += 58; head(S, x0, y, x1, 'CONTACTS');
+    T(S, x1 - SC.width(16), y, 'SORT ◀ DISTANCE ▶', { level: 'dim' });
+    y += 22;
+    const cg = SC.grid(S, x0, y, 33, 6);
+    [['HIGHPORT', '3.0'], ['HAULER KESTREL', '3.1'], ['DEEPWELL DEPOT', '9,800'], ['ANVIL YARDS', '18,400']].forEach(([n, d], i) =>
+      cg.text(0, i * 1.5, SC.cols([[n, 18], [d, 10, 'r'], ['', 1], ['KM', 2]])));
+    y += 6 * 13.5 + 10; head(S, x0, y, x1, 'LAYERS');
+    y += 24;
+    // each layer a key with its LED, lit while the layer shows; its name in the glass over it
+    [['STATIONS', true], ['HAULERS', true], ['PIRATES', true], ['DERELICTS', true], ['OBJECTIVES', true], ['TENSION', false]].forEach(([t, on], i) => {
+      const sw = (x1 - x0) / 3, sx = x0 + (i % 3) * sw, sy = y + Math.floor(i / 3) * 52;
+      T(S, sx + (sw - SC.width(t.length)) / 2, sy, t, { level: on ? 'norm' : 'dim' });
+      S.key(sx + 8, sy + 16, sw - 16, 22, '', { size: 12 });
+      S.led(sx + sw - 20, sy + 27, 'green', on);
+    });
+    S.finish();
+  };
+
+  // ------------------------------------------------------------------ M3 Station (11.10)
+  // A panel 1,120 wide over the docked view, as tall as its tab: Highport's Market is three rows (version
+  // 11: nothing salvaged on day 0, nothing on order), the delivery this market supplies under the table,
+  // the rail on the right. The trade keys act on the focused row; each tab's key is its number, and T, Y
+  // and J switch to their tab too (T closes the panel from the Market).
+  SCREENS['cx-station'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 4, stars: 260 });
+    await K.hull(S, 'station_hub', 640, 556, 0.1, 0);
+    await K.hull(S, 'corvette', 619, 692, 0.115, 0);
+    K.label(S, 640 - 54, 418, ['HIGHPORT'], { pitch: 2, level: 'norm' });
+    S.projectNow();
+    topRack(S, { seat: 'HELM', day: '0', time: '00:15', warp: '1' });
+    const X = 80, W = 1120, H = 316;
+    const f = modeFrame(S, X, 40, W, H, {
+      title: 'HIGHPORT', sub: 'TERRAN PATROL AUTHORITY',
+      tabs: [{ t: 'MARKET', k: '1', active: true }, { t: 'YARD', k: '2' }, { t: 'MISSIONS', k: '3' }, { t: 'HIRE', k: '4' }],
+      feed: ['STATION', 'CLEARANCE GRANTED'], close: 'T',
+    });
+    // the Market, its trade keys under it
+    const mw = 792, gy = f.y, gh = f.bottom - KH - 9 - gy;
+    pane(S, X, gy, mw, gh);
+    SC.keyStrip(S, X + 8, gy + gh + 5, mw - 16, [{ t: 'BUY 1' }, { t: 'BUY 10' }, { t: 'SELL 1' }, { t: 'SELL ALL' }], { slots: 6, labelY: gy + gh - 7 * P - 6 });
+    const x0 = X + 12;
+    T(S, x0, gy + 8, 'PRICES IN CR, AMOUNTS IN M3', { level: 'dim' });
+    const lg = SC.grid(S, x0, gy + 42, 85, 4.5);
+    [['COMMODITY', 1], ['STOCK', 38, 'r'], ['BUY', 48, 'r'], ['SELL', 58, 'r'], ['HELD', 68, 'r'], ['ON ORDER', 73]].forEach(([h, c, a]) =>
+      S.legend(lg.cx(a ? c + 1 : c) - (a ? 1.5 : 0), gy + 35, h, { size: 13, level: 'dim', align: a ? 'right' : 'left', ghost: false }));
+    const line = (n, st, b, sl, h, oo) => SC.cols([[n, 28], [st, 10, 'r'], [b, 10, 'r'], [sl, 10, 'r'], [h, 10, 'r'], ['', 4], [oo, 12]]);
+    lg.row(0, line('WATER', '420', '14', '12', '0', '-'));
+    lg.row(1.5, line('FOOD', '2,600', '36', '32', '12', '-'), { focus: true, cursor: true });
+    lg.row(3, line('MACHINERY', '20', '680', '620', '0', '-'));
+    const cy = gy + 42 + 4.5 * 13.5 + 8;
+    head(S, x0, cy, X + mw - 12, 'FOR YOUR CONTRACTS');
+    T(S, x0, cy + 20, 'DELIVER 40 FOOD → SHACKLETON ICE · 12 OF 40 ABOARD · 5.2 D LEFT');
+    // the rail: what bounds every choice on every tab
+    const rx = X + mw + 8, rw = X + W - rx, r0 = rx + 12, r1 = X + W - 12;
+    pane(S, rx, gy, rw, gh + KH + 9);
+    let ry = gy + 8;
+    const R = (label, val, o = {}) => { S.legend(r0, ry + 9.5, label, { size: 13, level: 'dim', ghost: false }); if (val) T(S, r0 + 100, ry, val, o); ry += o.step ?? 20; };
+    S.legend(r0, ry + 14, 'CREDITS', { size: 13, level: 'dim', ghost: false });
+    K.fits(SC.figure(S, r0 + 100, ry, 16, '5,000', 'CR', { cells: 5 }), r1, 'M3 credits'); ry += 26;
+    R('STANDING', 'TRUSTED  +42');
+    const bx = r0 + 100 + SC.width(14) + 10, bar = (f) => S.bar(bx, ry + 2, r1 - bx, 6, 12, f, { level: 'norm', gap: 1 });
+    R('HOLD', '12 OF 40 M3', { step: 0 }); bar(12 / 40); ry += 20;
+    R('TANKS', 'PROPELLANT 72%', { step: 0 }); bar(0.72); ry += 16;
+    T(S, r0 + 100, ry, 'OXYGEN    100%'); bar(1); ry += 26;
+    R('INFIRMARY', 'TREATING 1', { step: 16 });
+    T(S, r0 + 100, ry, 'BILL 150 CR', { level: 'dim' });
+    K.fits(r0 + 100 + SC.width(14), r1, 'M3 rail');
+    S.finish();
+  };
+
+  // ------------------------------------------------------------------ M4 Boarding (10.4), at 11.13
+  // The raider taken and latched alongside: today's BoardingWindow in a terminal, with a plan of the other
+  // ship. The party (Cole, the ship's marine) stands down once the craft is taken and is on the way home;
+  // Ada strips the reactor and Bea carries the chaingun home; the three who surrendered wait aboard. The
+  // part list is the game's (every system but the hold and the port, then what is already off). The
+  // party's orders keep their keys though none is open once the ship is taken, so the keys never move.
+  const RAIDER = { // the light raider (chassis.raider): 15 x 5 tiles of hull, one space inside, port up
+    w: 17, h: 5,
+    hull: [[2, 0], [17, 0], [17, 5], [2, 5]],
+    rooms: [{ id: 'DECK', x: 3, y: 1, w: 13, h: 3 }],
+    walls: [],
+    engines: [[0, 1, 2, 1], [0, 3, 2, 1]],
+  };
+  SCREENS['cx-board'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 44 });
+    topRack(S, { seat: 'HELM', day: '0', time: '01:30', warp: '1' });
+    const f = modeFrame(S, 12, 40, 1256, 748, { title: 'RAIDER', sub: 'LATCHED · TAKEN: CREW SURRENDERED', feed: ['BOARDING', 'THE RAIDER IS TAKEN'], close: 'K' });
+    const top = f.y, bot = f.bottom, lw = 840, rx = 12 + lw + 8, rw = 1268 - rx;
+    // the plan of the raider, port (and the latch) up, the bow to the right: its hull and engines, every
+    // system's place faint, the parts marked to strip in brackets, the gun's place empty
+    const ph = 242;
+    pane(S, 12, top, lw, ph, 'PLAN');
+    const pl = K.shipPlan(S, 12 + 44, top + 26, lw - 88, ph - 48, { plan: RAIDER, wallLevel: 'dim' });
+    const at = (tx, ty) => [pl.X(tx), pl.Y(ty)], t = pl.t;
+    const box = (tx, ty, tw, th2, lv, step = 4) => {
+      const [bx, by] = at(tx, ty), bw = tw * t - 8, bh = th2 * t - 8;
+      for (let i = 0; i <= Math.round(bw / step); i++) { S.dot(bx + 4 + i * bw / Math.round(bw / step), by + 4, { size: 1, level: lv }); S.dot(bx + 4 + i * bw / Math.round(bw / step), by + 4 + bh, { size: 1, level: lv }); }
+      for (let i = 1; i < Math.round(bh / step); i++) { S.dot(bx + 4, by + 4 + i * bh / Math.round(bh / step), { size: 1, level: lv }); S.dot(bx + 4 + bw, by + 4 + i * bh / Math.round(bh / step), { size: 1, level: lv }); }
+    };
+    // the systems as chassis.raider mounts them (drawn port up): x, y, w, h
+    for (const [tx, ty, tw, th2] of [[11, 1, 1, 1], [14, 1, 1, 1], [3, 2, 1, 1], [5, 2, 1, 1], [7, 2, 1, 1], [11, 2, 1, 1], [13, 1, 1, 2], [6, 3, 1, 1]]) box(tx, ty, tw, th2, 'dim', 5);
+    const mark = (tx, ty, tw, th2) => {
+      const [bx, by] = at(tx, ty), bw = tw * t, bh = th2 * t;
+      for (const [cx, cy, dx, dy] of [[bx, by, 1, 1], [bx + bw, by, -1, 1], [bx, by + bh, 1, -1], [bx + bw, by + bh, -1, -1]]) {
+        S.dotLine(cx + dx * 2, cy + dy * 2, cx + dx * 12, cy + dy * 2, { size: 1.6, step: 2.2, level: 'full' });
+        S.dotLine(cx + dx * 2, cy + dy * 2, cx + dx * 2, cy + dy * 12, { size: 1.6, step: 2.2, level: 'full' });
+      }
+    };
+    mark(0, 1, 2, 1); mark(0, 3, 2, 1); mark(8, 1, 2, 2);
+    box(15, 2, 1, 1, 'norm', 3);                                                    // the gun, already off
+    const [ex0, ey0] = at(0, 4);
+    T(S, ex0, ey0 + 10, 'ENGINES', { level: 'norm' }); T(S, ex0, ey0 + 24, 'MARKED', { level: 'dim' });
+    const [rx0, ry0] = at(8, 1);
+    T(S, rx0 + 8, ry0 + 8, 'REACTOR'); T(S, rx0 + 8, ry0 + 22, '40%', { level: 'dim' });
+    const [gx0, gy0] = at(17, 2);
+    T(S, gx0 + 8, gy0 + 6, 'GUN'); T(S, gx0 + 8, gy0 + 20, 'OFF', { level: 'dim' });
+    // the latch on the port side: lit in the hull, and where it leads
+    const [lx0, ly0] = at(5, 0);
+    S.rectLit(lx0 + 3, ly0 - 1.5, t - 6, 3, { level: 'full' });
+    T(S, lx0 - 30, ly0 - 18, 'LATCH · THE CORVETTE LIES OVER THE PORT SIDE', { level: 'dim' });
+    // our crew aboard, a block of dots each (working: its side ticks), and the three who surrendered, hollow
+    // (5x5 dots with the corners off, about a quarter of a tile: a person at this scale)
+    const body = (i, j) => Math.abs(i) < 2 || Math.abs(j) < 2;
+    const who = (tx, ty, name, working, dx, dy) => {
+      const [cx, cy] = at(tx, ty);
+      for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if (body(i, j)) S.dot(cx + i * 2.4, cy + j * 2.4, { size: 2, level: 'full' });
+      if (working) for (const sx of [-1, 1]) S.dot(cx + sx * 10, cy, { size: 1.8, level: 'norm' });
+      T(S, cx + dx, cy + dy, name);
+    };
+    who(5.5, 1.5, 'COLE', false, -12, 15);
+    who(6.6, 1.5, 'BEA', true, 14, -16);
+    who(9, 2.55, 'ADA', true, -13, -19);
+    for (const tx of [11.5, 12.5, 13.5]) {
+      const [cx, cy] = at(tx, 3.5);
+      for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if (body(i, j) && (Math.abs(i) === 2 || Math.abs(j) === 2 || (Math.abs(i) === 1 && Math.abs(j) === 1))) S.dot(cx + i * 2.4, cy + j * 2.4, { size: 1.6, level: 'dim' });
+    }
+    const [px0, py0] = at(11, 5);
+    T(S, px0, py0 + 10, '3 SURRENDERED', { level: 'dim' });
+
+    // the party, and its orders (none open: the ship is taken)
+    const pgh = ph - KH - 9;
+    pane(S, rx, top, rw, pgh, 'PARTY');
+    const q0 = rx + 12, q1 = rx + rw - 12;
+    let y = top + 30;
+    let cx = q0 + S.seg7(q0, y, 16, '1', { cells: 1, level: 'norm' }) + 10;
+    T(S, cx, y + 3, 'COMING HOME', { level: 'full' });
+    y += 28;
+    T(S, q0, y, SC.cols([['COLE', 6], ['MARINE', 9], ['AT THE LATCH', 18]]));
+    y += 22;
+    T(S, q0, y, 'TAKEN: THE PARTY STANDS DOWN', { level: 'dim' });
+    T(S, q0, y + 14, 'AND COMES HOME BY ITSELF', { level: 'dim' });
+    SC.keyStrip(S, rx + 8, top + pgh + 5, rw - 16, [{ t: 'BOARD', dim: true }, { t: 'STORM', dim: true }, { t: 'RECALL', dim: true }], { labelY: top + pgh - 7 * P - 6 });
+
+    // the parts to strip, in the game's order; the focused one is marked, so its key leaves it
+    const sy = top + ph + 6, sh = bot - KH - 9 - sy;
+    pane(S, 12, sy, lw, sh, 'SALVAGE');
+    T(S, 12 + lw - 12 - SC.width(25), sy + 9, '3 MARKED · 1 OFF · NO FEE', { level: 'dim' });
+    const sg = SC.grid(S, 22, sy + 50, 60, 16);
+    [['SYSTEM', 1], ['SELLS FOR', 30, 'r'], ['STATUS', 34]].forEach(([h, c, a]) =>
+      S.legend(sg.cx(a ? c + 1 : c) - (a ? 1.5 : 0), sy + 43, h, { size: 13, level: 'dim', align: a ? 'right' : 'left', ghost: false }));
+    const parts = [['ENGINE', '1,250', 'MARKED'], ['HELM', '400', ''], ['ESCAPE POD', '0', ''], ['TANK', '200', ''], ['TANK', '200', ''], ['LIFE SUPPORT', '750', ''],
+      ['REACTOR', '2,000', 'STRIPPING 40%'], ['WEAPONS', '400', ''], ['ENGINE', '1,250', 'MARKED'], ['TANK', '200', ''], ['CHAINGUN MK1', '900', 'CARRYING IT HOME']];
+    parts.forEach(([n, v, st], i) => {
+      const focus = n === 'REACTOR';
+      sg.row(i * 1.45, SC.cols([[n, 18], [v, 11, 'r'], ['', 4], [st, 26]]), { focus, cursor: focus, cells: 60, level: st ? 'norm' : 'dim' });
+    });
+    SC.keyStrip(S, 20, sy + sh + 5, lw - 16, [{ t: 'LEAVE IT', k: 'ENTER' }], { slots: 5, labelY: sy + sh - 7 * P - 6 });
+
+    // the cargo and the prisoners
+    pane(S, rx, sy, rw, sh, 'CARGO');
+    y = sy + 30;
+    S.legend(q0 + 9, y + 9.5, 'LOT', { size: 13, level: 'dim', ghost: false });
+    S.legend(q0 + 9 * 17 + 8, y + 9.5, 'UNITS', { size: 13, level: 'dim', ghost: false, align: 'right' });
+    y += 18;
+    T(S, q0, y, SC.cols([['', 1], ['FOOD', 12], ['6', 4, 'r'], ['', 2], ['6 COMING OVER', 16]]));
+    T(S, q0, y + 18, SC.cols([['', 1], ['MACHINERY', 12], ['4', 4, 'r'], ['', 2], ['4 COMING OVER', 16]]));
+    T(S, q0, y + 40, 'TAKE ALL: BOTH LOTS ARE ON THEIR WAY', { level: 'dim' });
+    y += 72; head(S, q0, y, q1, 'PRISONERS');
+    y += 22;
+    T(S, q0, y, '3 SURRENDERED, ABOARD THE RAIDER');
+    T(S, q0, y + 16, 'BROUGHT ABOARD, THEY ARE TURNED IN', { level: 'dim' });
+    T(S, q0, y + 30, 'AT A STATION FOR STANDING', { level: 'dim' });
+    SC.keyStrip(S, rx + 8, sy + sh + 5, rw - 16, [{ t: 'TAKE ALL', dim: true }, { t: 'BRING ABOARD' }], { slots: 2, labelY: sy + sh - 7 * P - 6 });
     S.finish();
   };
 

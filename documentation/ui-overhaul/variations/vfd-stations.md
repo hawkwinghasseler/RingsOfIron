@@ -22,6 +22,20 @@ Mockups are drawn by [`vfd/src/stations.js`](../vfd/src/stations.js) over real g
 
 ![Blackout at the helm](vfd/stations-blackout.jpg)
 
+The panels (spec section 10) are built from the guide's section 18: the full-screen Plot and the station link are terminals, the slate is the captain's LCD.
+
+**The Plot, on its Plan page (10.2).** Walkthrough C's plan: a climb from Highport's 400 km orbit to 1,200 km, burn 1 in 12:04 and burn 2 half an orbit later at the top of the climb, 210 m/s prograde each, 420 of the 1,840 m/s left. The plot is to scale and takes the screen's left; the terminal at the right has its three page keys along the top (Map, Plan, Targets), the burns as a table with the selected one inverse, the plan's Δv on the two-rail bar with its home notch, the orbits before and after, and the selected burn's figures with the keys that move it. Highport, 1.2 km off, is spread clear of the ship along the orbit.
+
+![The Plot](vfd/stations-plot.jpg)
+
+**The station link, from the deck (10.3).** Docked at Highport, walkthrough G: the link open on its Market as a side panel, its page keys down the left edge with each tab's full name (Highport has no shipyard, so that key's glass is blank), the berth on the title bar, the commodities with food focused, the cargo not traded here under them, and one quantity control with the trade's total before it is confirmed. The camera has moved left by half the panel so the ship stays in the middle of what is left of the world, and the status strip (`DOCKED`) has recentred in that space; the response line says what the last trade did.
+
+![The station link](vfd/stations-link.jpg)
+
+**The slate, seated (10.4).** At the helm in walkthrough C, the slate open on Career: a side panel that stops above the band, its tabs down the housing's left edge, the captain's rank, the ship and the credits on its title bar, standing by faction with its bars, the record and the tension. The camera moves 240 left and Highport's name, which the slate would cover, goes to its edge marker. Its backlight is off, as it is 3 s after the last key.
+
+![The slate](vfd/stations-slate.jpg)
+
 ## How it is built
 
 | Spec widget | FILAMENT part |
@@ -37,6 +51,8 @@ Mockups are drawn by [`vfd/src/stations.js`](../vfd/src/stations.js) over real g
 | Z7 prompt line | Learning hints on a small plate over the cluster: key caps and words |
 | Z6 suit readout | Reflective LCD, backlit only while it warns |
 | World symbology | The projected HUD: dot sprites, zinc and red channels, drawn under the band |
+| Panels (10) | Terminals (guide 18.2): smoked dot-matrix glass in a bezel with page keys and a footer of soft keys printed with their keyboard keys, a response line over them. A side panel's page keys run down its left edge so every tab keeps its full name; the full-screen Plot puts them along the top. The slate is the captain's LCD (18.4) |
+| The Plot's map | A graphic dot panel at pitch 3 with the guide's line rules (18.3): the orbit now every second dot at L2, the plan solid at L3, the orbit it ends in at L1; marks spread along the orbit where they'd overlap; labels on their own ground and leaders |
 | Blackout (5.1, rule 4) | The seat's instruments, board and projector drawn unpowered, every ghost showing and nothing lit, each instrument with its NO POWER face: a backlit LCD behind the glass. The overlay runs on the emergency bus |
 
 ## What FILAMENT changes beyond the look
@@ -109,6 +125,12 @@ Spec round 14 (the Nasa-punk artist's round-4 notes) changes one thing on FILAME
 One fix of FILAMENT's own, found while the other specs placed their reticles: E's lead reticle sat 35 units beyond the Raider, about 210 m of lead on the far side of a target that is closing. At 40 m/s for the coilgun's 0.9 s the lead is 37 m toward the corvette, 6 units at this zoom, so the reticle now sits on the Raider inside the lock mark, over a soft dimmed disc so its dots don't read as the hull's lights, and the intercept line stops at its edge (guide section 8).
 
 Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
+## Round 8
+
+The screens beyond the flight HUD, which the overhaul hadn't covered yet: the Plot, the station link and the slate are drawn (above) from spec section 10, as is the shell, which is the same under every spec (guide 18.5). Seven-segment figures now carry a thousands comma that takes no cell (guide 5.1), so C's Δv reads `1,840` and its home `1,210`.
+
+No functional notes came of them: the panels draw as the spec gives them.
 
 ## Functional notes sent to the stations designer
 

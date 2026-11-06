@@ -278,7 +278,7 @@
     const dv = d.dv;
     S.legend(gx + 10, gy + 144, 'ΔV', dim);
     x = gx + 34;
-    x += S.seg7(x, gy + 126, 18, String(dv.left), { cells: 4, level: 'norm' }) + 7;
+    x += S.seg7(x, gy + 126, 18, dv.left.toLocaleString('en-US'), { cells: 4, level: 'norm' }) + 7;
     x += S.legend(x, gy + 144, 'M/S', dim) + 10;
     const bx = x, bw = gx + 384 - bx, by = gy + 131;
     S.bar(bx, by, bw, 9, 50, dv.left / dv.full, { level: 'dim', gap: 1.1 });
@@ -291,9 +291,9 @@
     }
     x = gx + 394;
     const hw = S.legend(x, gy + 133, 'HOME', dim) + 5;
-    K.fits(x + hw + S.seg7(x + hw, gy + 122, 12, String(dv.home), { cells: 4, level: 'dim' }), lim, 'helm home');
+    K.fits(x + hw + S.seg7(x + hw, gy + 122, 12, dv.home.toLocaleString('en-US'), { cells: 4, level: 'dim' }), lim, 'helm home');
     S.legend(x, gy + 151, 'PLAN', { level: 'dim', lit: !!dv.plan });
-    S.seg7(x + hw, gy + 140, 12, dv.plan ? String(dv.plan) : '', { cells: 4, level: 'dim' });
+    S.seg7(x + hw, gy + 140, 12, dv.plan ? dv.plan.toLocaleString('en-US') : '', { cells: 4, level: 'dim' });
   }
 
   // ------------------------------------------------------------------ tactical cluster (8.3)
@@ -458,26 +458,38 @@
   }
 
   // ================================================================== C. Helm, cruising (Green)
+  // Walkthrough C's world: the ship in the middle of the view above the band (camera shifted up 92), and
+  // dx more to the left when a side panel is open (6.2). A label that would sit under the panel goes to
+  // its contact's edge marker instead (6.3 rule 4).
+  async function cruiseWorld(S, dx = 0) {
+    await K.hull(S, 'freighter', 236 + dx, 176, 0.042, 162, { filter: 'brightness(0.8)' });
+    await K.hull(S, 'station_hub', 1012 + dx, 204, 0.06, 0);
+    await K.hull(S, 'corvette', 640 + dx, 308, 0.115, -20);
+
+    // symbology: neutral traffic as a glyph only; the nav target by name only (the cluster has its numbers)
+    if (236 + dx > 16) K.sprite(S, 'neutral', 236 + dx, 150, { pitch: 2, level: 'dim' });
+    K.brackets(S, 1012 + dx, 204, 78, 'diamond', { pitch: 2, len: 6, level: 'norm' });
+    if (1012 + dx + 47 < 784 - 16 || !dx) nameplate(S, 1012 + dx, 314, 'HIGHPORT', { level: 'norm' });
+    else K.edge(S, 784 - 16, 314, 'r', ['HIGHPORT'], { level: 'norm' }); // at the label's height, clear of the hull
+    // velocity markers 70 from the ship, in the ORBIT frame; the next burn's cue with its countdown
+    const a = -140 * R, sx = 640 + dx;
+    K.velMark(S, 'pro', sx + Math.cos(a) * 70, 308 + Math.sin(a) * 70, { level: 'norm' });
+    K.velMark(S, 'retro', sx - Math.cos(a) * 70, 308 - Math.sin(a) * 70, { level: 'dim' });
+    burnCue(S, sx, 308, -158, 104, 156, ['1']);
+    S.projectNow();
+  }
+
   SCREENS['st-helm'] = async (canvas) => {
     const S = K.scene(canvas);
     K.space(S, { seed: 11 });
-    // world: the ship sits in the middle of the view above the band (camera shifted up 92)
-    await K.hull(S, 'freighter', 236, 176, 0.042, 162, { filter: 'brightness(0.8)' });
-    await K.hull(S, 'station_hub', 1012, 204, 0.06, 0);
-    await K.hull(S, 'corvette', 640, 308, 0.115, -20);
+    await cruiseWorld(S);
+    cruiseBand(S);
+    hints(S, 580, [['N', 'PLAN A BURN'], ['M', 'PLOT'], ['TAB', 'LOCK']]);
+    S.finish();
+  };
 
-    // symbology: neutral traffic as a glyph only; the nav target by name only (the cluster has its numbers)
-    K.sprite(S, 'neutral', 236, 150, { pitch: 2, level: 'dim' });
-    K.brackets(S, 1012, 204, 78, 'diamond', { pitch: 2, len: 6, level: 'norm' });
-    nameplate(S, 1012, 314, 'HIGHPORT', { level: 'norm' });
-    // velocity markers 70 from the ship, in the ORBIT frame; the next burn's cue with its countdown
-    const a = -140 * R;
-    K.velMark(S, 'pro', 640 + Math.cos(a) * 70, 308 + Math.sin(a) * 70, { level: 'norm' });
-    K.velMark(S, 'retro', 640 - Math.cos(a) * 70, 308 - Math.sin(a) * 70, { level: 'dim' });
-    burnCue(S, 640, 308, -158, 104, 156, ['1']);
-    S.projectNow();
-
-    // the band: both MFDs folded (Green), the cluster, the board
+  // The band in walkthrough C: both MFDs folded (Green), the cluster, the board.
+  function cruiseBand(S) {
     bandRack(S, false, false);
     rail(S, LMFD, [{ t: 'NAV' }, { t: 'PLAN' }]);
     rail(S, RMFD, [{ t: 'SENSORS' }, { t: 'WEAPONS' }, { t: 'DEFENSE' }]);
@@ -494,9 +506,7 @@
       { n: 3, t: 'TAC', who: 'COLE' }, { n: 4, t: 'ENG', who: '' },
       { n: 5, t: 'COMMS', who: 'YOU', you: true }, { n: 6, t: 'CMD' },
     ], ['3', '14:22:05'], { green: true });
-    hints(S, 580, [['N', 'PLAN A BURN'], ['M', 'PLOT'], ['TAB', 'LOCK']]);
-    S.finish();
-  };
+  }
 
   // ================================================================== E. Weapons console, in a fight (Red)
   // The First Play fight: the starting corvette against the pirates' corvette (labelled Raider), which
@@ -608,7 +618,7 @@
   // The deck view as the game draws it (a capture), with T0 in-world cues painted on for the mockup:
   // battle lighting, alarm beacons in rooms with an alert, a console glowing in its alert role.
   async function deck(S, src, o = {}) {
-    await K.world(S, src);
+    await K.world(S, src, { x: o.dx ?? 0 }); // dx: the camera's shift left while a side panel is open
     const b = S.base;
     if (o.battle) { b.save(); b.globalCompositeOperation = 'multiply'; b.fillStyle = 'rgba(255,150,140,1)'; b.fillRect(0, 0, S.W, S.H); b.restore(); }
     for (const g of o.glows || []) {
@@ -669,6 +679,215 @@
       { sev: 'warning', tag: 'ENG', text: 'SHIP: THE HOLD IS VENTING, NOBODY ON IT.' },
     ]);
     suit(S, { air: '4:10', kpa: '31', o2: 'O2 LOW', alert: true });
+    S.finish();
+  };
+
+  // ================================================================== Panels (10; style-vfd.md section 18)
+  // A side panel is a terminal 480 wide in Z4: on deck it runs the full height, seated it stops 8 above
+  // the band. The Plot, the Yard and the Shipyard are full screen: they hide the band and bring their own
+  // annunciator and ticker in Z1 and Z2 (dark in Green, as here). The slate is the captain's own LCD.
+  const SC = SCR, P = 1.5, Z4 = { x: 784, w: 480 };
+  const T = (S, x, y, str, o = {}) => S.dm(x, y, str, { pitch: P, level: o.level ?? 'norm', ghost: o.ghost ?? false, cells: o.cells, align: o.align, color: o.color, inverse: o.inverse });
+  const rule = (S, x, y, w) => S.rectLit(x, y, w, 0.8, { ghostOnly: true, k: 2.2 });
+  // The delta-v bar as the helm cluster draws it: what is left of full, the home notch, the plan's bracket.
+  function dvBar(S, x, y, w, dv) {
+    S.bar(x, y, w, 9, 50, dv.left / dv.full, { level: 'dim', gap: 1.1 });
+    const hx = x + w * dv.home / dv.full;
+    S.rectLit(hx - 0.7, y + 11, 1.4, 6, { level: 'norm' });
+    S.dot(hx - 2.2, y + 13, { size: 1.1, level: 'norm' }); S.dot(hx + 2.2, y + 13, { size: 1.1, level: 'norm' });
+    S.legend(hx, y + 31, 'HOME', { size: 13, level: 'dim', align: 'center' });
+    if (!dv.plan) return;
+    const p0 = x + w * (dv.left - dv.plan) / dv.full, p1 = x + w * dv.left / dv.full;
+    S.rectLit(p0, y - 4, p1 - p0, 0.9, { level: 'norm' }); S.rectLit(p0, y - 4, 0.9, 3, { level: 'norm' }); S.rectLit(p1 - 0.9, y - 4, 0.9, 3, { level: 'norm' });
+    S.legend((p0 + p1) / 2, y - 8, 'PLAN', { size: 13, level: 'dim', align: 'center' });
+  }
+
+  // ------------------------------------------------------------------ the Plot (10.2), full screen
+  // Walkthrough C's plan on the PLAN page: a climb from Highport's 400 km orbit to 1,200 km, burn 1 in
+  // 12:04 and burn 2 half an orbit later at the top of the climb, 210 m/s prograde each: 420 of the
+  // 1,840 m/s left. The plot is to scale (28 km a unit); Highport, 1.2 km off, is spread clear of the ship.
+  SCREENS['st-plot'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 11, stars: 160 });
+    SC.orbitClimb(S, 16, 16, 752, 768, {
+      kpu: 28, alt0: 400, alt1: 1197, shipDeg: 133, navAhead: 7,
+      b1: ['BURN 1', 'T-12:04'], b2: ['BURN 2', 'T-1:02:25'], nav: ['HIGHPORT', '1.2 KM'],
+      now: ['ORBIT NOW', 'AP 403  PE 397'], after: ['AFTER BURN 2', 'AP 1,220  PE 1,197'],
+    });
+    const g = SC.terminal(S, Z4.x, 16, Z4.w, 768, {
+      pages: [{ t: 'MAP' }, { t: 'PLAN', active: true }, { t: 'TARGETS' }], pageSlots: 3,
+      keys: [{ t: 'NEW BURN', k: 'N' }, { t: 'DELETE', k: 'DEL' }, { t: 'WARP TO', k: '/' }, null, { t: 'CLOSE', k: 'ESC' }], keySlots: 5,
+    });
+    const x0 = g.x + 14, x1 = g.x + g.w - 14, top = g.top + 6;
+    // the title bar: the station and the console it is at
+    S.seg14(x0, top, 16, 'PLOT', { level: 'full' });
+    T(S, x0 + S.seg14Width(16, 4) + 12, top + 4, 'NAVIGATION · HELM CONSOLE', { level: 'dim' });
+    rule(S, g.x + 8, top + 26, g.w - 16);
+    // the burns in order; the one selected on the plot is inverse here too
+    let y = top + 40;
+    S.dm(x0, y, 'PLAN', { pitch: 2, level: 'full', ghost: false });
+    T(S, x1 - SC.width(7), y + 3, '2 BURNS', { level: 'dim' });
+    y += 34;
+    const lg = SC.grid(S, x0, y + 16, 50, 4);
+    [['#', 1], ['WHEN', 4], ['ΔV M/S', 21, 'r'], ['DIR', 22], ['FLOWN BY', 27]].forEach(([h, c, a]) =>
+      S.legend(lg.cx(c) - (a ? 1.5 : 0), y + 9, h, { size: 13, level: 'dim', align: a ? 'right' : 'left', ghost: false }));
+    const burn = (n, when, dv, dir, by) => SC.cols([[n, 3], [when, 11], [dv, 6, 'r'], ['', 1], [dir, 5], [by, 15]]);
+    lg.row(0, burn('1', 'T-12:04', '210', 'PRO', 'YOU'), { focus: true, cursor: true });
+    lg.row(1.5, burn('2', 'T-1:02:25', '210', 'PRO', 'YOU'));
+    // the total against what is left, then the tank as the cluster draws it
+    y = lg.ry(3.5) + 8;
+    rule(S, g.x + 8, y - 8, g.w - 16);
+    let fx = SC.figure(S, x0, y + 6, 26, '420', null, { label: 'TOTAL ΔV', cells: 4 });
+    K.fits(SC.figure(S, fx + 8, y + 16, 16, '1,840', 'M/S LEFT', { label: 'OF', cells: 4 }), x1, 'plot total');
+    y += 62;
+    dvBar(S, x0, y, x1 - x0, { left: 1840, full: 2600, home: 1210, plan: 420 });
+    y += 46;
+    const row = (label, val, o = {}) => { S.legend(x0, y + 9.5, label, { size: 13, level: 'dim', ghost: false }); T(S, x0 + 138, y, val, o); y += 20; };
+    row('LEFT AFTER IT', '1,420 M/S');
+    row('HOME NEEDS', '1,210 M/S  FROM 1,200 KM', { level: 'dim' });
+    row('MARGIN', '210 M/S');
+    y += 6; rule(S, g.x + 8, y - 6, g.w - 16); y += 6;
+    row('ORBIT NOW', 'AP 403  PE 397 KM');
+    row('AFTER BURN 2', 'AP 1,220  PE 1,197 KM');
+    row('PERIOD', '1:32:25, THEN 1:49:27', { level: 'dim' });
+    y += 6; rule(S, g.x + 8, y - 6, g.w - 16); y += 6;
+    row('TRANSFER', 'NONE PROPOSED: HIGHPORT IS HERE', { level: 'dim' });
+    row('AUTOPILOT', 'OFF', { level: 'dim' });
+    // the selected burn, over the keys that move it: its two handles and its time
+    y = g.bottom - 100;
+    rule(S, g.x + 8, y - 12, g.w - 16);
+    T(S, x0, y, 'BURN 1  AT T-12:04, ON THE ORBIT NOW');
+    fx = SC.figure(S, x0, y + 22, 16, '210.0', 'M/S', { label: 'PRO', cells: 5 });
+    K.fits(SC.figure(S, fx + 22, y + 22, 16, '0.0', 'M/S', { label: 'RAD', cells: 5 }), x1, 'plot selected');
+    let kx = x0;
+    kx = SC.capWord(S, kx, y + 56, ['↑', '↓'], 'PRO') - 4;
+    kx = SC.capWord(S, kx, y + 56, ['←', '→'], 'RADIAL') - 4;
+    K.fits(SC.capWord(S, kx, y + 56, ['[', ']'], 'TIME') - 14, x1, 'plot handle keys');
+    S.finish();
+  };
+
+  // ------------------------------------------------------------------ Station link (10.3), on deck
+  // Walkthrough G: docked at Highport, the link open on its Market from the deck. The camera has moved
+  // left by half the panel so the ship stays in the middle of what is left of the world, and the status
+  // strip (DOCKED) has recentred in that space. Highport has no shipyard, so that key's glass is blank.
+  SCREENS['st-link'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 4, stars: 420 });
+    await deck(S, 'bg/deck-lit.jpg', { dx: -240 });
+    const tx = TOP.x; TOP.x = 32; // the top-centre column, recentred left of the panel (6.3 rule 2)
+    statusStrip(S, { state: 'DOCKED' });
+    TOP.x = tx;
+    const g = SC.terminal(S, Z4.x, 16, Z4.w, 768, {
+      side: true, sideTop: 76, sidePitch: 40,
+      pages: [{ t: 'MARKET', k: 'T', active: true }, { t: 'YARD', k: 'Y' }, null, { t: 'BOARD', k: 'J' }, { t: 'HIRING' }, { t: 'INFIRMARY' }],
+      keys: [{ t: 'BUY', k: 'ENTER' }, { t: 'SELL', dim: true }, null, { t: 'CLOSE', k: 'ESC' }], keySlots: 4,
+    });
+    const x0 = g.x + 12, x1 = g.x + g.w - 12, top = g.y + 10;
+    // the title bar: the berth, its owner, and the two numbers every trade here is bounded by
+    S.seg14(x0, top, 16, 'HIGHPORT', { level: 'full' });
+    T(S, x0 + S.seg14Width(16, 8) + 12, top + 4, 'TERRAN PATROL AUTHORITY', { level: 'dim' });
+    let fx = SC.figure(S, x0, top + 30, 16, '5,000', 'CR', { label: 'CREDITS', cells: 5 });
+    fx = SC.figure(S, fx + 22, top + 30, 16, '12', null, { label: 'HOLD', cells: 2 });
+    K.fits(SC.figure(S, fx + 6, top + 30, 16, '40', 'M3', { label: 'OF', cells: 2 }), x1, 'link title bar');
+    rule(S, g.x + 8, top + 56, g.w - 16);
+    // the market, beside the page keys: catalog order, prices in credits, amounts in m3
+    const cx0 = g.left, cells = Math.floor((x1 - cx0 + 1.5) / 9);
+    let y = g.y + 84;
+    T(S, cx0, y, 'PRICES IN CR, AMOUNTS IN M3', { level: 'dim' });
+    y += 26;
+    const lg = SC.grid(S, cx0, y + 16, cells, 7.5);
+    [['COMMODITY', 1], ['STOCK', 16, 'r'], ['BUY', 21, 'r'], ['SELL', 26, 'r'], ['HELD', 31, 'r']].forEach(([h, c, a]) =>
+      S.legend(lg.cx(c + (a ? 1 : 0)) - (a ? 1.5 : 0), y + 9, h, { size: 13, level: 'dim', align: a ? 'right' : 'left', ghost: false }));
+    const line = (n, st, b, s, h) => SC.cols([[n, 11], [st, 5, 'r'], [b, 5, 'r'], [s, 5, 'r'], [h, 5, 'r']]);
+    lg.row(0, line('WATER', '80', '15', '13', '4'));
+    lg.row(1.5, line('FOOD', '420', '38', '34', '0'), { focus: true, cursor: true });
+    lg.row(3, line('MACHINERY', '12', '672', '608', '0'));
+    S.legend(lg.cx(1), lg.ry(5) + 9.5, 'NOT TRADED HERE', { size: 13, level: 'dim', ghost: false });
+    lg.row(6, line('IRON ORE', '', '', '', '8'), { level: 'dim' });
+    K.fits(lg.cx(cells), x1 + 2, 'market columns');
+    // under the page keys the glass is the page's: the trade as it stands, before Enter confirms it
+    y = g.y + 76 + 6 * 40 + 18;
+    rule(S, g.x + 8, y - 10, g.w - 16);
+    S.dm(x0, y, 'FOOD', { pitch: 2, level: 'full', ghost: false });
+    T(S, x0 + SC.width(4, 2) + 12, y + 3, 'MADE HERE, 420 IN STOCK', { level: 'dim' });
+    y += 30;
+    S.legend(x0, y + 9.5, 'QTY', { size: 13, level: 'dim', ghost: false });
+    let qx = x0 + 44;
+    for (const [q, on] of [['1', true], ['10', false], ['ALL', false]]) {
+      T(S, qx, y, ` ${q} `, { level: on ? 'full' : 'norm', inverse: on ? [0, q.length + 2] : null });
+      qx += SC.width(q.length + 2) + 10;
+    }
+    K.fits(SC.capWord(S, qx + 10, y - 3, ['←', '→'], 'CHANGES IT', { level: 'dim' }), x1 + 14, 'link qty');
+    y += 30;
+    T(S, x0, y + 9, 'BUY 1 FOOD FOR');
+    fx = S.seg7(x0 + 150, y, 26, '38', { cells: 4, level: 'norm' }) + x0 + 150 + 5;
+    S.legend(fx, y + 26, 'CR', { size: 13, level: 'dim' });
+    y += 46;
+    T(S, x0, y, 'CREDITS AFTER   4,962', { level: 'dim' });
+    T(S, x0, y + 20, 'HOLD AFTER      13 OF 40 M3', { level: 'dim' });
+    T(S, x0, y + 40, 'SELL: NONE HELD', { level: 'dim' });
+    // the footer's response line, over the soft keys: what the last trade did
+    T(S, x0, g.bottom - 22, 'SOLD 2 WATER FOR 26 CR', { level: 'norm' });
+    rule(S, g.x + 8, g.bottom - 2, g.w - 16);
+    S.finish();
+  };
+
+  // ------------------------------------------------------------------ the slate (10.4), seated
+  // Seated at the helm in walkthrough C, the slate open on Career: it is a side panel, so it stops 8 above
+  // the band and the camera moves 240 left; Highport's name, which would now sit under it, goes to its edge
+  // marker. The slate is the captain's own kit, so it is LCD that reflects; the backlight comes on for 3 s
+  // after a key press, and is off here.
+  SCREENS['st-slate'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 11 });
+    await cruiseWorld(S, -240);
+    cruiseBand(S);
+    const L = SC.slate(S, Z4.x, 16, Z4.w, 592, {
+      brand: 'SLATE', owner: 'CAPTAIN', keyTop: 40, keyPitch: 50,
+      keysLeft: [
+        { k: '', t: 'SHIP' }, { k: 'I', t: 'CREW' }, { k: '', t: 'MEDICAL' }, { k: '', t: 'EVA' }, { k: 'K', t: 'BOARDING' },
+        { k: '', t: 'PRISONERS' }, { k: 'J', t: 'CONTRACTS' }, { k: '', t: 'CAREER', active: true }, { k: 'L', t: 'LOG' },
+      ],
+    });
+    const D = (x, y, str, o = {}) => SC.lcdDm(S, x, y, str, o);
+    const ink = 'rgba(26,32,22,0.6)';
+    // the title bar across the glass: the captain's rank, the ship, the credits
+    D(L.x + 6, L.y + 8, 'ENSIGN · CORVETTE');
+    D(L.x + L.w - 6 - SC.width(8), L.y + 8, '5,000 CR');
+    SC.lcdRule(S, L.x + 4, L.y + 26, L.w - 8);
+    const cx = L.x + 100, cw = L.x + L.w - 8 - cx;
+    SC.lcdRule(S, cx - 10, L.y + 32, L.h - 40, true);
+    let y = L.y + 40;
+    S.lcdText(cx, y + 12, 'CAREER', { size: 15 });
+    D(cx + 72, y + 3, 'TERRAN PATROL', { level: 'dim' });
+    y += 30;
+    const F = (label, val, o = {}) => { S.lcdText(cx, y + 9, label, { size: 12, ink }); if (val) D(cx + 100, y, val, o); y += o.step ?? 20; };
+    F('RANK', 'ENSIGN');
+    F('NEXT RANK', 'LIEUTENANT AT 15');
+    F('STANDING', '8 OF 15', { step: 0 });
+    SC.lcdBar(S, cx + 100 + SC.width(8) + 10, y + 1.5, 90, 7.5, 15, 8 / 15); y += 20;
+    F('BUDGET', '2,000 CR A WEEK');
+    F('PAYDAY', 'DAY 7, IN 3D 9H');
+    F('MAY FLY', 'UP TO A CORVETTE');
+    y += 4; SC.lcdRule(S, cx, y, cw); y += 10;
+    // standing with every faction, the sponsor first; the pirates are at war with everyone
+    S.lcdText(cx, y + 9, 'STANDING BY FACTION', { size: 12, ink }); y += 22;
+    for (const [name, v, war] of [['TERRAN PATROL', 8], ['SELENE COMBINE', 2], ['FREE TRADERS', 0], ['VOID RAIDERS', 0, true]]) {
+      D(cx, y, name, { cells: 15 });
+      if (war) D(cx + 15 * 9, y, 'AT WAR');
+      else { D(cx + 15 * 9, y, String(v), { cells: 3, align: 'right' }); SC.lcdBar(S, cx + 19 * 9, y + 1.5, 90, 7.5, 20, v / 100); }
+      y += 18;
+    }
+    y += 4; SC.lcdRule(S, cx, y, cw); y += 10;
+    S.lcdText(cx, y + 9, 'RECORD', { size: 12, ink }); y += 22;
+    F('CONTRACTS', '2 DONE, NONE FAILED');
+    F('PRIZES', 'NONE YET', { level: 'dim' });
+    y += 4; SC.lcdRule(S, cx, y, cw); y += 10;
+    S.lcdText(cx, y + 9, 'TENSION', { size: 12, ink }); y += 22;
+    D(cx, y, 'PATROL AND SELENE', { cells: 18 }); D(cx + 18 * 9, y, '12', { cells: 3, align: 'right' });
+    SC.lcdBar(S, cx + 22 * 9, y + 1.5, 70, 7.5, 10, 0.12); y += 18;
+    D(cx, y, 'COMBAT JOBS FROM 50', { level: 'dim' });
+    K.fits(cx + 22 * 9 + 70, L.x + L.w - 6, 'slate tension bar');
     S.finish();
   };
 

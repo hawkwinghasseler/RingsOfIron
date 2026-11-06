@@ -28,6 +28,24 @@ The other two FILAMENT variations are built like consoles: racks along the edges
 
 ![Deck during damage control](vfd/task-deck-damage-control.jpg)
 
+The screens the spec opens over the dash (the map, the station terminal, the ship's book and boarding) are built from the guide's section 18: terminals, a plot and the captain's LCD.
+
+**MAP, the plan to Shackleton Ice.** The whole transfer on a graphic dot panel: Earth small, the Moon's orbit, the proposed transfer every third dot to the Moon's sphere of influence, the leg round the Moon to burn 2, selected, and the low orbit it ends in; a pirate sighting on the route. The destination card and the plan's card stand at the right: the proposal's Δv, 3,912 of 7,007 m/s, what it leaves and what the trip home then needs, the arrival against the deadline with `LATE BY 22H 40M` on its amber pip, the burns, who flies them, and the selected burn's figures. The timeline runs from now to the arrival on a log scale, the deadline on its amber rail.
+
+![Map](vfd/task-map.jpg)
+
+**TRM, the station terminal.** Docked at Highport on the contract board: the page keys along the top edge (a page this station doesn't offer is a blank key in its fixed home), the berth on the header row with standing, credits, hold and contracts in seven segments, the offers as a table with their reach (time and Δv from here against what is left and the deadline), the delivery focused, and its detail at the right: the route, the hold it needs, the pay, and the time to spare behind amber, since it would arrive late.
+
+![Station terminal](vfd/task-terminal.jpg)
+
+**BOOK, the ship's book.** The captain's own records on an LCD slate, its tabs on the side keys: the crew page with four aboard and the week's wages, each crew member's condition, morale, job and wage, Cole focused with the detail at the right; the EVA, suit and prisoner lines under the roster; the keys under the glass, `LET GO` dim away from a station.
+
+![Ship's book](vfd/task-book.jpg)
+
+**BRD, the boarding panel.** A terminal slab down the right side, so the latched ship stays in sight while the boarders work: the raider taken, the party's two in the world with what each is doing, the salvage with its value, work and room in the hold, the cargo, the prisoners and the prize's two ways (sale or standing).
+
+![Boarding](vfd/task-boarding.jpg)
+
 ## How it is built
 
 | Spec widget | FILAMENT part |
@@ -45,6 +63,10 @@ The other two FILAMENT variations are built like consoles: racks along the edges
 | HLM helm status | A two-row slab: `HELM` and who has it, then the standing order in a window the slab's width (36 cells at gunnery, 47 on deck), so the spec's orders fit whole; a longer one marquees, as the ticker does |
 | HNT hint line | A legend strip: key caps, each with its word in a small window at L1 |
 | INT prompt | A small slab by the console (guide 7.10): its name in legend type, then each verb behind its key cap |
+| MAP | A graphic dot panel with the guide's line rules (18.3), in a terminal whose title strip carries `EARTH SYSTEM` and the closing keys; the destination, plan, fly-it and selected-burn cards as slabs at the right; a 64-cell timeline across the foot |
+| TRM station terminal | A terminal (guide 18.2): page keys along the top edge with their keyboard keys, the list and its detail on one ghost grid of cells, action keys along the bottom edge; the time to spare in seven segments behind amber when it runs out |
+| BOOK ship's book | The captain's LCD slate (18.4): tab keys down its left edge, a dark block for the focused row, morale and skills as LCD bars |
+| BRD boarding | A terminal slab at the right, the party tagged in the world on leaders; the salvage a cell grid; its keys along the bottom edge |
 | OVL deck overlays | Projected hazard tags: the severity glyph and the name in 5x7 at pitch 2, under it a bar of dots for the work done or `NOBODY`, over a darkened pill |
 
 ## What FILAMENT changes beyond the look
@@ -120,6 +142,12 @@ Spec round 9 (the designer's own review against the code) changes three things o
 The lead reticle on the raider's hull inside its lock mark is as FILAMENT already draws it. The other changes (FLT's DOCK and CRUISE samples, the map, the HELM, CONTRACT and COLLAR samples) are on screens or alerts FILAMENT doesn't mock.
 
 Nothing meaningful remains to criticise, visually or functionally: this variation has converged. It reopens if the spec changes something visible.
+
+## Round 8
+
+The screens beyond the flight HUD, which the overhaul hadn't covered yet: the map, the station terminal, the ship's book and the boarding panel are drawn (above), as is the shell, which is the same under every spec (guide 18.5). Seven-segment figures now carry a thousands comma that takes no cell (guide 5.1), so the dash's Δv reads `7,007`.
+
+No functional notes came of them.
 
 ## Functional notes sent to the task designer
 

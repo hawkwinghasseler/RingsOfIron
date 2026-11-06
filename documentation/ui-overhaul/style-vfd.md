@@ -23,6 +23,7 @@ Contents
 15. [Accessibility and settings](#15-accessibility-and-settings)
 16. [Building it in the game](#16-building-it-in-the-game)
 17. [Skinning a functional spec](#17-skinning-a-functional-spec)
+18. [Screens beyond the flight HUD](#18-screens-beyond-the-flight-hud)
 
 ---
 
@@ -174,6 +175,7 @@ Four lettering systems, each with one job.
 - **No bare signs.** A value whose direction matters (closing speed, a rate of climb) never tells it by its sign alone: a word or a lit legend beside it says which way (`CLOSING`, `OPENING`).
 - **Autoranging**, like a multimeter: the field keeps its width and the unit legend beside it steps (`M` to `KM`, `M/S` to `KM/S`) with the decimal point. A 4-digit field reads ` 312 M`, `1.24 KM`, `12.4 KM`, ` 124 KM`.
 - **No data** is `----` (segment g only) at L1. **Over range** is `OL`. **Estimated** values are L1 with an `EST` legend lit.
+- **Thousands** take a comma, lit at the foot of the digit before it as a decimal point is, never a cell of its own: `5,000` fills four cells, so a field keeps its width when a value passes 999.
 - **Colons** take their own narrow cell (a fifth of a digit), so `14:22:05` doesn't crowd. **Long times** carry their unit as a segment letter inside the field: `1h10`, `2d21h`, `1.4d`.
 - **Refresh rate** is fixed per readout: 5 Hz for fast values (speed, range), 2 Hz for slow ones, 1 Hz for clocks. Never per frame: the last digit must be readable.
 
@@ -184,7 +186,7 @@ Four lettering systems, each with one job.
 
 ### 5.3 Dot matrix: free text
 
-- **5x7 glyphs from the character ROM** in `vfd/src/vfd.js`: `A` to `Z`, digits, punctuation and a page of custom glyphs: `↑ ↓ ← → ° Δ ▲ ▼ ▶ ◀ █ · × ± ³ … ¢ ♦`.
+- **5x7 glyphs from the character ROM** in `vfd/src/vfd.js`: `A` to `Z`, digits, punctuation and a page of custom glyphs: `↑ ↓ ← → ° Δ ▲ ▼ ▶ ◀ █ · × ± ³ … ¢ ♦ ‖ »`.
 - **Upper case only.** Writers write in sentence case; the display folds it. Long text reads like a telex, which is deliberate.
 - **Pitch**: 1.5 for column text, table cells and slab rows (the minimum: its 10.5-unit cap height matches a 13-unit typeface, the specs' body size); 2 for running text (a ticker, a callout) and for every label in the world; 3 for headlines.
 - Monospaced cells; no kerning; word space is one cell.
@@ -233,8 +235,9 @@ A label (phosphor legend at L1, or silk), a seven-segment value (L2) and a unit 
 ### 7.5 Plots on graphic panels
 
 - Lines are dot chains on the panel's grid. No anti-aliasing, no stroke widths.
-- Fills are ordered dither: 25%, 50%, 75%. A planet is a 50% disc with a solid limb.
+- Fills are ordered dither: 25%, 50%, 75%. A planet is a 50% disc with a solid limb; drawn large (past 60 units), it is the ground under the orbits, a 25% dither with its limb at L1.
 - Labels are 5x7 text on the same grid. The selected item is shown by inverse text and a 1 Hz blink.
+- The map's line rules, labels and timeline are in 18.3.
 
 ### 7.6 Lists and tables
 
@@ -522,3 +525,103 @@ How each functional design becomes a FILAMENT variation:
 7. Mock up the spec's walkthroughs, critique them, send functional critiques to the spec's designer, and repeat.
 
 The variations live in [`variations/`](variations/), with the round log in [`variations/vfd-rounds.md`](variations/vfd-rounds.md).
+
+---
+
+## 18. Screens beyond the flight HUD
+
+The windows, the map, the menus and the cards: everything the flight HUD hands over to when the player stops flying and starts deciding. Each spec gives them its own shape (a console panel, a full-screen mode, a terminal that serves several windows); FILAMENT builds every shape from the same four housings, so a market, a map and a crew roster read as one machine. The parts are drawn by [`vfd/src/screens.js`](vfd/src/screens.js), and each variation's own screens are in its page under [`variations/`](variations/).
+
+### 18.1 Four housings
+
+| Housing | What it is | Where it serves |
+|---|---|---|
+| **Terminal** | A slab of smoked dot-matrix glass in its own bezel: page keys along one edge, soft keys along another | A console's or a station's screen: the market, the yard, the mission board, boarding, the map's panels, a full-screen mode |
+| **Plot** | A graphic dot panel at pitch 3, every dot ghosting through the glass | The map's orbit canvas |
+| **Slate** | Reflective LCD in a dark rubber housing (7.11) | The captain's own: career, crew, contracts, the log |
+| **Card** | Printed paper, out of fiction (7.12) | The controls (F1); ship lost or career over |
+
+The menus around the game are the ship's computer in **setup mode** (18.5), built from the terminal's parts.
+
+### 18.2 The terminal
+
+- **Page keys** run along the top edge, each with its page's full name in the glass beside it, the page up in inverse. A narrow panel puts them down its left edge instead, each name in the glass's first column, so a 480-unit side panel still takes six pages by their full names (`INFIRMARY` is nine cells). A page this place doesn't offer is a blank key over blank glass: the other keys keep their homes.
+- **Soft keys** run along the bottom edge: the cap prints the keyboard key, the glass row over it the action. An action that can't be taken now stays in its place as a dim label; nothing on a terminal appears or vanishes as the state changes.
+- **The title row** carries the place in fourteen segments (`HIGHPORT`), its owner dim beside it, and the figures that matter on every page (credits, hold) in seven segments at the right.
+- **Rows and focus.** Tables are cell grids (7.6); the focused row inverts across the whole grid and its `▶` sits in column 0. The soft keys act on the focused row, so a table has no buttons in its rows: `BUY 1`, `BUY 10`, `SELL 1`, `SELL ALL` act on the row under the cursor.
+- **Pages, not scrolling.** A list longer than its glass pages (`PG 1/2`, its arrows lit where there is more). Only the focused row may scroll its overflow (9.3).
+- **The response line** over the soft keys says what the last press did (`SOLD 2 WATER FOR 26 CR`) until the next.
+- **The mode frame.** A full-screen mode (the context spec's map, ship, station and boarding modes) is a terminal across the screen: a title strip (the mode's title in fourteen segments, a dim subtitle, its tabs as keys in the bezel above the strip, each tab's name in the strip under its key, the one showing inverse); the content in panes; a foot strip with the one-line feed at the left and the closing keys right-aligned (`M  OR  ESC  CLOSE`). A pane is a module of glass with its name as a dim legend in its first row; a section in a pane is a dim legend and a ghost rule to the pane's edge.
+
+| | |
+|---|---|
+| ![A terminal over the deck](variations/vfd/stations-link.jpg) | ![A mode frame](variations/vfd/context-station.jpg) |
+
+### 18.3 The plot
+
+The orbit canvas keeps the game's geometry; FILAMENT draws each piece on the dot grid (7.5).
+
+| Line | Drive | Dots lit |
+|---|---|---|
+| The orbit now | L2 | every second |
+| A planned leg | L3 | every one (solid) |
+| A proposed transfer, not yet accepted | L3 | every third |
+| The orbit the plan ends in | L1 | every one |
+| A moon's orbit; a sphere of influence | L1 | every third; every second |
+| A moon where the path will meet it (the game's ghost): its outline and its sphere | L1 | every third |
+| A leader from a label to its mark | L1 | every second |
+
+- **Marks** are sprites on the panel's own dots: the ship, stations and contacts by kind, burn nodes (the selected one solid with its four handles, prograde at L2 and the rest at L1), apsides, the waypoint where a leg crosses into another sphere, impacts. The Nav target carries four corner brackets at L3.
+- **Labels keep their ground.** A label is 5x7 text at pitch 1.5 and the dots under it go dark, their ghosts still showing, so no line ever crosses text. It sits clear of its mark on a leader that leaves from its first line, or from under its last line when the mark is below it, never across its own text; a label left of its mark is set right-aligned, so it ends where its leader starts.
+- **Clusters.** Traffic too close together to draw apart at the scale is one label (`4 CONTACTS`) on a leader to the ship; the contact list beside the plot names them.
+- **Estimates.** An event the plan only estimates (a capture before the crossing plans it) is a hollow cell on the timeline with its label at L1, and the plan's list gives its figures as `ABOUT`.
+- **The timeline** under the plot is a strip of 64 cells from now to the last event on a log scale: each event lit in its cell, an estimate hollow, a deadline lighting the amber rail under the strip up to its cell. Each label is right-aligned to its cell and drops to a second row rather than touch the one before; `»` after a future event's time is its warp-to.
+- Bodies follow 7.5; a ruler with its figure sits in the panel's corner.
+
+![The plot and its timeline](variations/vfd/context-map.jpg)
+
+### 18.4 The slate
+
+- The captain's own kit is LCD (7.11): dark dots on grey-green with their shadow on the reflector, the backlight on for 3 s after a key press and while it warns.
+- **No colour on the LCD.** A caution is an outlined square, a warning a solid one; focus is a dark block with the dots left clear.
+- Its tab keys run down the housing's left edge with their names beside them in the glass; its action keys sit under the glass with their actions printed on the housing over them, so they never light.
+- A slate is a side panel: seated, it stops above the band and the camera moves to keep the ship in what is left of the world, a world label it would cover going to its edge marker.
+
+![The slate](variations/vfd/stations-slate.jpg)
+
+### 18.5 Setup mode: the menus
+
+Before a game starts, nothing aboard is live but the computer. The top rack shows `SETUP` in fourteen segments, its annunciators and clock all ghosts; the window between the racks shows the stars and the lit limb of the planet below; the bottom rack's window carries the legend of keys.
+
+- **Each menu keeps the classic one's rows, buttons and order.** A button is a field of cells at pitch 2 with a cursor column; focus inverts the field and lights the cursor; a disabled button is dim and the focus steps over it.
+- **Controls.** A choice is its value between `◀` and `▶`, stepped with Left and Right; a check box a lit block or a ghost frame; a text field fixed cells with their ghosts and a block cursor; a level a bar (7.2) with its figure. A long list (the key bindings) shows its place as a column of segments beside it, the lit run the part in view.
+- **Over the paused game** (pause, load, save), every tube of the game goes on the dimmer bus and the world under a dark scrim: the menu is the only thing at full drive, and the legend of keys is a slab of its own under it.
+- **The mod scripts dialog** floats over the game as it starts. Its title sits in a red-filtered strip: scripts run with the player's full access, the one warning the shell gives.
+- Settings name each combination of design and style: `90S VFD: TASK`.
+
+| | |
+|---|---|
+| ![The main menu](vfd/shell-main.jpg) | ![Settings](vfd/shell-settings.jpg) |
+| ![New game](vfd/shell-new-game.jpg) | ![Load, over the paused game](vfd/shell-load.jpg) |
+
+![The mod scripts dialog](vfd/shell-mods.jpg)
+
+### 18.6 Cards
+
+- The controls (F1) and the end of a career are printed quick-reference cards laid over the game (7.12): Inter in sentence case, black on the card, key caps printed as outlined keys.
+- The controls card puts the section the player is in first, tagged `HERE`, and says which key closes it.
+- **Ship lost.** The tubes go dark, every ghost still showing, and the card says what happened and the ways on, each with its key. The game keeps those keys; the card only names them.
+
+| | |
+|---|---|
+| ![The controls card](vfd/card-controls.jpg) | ![Ship lost](vfd/card-lost.jpg) |
+
+### 18.7 In the game
+
+The variant framework's hooks ([`Variants.md`](../ui-hud/Variants.md)) decide what a FILAMENT build can reach:
+
+- **Screens in place of the windows.** A variant shows its own screen for each classic window (`ClassicWindow`), in whatever housing its spec gives it. The game keeps when each can open and its keys, so a terminal closes itself when the ship undocks.
+- **The map's look.** The orbit canvas stays the game's (zoom, panning, the burn handles, what a click picks); a FILAMENT `MapPainter` draws each piece where the map puts it, snapped to the panel's dots, with the line rules above. The panels around it are the variant's own.
+- **The menus' look.** A `ShellLook` gives the menus FILAMENT's skin, the setup-mode backdrop and the pause backdrop, and dresses each menu once it is built; the menus keep their rows and keys.
+- **The focus tint.** The game's keyboard and pad focus (`FocusNav`) tints the focused button and its text a warm yellow. In FILAMENT that would read as a caution, so a FILAMENT look needs the tint left off and draws focus as the inverse field and the lit cursor; the hook doesn't offer that yet, so the menus' build adds it.
+- **The ship editor** draws itself, outside Scene2D, and has no hook yet: it keeps its classic look under every style.
