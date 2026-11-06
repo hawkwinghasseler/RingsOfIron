@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 16.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 17.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -523,7 +523,7 @@ A condition that clears by itself has no harm timer: its handling and timer fiel
 the time until it recovers, "back 0:12".
 
 ```
-◆ VACUUM      ENGINES    YOU
+◆ BREACH      ENGINES    YOU
 ◆ CREW CRIT   Ada        ‖   3:40
 ◆ FIRE        BRIDGE     ●●
 ◆ NO POWER    stunned    back 0:12
@@ -533,7 +533,7 @@ the time until it recovers, "back 0:12".
 
 This is the gunship (five crew; its rooms are ENGINES, REACTOR and BRIDGE) at battle stations.
 Ada is down and two crew fight the fire; the other two are marines, at the weapons console and a gun,
-and a marine never seals a breach, so nobody is free for the vacuum. Ada lies where the hit landed,
+and a marine never seals a breach, so nobody is free to seal it. Ada lies where the hit landed,
 so the crew keep clear until Ada has two minutes left. The reactor is stunned: the ship is dark
 for 12 s, but its power is due back by itself, so X3 doesn't offer a way out (section 8). Walkthrough
 11.7 shows the case where it does.
@@ -603,7 +603,7 @@ here.
 | COLLISION | Collision | Warning | A craft or rock in the bubble will pass within its radius plus ours in the next 60 s, closing faster than the safe docking speed | What: "Raider", "rock" (where: the hover and the scope) | Needs you | Harm: time to contact | New: closest approach of bubble contacts |
 | FIRE | Fire | Warning | Burning tiles > 0 | Room, "+n" | Crew on it (extinguishing) | – | `ShipAlerts`, task board |
 | BREACH | Hull breach | Warning | Breaches > 0 | Room, "+n" | Crew on it (sealing) | – | `ShipAlerts`, task board |
-| VACUUM | Vacuum | Warning | A room at vacuum (not an airlock cycling) | Room, "+n" | Crew on it (sealing) | – | `ShipAlerts` |
+| VACUUM | Vacuum | Warning | A room at vacuum (not an airlock cycling) with no breach open in it | Room, "+n" | Crew on it (patching a leak), or none while it refills | – | `ShipAlerts` |
 | CREW CRIT | Crew critical | Warning | A crew member critically wounded | Name, "+n": "Ada +1" | Crew on it (a medic) | Harm: bleed-out, the soonest | Crew health |
 | CREW AIR | Crew suit air | Warning | A crew member away from breathable air with under 240 s of suit air, and nothing aboard can fill it | Name, "+n" | Needs you (get them to air, or the ship to a station) | Harm: air left, the least | `AirWatch` |
 | BOARDERS | Boarders aboard | Warning | Hostile crew aboard | "3 aboard" (where: the hover, the plan, D3) | Crew on it (marines engaging) | – | Crew service |
@@ -611,7 +611,7 @@ here.
 | NO POWER | No power | Warning | No working reactor feeds the ship | Why: "stunned", "shorted", "damaged", "off" | Clears by itself (stun, short reset), crew on it (repair), or needs you (switched off) | Back: the stun or the reset | Power routing, `DamageStates.AUTO_RESET` |
 | EMERG O2 | Emergency oxygen | Warning | Oxygen tanks dry, life support on its reserve | – (the kilograms are H4's) | Needs you (refill at a station) | – | `ShipStatusProvider.emergencyOxygenKg` |
 | SYSTEM DOWN | System down | Caution; Warning for the engines or helm in flight | A switched-on vital system is not working: an engine, the helm, the weapons console, a gun, a shield emitter, life support | The system: "ENGINE", "HELM", "LIFE SUP", "SHIELD 2", or a weapon's mount by F2's rule ("NOSE", "FWD PORT"); the weapon and why (damaged, shorted, stunned, cut off from every reactor) in the hover | Crew on it, or clears by itself | Back: the reset or the stun | Subsystems, power routing |
-| PRESS LOW | Low pressure | Caution | A room under 70% pressure | Room, "+n" | Crew on it (sealing) | – | `ShipAlerts` |
+| PRESS LOW | Low pressure | Caution | A room under 70% pressure, with no breach open in it and not at vacuum | Room, "+n" | Crew on it (patching a leak), or none while it refills | – | `ShipAlerts` |
 | SMOKE | Smoke | Caution | Thick smoke in a room | Room, "+n" | – | – | `ShipAlerts` |
 | HULL DAMAGE | Hull damaged | Caution | Mean hull integrity under the damaged threshold | The worst room: "HOLD" (the percent is H4's) | Crew on it (repairing) | – | `ShipAlerts` |
 | POWER LOW | Power low | Caution | Reactor output under 60% of its rating (a damaged reactor gives less), or the store under 25% for 3 s (weapons draining it) | Why: "damaged" or "weapons" (the figures are H4's) | – | – | Power circuits |
@@ -624,6 +624,19 @@ here.
 | NO HELM | Nobody at the helm | Caution | Nobody at the helm (no captain, no helmsman) while a planned burn is due within 60 s or the ship is turning | – | Needs you | Harm: time to the burn | `Bridge`, `HelmOrders` |
 | FAST APPR | Approach too fast | Caution; Warning at twice the safe speed | Closing faster than the safe speed for the distance, while H3 is not on screen (when it is, H3's closing gauge shows it, with the time to contact) | "4 m/s over" | Needs you, or crew on it when the helm flies a dock order | Harm: time to contact | `PlayerDocking.safeSpeed` |
 | DOCK STRAIN | Docking strain | Caution | Docking strain over 50% | "64%" | – | – | `DockingSystem.strain` |
+
+**A room's air is one row at a time.** BREACH, VACUUM and PRESS LOW are one hole's course, so a room
+counts under the first that holds: BREACH while a breach is open in it, then VACUUM once it is sealed
+and the room is still airless, then PRESS LOW while it refills. P2 shows the cause while the crew can
+act on it, and its hover says how far the air has gone ("at vacuum"); D3 tags the room's vacuum on the
+plan where people walk into it. The Log follows the same course (P4).
+
+**In the Log** a condition takes the source of what it is about, as a notice does (P4), and its row's
+severity: hull, air, fire, power, life support and systems, Engineering; a crew member's wound, suit
+air or being outside in a burn, Crew; shields, Shields; boarders and a pirate latched on, Boarding;
+the orbit, collisions, the approach, propellant, the plan and the helm, Helm. A missile fired at the
+ship takes Gunnery, as point defense does, and its lines are warnings, as P3 is an interrupt; the hits
+the ship takes from guns are Gunnery too, and notable.
 
 The autopilot's hold is not a condition: nothing is wrong while it waits for the captain's word. It
 shows in P1's helm authority field.
@@ -680,9 +693,13 @@ game itself.
 **Behaviour.** Routine messages hold 5 s, notable ones 8 s (today's INFO and IMPORTANT). A repeat
 within the hold counts ("×3") instead of stacking (as `NoticeLog` already does). Every message goes to
 the Log (M5), and so do the events the feed leaves to other widgets, Log-only and at their row's
-severity: each P2 condition as it is raised and as it clears ("VACUUM HOLD", "VACUUM HOLD cleared,
-2:10"), and each missile P3 counts, when it is fired at the ship and how it ended (shot down, or
-where it hit), so a fight's record has its hits. A message that only restates a condition in P2 is not posted to the feed.
+severity: each P2 condition as it is raised, each step of a room's air (P2's rule) and its clearing,
+in the catalogue's long form ("Hull breach: HOLD", then "Vacuum: HOLD" once it is sealed, "Low
+pressure: HOLD" as it refills, "Low pressure: HOLD, cleared after 11:04", timed from the first);
+each missile P3 counts, when it is fired at the ship and how it ended (shot down, or where it hit);
+and the hits the ship takes from guns, merged as the feed merges its own gunnery ("Gunnery: 2 hits
+from Raider", opening to where each landed and what it did), so a fight's record says what caused
+its damage. A message that only restates a condition in P2 is not posted to the feed.
 
 **Examples.** "Station: clearance granted, port 2"; "Sponsor: payday, 2,000 cr"; "Crew: Ada is back
 in from EVA"; "Gunnery: Raider disabled"; "Log: autosaved".
@@ -1426,7 +1443,9 @@ faction, and tension by region), **Contracts** (held contracts in full, which on
 set as Nav, give up), **Log** (every message, with day and time, and the conditions and missiles P4 leaves to P2 and P3,
 as they start and end; filterable by source and severity; L opens this tab). The Log keeps the
 feed's merged gunnery line ("Gunnery: 3 hits on Raider"), so a fight fits a page, and opening the
-line lists the events in it with their times. The two filters are controls at the top of the tab,
+line lists the events in it with their times; a merged line takes its first event's time. The
+severity filter is a threshold (all, notable and up, cautions and up, warnings), and the source
+filter takes one source or all. The two filters are controls at the top of the tab,
 stepped with ← and → once focused (`FocusNav`, as every mode's controls are) or by a click; the list
 scrolls with ↑ and ↓ once it has the focus, Page Up and Page Down, and the wheel, as today's log does.
 
@@ -1535,7 +1554,8 @@ appears at the helm console as the captain walks up; D2 appears over whatever th
 The ship is disabled, its reactor damaged, and its hold has lost its air. X3 offers abandon ship and the tow with their
 costs. P2 lists, in its order: EMERG O2 and NO POWER, which need the captain (of the corvette's three
 crew, Ada is down, Cole tends Ada and Bea fights the fire alone, so nobody is free for the reactor);
-VACUUM, which the crew leave until the fight ends, since Ada was hit in the HOLD; CREW CRIT, which
+BREACH, which the crew leave unsealed until the fight ends, since Ada was hit in the HOLD (its hover
+says the hold is at vacuum, and D3 tags it); CREW CRIT, which
 they don't leave, since Ada has under two minutes; FIRE, with Bea on it; and SMOKE under "+1 more". D1 shows the captain's suit and
 its air, not yet critical. The whole corvette is in view, so D3 tags the fire, the vacuum and Ada where
 they are; on a bigger ship the far ones would be pointers at the edge. The master alert cue
@@ -1696,6 +1716,7 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 | `ConditionProvider` | New | The P2 catalogue as structured rows: code, severity, detail, location tiles, handling (assigned crew count, or held and why: under fire or outside), timer and its kind (harm or recovery) |
 | `MessageProvider` | Change `NoticeLog` | Each notice with a source (P4's list) and a kind split into event or condition; conditions stop posting as notices. The Log also takes P2's conditions from `ConditionProvider` and P3's missiles from `ThreatProvider` as they start and end, and keeps each merged gunnery line's events |
 | `HintRegistry` | Change | A gun context apart from the weapons console's, so M6 lists the gun seat's keys under the seat P1 names |
+| `HullHitEvent` (combat-sys) | Change | Carries who fired the round (`ImpactResolutionSystem` has the hit's owner), so the Log can say "2 hits from Raider" |
 | `ShieldStatusProvider` | New | Whether the ship has an emitter at all; stock, capacity, cloud, scattered, adrift, stowed, raised, lowered for dock, trim, sector thickness (8), emitters (holding, heat, trip) |
 | `PowerStatusProvider` | New | Per circuit: reactors, rated and actual output, store and refill; systems switched on but cut off from every reactor; shorts with their reset time (`DamageStates.AUTO_RESET`, 45 s) and stuns with theirs |
 | Room names | New, in interior-grid | Each compartment's name by section 5.5's rule, kept with the layout |
@@ -1792,3 +1813,4 @@ largest scale, and the centre stays clear.
 | 14 | 4 (VFD critique) | M1 draws a body the plan meets twice, as the game does: where it is now, with the Nav's mark on its station, and as a ghost where it will be at the plan's closest approach, labelled with that time; wireframe 09 shows both, the ghost 54° further along the Moon's orbit. M1's Nav card follows H2's NAV rule, so for a Nav around another body it gives that body and the arrival, not a closest approach. Section 14 lists `OrbitPathProvider`'s ghost time and gives the boarding party's states as X2 has them |
 | 15 | 4 (VFD critique) | Wireframe 11's stopped RCS block and the HOLD's breach are one hit on the same hull tile, the aft port quad's, which also wounded Cole: a block stops only while its tile is wrecked, and every one of the corvette's stands on hull next to the interior, so a stopped block always comes with a breach or a sealed one. The systems list gives every system its switch, as the game does, with a group's row switching the group and the reactor's guarded. Wireframe 11's feed line is the game's wound notice |
 | 16 | 4 (NASA-punk critique) | The Log keeps a fight's record: P2's conditions and P3's missiles go to it, Log-only, as they start and end, since the feed leaves them out; it keeps the feed's merged gunnery lines, each opening to its events. P4 says which source each notice takes. The Log's filters step with ← and → under `FocusNav` and the list scrolls as today's log does. M6 gives the gun seat its own section, which needs a gun hint context (section 14). P4's example crew line is the game's own ("Ada is back in from EVA") |
+| 17 | 4 (NASA-punk critique) | P2 shows a room's air as one row at a time, the first that holds of BREACH, VACUUM (sealed, still airless) and PRESS LOW (refilling), so one hole never takes three rows; wireframe 07 and the P2 sample show the open breach as BREACH, as wireframe 04 does. The Log writes conditions in the catalogue's long form, follows a room's air through those steps, and takes the hits the ship takes from guns as merged lines, which needs `HullHitEvent` to name the shooter. Conditions, missiles and hits taken take a source and a severity in the Log (a missile's lines are warnings). The Log's severity filter is a threshold, and a merged line takes its first event's time |
