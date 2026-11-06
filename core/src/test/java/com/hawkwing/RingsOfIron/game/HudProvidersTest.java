@@ -351,6 +351,12 @@ class HudProvidersTest {
         assertTrue(o.autopilotRefusal.startsWith("Undock first"), o.autopilotRefusal);
         assertEquals(world.beacon.refusal(), o.towRefusal);
         assertTrue(o.towFee > 0 && o.towStanding == DistressBeacon.STANDING_COST, o.towFee + " cr");
+        // Each way out's full cost: the tow's days and where it docks the ship; abandoning's standing
+        // and the ship given free there
+        assertEquals(3f, o.towDays, 1e-6);
+        assertEquals("Highport", o.towStation);
+        assertEquals(LoopWiring.RESCUE_COST, o.abandonStanding, 1e-6);
+        assertEquals("Patrol Corvette", o.abandonShip);
         assertEquals(world.abandon.refusal(game.player), o.abandonRefusal);
         assertFalse(o.abandoning);
         assertTrue(Float.isNaN(o.podsLaunchIn));

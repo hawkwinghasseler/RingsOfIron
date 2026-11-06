@@ -162,6 +162,16 @@ public class Rescue {
         });
     }
 
+    /**
+     * The ship a rescue would requisition for a player with {@code credits} at {@code station}, as
+     * {@code run} picks it: {@link #requisition}'s choice, or the starter when that costs more than
+     * they have.
+     */
+    String requisitionFor(Entity station, double credits) {
+        String shipId = requisition.ship(station, credits);
+        return requisition.price(shipId) > credits ? STARTER.ship(station, credits) : shipId;
+    }
+
     /** True while the player's pod has launched and the rescue has yet to run. */
     public boolean pending() {
         return playerEscapedFrom != null;

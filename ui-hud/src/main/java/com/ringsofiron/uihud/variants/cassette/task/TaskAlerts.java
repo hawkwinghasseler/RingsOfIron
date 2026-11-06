@@ -854,11 +854,16 @@ final class TaskAlerts {
         return new String[]{code, YardText.fit(l1, room1), YardText.fit(l2, 19)};
     }
 
-    /** What a lamp's hover says of an alert: its own line, or a fire by its tiles and who is on it ("FIRE: HOLD, 3 tiles, 1 crew on it"). */
+    /**
+     * What a lamp's hover says of an alert: its own line, or a fire by its tiles and who is on it, by
+     * name where the game names them ("FIRE: HOLD, 3 tiles, Cole on it", v16).
+     */
     static String hover(Alert a) {
         if (!a.id.startsWith("fire:")) return a.text;
-        String on = a.handling > 0 ? (a.handling == 1 ? ", 1 crew on it" : ", " + a.handling + " crew on it")
-                : a.handling == 0 ? ", nobody on it" : "";
+        String on;
+        if (a.handling > 0 && !a.who.isEmpty()) on = a.handling == 1 ? ", " + a.who + " on it" : ", " + a.who + " and " + (a.handling - 1) + " more on it";
+        else if (a.handling > 0) on = a.handling == 1 ? ", 1 crew on it" : ", " + a.handling + " crew on it";
+        else on = a.handling == 0 ? ", nobody on it" : "";
         return "FIRE: " + a.room + ", " + tiles(a.count).toLowerCase(Locale.ROOT) + on;
     }
 
@@ -868,16 +873,25 @@ final class TaskAlerts {
         return n == 1 ? "1 TILE" : n + " TILES";
     }
 
-    /** Who is on a fire, short, after its tiles: "1 CREW", "NOBODY", or "" where the game can't say. */
+    /**
+     * Who is on a fire, short, after its tiles: the one the game names with how many more ("COLE",
+     * "COLE +1"), "1 CREW" where it names nobody, "NOBODY", or "" where it can't say.
+     */
     private static String crew(Alert a) {
-        if (a.handling > 0) return a.handling + " CREW";
+        if (a.handling > 0) return a.who.isEmpty() ? a.handling + " CREW" : named(a);
         return a.handling == 0 ? "NOBODY" : "";
     }
 
-    private static String who(Alert a) {
-        if (a.handling > 0) return a.handling == 1 ? "1 CREW ON IT" : a.handling + " CREW ON IT";
+    /** Who is on it, as a line: "COLE ON IT", "COLE +1 ON IT", "2 CREW ON IT", "NOBODY ON IT", or "". */
+    static String who(Alert a) {
+        if (a.handling > 0) return (a.who.isEmpty() ? a.handling + " CREW" : named(a)) + " ON IT";
         if (a.handling == 0) return "NOBODY ON IT";
         return "";
+    }
+
+    private static String named(Alert a) {
+        String name = a.who.toUpperCase(Locale.ROOT);
+        return a.handling > 1 ? name + " +" + (a.handling - 1) : name;
     }
 
     /** The text after its first colon ("Propellant low: 500 kg left" gives "500 kg left"), or all of it. */

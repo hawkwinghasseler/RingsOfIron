@@ -70,6 +70,20 @@ public interface OrdersProvider {
         public double towFee;
         public float towStanding;
         public String towRefusal = "";
+        /**
+         * Days on the rails the sponsor's tug takes to bring the ship in, as a rescue after abandoning
+         * ship does too; and the station both go to, the sponsor's nearest ("Highport"), where the tug
+         * docks the ship as it is, crew, cargo and damage; 0 and "" when not known.
+         */
+        public float towDays;
+        public String towStation = "";
+        /**
+         * What abandoning ship costs besides the ship and its cargo and every contract held: the
+         * standing with the sponsor; and the ship the sponsor gives free at {@link #towStation}, the
+         * credits carried over, by its name ("Patrol Corvette"); 0 and "" when not known.
+         */
+        public float abandonStanding;
+        public String abandonShip = "";
 
         /** The game is paused. */
         public boolean paused;
@@ -101,6 +115,10 @@ public interface OrdersProvider {
             towFee = 0;
             towStanding = 0f;
             towRefusal = "";
+            towDays = 0f;
+            towStation = "";
+            abandonStanding = 0f;
+            abandonShip = "";
             paused = false;
         }
     }

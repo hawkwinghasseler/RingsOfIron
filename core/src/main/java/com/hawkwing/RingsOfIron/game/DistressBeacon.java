@@ -4,7 +4,9 @@ import com.ringsofiron.career.FactionStanding;
 import com.badlogic.ashley.core.Entity;
 import com.hawkwing.RingsOfIron.wiring.PlayerShipStatus;
 import com.ringsofiron.macrosim.economy.TraderComponent;
+import com.ringsofiron.moddingdata.defs.ShipDef;
 import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.stationsdocking.StationComponent;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 
 import java.util.Locale;
@@ -24,6 +26,8 @@ public final class DistressBeacon {
     public static final double FEE_SHARE = 0.10;
     /** ...and this much standing with the sponsor. */
     public static final float STANDING_COST = 3f;
+    /** Days the tow takes on the rails, as a rescue does. */
+    public static final double DAYS = Rescue.TIME_SKIP / 86_400;
 
     private final GameContext ctx;
     private final BooleanSupplier crashed;
@@ -67,6 +71,34 @@ public final class DistressBeacon {
     public double fee() {
         Entity ship = ctx.player();
         return ship == null ? 0 : Math.round(Difficulty.shipValue(ship) * FEE_SHARE);
+    }
+
+    /**
+     * The sponsor's nearest station by name, which the tug brings the ship to and a rescue after
+     * abandoning ship wakes the crew at; "" with none.
+     */
+    public String destination() {
+        Entity station = station();
+        StationComponent sc = station == null ? null : station.getComponent(StationComponent.class);
+        return sc == null || sc.name == null ? "" : sc.name;
+    }
+
+    /**
+     * The ship the sponsor gives free at that station once the crew are picked up after abandoning
+     * ship, by name ("Patrol Corvette"), as {@link Rescue#requisitionFor} picks it; "" when unknown.
+     */
+    public String requisition() {
+        Entity ship = ctx.player();
+        if (ship == null || ctx.content() == null) return "";
+        TraderComponent account = ship.getComponent(TraderComponent.class);
+        String id = rescue.requisitionFor(station(), account == null ? 0 : account.credits);
+        ShipDef def = id == null ? null : ctx.content().defs.get("ship", id, ShipDef.class);
+        return def == null || def.name == null ? "" : def.name;
+    }
+
+    private Entity station() {
+        Entity ship = ctx.player();
+        return ship == null ? null : rescue.nearestStation(ship, ctx.engine.getSimSeconds());
     }
 
     /** Calls the tug. Returns what to tell the player. */

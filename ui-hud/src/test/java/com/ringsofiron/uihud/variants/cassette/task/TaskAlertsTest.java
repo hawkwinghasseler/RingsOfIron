@@ -133,6 +133,13 @@ class TaskAlertsTest {
         assertEquals(Level.CAUTION, lamp(Lamp.FIRE));
         assertArrayEquals(new String[]{"FIRE", "HOLD", "3 TILES · 1 CREW"}, t.lines(t.cautions.first(), d));
         assertEquals("FIRE: HOLD, 3 tiles, 1 crew on it", t.why[Lamp.FIRE.ordinal()]);
+        // Named where the game names them (v16: "Cole on it")
+        frame(0.1f, x -> fire(x, 3).handling(1).crew("Cole", true, Float.NaN));
+        assertArrayEquals(new String[]{"FIRE", "HOLD", "3 TILES · COLE"}, t.lines(t.cautions.first(), d));
+        assertEquals("FIRE: HOLD, 3 tiles, Cole on it", t.why[Lamp.FIRE.ordinal()]);
+        frame(0.1f, x -> fire(x, 3).handling(2).crew("Cole", true, Float.NaN));
+        assertEquals("FIRE: HOLD, 3 tiles, Cole and 1 more on it", t.why[Lamp.FIRE.ordinal()]);
+        assertEquals("COLE +1 ON IT", TaskAlerts.who(t.cautions.first()));
 
         d.captainStatus.present = true;
         d.captainStatus.room = "HOLD";

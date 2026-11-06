@@ -19,7 +19,10 @@ import java.util.function.DoubleSupplier;
  * gives an order, and the words are the game's own.
  */
 public class PlayerOrders implements OrdersProvider {
-    /** The tow's fee and refusal are worked out once every this many reads: the fee walks the deck plan. */
+    /**
+     * The tow's fee and refusal, the station it goes to and the ship a rescue gives, are worked out
+     * once every this many reads: the fee walks the deck plan.
+     */
     static final int TOW_REFRESH = 30;
 
     /** Each helm order's mode, by {@link HelmOrder} ordinal: the two share their names. */
@@ -37,7 +40,7 @@ public class PlayerOrders implements OrdersProvider {
     private final DoubleSupplier abandonArmed, towArmed;
     private final AbandonShip.Boarding boarding = new AbandonShip.Boarding();
     private int towReads;
-    private String towRefusal = "";
+    private String towRefusal = "", towStation = "", abandonShip = "";
     private double towFee;
 
     /**
@@ -132,10 +135,16 @@ public class PlayerOrders implements OrdersProvider {
             String refused = beacon.refusal();
             towRefusal = refused == null ? "" : refused;
             towFee = beacon.fee();
+            towStation = beacon.destination();
+            abandonShip = beacon.requisition();
         }
         out.towRefusal = towRefusal;
         out.towFee = towFee;
         out.towStanding = DistressBeacon.STANDING_COST;
+        out.towDays = (float) DistressBeacon.DAYS;
+        out.towStation = towStation;
+        out.abandonStanding = LoopWiring.RESCUE_COST;
+        out.abandonShip = abandonShip;
     }
 
     /** Said of the orders taken at a seat (the helm's and the autopilot) while the player is on deck. */
