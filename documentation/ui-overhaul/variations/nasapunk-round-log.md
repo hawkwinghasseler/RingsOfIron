@@ -371,6 +371,27 @@ Round 15 of the stations spec took all three, and S7 is redrawn to it: Cole's se
 TAC, NOSE GUN and AFT STBD GUN, one under another with what each does to the guns beside it, and
 LET GO sits on Enter, pressed twice.
 
+**The captain's record, the controls, and the context spec's version 15.** C9 draws M5 on its Log
+tab at First Play's NOTICES step ("the fight, the bounty and the yard's work are all there"), from
+the game's own notices with P4's source tags, severity as P2's marks rather than colour, and a rail
+that filters by source and severity with each one's count. C10 draws M6 on its Keyboard tab in the
+spec's own example, "Here: Helm, approach", from the game's hint list with the design's changes to
+the keys, each section a hint context of the game's under the design's name for it. C8, C6, C4,
+C10 and C9 now tell one story, First Play's fight and the way home, and C9's log carries the
+others' events at their times. Version 15, from the VFD direction's check of C8's tab, made the
+breach and the stopped RCS block one hit on one tile and gave every system its switch (the
+reactor's guarded); C8 is redrawn to it. My own fixes with them: C4's feed and C8's foot read the
+game's notices word for word ("Raider is taken: 4 held"), C9's messages take the word list's CR
+after a number, as prose does, and the arrow keys' caps are drawn (`arrowKey` and `anyKey` in
+`context.js`), since the arrow glyphs at 12 units were too faint.
+
+| Spec | Note sent this round | Landed |
+|---|---|---|
+| Context (10.5, P2, P3) | The Log is "every message", but P3 replaces the missile notices and P2's conditions post nothing, so a fight's record would keep none of its hits. Should the Log keep P3's threats and P2's conditions as they come and clear? C9 keeps the game's missile notices, as warnings | |
+| Context (10.5, P4) | Does the Log keep each gunnery event, or the feed's merged 5 s lines? C9 keeps the merged lines, which hold a fight to a page | |
+| Context (10.5) | The filters have no keys, and no notice has a source. C9 steps the source on ← and →, the severity with Shift, and scrolls on ↑ ↓ and the wheel as today; it tags contracts SPONSOR, prisoners handed over STATION, and a wound CREW, as C8 does | |
+| Context (10.6) | The game's hints have no gun seat, though P1 has one. Should M6 give it a section (aim, fire, stand up, zoom)? C10 lists the game's contexts only | |
+
 ## Next
 
 The windows the overhaul skipped, as above. The three HUD variations themselves stay converged. If

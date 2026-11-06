@@ -1,6 +1,6 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 14 when drawn, on branch
+The context-driven functional spec (`functional-context.md`, version 15 when drawn, on branch
 `claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at 2x; sources are
@@ -41,8 +41,9 @@ Round history is in [`../nasapunk-round-log.md`](../nasapunk-round-log.md).
 ## Screens
 
 Each screen is its walkthrough's moment, at its wireframe's clock with the seconds added. They are
-separate moments, as the spec's walkthroughs are, not one voyage; only C6 and C4 are two minutes
-apart in the same fight.
+separate moments, as the spec's walkthroughs are, not one voyage, except for one story: First
+Play's fight with the raider and the way home, which C8, C6, C4, C10 and C9 follow in that order
+(C9's log has the others' events at their times).
 
 ![Helm, cruising, orders open](c1-helm-cruise.png)
 
@@ -150,22 +151,55 @@ tanks and the infirmary.
 **C8, M2 on its Systems tab (10.2 and 11.11), on deck in the corvette's fight.** P1 stays above
 with BATTLE STATIONS lit and P2 folded into its chip, ◆ 1 · ▲ 2: the breach, and the two guns out of
 action. Then come the title row with the four tabs on their keys, the plan, the systems list, the
-damage control board, the power circuit, and the foot row with the feed and the close keys. A hit
-has holed the hold's port hull, lightly wounding Cole there, and cut the conduit under the forward
-starboard autocannon. Another has left the forward port autocannon at 20%, under the 30% where a
-system stops working, and an earlier one holed the hull tile under the aft starboard RCS block,
-sealed since from inside. The plan is the corvette's real layout and network: every system by its
-state, the hold hatched for its breach, the cut marked where it broke, the eight RCS blocks on the
-hull with the stopped one amber, and the crew where they work. The list groups the systems by type,
-each with its health, circuit, switch and anything not normal, and a dash where the game has no
-such value: RCS blocks draw no power and have no health of their own, and tanks and bays draw none. The board is the game's crew rules at work. Ada has the gun, since a gun's repair
+damage control board, the power circuit, and the foot row with the feed and the close keys. One
+hit wrecked the hull tile under the hold's aft port RCS block (version 15): the hold is breached,
+the block is stopped, since a block works only while its tile stands, and Cole took a light wound
+there. Another cut the conduit under the forward starboard autocannon, and another left the forward
+port autocannon at 20%, under the 30% where a system stops working. The plan is the corvette's
+real layout and network: every system by its state, the hold hatched for its breach, the cut marked
+where it broke, the eight RCS blocks on the hull with the stopped one amber beside the breach, one
+label for the one hit, and the crew where they work. The list groups the systems by type, each with
+its health, circuit, switch and anything not normal, and a dash where the game has no such value:
+RCS blocks draw no power and have no health of their own, and tanks and bays draw none. Every
+system has its switch, as the game lets the crew switch any system off; a group's row switches the
+group, the RCS blocks are no system and have none, and the reactor's sits under a striped guard,
+pressed twice. The board is the game's crew rules at work. Ada has the gun, since a gun's repair
 never waits out a fight. The breach is where Cole was hit, so the crew leave it till the fight ends
 (and Cole, a marine, never seals one). The RCS block is outside, and EVA work waits for battle
-stations to end. That is why Bea can hold the helm: crew man a console only when nothing on the
+stations to end; sealing the breach from inside won't start it again. That is why Bea can hold the helm: crew man a console only when nothing on the
 board suits them. No crew mends a cut conduit, so it is no job on the board: Power has it under the
 gun it strands, with the yard's 400 cr. The feed has the game's own notice for a light wound.
 
-## Round 7 critique (versions 10 to 14)
+![Record, log](c9-record-log.png)
+
+**C9, M5 on its Log tab (10.5), docked at Highport after the yard's order.** This is First Play's
+NOTICES step, whose own words are "L opens the notice log: the fight, the bounty and the yard's
+work are all there", and L opens M5 on this tab. The frame is C8's: P1 above with nothing wrong, the
+title row with the rank and the four tabs, the content, and the foot row, whose feed is empty since
+the yard's line has had its 5 s. The log is every message with its time, newest first under a
+header for its day, each with its source tag; the texts are the game's own notices with P4's tags,
+from the bounty done the moment the raider is beaten (7 500 CR and 6 standing with the Patrol) to
+the four prisoners handed over at 400 CR each and the yard's order. The lines the game lacks are
+the spec's: the merged gunnery lines, point defense's kills, which the Log keeps though the feed
+doesn't, and the autosaves. Severity is a mark, P2's diamond for a warning and a white dot for a
+notable message, so the record of a fight doesn't fill the glass with red. The rail filters it: a
+selector for the source with each source's count (a source with nothing in the log is dim), and
+one for the severity, NOTABLE keeping the warnings too. The source steps on ← and →, the severity
+with Shift, and ↑ and ↓ or the wheel scroll, as today.
+
+![Controls](c10-controls.png)
+
+**C10, M6 on its Keyboard tab (10.6), on the way home, approaching Highport.** The spec's own
+example, "Here: Helm, approach": the situation's keys come first, then the seat's in the game's
+order, and everything else below, each section a hint context of the game's under the design's
+name for it (FIRE CONTROL, as P1 calls the seat; BOARDING for latched to a ship; EMERGENCY for the
+ship disabled). Every key and verb is the game's, with the design's changes: E at a console sits or
+opens its system, O opens the orders menu, \ acknowledges, and I, J and L open the ship and the
+record. The corvette has no shield emitter, so its shield keys are listed and dim, with the reason
+once at each section's foot, as the orders menu gives reasons. The caps sit against their verbs, so
+a single key is beside what it does and a row of them still lines up.
+
+## Round 7 critique (versions 10 to 15)
 
 Version 10 came from the cassette direction's round 3. It made the samples true to the game's
 geography (Shackleton Ice orbits the Moon, so the trip is planned a leg at a time and the deadline
@@ -175,7 +209,9 @@ notes; version 11 took all four and added P2's Held state. Drawing C1 to it foun
 version 12 took, and drawing C8 one more, which version 13 took. Every screen here is redrawn to
 version 13. Version 14 came from the VFD direction's check: the map's ghost of the Moon carries the
 time it stands for, and the Nav card follows H2's rule. C5 already drew both Moons and that card,
-so only the ghost's label changed, to `MOON AT CPA · T−4D 2H`.
+so only the ghost's label changed, to `MOON AT CPA · T−4D 2H`. Version 15 came from the VFD direction's check of
+C8's tab: the stopped RCS block and the breach are one hit on one tile, and every system has its
+switch. C8 is redrawn to it, and C9 and C10 are drawn to it.
 
 Problems in the spec, sent and taken:
 
@@ -221,8 +257,10 @@ What works:
 - The map and H2 tell the same trip in the same words: one burn, the crossing, the capture as an
   estimate, the arrival, the deadline.
 
-**Converged** at version 13, and still at version 14, which changed only C5's label: nothing
-meaningful is left, and the designer counts it converged too.
+**Converged** at version 13, and still at version 14, which changed only C5's label, and at
+version 15, which changed C8's hit and switches: nothing meaningful is left in the HUD screens, and
+the designer counts it converged too. C9 and C10 are new this round; their questions are below in
+the round log.
 
 ## Round 5 critique (version 9)
 

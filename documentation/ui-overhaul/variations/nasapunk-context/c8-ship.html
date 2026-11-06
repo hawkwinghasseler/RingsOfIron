@@ -9,12 +9,12 @@
 <script src="../../nasapunk/mockups/screens.js"></script>
 <script src="context.js"></script>
 <script>
-// M2, the ship mode (the context spec, 10.2), on its Systems tab: walkthrough 11.11 (version 11),
-// on deck in the corvette's fight with the raider, at battle stations, at the wireframe's clock. A
-// hit has holed the hold's port hull, lightly wounding Cole there, and cut the conduit under the
-// forward starboard autocannon; another has left the forward port autocannon at 20%, under the 30%
-// where a system stops working; an earlier one holed the hull tile under the aft starboard RCS
-// block, sealed since from inside, so the block is stopped. P1 stays above with the caution chip,
+// M2, the ship mode (the context spec, 10.2), on its Systems tab: walkthrough 11.11 (version 15),
+// on deck in the corvette's fight with the raider, at battle stations, at the wireframe's clock. One
+// hit wrecked the hull tile under the hold's aft port RCS block: the hold is breached, the block is
+// stopped (a block works only while the tile it is bolted to stands, RcsThruster), and Cole took a
+// light wound there. Another cut the conduit under the forward starboard autocannon, and another
+// left the forward port autocannon at 20%, under the 30% where a system stops working. P1 stays above with the caution chip,
 // since P2 folds into it in a full-screen mode: the breach, and the two guns out of action. The
 // mode's frame has its title row with the tabs on their keys, the plan, the systems list, the damage
 // control board, the power circuit, and the foot row with the feed and the close keys.
@@ -24,13 +24,16 @@
 // helm only because every other job is taken or waits: Ada, the engineer, has the gun, and a repair
 // to a gun never waits out a fight; the breach is under fire (Cole was hit beside it), so the
 // Patrol's crews leave it till the fight ends, and a marine never seals one anyway; the RCS block is
-// outside, and EVA work waits at battle stations. Cole, the marine, takes the weapons console. No
+// outside, and EVA work waits at battle stations; sealing the breach from inside won't start it
+// again, since it fires once the repair frames its tile back up. Cole, the marine, takes the weapons console. No
 // crew mends a cut conduit, so it is no job on the board: the power panel has it, with the yard's
 // 400 cr. The circuit stores 2 s of the reactor's 3.0 MW, and a gun that is switched on but on no
 // reactor's network is down. The list dashes a value the game doesn't have (version 13): RCS blocks
 // draw no power and have no health of their own (RcsThruster: a block works while the hull tile it
 // is bolted to stands), and tanks and bays draw none. The feed's line is the game's own notice for
-// a light wound.
+// a light wound. Every system row has its switch, as the game lets the crew switch any system off
+// (SubsystemComponent.switchedOn, version 15): a group's row switches the group, the RCS blocks are
+// no system and have none, and the reactor's is guarded, pressed twice.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 12 });
 s += controlDefs();
 s += statusStrip({ seat: 'DECK', authority: 'HELM: BEA · HOLDING HEADING', battle: true, chip: { warn: 1, caut: 2 }, clock: 'DAY 0 · 00:20:30', warp: '1×' });
@@ -100,12 +103,12 @@ s += du(8, 64, 700, 420, {
     g += gun(14, 1, C.amber, { dash: '2.5 2' });
     g += line(sx - 4, Y(2) - 4, sx + 4, Y(2) + 4, C.amber, 1.8) + line(sx - 4, Y(2) + 4, sx + 4, Y(2) - 4, C.amber, 1.8);
     // the breach, on the hold's port hull
-    const [bx, by] = P(5.5, 5.5);
+    const [bx, by] = P(3.5, 5.5);
     g += line(bx - 5, by - 5, bx + 5, by + 5, C.red, 2) + line(bx - 5, by + 5, bx + 5, by - 5, C.red, 2);
     // the eight RCS blocks on the hull's outer edges, dashed since they draw no power; the aft
-    // starboard one stopped, amber, its hull tile holed (and sealed inside)
+    // port one stopped, amber, on the breached tile
     [[3, 0, 'S'], [3, 5, 'N'], [16, 0, 'S'], [16, 5, 'N'], [10, 0, 'S'], [10, 5, 'N'], [17, 2, 'E'], [17, 3, 'E']].forEach(([tx, ty, side], i) => {
-      const cx = side === 'E' ? X(tx + 1) : X(tx + 0.5), cy = side === 'N' ? Y(ty + 1) : side === 'S' ? Y(ty) : Y(ty + 0.5), col = i === 0 ? C.amber : C.white;
+      const cx = side === 'E' ? X(tx + 1) : X(tx + 0.5), cy = side === 'N' ? Y(ty + 1) : side === 'S' ? Y(ty) : Y(ty + 0.5), col = i === 1 ? C.amber : C.white;
       g += rect(cx - 4.5, cy - 4.5, 9, 9, { fill: C.glass, stroke: col, sw: 1.4, dash: '2 1.5' });
     });
     // the crew where they work, white (a light wound is not an alert), and the captain ringed
@@ -124,12 +127,11 @@ s += du(8, 64, 700, 420, {
       list.forEach(([t, c]) => { out += text(x, y, t, { size: LB, bold: true, fill: c, track: 0.5 }); x += tw(t, LB, true, 0.5) + 8; });
       return out;
     }
-    g += up(bx, by, X(5.5), [['BREACH', C.red], ['HOLD 82 KPA', C.white]]);
-    g += up(X(8.5), Y(4.4), X(9.6), [['BEA', C.white], ['HELM', C.dim]], -9);
+    g += up(bx, by, X(4.15), [['BREACH', C.red], ['RCS STOPPED', C.amber], ['HOLD 82 KPA', C.white]], 11);
+    g += up(X(8.5), Y(4.4), X(9.9), [['BEA', C.white], ['HELM', C.dim]], -9);
     g += up(X(14.5), Y(3.4), X(14.8), [['ADA', C.white], ['REPAIRING', C.cyan]], 13);
     g += down(X(10.5), Y(2.4), X(10.0), [['COLE', C.white], ['WEAPONS', C.dim]]);
     g += down(sx, sy, X(15.6), [['FWD STBD', C.amber], ['CUT OFF', C.amber]], 10);
-    g += down(X(3.5), Y(0) + 1, X(3.5), [['RCS', C.amber], ['STOPPED', C.amber]], 6);
     // the key to the colours, once, at the foot
     g += text(gx + 10, gy + gh - 12, 'WHITE WORKING · CYAN UNDER REPAIR · AMBER DOWN · GREEN LIVE · DASHED NEEDS NO POWER', { size: LB, bold: true, fill: C.dim, track: 0.3 });
     return g;
@@ -143,7 +145,9 @@ s += du(714, 64, 558, 420, {
     let g = head(gx, gy, gw, 'SYSTEMS', 'BY TYPE');
     const L = gx + 10, N = L + 70, H = L + 292, CI = L + 358, SW = L + 372, ST = L + 428;
     g += lab(N, gy + 48, 'SYSTEM') + lab(H, gy + 48, 'HEALTH', { anchor: 'end' }) + lab(CI, gy + 48, 'CIRCUIT', { anchor: 'end' }) + lab(SW - 4, gy + 48, 'SWITCH') + lab(ST, gy + 48, 'STATE');
-    // a toggle seen from the front: the bezel and its lever, up for on
+    // a toggle seen from the front: the bezel and its lever, up for on; the reactor's under a
+    // striped guard, since it is pressed twice
+    const guard = (x, y) => rect(x - 3, y - 20, 16, 23, { fill: 'url(#guardrim)', r: 2 }) + rect(x - 1, y - 18, 12, 19, { fill: '#15171A', r: 1.5 });
     const toggle = (x, y) => `<circle cx="${x + 5}" cy="${y - 4.5}" r="5" fill="#1F2226" stroke="#4A5058" stroke-width="1"/>` + line(x + 5, y - 4.5, x + 5, y - 12, '#D2D5CF', 2) + `<circle cx="${x + 5}" cy="${y - 12.5}" r="1.8" fill="#D2D5CF"/>` + text(x + 16, y, 'ON', { size: LB, bold: true, fill: C.white, track: 0.4 });
     const groups = [
       ['POWER', [['REACTOR M', '100%', '1', true, ['3.0 MW', C.white]]]],
@@ -154,7 +158,7 @@ s += du(714, 64, 558, 420, {
         ['AFT PORT LAUNCHER', '100%', '1', true], ['AFT STBD LASER', '100%', '1', true]]],
       ['LIFE', [['LIFE SUPPORT', '100%', '1', true]]],
       ['DOCK', [['DOCKING PORT', '100%', '1', true]]],
-      ['PASSIVE', [['TANKS, 3', '100%', '–', false], ['CARGO BAYS, 4', '100%', '–', false], ['ESCAPE POD, 4 SEATS', '100%', 'OWN', false]]],
+      ['PASSIVE', [['TANKS, 3', '100%', '–', true], ['CARGO BAYS, 4', '100%', '–', true], ['ESCAPE POD, 4 SEATS', '100%', 'OWN', true]]],
     ];
     let y = gy + 72;
     groups.forEach(([gname, rows], gi) => {
@@ -166,14 +170,14 @@ s += du(714, 64, 558, 420, {
         g += text(N, y, name, { size: B, bold: true, fill: C.white, track: 0.3 });
         g += text(H, y, hp, { size: B, bold: true, fill: C.white, anchor: 'end' });
         if (cct) g += text(CI, y, cct, { size: B, bold: true, fill: cct === 'NONE' ? C.amber : C.white, anchor: 'end' });
-        if (sw) g += toggle(SW, y);
+        if (sw) g += (name === 'REACTOR M' ? guard(SW, y) : '') + toggle(SW, y);
         if (st) g += text(ST, y, st[0], { size: B, bold: true, fill: st[1], track: 0.3 });
         y += 19;
       });
     });
     // the foot: what the cursor's row offers
     g += rowsep(gx, gy + gh - 34, gw);
-    g += text(L, gy + gh - 16, 'ENTER THROWS THE CURSOR\'S SWITCH · THE REACTOR AND LIFE SUPPORT ASK AGAIN', { size: LB, bold: true, fill: C.dim, track: 0.3 });
+    g += text(L, gy + gh - 16, 'ENTER THROWS THE CURSOR\'S SWITCH, A GROUP\'S FOR ALL · THE REACTOR\'S TWICE', { size: LB, bold: true, fill: C.dim, track: 0.3 });
     return g;
   },
 }).svg;
@@ -209,8 +213,8 @@ s += du(8, 490, 700, 254, {
     });
     // what "under fire" means, once
     g += rowsep(gx, gy + gh - 52, gw);
-    g += text(L, gy + gh - 32, 'UNDER FIRE: WITHIN 2 TILES OF WHERE CREW WERE HIT THIS FIGHT (COLE, IN THE HOLD)', { size: LB, bold: true, fill: C.dim, track: 0.3 });
-    g += text(L, gy + gh - 14, 'STANDING DOWN FROM BATTLE STATIONS LIFTS EVERY WAIT', { size: LB, bold: true, fill: C.dim, track: 0.3 });
+    g += text(L, gy + gh - 32, 'ONE HIT ON THE HOLD\'S AFT PORT RCS TILE: THE BREACH, THE STOPPED BLOCK, COLE\'S WOUND', { size: LB, bold: true, fill: C.dim, track: 0.3 });
+    g += text(L, gy + gh - 14, 'UNDER FIRE: WITHIN 2 TILES OF IT. STANDING DOWN FROM BATTLE STATIONS LIFTS EVERY WAIT', { size: LB, bold: true, fill: C.dim, track: 0.3 });
     return g;
   },
 }).svg;
@@ -237,7 +241,7 @@ s += du(714, 490, 558, 254, {
 
 // ---- the foot row: the feed, and the keys that close the mode ----
 s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
-s += text(18, 767, 'CREW', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(64, 767, 'Cole is lightly wounded and working slower.', { size: B, fill: C.white, track: 0.2 });
+s += text(18, 767, 'CREW', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(64, 767, 'Cole is lightly wounded and working slower', { size: B, fill: C.white, track: 0.2 });
 s += capKey(1106, 754, 'I') + text(1130, 767, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1154, 754, 'ESC') + text(1264, 767, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
 
 document.getElementById('out').innerHTML = svgPage(s);

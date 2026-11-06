@@ -29,6 +29,18 @@ const valW = (v, unit, size = V) => tw(v, size, true) + (unit ? 4 + tw(unit, LB,
 // A keyboard key, drawn as a cap with its name on it (a hint, not a button).
 const capW = k => tw(k, LB, true) + 10;
 const capKey = (x, y, k, h = 17) => softKey(x, y, capW(k), h, false) + text(x + capW(k) / 2, y + h / 2 + 4.3, k, { size: LB, bold: true, fill: C.stencil, anchor: 'middle' });
+// An arrow key's cap, its arrow drawn as a solid head so it reads at the cap's size (round 7).
+const arrowW = 22;
+function arrowKey(x, y, dir, h = 17) {
+  const cx = x + arrowW / 2, cy = y + h / 2, a = 4.5;
+  const pts = { l: [[cx - 3.5, cy], [cx + 3.5, cy - a], [cx + 3.5, cy + a]], r: [[cx + 3.5, cy], [cx - 3.5, cy - a], [cx - 3.5, cy + a]],
+    u: [[cx, cy - 3.5], [cx - a, cy + 3.5], [cx + a, cy + 3.5]], d: [[cx, cy + 3.5], [cx - a, cy - 3.5], [cx + a, cy - 3.5]] }[dir];
+  return softKey(x, y, arrowW, h, false) + path(`M${pts.map(p => p.join(' ')).join(' L')} Z`, C.stencil, 1, { fill: C.stencil });
+}
+// Any key's cap by its name: the arrows drawn, the rest printed.
+const ARROWS = { '←': 'l', '→': 'r', '↑': 'u', '↓': 'd' };
+const keyW = k => ARROWS[k] ? arrowW : capW(k);
+const anyKey = (x, y, k, h = 17) => ARROWS[k] ? arrowKey(x, y, ARROWS[k], h) : capKey(x, y, k, h);
 
 // ---------- P1, the status strip ----------
 // One long glass across the top. Fields sit at fixed places with their widths reserved (the spec's

@@ -1,0 +1,196 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: controls</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="context.js"></script>
+<script>
+// M6, the controls (the context spec, 10.6), on its Keyboard tab: the F1 panel as today, with the
+// seat and the situations first, in the spec's own example, "Here: Helm, approach". First Play's
+// way home after C9's boarding: at the helm, a minute after Highport gave clearance for port 2, so
+// the approach situation holds (a free port within 5 km, and one armed). The mode's frame is C8's
+// and C9's: P1 above, the title row with its two tabs on their numbers (the gamepad's layout is the
+// second), the content, and the foot row with the feed (empty) and the close keys, F1 and Esc.
+//
+// Every key and verb is the game's (HintRegistry's default hints, Navigation's, the other systems'
+// registrations, and Action's default keys), with the context design's changes: E at a console
+// sits there or opens its system (4.3), O opens the orders menu (C1; the deck lights move to
+// Settings), \ acknowledges a warning (P2), and the windows' keys open the modes: I the ship, J
+// the record away from a station and the station's missions at one, L the record's log. The
+// sections are the game's hint contexts under the design's names for them (one name for each
+// thing): the weapons console's seat is FIRE CONTROL as P1 calls it, latched to a ship is the
+// boarding situation, and the ship disabled is the emergency.
+//
+// HERE gives the situation's keys first, then the seat's, in the game's own order. The corvette has
+// no shield emitter, so the shield keys are listed and dim, and their reason is given once at the
+// foot, as the orders menu gives its reasons (C1). The verbs are caps, as a hint's verb is on
+// every instrument (the word list, rule 3), and say the Nav where the game says the target.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 15 });
+s += controlDefs();
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:37:30', warp: '1×' });
+s += consoleBody(0, 28, 1280, 772, {});
+s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M6  CONTROLS', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
+
+const rowsep = (gx, y, gw) => line(gx + 6, y, gx + gw - 6, y, C.graticule, 1);
+const head = (gx, gy, gw, t, right) => text(gx + 10, gy + 20, t, { size: V, bold: true, fill: C.white, track: 0.8 })
+  + (right ? text(gx + gw - 10, gy + 20, right, { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) : '') + rowsep(gx, gy + 28, gw);
+const KW = 94;   // the key column
+// one key row: its caps set against the verb, which starts after the key column, so a single key
+// sits beside what it does; o.na dims the verb and the caps' ink
+function keyRow(x, y, keys, verb, o = {}) {
+  const tot = keys.reduce((a, k) => a + keyW(k), 0) + 4 * (keys.length - 1), k0 = x + KW - 12 - tot;
+  let out = '', kx = k0;
+  keys.forEach(k => { out += anyKey(kx, y - 13, k); kx += keyW(k) + 4; });
+  if (o.na) out += rect(k0 - 2, y - 15, kx - k0, 21, { fill: 'rgba(5,7,10,0.55)' });
+  return out + text(x + KW, y, verb, { size: LB, bold: true, fill: o.na ? C.dim : C.white, track: 0.4 });
+}
+// a section: its name, then its rows, 22 apart; returns the svg and where the next would start
+function section(x, y, name, rows) {
+  let out = lab(x, y, name, { fill: C.dim });
+  y += 26;
+  rows.forEach(([keys, verb, o]) => { out += keyRow(x, y, keys, verb, o); y += 22; });
+  return [out, y + 14];
+}
+
+// ---- the title row: the page and its two tabs on their keys ----
+s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 51, 'CONTROLS', { size: V, bold: true, fill: C.white, track: 0.8 });
+{
+  let x = 290;
+  [['1', 'KEYBOARD', true], ['2', 'GAMEPAD']].forEach(([k, t, on]) => {
+    s += capKey(x, 38, k);
+    x += capW(k) + 7;
+    s += text(x, 51, t, { size: LB, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+    if (on) s += line(x, 55, x + tw(t, LB, true, 0.8), 55, C.white, 1.5);
+    x += tw(t, LB, true, 0.8) + 26;
+  });
+}
+
+// ---- here: the situation's keys, then the seat's ----
+s += du(8, 64, 1264, 238, {
+  id: 'here', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = head(gx, gy, gw, 'HERE: HELM, APPROACH', 'WHERE YOU SIT AND WHAT IS HAPPENING, FIRST');
+    const cw = (gw - 20) / 4, cx = i => gx + 10 + i * cw, y0 = gy + 52;
+    g += section(cx(0), y0, 'APPROACH', [
+      [['G'], 'ARM PORT, ASK CLEARANCE'],
+      [['H'], 'NEXT PORT'],
+      [['5'], 'DOCK AT NAV'],
+      [['4'], 'APPROACH NAV; AGAIN STEPS IT'],
+      [['0'], 'CANCEL THE HELM ORDER'],
+    ])[0];
+    g += section(cx(1), y0, 'HELM', [
+      [['W', 'S'], 'THRUST'],
+      [['A', 'D'], 'TURN'],
+      [['SPACE'], 'GUNS'],
+      [['M'], 'MAP'],
+      [['V'], 'STAND UP'],
+      [['Z', 'C'], 'STRAFE'],
+      [['X'], 'ROTATION ASSIST'],
+    ])[0];
+    g += section(cx(2), y0, '', [
+      [['R'], 'MISSILE'],
+      [['F'], 'DECOY'],
+      [['TAB'], 'NEXT TARGET'],
+      [[',', '.'], 'TIME WARP DOWN / UP'],
+      [['9', '8'], 'SHIELDS, TRIM', { na: true }],
+      [['WHEEL'], 'ZOOM'],
+    ])[0];
+    g += section(cx(3), y0, '', [
+      [['Q'], 'NEXT NAV'],
+      [[';'], 'PLAN TO NAV'],
+      [['/'], 'WARP TO THE NEXT BURN'],
+      [['1', '2', '3'], 'FLY BURNS, MATCH, HOLD'],
+      [['6'], 'AUTOPILOT TO NAV'],
+      [['O'], 'ORDERS'],
+    ])[0];
+    // the reason for the dim keys, once, at the foot
+    g += barber(gx + 10, gy + gh - 22, 14) + text(gx + 32, gy + gh - 16, 'NO SHIELD EMITTER ABOARD: 9 8', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    return g;
+  },
+}).svg;
+
+// ---- the rest: every other seat, situation and mode, then the keys that work anywhere ----
+s += du(8, 308, 1264, 436, {
+  id: 'rest', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = head(gx, gy, gw, 'EVERYWHERE ELSE', 'KEYS CAN BE REBOUND IN SETTINGS');
+    const cw = (gw - 20) / 4, cx = i => gx + 10 + i * cw, y0 = gy + 52;
+    let [a, y] = section(cx(0), y0, 'DECK', [
+      [['W', 'A', 'S', 'D'], 'WALK'],
+      [['E'], 'USE: SIT, OR OPEN ITS SYSTEM'],
+      [['V'], 'SIT AT THE CONSOLE'],
+      [['F'], 'FORCE A SHUT DOOR'],
+      [['B'], 'CUT A SHUT DOOR'],
+    ]);
+    g += a;
+    [a, y] = section(cx(0), y, 'BOARDING', [
+      [['K'], 'BOARDING'],
+      [['U'], 'CAST OFF'],
+      [['I'], 'PRISONERS'],
+    ]);
+    g += a;
+    g += section(cx(0), y, 'EMERGENCY', [
+      [['P'], 'TWICE: ABANDON SHIP'],
+      [['B'], 'TWICE: CALL A TOW'],
+    ])[0];
+    g += section(cx(1), y0, 'FIRE CONTROL', [
+      [['MOUSE'], 'AIM'],
+      [['SPACE'], 'GUNS'],
+      [['R'], 'MISSILE'],
+      [['TAB'], 'NEXT TARGET'],
+      [['F'], 'DECOY'],
+      [['9', '8'], 'SHIELDS, TRIM', { na: true }],
+      [['1', '2', '3', '4'], 'HELM ORDERS; 0 CANCELS'],
+      [['5', '6'], 'DOCK AT NAV, AUTOPILOT'],
+      [['Q', ';', '/'], 'NAV, PLAN, WARP TO BURN'],
+      [['V'], 'STAND UP'],
+      [['WHEEL'], 'ZOOM'],
+    ])[0];
+    [a, y] = section(cx(2), y0, 'DOCKED', [
+      [['J'], 'MISSIONS'],
+      [['T'], 'MARKET'],
+      [['Y'], 'YARD'],
+      [['U'], 'UNDOCK'],
+    ]);
+    g += a;
+    g += section(cx(2), y, 'MAP', [
+      [['N'], 'PLAN A BURN'],
+      [['B'], 'NEXT BURN'],
+      [['↑', '↓'], 'PROGRADE / RETROGRADE'],
+      [['→', '←'], 'RADIAL OUT / IN'],
+      [[']', '['], 'LATER / EARLIER, ⇧ ×10'],
+      [['DELETE'], 'DELETE THE BURN'],
+      [['ENTER'], 'ACCEPT THE PLAN'],
+      [['BACKSPACE'], 'DISCARD IT'],
+    ])[0];
+    g += section(cx(3), y0, 'ANYWHERE', [
+      [['I'], 'SHIP'],
+      [['M'], 'MAP'],
+      [['J'], 'RECORD, AWAY FROM A STATION'],
+      [['L'], 'LOG'],
+      [['F1'], 'CONTROLS'],
+      [['O'], 'ORDERS'],
+      [['\\'], 'ACKNOWLEDGE A WARNING'],
+      [['P'], 'TWICE: ABANDON SHIP'],
+      [['F5'], 'QUICK SAVE'],
+      [['F9'], 'QUICK LOAD'],
+      [['ESC'], 'MENU'],
+    ])[0];
+    // the reason, once more, for the dim keys at fire control
+    g += barber(gx + 10, gy + gh - 22, 14) + text(gx + 32, gy + gh - 16, 'NO SHIELD EMITTER ABOARD: 9 8', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    return g;
+  },
+}).svg;
+
+// ---- the foot row: the feed (empty), and the keys that close the mode ----
+s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
+s += capKey(1100, 754, 'F1') + text(1130, 767, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1154, 754, 'ESC') + text(1264, 767, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

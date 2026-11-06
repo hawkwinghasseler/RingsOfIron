@@ -1,0 +1,176 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: record, log</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="context.js"></script>
+<script>
+// M5, the captain's record (the context spec, 10.5), on its Log tab: First Play's NOTICES step,
+// whose own words are "L opens the notice log: the fight, the bounty and the yard's work are all
+// there". Docked at Highport at the helm after the fight with the raider, the boarding of C6 and C4,
+// the prisoners handed over and the yard's repairs ordered, the captain has pressed L, which opens
+// M5 on this tab. The mode's frame is C8's: P1 above (nothing is wrong, so no chip), the title row
+// with the rank and the tabs on their numbers, the content, and the foot row with the feed and the
+// close keys. The feed is empty: the last message, the yard's, has had its 5 s.
+//
+// The log is every message with its day and time, newest first, under a header for each day, and
+// it is filtered by source and by severity on the rail. The texts are the game's own notices
+// (NoticeLog and the systems that post to it) with P4's source tags: the bounty (ContractBoard: a
+// bounty is done the moment its ship is beaten, "Raider of the Void Raiders is beaten", 7 500 cr
+// and 6 standing with the Patrol), the disablement (GameBootstrap's "is disabled: reactor down"),
+// the latch and the collar (PlayerDocking), the forced airlock and the taking (Boarding: the
+// raider's four, three of them down in C6, are held), the prisoners brought aboard into the
+// corvette's four free berths and handed over at the Patrol's station for 400 cr each (Prisoners),
+// the leak patched once the fight was over (DamageControl) and the yard's order (StationYard, the
+// same 920 cr bill as S6). Hostile crew are named by number (HostileSpawns: "Crew 1"). The lines
+// the game doesn't have are the spec's: the merged gunnery lines ("3 hits on Raider"), point
+// defense's kills (P4: the Log records them though the feed doesn't), and the autosaves.
+// Thousands take the style's thin space, not the game's comma, and a unit after a number is the
+// word list's (CR), as prose's units are.
+//
+// The severity marks are P2's shapes: ◆ for the game's warnings, a white dot for its notable
+// (IMPORTANT) messages, nothing for routine. The rail's selectors step on the arrows: the source
+// with ← and →, the severity with Shift; ↑ and ↓ or the wheel scroll, as the log does today.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 14 });
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:44:50', warp: '1×' });
+s += consoleBody(0, 28, 1280, 772, {});
+s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M5  RECORD', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
+
+const rowsep = (gx, y, gw) => line(gx + 6, y, gx + gw - 6, y, C.graticule, 1);
+const head = (gx, gy, gw, t, right) => text(gx + 10, gy + 20, t, { size: V, bold: true, fill: C.white, track: 0.8 })
+  + (right ? text(gx + gw - 10, gy + 20, right, { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) : '') + rowsep(gx, gy + 28, gw);
+// the severity marks: P2's diamond for a warning, a white dot for a notable message
+const mark = (x, y, k) => k === 'w' ? sym.diamond(x, y - 4.7, 4.6, C.red, 1.2, C.red) : k === 'n' ? `<circle cx="${x}" cy="${y - 4.7}" r="3.4" fill="${C.white}"/>` : '';
+
+// ---- the title row: the rank, the mode, and the tabs on their keys (the close keys are the foot's) ----
+s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 51, 'ENSIGN', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(18 + tw('ENSIGN', V, true, 0.8) + 12, 51, 'CAPTAIN\'S RECORD', { size: LB, bold: true, fill: C.dim, track: 0.8 });
+{
+  let x = 290;
+  [['1', 'CAREER'], ['2', 'STANDING'], ['3', 'CONTRACTS'], ['4', 'LOG', true]].forEach(([k, t, on]) => {
+    s += capKey(x, 38, k);
+    x += capW(k) + 7;
+    s += text(x, 51, t, { size: LB, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+    if (on) s += line(x, 55, x + tw(t, LB, true, 0.8), 55, C.white, 1.5);
+    x += tw(t, LB, true, 0.8) + 26;
+  });
+}
+
+// ---- the log: every message, newest first, under its day ----
+// [time, source, severity ('w' warning, 'n' notable, '' routine), message, second line]
+const LOG = [
+  ['01:43:10', 'STATION', '', 'Repairs ordered: about 920 CR, paid as the work is done'],
+  ['01:41:52', 'STATION', '', 'Crew 4 (Void Raiders) handed over: +400 CR'],
+  ['01:41:46', 'STATION', '', 'Crew 3 (Void Raiders) handed over: +400 CR'],
+  ['01:41:40', 'STATION', '', 'Crew 2 (Void Raiders) handed over: +400 CR'],
+  ['01:41:34', 'STATION', '', 'Crew 1 (Void Raiders) handed over: +400 CR'],
+  ['01:40:05', 'LOG', '', 'Autosaved on docking'],
+  ['01:40:05', 'HELM', '', 'Docked at Highport'],
+  ['01:36:20', 'STATION', '', 'Highport gives clearance: port 2 is armed for you'],
+  ['01:33:50', 'HELM', '', 'Undocked from Raider'],
+  ['01:31:40', 'BOARDING', '', '4 prisoners brought aboard'],
+  ['01:30:17', 'BOARDING', '', 'Raider is taken: 4 held'],
+  ['01:25:30', 'BOARDING', '', 'The airlock door of Raider is forced open'],
+  ['01:24:40', 'HELM', '', 'Docked at Raider'],
+  ['01:24:10', 'HELM', '', 'Your collar has hold of Raider; drawing in'],
+  ['01:23:05', 'HELM', '', 'Raider opens its port to you; port armed'],
+  ['00:31:30', 'ENGINEERING', '', 'Leak patched, and warp is clear. The hull needs a yard for full repairs'],
+  ['00:26:50', 'SPONSOR', 'n', 'Contract done: Raider of the Void Raiders is beaten. Paid 7 500 CR,', 'standing +6 with Terran Patrol Authority'],
+  ['00:26:50', 'GUNNERY', '', 'Raider is disabled: reactor down'],
+  ['00:23:15', 'GUNNERY', '', 'Point defense shot down a missile'],
+  ['00:23:02', 'GUNNERY', 'w', 'MISSILE WARNING: 1 inbound'],
+  ['00:22:40', 'GUNNERY', '', '3 hits on Raider'],
+  ['00:20:26', 'CREW', '', 'Cole is lightly wounded and working slower'],
+  ['00:18:05', 'GUNNERY', '', 'Point defense shot down a missile'],
+  ['00:17:52', 'GUNNERY', 'w', 'MISSILE WARNING: 1 inbound'],
+  ['00:17:30', 'GUNNERY', '', '2 hits on Raider'],
+  ['00:16:40', 'GUNNERY', '', 'Target locked: Raider'],
+  ['00:02:05', 'HELM', '', 'Undocked from Highport'],
+  ['00:02:05', 'LOG', '', 'Autosaved on undocking'],
+  ['00:01:20', 'SPONSOR', '', 'Contract taken: Bounty: Raider of the Void Raiders'],
+  ['00:00:00', 'SPONSOR', 'n', 'Welcome aboard, Ensign.'],
+];
+s += du(8, 64, 914, 680, {
+  id: 'log', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = head(gx, gy, gw, 'LOG', 'NEWEST FIRST · ' + LOG.length + ' MESSAGES');
+    const L = gx + 10, MK = L + 5, T = L + 18, SRC = L + 104, M = L + 218, TR = gx + gw - 12, foot = gy + gh - 34;
+    g += lab(T, gy + 48, 'TIME') + lab(SRC, gy + 48, 'SOURCE') + lab(M, gy + 48, 'MESSAGE');
+    // the day's header, then its messages until the list's foot
+    let y = gy + 74, shown = 0;
+    g += lab(L, y, 'DAY 0', { fill: C.white }) + line(L + tw('DAY 0', LB, true, 0.6) + 10, y - 4.5, TR - 14, y - 4.5, C.graticule, 1);
+    y += 24;
+    for (const [t, src, k, msg, more] of LOG) {
+      if (y + (more ? 18 : 0) > foot - 10) break;
+      g += mark(MK, y, k);
+      g += text(T, y, t, { size: B, bold: true, fill: C.white });
+      g += text(SRC, y, src, { size: LB, bold: true, fill: C.dim, track: 0.6 });
+      g += text(M, y, msg, { size: B, bold: k === 'n', fill: C.white, track: 0.1 });
+      if (more) { y += 18; g += text(M, y, more, { size: B, bold: k === 'n', fill: C.white, track: 0.1 }); }
+      y += 22;
+      shown++;
+    }
+    // the scroll bar: the track, and the thumb for the part in view, at the top (newest)
+    const ty0 = gy + 64, ty1 = foot - 14, frac = shown / LOG.length;
+    g += rect(TR - 4, ty0, 4, ty1 - ty0, { fill: C.graticule }) + rect(TR - 4, ty0, 4, (ty1 - ty0) * frac, { fill: C.dim });
+    // the foot: how to scroll, and what is below
+    g += rowsep(gx, foot, gw);
+    g += text(L, foot + 20, '↑ ↓ OR THE WHEEL SCROLL', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    g += text(TR, foot + 20, (LOG.length - shown) + ' OLDER BELOW', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    return g;
+  },
+}).svg;
+
+// ---- the filter: the source and the severity, each a selector with its counts ----
+s += du(928, 64, 344, 680, {
+  id: 'flt', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = head(gx, gy, gw, 'FILTER', 'SHOWS ' + LOG.length + ' OF ' + LOG.length);
+    const L = gx + 10, N = L + 12, CT = gx + gw - 12;
+    const count = f => LOG.filter(f).length;
+    // a selector: its name and its keys, then its positions one under another with their counts,
+    // the one set boxed in the cursor's colour; a source with nothing in the log is dim
+    const selector = (y, name, keys, rows) => {
+      let o = lab(L, y, name);
+      let kx = CT;
+      keys.slice().reverse().forEach(k => { kx -= keyW(k); o += anyKey(kx, y - 13, k); kx -= 4; });
+      y += 26;
+      rows.forEach(([t, n, on, mk]) => {
+        if (on) o += rect(N - 6, y - 15, CT - N + 12, 21, { stroke: C.cyan, sw: 1.5, r: 1 });
+        const ink = n ? C.white : C.dim;
+        let tx = N;
+        if (mk) { o += mark(N + 4, y, mk); tx += 16; }
+        o += text(tx, y, t, { size: B, bold: true, fill: ink, track: 0.4 });
+        o += text(CT - 6, y, String(n), { size: B, bold: true, fill: ink, anchor: 'end' });
+        y += 22;
+      });
+      return [o, y];
+    };
+    const SOURCES = ['HELM', 'GUNNERY', 'SHIELDS', 'ENGINEERING', 'MEDICAL', 'CREW', 'BOARDING', 'STATION', 'SPONSOR', 'COMMS', 'LOG'];
+    let [o1, y1] = selector(gy + 56, 'SOURCE', ['←', '→'], [['ALL', LOG.length, true], ...SOURCES.map(t => [t, count(r => r[1] === t)])]);
+    g += o1;
+    g += rowsep(gx, y1 - 8, gw);
+    let [o2, y2] = selector(y1 + 18, 'SEVERITY', ['⇧', '←', '→'], [['ALL', LOG.length, true], ['NOTABLE', count(r => r[2]), false, 'n'], ['WARNING', count(r => r[2] === 'w'), false, 'w']]);
+    g += o2;
+    g += text(N, y2 + 2, 'NOTABLE KEEPS THE WARNINGS TOO', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    // the key to the marks, once, at the foot
+    const fy = gy + gh - 16;
+    g += rowsep(gx, fy - 20, gw);
+    g += mark(L + 4, fy, 'n') + text(L + 14, fy, 'NOTABLE', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    g += mark(L + 100, fy, 'w') + text(L + 110, fy, 'WARNING', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    g += text(CT, fy, 'NO MARK: ROUTINE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.4 });
+    return g;
+  },
+}).svg;
+
+// ---- the foot row: the feed (empty: the last message has had its time), and the close keys ----
+s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
+s += capKey(1106, 754, 'L') + text(1130, 767, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1154, 754, 'ESC') + text(1264, 767, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>
