@@ -213,11 +213,16 @@ final class SystemsPage extends ListPage {
         return Ledger.cut(s, room);
     }
 
-    /** Who has a job: "2 CREW", "UNASSIGNED", or a dash where the game can't say. */
+    /**
+     * Who has a job: the one of the crew on it the game names, with how many more ("ADA", "ADA +1");
+     * "2 CREW" where it names nobody; "UNASSIGNED"; or a dash where it can't say.
+     */
     static String who(AlertRegistry.Alert a) {
         if (a.handling < 0) return "—";
         if (a.handling == 0) return "UNASSIGNED";
-        return a.handling + " CREW";
+        if (a.who.isEmpty()) return a.handling + " CREW";
+        String name = Fmt.upper(a.who);
+        return a.handling > 1 ? name + " +" + (a.handling - 1) : name;
     }
 
     @Override
@@ -352,7 +357,7 @@ final class SystemsPage extends ListPage {
                 D.at(p, 3, r, Ledger.cut(t, whereAt - 4), ink);
                 D.at(p, whereAt, r, Ledger.cut(place(a, systems), 11), ink);
                 String who = who(a);
-                D.at(p, whoAt, r, who, a.handling == 0 ? RED : ink);
+                D.at(p, whoAt, r, Ledger.cut(who, 11), a.handling == 0 ? RED : ink);
             }
         }
         D.over(p);

@@ -163,8 +163,15 @@ class ShipConsoleTest {
         SystemsPage.jobs(alerts, jobs);
         assertEquals(2, jobs.size, "a hostile lock is no crew job");
         assertEquals("FIRE", jobs.get(0).code);
-        assertEquals("2 CREW", SystemsPage.who(jobs.get(0)));
+        assertEquals("2 CREW", SystemsPage.who(jobs.get(0)), "counted but not named");
         assertEquals("—", SystemsPage.who(jobs.get(1)), "the game can't say");
+        // Named: the one at it, and how many more
+        jobs.get(0).crew("Ada", true, 3f);
+        assertEquals("ADA +1", SystemsPage.who(jobs.get(0)));
+        jobs.get(0).handling(1).crew("Cole", false, Float.NaN);
+        assertEquals("COLE", SystemsPage.who(jobs.get(0)));
+        jobs.get(0).handling(0);
+        assertEquals("UNASSIGNED", SystemsPage.who(jobs.get(0)), "a count anew clears the name");
         assertEquals("FIRE, 1 TILE", SystemsPage.task(jobs.get(0), null), "a fire by its tiles burning");
         assertEquals("BRIDGE", SystemsPage.place(jobs.get(0), null));
         assertEquals("3.0 MW", SystemsPage.watts(3.0e6));
