@@ -363,9 +363,13 @@ rescues, fires and wounded a marine takes on.
 
 | Spec | Note sent this round | Landed |
 |---|---|---|
-| Stations (10.4, 20.7) | What a station assignment does is unwritten. S7 draws it as which console a person mans while nothing else needs them, AUTO for the crew's own choice, over only the consoles a person can work: the helm, the weapons console and the guns a gunner works | |
-| Stations (10.4) | Letting go can't be undone: the game removes the person (`CrewHiring.dismiss`), who doesn't go back on the station's hiring list. Should it take two presses, as the beacon and abandon ship do? | |
-| Stations (10.4) | Two people set to one console: which gives way? A suggestion: the newer order wins, the other goes back to AUTO, and the footer says so | |
+| Stations (10.4, 20.7) | What a station assignment does is unwritten. S7 draws it as which console a person mans while nothing else needs them, AUTO for the crew's own choice, over only the consoles a person can work: the helm, the weapons console and the guns a gunner works | Round 15: as drawn, and the selector offers only what the person's role mans, so a marine has no HELM (`CrewRole`). S7 is redrawn to it |
+| Stations (10.4) | Letting go can't be undone: the game removes the person (`CrewHiring.dismiss`), who doesn't go back on the station's hiring list. Should it take two presses, as the beacon and abandon ship do? | Round 15: two presses, "Let Cole go? [Enter] again: Cole leaves the ship for good" |
+| Stations (10.4) | Two people set to one console: which gives way? A suggestion: the newer order wins, the other goes back to AUTO, and the footer says so | Round 15: as suggested, with "Bea goes back to AUTO" on the footer |
+
+Round 15 of the stations spec took all three, and S7 is redrawn to it: Cole's selector reads AUTO,
+TAC, NOSE GUN and AFT STBD GUN, one under another with what each does to the guns beside it, and
+LET GO sits on Enter, pressed twice.
 
 ## Next
 

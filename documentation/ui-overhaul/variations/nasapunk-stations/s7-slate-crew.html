@@ -23,16 +23,19 @@
 // assignment replaces only which console a person mans, so it holds while nothing else needs them,
 // and a fire, a casualty or a boarding still comes first, as manning does today.
 //
-// The cursor is on Cole, and I have pressed → once: AUTO to the NOSE GUN. The page says what that
-// does with the game's own rules (GunCrews): a gunner at a mount works that gun at their own
-// gunnery, Cole's 75; the weapons console works every gun at half its gunner's (REMOTE_SKILL), 38;
-// a gun nobody works waits for the trigger. On the corvette the guns a gunner works are the nose's
-// coilgun and the aft starboard laser: the two autocannons are point defense, which keeps to itself,
-// and the launcher waits for the captain's word. So Cole at the nose leaves TAC empty and the laser
-// on the trigger. Docked, the guns hold whoever works them, so the order is for the next fight.
+// The cursor is on Cole, and I have pressed → twice: AUTO to TAC, then to the NOSE GUN. The selector
+// offers only what Cole's role mans (round 15, CrewRole's affinities): a marine takes the weapons
+// console or a gun, never the helm. Beside each choice the tab says what it does, with the game's
+// own rules (GunCrews): a gunner at a mount works that gun at their own gunnery, Cole's 75; the
+// weapons console works every gun at half its gunner's (REMOTE_SKILL), 38; a gun nobody works waits
+// for the trigger. On the corvette the guns a gunner works are the NOSE coilgun and the AFT STBD
+// laser: the two autocannons are point defense, which keeps to itself, and the launcher waits for
+// the captain's word. So Cole at the nose leaves the laser on the trigger. Docked, the guns hold
+// whoever works them, so the order is for the next fight.
 //
-// Letting go is docked only (CrewHiring.dismiss: "Dock at a station to let crew go"), and the
-// response would be the game's "Cole leaves the ship". Suits at battle stations is on, the game's
+// Letting go is docked only (CrewHiring.dismiss: "Dock at a station to let crew go") and can't be
+// undone, so it takes a second press (round 15): the first asks "Let Cole go? [Enter] again: Cole
+// leaves the ship for good", and the second gives the game's "Cole leaves the ship". Suits at battle stations is on, the game's
 // default. The starting crew are the service's, so they draw no wage. Skills from the game: every
 // skill starts at 50, a marine's gunnery at 75 (CrewDef.marine), and the boarding and the two Cole
 // downed took Cole's marine skill to 56. Morale rose 5 points for the ship beaten and 5 more for
@@ -71,8 +74,8 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
   // the tabs the slate has now: no Boarding (not latched) and no Prisoners (none held)
   tabs: ['SHIP', { t: 'CREW', state: 'cur' }, 'MEDICAL', 'EVA', 'CONTRACTS', 'CAREER', 'LOG'].map(t => typeof t === 'string' ? { t, w: tabW(t) } : Object.assign(t, { w: tabW(t.t) })),
   // the orders: the cursor's station stepped with the arrows (the slate takes them, 4); suits at
-  // battle stations, on; letting the cursor's person go, docked only, by its key alone
-  footer: [{ t: 'STATION', k: '← →' }, { t: 'SUITS', state: 'on' }, { t: 'LET GO' }, { t: 'CLOSE', k: 'ESC' }],
+  // battle stations, on; letting the cursor's person go, docked only, on Enter pressed twice
+  footer: [{ t: 'STATION', k: '← →' }, { t: 'SUITS', state: 'on' }, { t: 'LET GO', k: 'ENT' }, { t: 'CLOSE', k: 'ESC' }],
   content: (gx, gy, gw, gh) => {
     let c = '';
     const L = gx + 14, R = gx + gw - 14, V0 = L + 92;
@@ -115,25 +118,22 @@ s += consoleFace(P.x, P.y, P.w, P.h, {
     c += head(gy + 454, 'NOW') + val(V0, gy + 454, 'MANNING THE WEAPONS, IN THE BRIDGE');
     c += rule(gy + 468);
 
-    // the order, as a selector: its positions in a row, the one set boxed in the cursor's colour;
-    // then when it holds, and what it does to the guns against AUTO
-    c += head(gy + 492, 'STATION');
+    // the order, as a selector: the positions Cole's role can take, one under another with what each
+    // does to the guns beside it, the one set boxed in the cursor's colour (no HELM for a marine)
+    c += head(gy + 487, 'STATION') + text(R, gy + 487, 'WHAT EACH DOES TO THE GUNS', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
     {
-      let ox = V0;
-      ['AUTO', 'HELM', 'TAC', 'NOSE GUN', 'AFT STBD GUN'].forEach(t => {
-        const w = tw(t, 12, true, 0.5), on = t === 'NOSE GUN';
-        if (on) c += rect(ox - 5, gy + 478, w + 10, 19, { stroke: C.cyan, sw: 1.5, r: 1 });
-        c += text(ox, gy + 492, t, { size: 12, bold: true, fill: on ? C.white : C.dim, track: 0.5 });
-        ox += w + 15;
+      const S0 = L + 10, E0 = L + 122;
+      [['AUTO', 'THE CREW\'S CHOICE: TAC, WHILE IT IS FREE'], ['TAC', 'NOSE AND AFT STBD AT GUNNERY 38'],
+        ['NOSE GUN', 'NOSE AT 75, AFT STBD ON THE TRIGGER'], ['AFT STBD GUN', 'AFT STBD AT 75, NOSE ON THE TRIGGER']].forEach(([t, e], i) => {
+        const y = gy + 509 + i * 22, on = t === 'NOSE GUN';
+        if (on) c += rect(S0 - 6, y - 15, R - S0 + 12, 21, { stroke: C.cyan, sw: 1.5, r: 1 });
+        c += text(S0, y, t, { size: 12, bold: true, fill: on ? C.white : C.dim, track: 0.5 });
+        c += text(E0, y, e, { size: 12, bold: true, fill: on ? C.white : C.dim, track: 0.4 });
       });
     }
-    c += note(V0, gy + 518, 'MANNED WHILE NOTHING ELSE NEEDS COLE:');
-    c += note(V0, gy + 536, 'A FIRE, A CASUALTY OR A BOARDING COMES FIRST', C.dim);
-    c += note(L, gy + 562, 'THE NOSE GUN FIRES AT WILL, AT GUNNERY 75');
-    const ew = tw('TAC EMPTY', 12, true, 0.5) + 14;
-    c += I.box(L, gy + 572, ew, 19, 'TAC EMPTY', 'caution', { size: 12 }) + note(L + ew + 10, gy + 586, 'THE AFT STBD LASER WAITS FOR THE TRIGGER');
-    c += note(L, gy + 610, 'AUTO HAS COLE AT TAC: BOTH GUNS AT WILL, AT GUNNERY 38', C.dim);
-    c += head(gy + 640, 'LET GO') + note(V0, gy + 640, 'COLE LEAVES THE SHIP AT HIGHPORT, FOR GOOD', C.dim);
+    c += note(L, gy + 600, 'MANNED WHILE NOTHING ELSE NEEDS COLE: A FIRE,');
+    c += note(L, gy + 618, 'A CASUALTY OR A BOARDING COMES FIRST', C.dim);
+    c += head(gy + 640, 'LET GO') + note(V0, gy + 640, 'PRESSED TWICE: COLE LEAVES FOR GOOD', C.dim);
 
     // the footer's response line: what the last key did
     c += text(L, gy + gh - 30, 'COLE WILL MAN THE NOSE GUN', { size: 12, bold: true, fill: C.white, track: 0.5 });

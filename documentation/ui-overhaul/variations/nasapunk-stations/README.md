@@ -1,6 +1,6 @@
 # Nasa-punk × Ship Stations
 
-The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn) skinned in the
+The Ship Stations functional spec (`functional-stations.md`, round 14 when drawn, and S7 at round 15) skinned in the
 Nasa-punk style (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at
 2x; sources are the HTML files here, using `stations.js` and the shared kit in
@@ -115,20 +115,23 @@ for the autocannon.
 
 ![The slate, crew](s7-slate-crew.png)
 
-**S7, the slate's Crew tab (10.4), on deck, docked at Highport on S6's visit.** On deck the slate
-runs the full height, and the camera's centre moves left by half its width, so the captain stands
-in the middle of the world still in view, in the hold, where Ada is idle. Highport's docking arm
-meets the port collar, and the strip reads DOCKED. Boarding went with the latch, and the raider's
-crew were handed over on docking, so there is no Prisoners tab. The roster gives each person's
-name, role, station, condition and morale, and the cursor's person, Cole, has skills, record, wage
-and what Cole is doing now. The station column is the new order (5.7, 20.7): AUTO keeps the crew's
-own choice, so Bea's helm reads AUTO, and an engineer mans no console, so Ada has no station to
-give. I have stepped Cole from AUTO to the NOSE GUN, and the page says what that does by the
-game's rules: a gunner works a mount at their own gunnery, 75, and the weapons console works every
-gun at half its gunner's, so leaving TAC empty puts the aft starboard laser on the trigger, where
-AUTO would have both guns at will at 38. The order holds while nothing else needs Cole: a fire, a
-casualty or a boarding still comes first, as manning a console does today. Letting go is docked
-only, and the page says it is for good, since the game removes the person.
+**S7, the slate's Crew tab (10.4), on deck, docked at Highport on S6's visit (round 15).** On deck
+the slate runs the full height, and the camera's centre moves left by half its width, so the
+captain stands in the middle of the world still in view, in the hold, where Ada is idle.
+Highport's docking arm meets the port collar, and the strip reads DOCKED. Boarding went with the
+latch, and the raider's crew were handed over on docking, so there is no Prisoners tab. The roster
+gives each person's name, role, station, condition and morale, and the cursor's person, Cole, has
+skills, record, wage and what Cole is doing now. The station column is the new order, a station
+assignment: the console a person mans whenever nothing else needs them. AUTO keeps the crew's own
+choice, so Bea's helm reads AUTO, and an engineer mans no console, so Ada has no selector. Cole's
+selector offers only what a marine mans, the weapons console and the two guns a gunner works (the
+point-defense autocannons keep to themselves and the launcher waits for the captain), and beside
+each choice it says what it does by the game's rules: a gunner works a mount at their own gunnery,
+75, and the weapons console works every gun at half of it, 38, and a gun nobody works waits for
+the trigger. I have stepped Cole from AUTO through TAC to the NOSE GUN, which leaves AFT STBD on
+the trigger. A fire, a casualty or a boarding still comes first, as manning a console does today.
+Letting go is docked only and can't be undone, so it takes Enter twice, and the page says it is
+for good.
 
 ## Round 5 critique
 
