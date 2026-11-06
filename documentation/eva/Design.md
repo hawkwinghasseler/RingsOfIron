@@ -162,6 +162,12 @@ the next port) until an engineer works it free from outside (`JammedCollars`), a
 outside its door, or a yard's collar repair makes it whole. The player hears when one of their ports
 jams and when it is freed.
 
+If nobody can get out to it, the ship isn't stuck for good. That happens when the hit that jams a
+lone port also wrecks its door, so no airlock aboard can cycle and no port can dock. The ship then
+counts as stranded (`DistressBeacon.cannotDock`), and the player is told the distress beacon can
+call a tow. The tug clamps the ship in at the sponsor's station, where the yard refits the collar
+(clearing the jam) and the door. Every collar torn off, with none jammed, counts the same way.
+
 ## Out on the hull
 
 `HullSurface` is the ring of empty tiles that touch the hull. A crew member clinging to the hull

@@ -7,6 +7,8 @@ import com.badlogic.gdx.utils.GdxNativesLoader;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.EvaSystem;
 import com.ringsofiron.career.NewGame;
+import com.ringsofiron.interiorgrid.Airlock;
+import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.shipops.CollarWear;
@@ -32,6 +34,7 @@ class JammedCollarsTest {
     GameScenario game;
     DockingPort port;
     int index;
+    MountFootprint mount;
 
     @BeforeAll
     static void loadNatives() {
@@ -51,7 +54,7 @@ class JammedCollarsTest {
         index = 0;
         port = ports.ports[index];
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
-        MountFootprint m = grid.getTile(port.gridX, port.gridY).mount;
+        MountFootprint m = mount = grid.getTile(port.gridX, port.gridY).mount;
         assertNotNull(m, "the port on the grid");
         // A heavy hit on the port itself
         CollarWear.wear(game.player, m.originX, m.originY, 0.3f);
@@ -126,5 +129,27 @@ class JammedCollarsTest {
         assertEquals(CrewMemberComponent.EvaOrder.NONE, world.crew.crew(who).evaOrder, "the order carried out");
         assertNull(EvaSystem.of(who));
         assertTrue(saidStarting(sent.name + " goes out on EVA"));
+    }
+
+    @Test
+    void aLonePortJammedWithItsDoorWreckedCallsATowNotADeadEnd() {
+        assertEquals("your ship can still fly home", world.beacon.refusal(), "the crew can still go out and free it: no tow yet");
+        // The same hit wrecked the corvette's only port's outer door: its airlock can't cycle
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        assertEquals(1, game.player.getComponent(DockingPortsComponent.class).ports.length, "a lone port");
+        for (int y = mount.originY; y < mount.originY + mount.height(); y++)
+            for (int x = mount.originX; x < mount.originX + mount.width(); x++)
+                if (DockingPortLayout.isDoorTile(mount, x, y)) DockingPortLayout.door(grid, mount, x, y).integrity = 0f;
+        assertFalse(Airlock.works(grid, mount));
+        assertTrue(DistressBeacon.cannotDock(game.player));
+        run(60 * 60);
+        assertTrue(world.spacewalks.onEva().isEmpty(), "nobody can get out");
+        assertTrue(port.jammed);
+        assertTrue(saidStarting("No airlock aboard can cycle anyone out to free port " + (index + 1) + "'s collar"));
+        assertNull(world.beacon.refusal(), "stranded: the beacon can be called");
+        world.beacon.call();
+        for (int i = 0; i < 60 * 30 && world.docking.dockedTo(game.player) == null; i++) run(1);
+        assertNotNull(world.docking.dockedTo(game.player), "towed in and clamped at the station, jammed collar and all");
+        assertTrue(port.collarIntegrity < 1f, "worn by the hit, so the yard there lists the collar's refit, which clears the jam");
     }
 }

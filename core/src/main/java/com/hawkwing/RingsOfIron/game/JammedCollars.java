@@ -27,7 +27,8 @@ import com.ringsofiron.aicrew.CrewService;
  * ring of hull just outside the port's door, and {@link CrewDef#collarTime} of work at the collar
  * there: at battle stations, only by anyone the player sends out ({@link
  * com.ringsofiron.aicrew.EvaOrders}). The player hears when one of their ports jams, and when it is
- * freed.
+ * freed. When no airlock aboard can cycle anyone out and no port can dock ({@link
+ * DistressBeacon#cannotDock}), they are told the distress beacon can call a tow to a yard.
  */
 public final class JammedCollars {
     private static final Family SHIPS = Family.all(DockingPortsComponent.class, ShipGridComponent.class, ShipTaskBoardComponent.class).get();
@@ -68,6 +69,12 @@ public final class JammedCollars {
                     }
                 }
                 job.seen = true;
+                if (ship == ctx.player() && !job.toldStuck && DistressBeacon.cannotDock(ship)) {
+                    // Its door wrecked with it, and no other airlock to go out by: only a tow gets it to a yard
+                    job.toldStuck = true;
+                    ctx.notices.post("No airlock aboard can cycle anyone out to free port " + (k + 1)
+                            + "'s collar, and no port can dock: the distress beacon can call a tow to a yard", NoticeLog.Kind.WARNING);
+                }
                 board.post(new OutsideTask(CrewTask.Kind.FREE_COLLAR, m.originX, m.originY, job));
             }
         }
@@ -88,6 +95,8 @@ public final class JammedCollars {
         final DockingPort port;
         final MountFootprint mount;
         boolean seen;
+        /** The player has been told nobody can get out to it. */
+        boolean toldStuck;
 
         Free(Entity ship, int index, DockingPort port, MountFootprint mount) {
             this.ship = ship;
