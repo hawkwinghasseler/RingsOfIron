@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 18.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 19.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -256,7 +256,7 @@ The DEFENSE page is the "HUD gauge and coverage overlay" that the combat design 
 | Item | Content |
 |---|---|
 | MFD pages | CREW (who mans which station, the wounded with their timers, who is outside), CONTRACTS (held: what, time left, where) |
-| Slate tabs | Ship, Crew, Medical, EVA, Boarding (latched only), Prisoners (when held), Contracts, Career, Log (10.4) |
+| Slate tabs | Ship, Crew, Medical, EVA, Boarding (latched to a ship, or alongside one in EVA reach), Prisoners (when held), Contracts, Career, Log (10.4) |
 | Orders | Suits at battle stations, EVA hold and orders, boarding party, let go and hire, prisoners; new: station assignments (10.4; today the crew AI chooses who mans what), battle stations, helm orders while a crew member has the helm; abandon ship |
 | Alerts owned | Crew air running out; crew critically wounded; crew adrift or left behind; crew in the engines' exhaust; promotion and payday (advisory); contract done, failed or called off (advisory) |
 | Data | `CrewProvider`, `BoardingProvider`, `MissionProvider` (held), `Spacewalks`, `CrewMedical`, `AirWatch`, `NoticeLog`, budget and standing |
@@ -483,7 +483,7 @@ Z3d, a strip under the band at a command seat; a row at the top of the slate's S
 | empty | Nobody; automated only (unlit) |
 | caution, warning | The station has an active alert; the tile lights in that role |
 | struck through | Its console is destroyed or unpowered |
-| (CMD) | Command has no occupancy part: it is the captain's slate, always with the player, so its tile carries only alerts and the LATCHED badge (14.2) |
+| (CMD) | Command has no occupancy part: it is the captain's slate, always with the player, so its tile carries only alerts and the boarding badge (14.2) |
 
 Occupancy (you, a name, empty) and alert (caution, warning) are separate parts of a tile and both show: the weapons tile in a fight is the player's and carries the MISSILE warning at once.
 
@@ -589,7 +589,7 @@ The captain's own panel, anywhere aboard. Its title bar carries the captain's ra
 | Crew | Roster: name, role, skills, condition, morale, wage, record; the station each mans; station assignment (new, below); let go (docked, below) |
 | Medical | The wounded: wound, bleed-out timer, who is treating them; medical stores |
 | EVA | Who is outside, tethered or adrift, their air; hold everyone in; send out, call in |
-| Boarding | When latched: the other ship's state, the boarding party (send, recall), then what can be stripped and carried over (`BoardingWindow`) |
+| Boarding | Latched to a ship, or alongside one in EVA reach: the other ship's state, the boarding party while one is needed, what can be stripped, and its cargo (`BoardingWindow`; below) |
 | Prisoners | When held: who, faction, what can be done with them here |
 | Contracts | Held: what, time left, where; set as nav target; give up. Ended (`ContractBoard.history`): how each ended, what it paid or cost and with whom, in the board's whole sentence |
 | Career | Rank, sponsor, standing per faction, weekly budget and next payday, record; faction tension |
@@ -613,6 +613,14 @@ The filters are two rows above the lines: station (ALL, then the six) and severi
 - While the player sits at a person's console, that person takes AUTO's next choice, and returns when the player stands up. If their console is destroyed, they go back to AUTO, with a line in the log.
 
 **Let go** (docked) takes a second press, as abandon ship and the tow do, because it can't be undone: the person leaves the ship and does not go back on the station's hiring list (`CrewHiring.dismiss`). The first press asks: "Let Cole go? [Enter] again: Cole leaves the ship for good."
+
+**Boarding** is open while the ship is latched to another, or stands off alongside one within EVA reach (`Boarding.boardable`: about 300 m from its hull, drifting under 2 m/s). From the top:
+
+- The other ship's name and state, in the game's words: "Raider: disabled, reactor down", "Boarding: 2 of ours aboard, 1 of theirs standing", "Taken, 2 held".
+- The boarding party, while one is needed: send (across on EVA when alongside, as many as there are suits), storm (through every shut door, for a ship still able to fight), recall. An order that can't be given says why, in the game's words (`Boarding.refusal`: "No EVA suits aboard to go across in").
+- A disabled ship that nobody aboard defends needs no party (`Boarding.canTakeUndefended`). The tab then has no party row, not even one saying none is needed. The state line says it once, "Nobody defends it: the first part marked takes it", and the parts list is open at once, as `BoardingWork` has it today.
+- The parts: each with what it sells for and how its strip stands (`Salvage.status`: marked, stripping 40%, carrying it home). Alongside, only the hull's parts can be stripped, and the rest read "inside: latch on". Latched, a part nobody can reach from inside (an engine, say) reads "EVA only" before it is marked. Today the game finds that out only once the strip is ordered (new data, 19).
+- The other ship's cargo, across a dock only, with what is on order.
 
 ---
 
@@ -914,7 +922,8 @@ What the log says when an alert is raised with no callout spoken, and when it cl
 | State | Changes |
 |---|---|
 | Docked | Berth card for 8 s; Station link available anywhere aboard; the status strip reads DOCKED; the helm's frame reads DOCKED; MFD defaults DOCK and CARGO; combat symbology off unless Red |
-| Latched to a ship | Slate's Boarding tab appears; the CMD tile shows a badge; the status strip reads LATCHED; CARGO shows the other ship's hold |
+| Latched to a ship | Slate's Boarding tab appears; the CMD tile shows the boarding badge; the status strip reads LATCHED; CARGO shows the other ship's hold |
+| Alongside a ship in EVA reach, not latched | Slate's Boarding tab appears; the CMD tile shows the boarding badge. The status strip shows no state: standing off isn't one the ship holds, and a drift over 2 m/s ends it |
 | Warp above 1x | Warp strip. The cluster's slots go dark except Next event, and the MFDs fold (nothing on them changes fast enough to read); any caution or warning restores them |
 | Yellow, Red | Symbology and MFD defaults as in 11.1 and 9.1 |
 | Emergency | The status strip's emergency text |
@@ -1117,7 +1126,7 @@ All current actions keep their default keys and meanings. The keys that opened w
 | T, Y | Station link: Market, Yard (docked) |
 | J | Station link: Contract board (docked); slate: Contracts (not docked) |
 | I | The slate, on its last tab (Crew the first time) |
-| K | Slate: Boarding (latched) |
+| K | Slate: Boarding (latched, or alongside in EVA reach) |
 | L | Slate: Log |
 | F1 | Controls (out of fiction, unchanged) |
 
@@ -1256,7 +1265,7 @@ For whoever builds this; nothing here is binding on the art.
 | `Visibility` | A pure function from (presence, condition, states, open panel) to the visible widgets: section 14 as code, unit-tested row by row |
 | `ShieldStatusProvider` | Shield mass, segments, trim and emitters for DEFENSE (the model has the data; the provider is new) |
 
-**New data needed.** The POWER page needs nothing new: reactor rating and output, each circuit's store, and each system's switch, circuit, short with its reclose timer, stun, health and destruction are all in interior-grid today. The tactical cluster needs nothing new either: each gun's hit chance (`HitChance`, as `FireArcOverlay` already computes it), a beam's strength (`WeaponMountComponent.beamStrength`), charging (the circuit's store against the shot's energy, `power_draw` times cooldown), firing arcs, point defense's missile targets, magazines and the salvo size are all there. What is new: an impact time with the missile's burn in it, t = (−v + √(v² + 2ad)) / a, with v its closing speed, d its range and a its closing burn (`MissileDef.closingBurn`, 30 m/s² for a harpoon), since `CombatThreats` gives the closest approach at the present speed, which runs long while a missile accelerates: 47 s at launch for a harpoon from 2.8 km that lands in about 12, and a countdown from it falls faster than the clock; a 5 km step in `RadarScope.RANGES`; collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); a console per crew member, which the task board's choice among `ManConsoleTask`s takes ahead of affinity (10.4); hours of air at the current crew.
+**New data needed.** The POWER page needs nothing new: reactor rating and output, each circuit's store, and each system's switch, circuit, short with its reclose timer, stun, health and destruction are all in interior-grid today. The tactical cluster needs nothing new either: each gun's hit chance (`HitChance`, as `FireArcOverlay` already computes it), a beam's strength (`WeaponMountComponent.beamStrength`), charging (the circuit's store against the shot's energy, `power_draw` times cooldown), firing arcs, point defense's missile targets, magazines and the salvo size are all there. What is new: an impact time with the missile's burn in it, t = (−v + √(v² + 2ad)) / a, with v its closing speed, d its range and a its closing burn (`MissileDef.closingBurn`, 30 m/s² for a harpoon), since `CombatThreats` gives the closest approach at the present speed, which runs long while a missile accelerates: 47 s at launch for a harpoon from 2.8 km that lands in about 12, and a countdown from it falls faster than the clock; a 5 km step in `RadarScope.RANGES`; collision risk (closest approach of contacts against the ship's path over a short horizon); whether a crew member is on a given fire, breach or casualty (ai-crew task queue, for escalation); per-room damage-control priority; learning-hint use counts (settings); a console per crew member, which the task board's choice among `ManConsoleTask`s takes ahead of affinity (10.4); which of a latched ship's parts nobody can reach from inside, before their strip is ordered (`Salvage.reachable`, private today; 10.4); hours of air at the current crew.
 
 **Order of work.** Each step leaves a playable game:
 
@@ -1285,6 +1294,14 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 19 (Nasa-punk artist's question from drawing the boarding of First Play's Raider)
+
+| Problem found | Change |
+|---|---|
+| The Boarding tab always had a party row, though a disabled ship nobody defends needs no party: the first part marked takes it (`Boarding.canTakeUndefended`), and today's window hides the party's orders then | No party row for it, not even a "none needed" line. The state line says it once, and the parts list is open at once (10.4) |
+| The Boarding tab was for a latched ship only, though today's window also boards and strips a ship the player stands off alongside, on EVA | The tab is open alongside in EVA reach too, with the boarding badge but no status-strip state; only the hull's parts can be stripped there (10.4, 14.2, 16.1) |
+| A part nobody can reach from inside reads like any other until its strip is ordered | It reads "EVA only" before it is marked (new data: `Salvage.reachable`, 19) |
 
 ### Round 18 (Nasa-punk artist's check of the First Play fight)
 
