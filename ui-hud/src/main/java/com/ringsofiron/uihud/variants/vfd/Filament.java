@@ -927,6 +927,16 @@ public final class Filament implements Disposable {
         return n * o.pitch * o.cellW - o.pitch;
     }
 
+    /**
+     * A graphic dot panel's own dots, unlit, every one ghosting through the glass: a field of them
+     * {@code pitch} apart over {@code x, y, w, h}, the first dot centred half a pitch in from its top
+     * left corner. One quad, however many dots; lit dots go over it with {@link #dot}.
+     */
+    public void dotField(float x, float y, float w, float h, float pitch, Opt o) {
+        if (!baseNow() || w <= 0f || h <= 0f || pitch <= 0f) return;
+        shapes.sprite(dots.field, x, y, w, h, 0f, 0f, w / pitch, h / pitch, o.color.ghost(o.or(o.k, 1.13f)));
+    }
+
     /** A free bitmap on the dot grid: rows of '#' and '.', for the projected HUD's sprites. */
     public void sprite(float x, float y, String[] rows, Opt o) {
         if (!litNow(o.proj) || rows.length == 0) return;
