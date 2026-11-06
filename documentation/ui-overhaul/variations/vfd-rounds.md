@@ -5,10 +5,18 @@ Each round, the three FILAMENT variations ([stations](vfd-stations.md), [context
 | Variation | Spec version used | Status after the latest round |
 |---|---|---|
 | Ship stations | `functional-stations.md` round 14 | Converged in round 7; round 10 adds the panels: the Plot, the station link, the slate |
-| Context-driven | `functional-context.md` version 13 | Reopened in round 10: the HUD screens redrawn for versions 10 to 13, the map, station and boarding modes drawn; two notes out, and M2 to draw |
+| Context-driven | `functional-context.md` version 14 | Reopened in round 10: the HUD screens redrawn for versions 10 to 13 and the modes drawn; round 11 draws the map's ghost and M2's systems tab, two notes out |
 | Task-driven | `functional-task.md` round 9 | Converged in round 9; round 10 adds the map, the station terminal, the ship's book and boarding |
 
 A variation that has converged reopens when its spec changes something visible, or a designer's answer to a note does.
+
+## Round 11
+
+**Context** (version 14). The designer took both of round 10's notes: M1 draws the Moon where it is now, the Nav's brackets on Shackleton Ice, and as the ghost the leg runs into, 54° along its orbit at the closest approach; the Nav card names the body and the arrival, as FILAMENT's already did. The ship mode's Systems tab (M2, wireframe 11) is drawn, its plan built from the corvette's own mounts, conduits and RCS blocks.
+
+**Guide.** The ship's plan joins the plot section (18.3); a screen's title may run to 16 fourteen-segment cells (5.2).
+
+**Sent to the designers.** Context: the stopped RCS block sits on the breach (the game stops a block only while its hull tile is wrecked, and that tile is a breach), and which systems take the switch (the wireframe gives two, the game all).
 
 ## Round 10
 

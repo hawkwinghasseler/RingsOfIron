@@ -888,61 +888,71 @@ const SCR = (() => {
     return { P2, cx, cy, R, r0, r1 };
   }
 
-  // The first leg of a trip to another body, as the game plans it (Context version 10): burn 1 in the orbit
+  // The first leg of a trip to another body, as the game plans it (Context version 14): burn 1 in the orbit
   // now starts the transfer, drawn solid to the Moon's sphere of influence and no further, since the
-  // capture and the approach are planned at the crossing. The Moon's orbit and sphere are to scale (o.RM
-  // units for 384,400 km); Earth and the orbit now are drawn larger than it, since at this scale the orbit
-  // lies inside the disc. The ship is spread back along its orbit from burn 1's handles, and the near
-  // traffic, too close to the ship to draw apart here, is one cluster label (W1's rule).
+  // capture and the approach are planned at the crossing. The Moon is drawn twice, as the game draws a body
+  // the plan meets (PlayerOrbitPath): where it is now, with the Nav's brackets on Shackleton Ice, and as the
+  // ghost the leg runs into, its outline and sphere where it will be at the closest approach (ghostTime:
+  // the leg's periapsis, T-4.1 d, 0.15 rad past the leg's apoapsis). Orbits run anticlockwise and the Moon
+  // moves 13.2 degrees a day, so the Moon now is 54 degrees back along its orbit. The Moon's orbit and
+  // sphere are to scale (o.RM units for 384,400 km); Earth and the orbit now are drawn larger than it,
+  // since at this scale the orbit lies inside the disc. The ship is spread back along its orbit from burn
+  // 1's handles, and the near traffic, too close to the ship to draw apart here, is one cluster label
+  // (W1's rule).
   function orbitLeg(S, x, y, w, h, o = {}) {
     const P2 = s.plot(S, x, y, w, h, {});
-    const RM = o.RM ?? 440, kpu = 384400 / RM, ex = x + (o.ex ?? 86), ey = y + h * (o.ey ?? 0.56), r0 = 34;
+    const RM = o.RM ?? 440, kpu = 384400 / RM, ex = x + (o.ex ?? 86), ey = y + h * (o.ey ?? 0.3), r0 = 34;
     P2.disc(ex, ey, 10);
     P2.ellipse(ex, ey, r0, r0, 0, 0, Math.PI * 2, 'norm', 2);                     // the orbit now
     P2.ellipse(ex, ey, RM, RM, 0, 0, Math.PI * 2, 'dim', 3);                      // the Moon's orbit
-    const [mx, my] = at(ex, ey, RM, o.moonAt ?? -6), soi = 66100 / kpu;
-    P2.ellipse(mx, my, soi, soi, 0, 0, Math.PI * 2, 'dim', 2);                    // its sphere of influence
+    const gDeg = o.ghostAt ?? -8.6, [gx, gy] = at(ex, ey, RM, gDeg), soi = 66100 / kpu;
+    P2.ellipse(gx, gy, soi, soi, 0, 0, Math.PI * 2, 'dim', 3);                    // the ghost: its sphere
+    P2.ellipse(gx, gy, 5, 5, 0, 0, Math.PI * 2, 'dim', 1);                        // and its outline
+    const [mx, my] = at(ex, ey, RM, gDeg + 54);                                   // the Moon now
     P2.disc(mx, my, 5);
-    // the leg: periapsis at burn 1, left of Earth; apoapsis 378,000 km out to the right; flown to the sphere
+    // the leg: periapsis at burn 1, left of Earth; under Earth to the apoapsis 378,000 km out to the right,
+    // flown until it meets the ghost's sphere
     const ra = 378000 / kpu, e = (ra - r0) / (ra + r0), leg = [];
     for (let q = 0; q <= 720; q++) {
       const n = Math.PI * q / 720, r = r0 * (1 + e) / (1 + e * Math.cos(n));
-      const px = ex + r * Math.cos(Math.PI + n), py = ey + r * Math.sin(Math.PI + n);
-      if (Math.hypot(px - mx, py - my) < soi) break;
+      const px = ex + r * Math.cos(Math.PI - n), py = ey + r * Math.sin(Math.PI - n);
+      if (Math.hypot(px - gx, py - gy) < soi) break;
       leg.push([px, py]);
     }
     P2.chain(leg, 'full', 1);
     const [qx, qy] = leg[leg.length - 1];                                         // the crossing
     P2.sprite(s.PS.waypoint, qx, qy, 'norm');
-    // burn 1, selected: prograde is up at the orbit's left, radial out is left
+    // burn 1, selected: prograde is down at the orbit's left, radial out is left
     const b1x = ex - r0, b1y = ey;
-    node(P2, b1x, b1y, true, [['arrowU', 0, -16], ['arrowD', 0, 16], ['arrowL', -16, 0], ['arrowR', 16, 0]]);
-    const [sx, sy] = at(ex, ey, r0, o.shipDeg ?? 120);
+    node(P2, b1x, b1y, true, [['arrowD', 0, 16], ['arrowU', 0, -16], ['arrowL', -16, 0], ['arrowR', 16, 0]]);
+    const [sx, sy] = at(ex, ey, r0, o.shipDeg ?? 227);
     P2.sprite(s.PS.ship, sx, sy, 'full');
-    // the Nav target's brackets (Shackleton Ice, in a low orbit of the Moon)
+    // the Nav target's brackets (Shackleton Ice, in a low orbit of the Moon now)
     for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      const bx = mx + dx * 30, by = my + dy * 30;
+      const bx = mx + dx * 16, by = my + dy * 16;
       S.dotLine(bx, by, bx - dx * 6, by, { size: 1.6, step: 2.4, level: 'full' });
       S.dotLine(bx, by, bx, by - dy * 6, { size: 1.6, step: 2.4, level: 'full' });
     }
-    // the labels, each on its ground, clear of the leg: burn 1's above it to the left, the crossing's under
-    // the leg's end (its leader leaving the crossing to the left, apart from the sphere's edge, which falls
-    // away steeply there), the Nav's over the sphere. Earth's name sits right of the orbit now, so the
-    // cluster's leader runs clear under it.
-    const g = { ground: true };
+    // the labels, each on its ground, clear of the leg: burn 1's above it to the left, the cluster's right
+    // of the ship, the crossing's under the leg's end inside the ellipse (its leader leaving the crossing to
+    // the left), the ghost's left of its sphere, the Nav's left of the Moon now
+    const g = { ground: true }, wd = (lines) => Math.max(...lines.map(t => s.width([...t].length)));
     tag(S, P2, x + 8, b1y - 112, o.b1 ?? ['BURN 1', 'T-12:05'], { ...g, level: 'full', from: [b1x - 11, b1y - 13], right: true, foot: true });
-    tag(S, P2, sx + 26, sy + 40, o.near ?? ['4 CONTACTS'], { ...g, from: [sx + 7, sy + 7] });
-    const cross = o.cross ?? ['MOON SOI', 'T-3.3 D', 'CAPTURE PLANNED HERE'], cw = Math.max(...cross.map(t => s.width([...t].length)));
-    tag(S, P2, qx - 40 - cw, qy + 7, cross, { ...g, from: [qx - 9, qy + 3], right: true, align: 'right' });
-    tag(S, P2, mx - 64, my - soi - 52, o.nav ?? ['SHACKLETON ICE', 'ARRIVAL T-4.2 D'], { ...g, level: 'full', from: [mx - 30, my - 30], foot: true });
-    P2.clear(mx - s.width(4) / 2 - 4, my + 32, s.width(4) + 8, 16);
-    S.dm(mx - s.width(4) / 2, my + 36, 'MOON', { pitch: 1.5, level: 'dim', ghost: false });
+    tag(S, P2, sx + 40, sy - 32, o.near ?? ['4 CONTACTS'], { ...g, from: [sx + 8, sy - 2] });
+    const cross = o.cross ?? ['MOON SOI', 'T-3.3 D', 'CAPTURE PLANNED HERE'];
+    tag(S, P2, qx - 40 - wd(cross), qy + 7, cross, { ...g, from: [qx - 9, qy + 3], right: true, align: 'right' });
+    const ghost = o.ghost ?? ['MOON AT CLOSEST APPROACH', 'T-4.1 D'];
+    tag(S, P2, gx - soi - 16 - wd(ghost), gy - 38, ghost, { ...g, from: [gx - 8, gy - 4], right: true, align: 'right' });
+    const nav = o.nav ?? ['SHACKLETON ICE'];
+    tag(S, P2, mx - 40 - wd(nav), my - 22, nav, { ...g, level: 'full', from: [mx - 18, my - 14], right: true, align: 'right' });
+    P2.clear(mx - s.width(4) / 2 - 4, my + 22, s.width(4) + 8, 16);
+    S.dm(mx - s.width(4) / 2, my + 26, 'MOON', { pitch: 1.5, level: 'dim', ghost: false });
     P2.clear(ex + r0 + 4, ey - 9, s.width(5) + 8, 18);
     S.dm(ex + r0 + 8, ey - 5, 'EARTH', { pitch: 1.5, level: 'dim', ghost: false });
     scaleBar(S, P2, x + 18, y + h - 18, 100000 / kpu, '100,000 KM');
     if (o.clearTop) P2.clear(x, y, w, o.clearTop);                               // the view row's labels
     P2.done();
-    return { P2, ex, ey, mx, my, RM, qx, qy };
+    return { P2, ex, ey, mx, my, gx, gy, RM, qx, qy };
   }
 
   // The plan's timeline: a strip of 64 cells from now to the last event on a log scale, every event lit in

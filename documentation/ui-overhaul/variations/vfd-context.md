@@ -1,6 +1,6 @@
 # FILAMENT × Context-driven
 
-The context-driven functional design (`functional-context.md`, version 13) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The context-driven functional design (`functional-context.md`, version 14) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -24,7 +24,7 @@ Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game
 
 The full-screen modes (spec section 10) are built in the mode frame of the guide's section 18.2: a terminal across the screen with its title strip, its tabs as keys in the bezel over the strip, its panes, and a foot strip with the feed and the closing keys.
 
-**11.9 Map (M1).** The plan to Shackleton Ice at the moment of 11.1. The Plan pane at the left: the orbit now, burn 1 in the burns list with the capture still to come as an estimate, the selected burn's result, the plan's Δv against what is left, and the orders on their keys (the map has no tabs, so 1 and 6 keep the helm orders). Target and traffic at the right: the Nav card, the transfer keys with nothing proposed, the contacts by distance, the layer keys with their LEDs, tension off. The view keys sit in the bezel over the plot and the timeline under it, run to the contract's deadline with the capture a hollow cell. The plot draws Earth and the orbit now larger than the scale (at it, the orbit would lie inside the disc), the leg solid to the Moon's sphere of influence and no further, and the traffic near the ship as one cluster label; each label keeps its ground and leaves on a leader that never crosses its text.
+**11.9 Map (M1).** The plan to Shackleton Ice at the moment of 11.1. The Plan pane at the left: the orbit now, burn 1 in the burns list with the capture still to come as an estimate, the selected burn's result, the plan's Δv against what is left, and the orders on their keys (the map has no tabs, so 1 and 6 keep the helm orders). Target and traffic at the right: the Nav card, the transfer keys with nothing proposed, the contacts by distance, the layer keys with their LEDs, tension off. The view keys sit in the bezel over the plot and the timeline under it, run to the contract's deadline with the capture a hollow cell. The plot draws Earth and the orbit now larger than the scale (at it, the orbit would lie inside the disc), and the Moon twice, as the game draws a body the plan meets: where it is now, 54° back along its orbit with the Nav's brackets on Shackleton Ice, and as the ghost the leg runs into, its outline and sphere where the Moon will be at the closest approach, labelled with that time. The leg is solid to the ghost's sphere and no further, and the traffic near the ship is one cluster label; each label keeps its ground and leaves on a leader that never crosses its text.
 
 ![Map](vfd/context-map.jpg)
 
@@ -32,7 +32,11 @@ The full-screen modes (spec section 10) are built in the mode frame of the guide
 
 ![Station](vfd/context-station.jpg)
 
-**M4 Boarding (10.4).** The raider taken, the mode open on it. Its plan is a graphic dot panel: the corvette latched over its port side, the parts marked for stripping in brackets (both engines marked, the reactor 40% stripped, Bea and Ada at work on it), the gun's place dotted since it is off and on its way across, Cole at the latch, and the three who surrendered, hollow. Beside it the party, coming home, with board, storm and recall kept in their places as dim keys; under it the salvage list in the game's order with what each part sells for and its state, and the cargo coming over with the prisoners to bring aboard.
+**11.11 Ship, systems (M2).** Battle stations aboard the patrol corvette, Systems showing. The plan draws every system where the corvette's chassis mounts it, with its conduits, RCS blocks and crew. One hit wrecked the hull tile under the hold's port-aft RCS quad: a wrecked hull tile is a breach, and a block stops while its tile is down, so the breach, the stopped thruster and Cole's light wound are the one hit. The FWD PORT autocannon is out of action at 20% with Ada repairing it, and the FWD STBD one is cut off, its conduit broken in its tile. What is wrong is called out with its severity glyph, the gun in the list's focus is bracketed, and the plan's key runs along its foot. The list pages at eleven rows with the guns' amber pips and a dash where the game has no value; one `SWITCH` key acts on the focused row, its LED lit while that system is on. Damage control lists the three jobs with who has each or why it waits (`‖`), and says what each wait means; Power gives the reactor against its rating, the store, what no reactor reaches and the yard's price for the cut.
+
+![Ship, systems](vfd/context-ship.jpg)
+
+**M4 Boarding (10.4).** The raider taken, the mode open on it. Its plan is a graphic dot panel: the corvette latched over its port side, the parts marked for stripping in brackets (both engines marked, the reactor 40% stripped with Ada at work on it), the gun's place dotted since it is off and Bea is carrying it home, Cole at the latch, and the three who surrendered, hollow. Beside it the party, coming home, with board, storm and recall kept in their places as dim keys; under it the salvage list in the game's order with what each part sells for and its state, and the cargo coming over with the prisoners to bring aboard.
 
 ![Boarding mode](vfd/context-boarding-mode.jpg)
 
@@ -56,8 +60,9 @@ The full-screen modes (spec section 10) are built in the mode frame of the guide
 | D1 captain vitals | Reflective LCD, backlit while it warns |
 | D3 hazards | Projected tags on each hazard in view (red `♦` warning, amber `▲` caution); edge pointers for the rest |
 | Mode frame (10) | A terminal across the screen (guide 18.2): the title in fourteen segments with a dim subtitle; the tabs as keys in the bezel over the title strip, each tab's name in the strip under its key and its number on the cap, the tab showing inverse; panes of glass; a foot strip with the one-line feed and `[key] OR [ESC] CLOSE` |
-| M1 map | The Plan pane (320) and Target and traffic (320) at the sides; the plot between them, a graphic dot panel with the guide's line rules (18.3) and its view keys in the bezel over it; the timeline pane under it, 90 tall. Orders, transfer keys and layer toggles are fixed keys, an order the plan can't take a dim label |
+| M1 map | The Plan pane (320) and Target and traffic (320) at the sides; the plot between them, a graphic dot panel with the guide's line rules (18.3), the Moon drawn now and as the ghost the leg meets, and its view keys in the bezel over it; the timeline pane under it, 90 tall. Orders, transfer keys and layer toggles are fixed keys, an order the plan can't take a dim label |
 | M3 station | A terminal 1,120 wide over the docked view: the Market a cell grid (commodity, stock, buy, sell, held, on order) with the focused row inverse across it and the trade keys under it acting on that row; the held deliveries under the table; the rail a column of glass with credits in seven segments, standing, and the hold and tanks with their bars |
+| M2 ship | The plan on a dot panel at pitch 2 (guide 18.3): systems as boxes where the chassis mounts them, solid when out of action; conduits as a fine chain, a cut one broken; the breach an X on its hull tile; the crew as blocks with their names; callouts with their severity glyphs, and a printed key. The systems list is a paged cell grid with severity pips and one key on the focused row; damage control a cell grid with pips and the reasons a job waits; power in legends, seven segments and a bar |
 | M4 boarding | The other ship's plan on a dot panel (its hull, rooms, systems as faint boxes, marked parts in brackets, our crew as blocks with their names, prisoners hollow), the party pane with its three orders, the salvage list as a cell grid, and the cargo and prisoners with their keys |
 
 ## What FILAMENT changes beyond the look
@@ -141,6 +146,12 @@ Versions 10 to 13 (the other directions' notes, checked against the game's geogr
 
 The guide gained section 18, the screens beyond the flight HUD: the four housings, the terminal and the mode frame, the plot's line and label rules, the slate, setup mode and the cards.
 
+## Round 9
+
+Version 14 took both round-5 notes. M1 draws the Moon twice, as the game does, the ghost 54° along the Moon's orbit at the closest approach (T-4.1 d); the plot now runs anticlockwise, the leg under Earth to the ghost's sphere, as the wireframe has it. The Nav card already followed H2's rule. M2's systems tab (wireframe 11, version 13) is drawn: drawing its plan from the corvette's own mounts, conduits and RCS blocks turned up one note, and the list's switches a second (round 6, below).
+
+The guide gained the ship's plan (18.3) and a wider fourteen-segment field for a screen's title, up to 16 cells (5.2): `PATROL CORVETTE` is 15.
+
 ## Functional notes sent to the context designer
 
 Round 1 (all answered by version 3): keep P2 lit under X3, decoys have no stock, shields as a share, on-screen hazard tags for D3, states as one word.
@@ -162,7 +173,12 @@ Round 4 (after version 8; both taken in version 9):
 1. **H6's sample block.** H6's example still reads "closing 85 m/s" and "shot 2.1 s", while 11.4's wireframe and F1 read 12 m/s and 2.2 s, and W5 says pilots close at 80 m/s at most. Suggest the block follow.
 2. **H1's speed in 11.4.** The wireframe's H1 reads 38 m/s in the LOCK frame, F1's relative speed before version 8. With the kiter moving along the line of sight at 12 m/s, H1 would read 12, as FILAMENT draws it. Suggest the wireframe follow, unless 11.4 is meant as a different moment from 11.5.
 
-Round 5 (after version 13):
+Round 5 (after version 13; both taken in version 14):
 
 1. **M1's ghost.** The game's map draws the Moon where it is now and, where the leg meets its sphere, a ghost: the Moon's outline and sphere where it will be by then (`MapPainter.ghost`, the Centre key's encounter). At T-3.3 d that is about 43° further along its orbit, and the Nav's brackets stay on Shackleton Ice where it is now. Wireframe 09 draws one Moon, at the meeting, and FILAMENT follows it. Suggest the wireframe show both, or the text say which one the plot shows.
 2. **M1's Nav card.** 10.1's table gives it a closest approach; for a Nav around another body, wireframe 09 gives the body and the arrival, as H2 does since version 10. Suggest the table say so.
+
+Round 6 (after version 14):
+
+1. **The stopped RCS block is on the breach.** The game stops a block only while the hull tile it is bolted to is wrecked (`RcsThruster.fieldRepairable`), and a wrecked hull tile beside the interior is a breach (`Tile.isHullBreach`, the `SealBreachTask` the scan posts). Every block on the corvette stands on such a tile, so 11.11's one stopped block puts a breach on its tile, and with the only breach in the HOLD, the block is one of the hold's two aft quads. FILAMENT draws the port one: one hit made the breach, stopped the quad and wounded Cole, and its two jobs are the seal from inside and the thruster's repair outside. Suggest 11.11's text say so, or the sample's breach move to where it can't stop a block.
+2. **Which systems have a switch.** Wireframe 11 gives `[off]` to the reactor and the coilgun only; the game lets every system be switched off (`SubsystemComponent.switchedOn`, `ConsoleWindow`'s switch). FILAMENT has one `SWITCH` key on the focused row, its LED lit while that system is on. Suggest 10.2 say which systems take the switch: all, as the game has it, or a subset and why.

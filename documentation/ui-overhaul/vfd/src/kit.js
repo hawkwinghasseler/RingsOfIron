@@ -268,11 +268,14 @@ const KIT = (() => {
     const t = Math.floor(Math.min(w / plan.w, h / plan.h) / p) * p; // a tile in units, whole dots
     const ox = x + Math.floor((w - plan.w * t) / 2 / p) * p, oy = y + Math.floor((h - plan.h * t) / 2 / p) * p;
     const X = tx => ox + tx * t, Y = ty => oy + ty * t;
+    // o.gaps: tiles [x0, y0, x1, y1] where the hull is wrecked, open to space: no hull or wall dot inside
+    const gaps = (o.gaps || []).map(([a, b, c, d]) => [X(a) + 0.5, Y(b) - 0.5, X(c) - 0.5, Y(d) + 0.5]);
+    const open = (px, py) => gaps.some(([a, b, c, d]) => px > a && px < c && py > b && py < d);
     const dots = (x0, y0, x1, y1, lv, skip) => { // a line of dots, one every pitch
       const n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / p));
       for (let i = 0; i <= n; i++) {
         const px = x0 + (x1 - x0) * i / n, py = y0 + (y1 - y0) * i / n;
-        if (skip && skip(px, py)) continue;
+        if ((skip && skip(px, py)) || open(px, py)) continue;
         S.dot(px, py, { size: p * 0.78, level: lv });
       }
     };

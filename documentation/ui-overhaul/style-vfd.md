@@ -181,8 +181,9 @@ Four lettering systems, each with one job.
 
 ### 5.2 Fourteen segments: short words
 
-- Same slant. At most 8 cells per field.
+- Same slant. At most 8 cells for a field whose word changes in place.
 - For words that change: page titles (`SENSORS`), modes (`APPROACH`), the locked contact's name (`RAIDER 6`). A longer name moves to dot matrix.
+- **A screen's title** (a mode frame's, a terminal's, setup mode's) is the one longer field, up to 16 cells: `PATROL CORVETTE`, `EARTH SYSTEM`, `RINGS OF IRON`. A longer title moves to dot matrix too.
 
 ### 5.3 Dot matrix: free text
 
@@ -537,7 +538,7 @@ The windows, the map, the menus and the cards: everything the flight HUD hands o
 | Housing | What it is | Where it serves |
 |---|---|---|
 | **Terminal** | A slab of smoked dot-matrix glass in its own bezel: page keys along one edge, soft keys along another | A console's or a station's screen: the market, the yard, the mission board, boarding, the map's panels, a full-screen mode |
-| **Plot** | A graphic dot panel at pitch 3, every dot ghosting through the glass | The map's orbit canvas |
+| **Plot** | A graphic dot panel, every dot ghosting through the glass | The map's orbit canvas (pitch 3); the ship's plan in the ship mode (pitch 2) |
 | **Slate** | Reflective LCD in a dark rubber housing (7.11) | The captain's own: career, crew, contracts, the log |
 | **Card** | Printed paper, out of fiction (7.12) | The controls (F1); ship lost or career over |
 
@@ -568,9 +569,10 @@ The orbit canvas keeps the game's geometry; FILAMENT draws each piece on the dot
 | A proposed transfer, not yet accepted | L3 | every third |
 | The orbit the plan ends in | L1 | every one |
 | A moon's orbit; a sphere of influence | L1 | every third; every second |
-| A moon where the path will meet it (the game's ghost): its outline and its sphere | L1 | every third |
+| A moon where the path will meet it (the game's ghost): its outline; its sphere | L1 | every one; every third |
 | A leader from a label to its mark | L1 | every second |
 
+- **A body the plan meets is drawn twice**, as the game draws it: where it is now, with the Nav's brackets if the Nav orbits it, and as the ghost the leg runs into, labelled with the time it stands for (`MOON AT CLOSEST APPROACH`, `T-4.1 D`).
 - **Marks** are sprites on the panel's own dots: the ship, stations and contacts by kind, burn nodes (the selected one solid with its four handles, prograde at L2 and the rest at L1), apsides, the waypoint where a leg crosses into another sphere, impacts. The Nav target carries four corner brackets at L3.
 - **Labels keep their ground.** A label is 5x7 text at pitch 1.5 and the dots under it go dark, their ghosts still showing, so no line ever crosses text. It sits clear of its mark on a leader that leaves from its first line, or from under its last line when the mark is below it, never across its own text; a label left of its mark is set right-aligned, so it ends where its leader starts.
 - **Clusters.** Traffic too close together to draw apart at the scale is one label (`4 CONTACTS`) on a leader to the ship; the contact list beside the plot names them.
@@ -579,6 +581,17 @@ The orbit canvas keeps the game's geometry; FILAMENT draws each piece on the dot
 - Bodies follow 7.5; a ruler with its figure sits in the panel's corner.
 
 ![The plot and its timeline](variations/vfd/context-map.jpg)
+
+**The ship's plan.** The ship mode draws the ship on a plot at pitch 2, every system where its chassis mounts it, port up and the bow to the right, so the plan says where before the list says what.
+
+- A system is its footprint as a box of dots at L1; one out of action (damaged past working, or cut off from power) is the box solid at L3; one switched off, its box in ghost dots only.
+- The conduits are a fine chain at L1 from tile to tile; a cut one is broken in its tile, each end capped at L3.
+- A breach is an X at L3 on its hull tile, the hull left open there. A room with something wrong in it has its walls at L2; fire and smoke keep their dither.
+- The crew are blocks of dots with a tick each side while at work, each with its name.
+- What is wrong is called out above and below the hull on a leader to its mark, led by its severity glyph as the status strip's rows are. The list's focused row is bracketed on the plan at L3.
+- The plan's key is printed along the foot of its pane.
+
+![The ship's plan](variations/vfd/context-ship.jpg)
 
 ### 18.4 The slate
 

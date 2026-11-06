@@ -623,6 +623,31 @@
     if (state) T(S, x1 - SC.width(state.length), y + 4, state, { level: o.on ? 'full' : 'dim' });
   }
 
+  // a system's footprint on a ship plan: a box of dots inset from its tiles, one every `step` units
+  function planBox(S, pl, tx, ty, tw, th, lv, step = 4) {
+    const bx = pl.X(tx) + 4, by = pl.Y(ty) + 4, bw = tw * pl.t - 8, bh = th * pl.t - 8, nx = Math.round(bw / step), ny = Math.round(bh / step);
+    for (let i = 0; i <= nx; i++) { S.dot(bx + i * bw / nx, by, { size: 1, level: lv }); S.dot(bx + i * bw / nx, by + bh, { size: 1, level: lv }); }
+    for (let i = 1; i < ny; i++) { S.dot(bx, by + i * bh / ny, { size: 1, level: lv }); S.dot(bx + bw, by + i * bh / ny, { size: 1, level: lv }); }
+  }
+  // corner brackets at L3 round a footprint: a part marked to strip, or the system in the list's focus
+  function planMark(S, pl, tx, ty, tw, th) {
+    const bx = pl.X(tx), by = pl.Y(ty), bw = tw * pl.t, bh = th * pl.t;
+    for (const [cx, cy, dx, dy] of [[bx, by, 1, 1], [bx + bw, by, -1, 1], [bx, by + bh, 1, -1], [bx + bw, by + bh, -1, -1]]) {
+      S.dotLine(cx + dx * 2, cy + dy * 2, cx + dx * 12, cy + dy * 2, { size: 1.6, step: 2.2, level: 'full' });
+      S.dotLine(cx + dx * 2, cy + dy * 2, cx + dx * 2, cy + dy * 12, { size: 1.6, step: 2.2, level: 'full' });
+    }
+  }
+  // a person on a plan: 5x5 dots with the corners off, about a quarter of a tile, and a tick each side
+  // while at work; hollow at L1, someone who surrendered
+  const body = (i, j) => Math.abs(i) < 2 || Math.abs(j) < 2;
+  function person(S, cx, cy, o = {}) {
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+      if (!body(i, j) || (o.hollow && Math.abs(i) < 2 && Math.abs(j) < 2 && !(Math.abs(i) === 1 && Math.abs(j) === 1))) continue;
+      S.dot(cx + i * 2.4, cy + j * 2.4, { size: o.hollow ? 1.6 : 2, level: o.hollow ? 'dim' : 'full' });
+    }
+    if (o.working) for (const sx of [-1, 1]) S.dot(cx + sx * 10, cy, { size: 1.8, level: 'norm' });
+  }
+
   // ------------------------------------------------------------------ M1 Map (11.9)
   // The plan to Shackleton Ice at the moment of 11.1: burn 1 planned, the capture at the Moon an estimate
   // until the crossing plans it. The view row's keys sit in the bezel over the plot; the timeline runs to
@@ -798,20 +823,10 @@
     pane(S, 12, top, lw, ph, 'PLAN');
     const pl = K.shipPlan(S, 12 + 44, top + 26, lw - 88, ph - 48, { plan: RAIDER, wallLevel: 'dim' });
     const at = (tx, ty) => [pl.X(tx), pl.Y(ty)], t = pl.t;
-    const box = (tx, ty, tw, th2, lv, step = 4) => {
-      const [bx, by] = at(tx, ty), bw = tw * t - 8, bh = th2 * t - 8;
-      for (let i = 0; i <= Math.round(bw / step); i++) { S.dot(bx + 4 + i * bw / Math.round(bw / step), by + 4, { size: 1, level: lv }); S.dot(bx + 4 + i * bw / Math.round(bw / step), by + 4 + bh, { size: 1, level: lv }); }
-      for (let i = 1; i < Math.round(bh / step); i++) { S.dot(bx + 4, by + 4 + i * bh / Math.round(bh / step), { size: 1, level: lv }); S.dot(bx + 4 + bw, by + 4 + i * bh / Math.round(bh / step), { size: 1, level: lv }); }
-    };
+    const box = (tx, ty, tw, th2, lv, step = 4) => planBox(S, pl, tx, ty, tw, th2, lv, step);
     // the systems as chassis.raider mounts them (drawn port up): x, y, w, h
     for (const [tx, ty, tw, th2] of [[11, 1, 1, 1], [14, 1, 1, 1], [3, 2, 1, 1], [5, 2, 1, 1], [7, 2, 1, 1], [11, 2, 1, 1], [13, 1, 1, 2], [6, 3, 1, 1]]) box(tx, ty, tw, th2, 'dim', 5);
-    const mark = (tx, ty, tw, th2) => {
-      const [bx, by] = at(tx, ty), bw = tw * t, bh = th2 * t;
-      for (const [cx, cy, dx, dy] of [[bx, by, 1, 1], [bx + bw, by, -1, 1], [bx, by + bh, 1, -1], [bx + bw, by + bh, -1, -1]]) {
-        S.dotLine(cx + dx * 2, cy + dy * 2, cx + dx * 12, cy + dy * 2, { size: 1.6, step: 2.2, level: 'full' });
-        S.dotLine(cx + dx * 2, cy + dy * 2, cx + dx * 2, cy + dy * 12, { size: 1.6, step: 2.2, level: 'full' });
-      }
-    };
+    const mark = (tx, ty, tw, th2) => planMark(S, pl, tx, ty, tw, th2);
     mark(0, 1, 2, 1); mark(0, 3, 2, 1); mark(8, 1, 2, 2);
     box(15, 2, 1, 1, 'norm', 3);                                                    // the gun, already off
     const [ex0, ey0] = at(0, 4);
@@ -825,21 +840,11 @@
     S.rectLit(lx0 + 3, ly0 - 1.5, t - 6, 3, { level: 'full' });
     T(S, lx0 - 30, ly0 - 18, 'LATCH · THE CORVETTE LIES OVER THE PORT SIDE', { level: 'dim' });
     // our crew aboard, a block of dots each (working: its side ticks), and the three who surrendered, hollow
-    // (5x5 dots with the corners off, about a quarter of a tile: a person at this scale)
-    const body = (i, j) => Math.abs(i) < 2 || Math.abs(j) < 2;
-    const who = (tx, ty, name, working, dx, dy) => {
-      const [cx, cy] = at(tx, ty);
-      for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if (body(i, j)) S.dot(cx + i * 2.4, cy + j * 2.4, { size: 2, level: 'full' });
-      if (working) for (const sx of [-1, 1]) S.dot(cx + sx * 10, cy, { size: 1.8, level: 'norm' });
-      T(S, cx + dx, cy + dy, name);
-    };
+    const who = (tx, ty, name, working, dx, dy) => { const [cx, cy] = at(tx, ty); person(S, cx, cy, { working }); T(S, cx + dx, cy + dy, name); };
     who(5.5, 1.5, 'COLE', false, -12, 15);
     who(6.6, 1.5, 'BEA', true, 14, -16);
     who(9, 2.55, 'ADA', true, -13, -19);
-    for (const tx of [11.5, 12.5, 13.5]) {
-      const [cx, cy] = at(tx, 3.5);
-      for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if (body(i, j) && (Math.abs(i) === 2 || Math.abs(j) === 2 || (Math.abs(i) === 1 && Math.abs(j) === 1))) S.dot(cx + i * 2.4, cy + j * 2.4, { size: 1.6, level: 'dim' });
-    }
+    for (const tx of [11.5, 12.5, 13.5]) { const [cx, cy] = at(tx, 3.5); person(S, cx, cy, { hollow: true }); }
     const [px0, py0] = at(11, 5);
     T(S, px0, py0 + 10, '3 SURRENDERED', { level: 'dim' });
 
@@ -887,6 +892,156 @@
     T(S, q0, y + 16, 'BROUGHT ABOARD, THEY ARE TURNED IN', { level: 'dim' });
     T(S, q0, y + 30, 'AT A STATION FOR STANDING', { level: 'dim' });
     SC.keyStrip(S, rx + 8, sy + sh + 5, rw - 16, [{ t: 'TAKE ALL', dim: true }, { t: 'BRING ABOARD' }], { slots: 2, labelY: sy + sh - 7 * P - 6 });
+    S.finish();
+  };
+
+  // ------------------------------------------------------------------ M2 Ship, the Systems tab (11.11)
+  // Battle stations aboard the patrol corvette, every system where chassis.corvette mounts it (port up, the
+  // bow to the right). One hit wrecked the hull tile on the hold's port quarter: a wrecked hull tile is a
+  // breach (Tile.isHullBreach), and the RCS quad bolted to it stops until the tile is framed up again
+  // (RcsThruster.fieldRepairable), so the breach, the stopped thruster and Cole's light wound in the HOLD
+  // are one hit. Every RCS block stands on a hull tile that borders the interior, so a stopped block always
+  // comes with a breach. Damage has the FWD PORT autocannon at 20%, under the 30% where a system stops, and
+  // Ada repairs it; the conduit under the FWD STBD autocannon is cut in its tile, which strands it. Bea
+  // flies and Cole mans the weapons console. The list's focus is the gun Ada is on, so the plan brackets it.
+  // The plan's marks: a system a box of dots at L1, one out of action a solid box at L3; the conduits a fine
+  // chain at L1, a cut one broken; the breach an X on its hull tile, the hull open there; a crew member a
+  // block of dots with a tick each side at work. What is wrong is called out above and below the hull,
+  // its severity glyph leading as P2's do.
+  const SHIP_MOUNTS = [ // drawn tiles [x, y, w, h]: a chassis tile (x, y) is drawn at row 5 - y
+    [7, 0, 3, 1],                                     // docking port, in the port hull
+    [3, 2, 2, 1], [3, 3, 2, 1],                       // nitrogen and oxygen tanks
+    [5, 1, 3, 2], [5, 3, 3, 2],                       // the hold's two cargo bays
+    [8, 3, 1, 2],                                     // propellant tank, on the walkway
+    [9, 1, 2, 1], [9, 2, 2, 1], [9, 4, 2, 1],         // helm, weapons console, life support
+    [11, 1, 1, 1], [11, 4, 1, 1],                     // harpoon (AFT PORT), laser (AFT STBD)
+    [12, 1, 2, 1], [15, 4, 2, 1],                     // the two small bays forward
+    [12, 4, 1, 2],                                    // escape pod, its hatch in the starboard hull
+    [15, 1, 2, 2], [16, 3, 1, 1],                     // reactor M, coilgun (NOSE)
+  ];
+  const SHIP_DOWN = [[14, 1, 1, 1], [14, 4, 1, 1]];  // the autocannons, FWD PORT (damaged) and FWD STBD (cut off)
+  const SHIP_CONDUITS = [[[8, 4], [9, 4]], [[14, 4], [15, 4]], [[11, 2], [14, 2]], [[3, 1], [11, 1]], [[3, 1], [3, 4]],
+    [[8, 4], [8, 5]], [[9, 1], [9, 4]], [[11, 1], [11, 4]], [[14, 1], [14, 4]], [[16, 2], [16, 3]]]; // chassis tiles
+  const SHIP_RCS = [[3, 0, 'quad', true], [16, 0, 'quad'], [3, 5, 'quad'], [16, 5, 'quad'], [10, 0], [10, 5], [17, 2], [17, 3]];
+  SCREENS['cx-ship'] = async (canvas) => {
+    const S = K.scene(canvas);
+    K.space(S, { seed: 21 });
+    topRack(S, { seat: 'DECK', authority: 'HELM: BEA · HOLDING HEADING', battle: true, chip: ['1', '2'], day: '0', time: '00:20', warp: '1' });
+    const f = modeFrame(S, 12, 40, 1256, 748, {
+      title: 'PATROL CORVETTE',
+      tabs: [{ t: 'SYSTEMS', k: '1', active: true }, { t: 'CREW', k: '2' }, { t: 'CARGO', k: '3' }, { t: 'LOADOUT', k: '4' }],
+      feed: ['CREW', 'ADA BACK INSIDE'], close: 'I',
+    });
+    const top = f.y, bot = f.bottom, lw = 750, rx = 12 + lw + 6, rw = 1268 - rx, mid = top + 380;
+
+    // the plan
+    pane(S, 12, top, lw, mid - top, 'PLAN');
+    const pl = K.shipPlan(S, 30, top + 81, 714, 204, { states: { HOLD: 'open' }, gaps: [[3, 0, 4, 1]], wallLevel: 'dim' });
+    const X = pl.X, Y = pl.Y, at = ([cx, cy]) => [X(cx + 0.5), Y(5.5 - cy)];
+    const fine = { size: 1, step: 3, level: 'dim' }, cap = (x, y) => S.dotLine(x - 5, y, x + 5, y, { size: 1.6, step: 2.5, level: 'full' });
+    for (const [a, b] of SHIP_CONDUITS) {
+      const [x0, y0] = at(a), [x1, y1] = at(b);
+      if (a[0] === 14 && a[1] === 1) { // cut in the gun's tile: the run stops short of it, a stub in it
+        S.dotLine(x1, y1, x0, y0 - 30, fine); cap(x0, y0 - 30);
+        S.dotLine(x0, y0 - 9, x0, y0, fine); cap(x0, y0 - 9);
+      } else S.dotLine(x0, y0, x1, y1, fine);
+    }
+    for (const m of SHIP_MOUNTS) planBox(S, pl, ...m, 'dim', 4);
+    for (const m of SHIP_DOWN) planBox(S, pl, ...m, 'full', 2);
+    planMark(S, pl, 14, 1, 1, 1);
+    // the RCS blocks on the hull: a quad a cross of dots, a linear block a bar; none on the wrecked tile
+    for (const [tx, ty, quad, wrecked] of SHIP_RCS) {
+      if (wrecked) continue;
+      const cx = X(tx + 0.5), cy = Y(ty + 0.5), o = { size: 1.6, level: 'dim' };
+      for (const [dx, dy] of quad ? [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]] : [[-1, 0], [0, 0], [1, 0]]) S.dot(cx + dx * 3, cy + dy * 3, o);
+    }
+    // the breach: an X on the wrecked tile, the hull open there
+    const wx = X(3.5), wy = Y(0.5);
+    for (let i = -4; i <= 4; i++) { S.dot(wx + i * 2.6, wy + i * 2.6, { size: 1.6, level: 'full' }); if (i) S.dot(wx + i * 2.6, wy - i * 2.6, { size: 1.6, level: 'full' }); }
+    T(S, X(3) + 6, Y(1) + 3, 'HOLD', { level: 'dim' });
+    T(S, X(12) - 6, Y(3) - 2, 'BRIDGE', { level: 'dim' });
+    // the crew, each at work: Bea at the helm, Cole at the weapons console, Ada at the gun she repairs
+    for (const [tx, ty, name, dx] of [[9.5, 1.5, 'BEA', 14], [9.5, 2.5, 'COLE', -50], [14.5, 2.5, 'ADA', -41]]) {
+      person(S, X(tx), Y(ty), { working: true });
+      T(S, X(tx) + dx, Y(ty) - 5, name);
+    }
+    // what is wrong, called out: its severity glyph, then the words; the leader to the mark
+    const call = (x, y, sev, lines, from, below) => {
+      S.dm(x, y, sev === 'warning' ? '♦' : '▲', { pitch: P, color: sev === 'warning' ? 'red' : 'amber', level: 'full', ghost: false });
+      lines.forEach((ln, i) => T(S, x + 2 * CELL, y + i * 13.5, ln, { level: i ? 'dim' : 'norm' }));
+      S.dotLine(from[0], from[1], x - 3, below ? y + 5 : y + (lines.length - 1) * 13.5 + 13, { size: 1, step: 2, level: 'dim' });
+    };
+    call(X(3.5) + 3, top + 31, 'warning', ['BREACH', 'RCS THRUSTER STOPPED'], [X(3.5), Y(0) - 4]);
+    call(X(14.5) + 8, top + 31, 'caution', ['AUTOCANNON (FWD PORT)', '20% · BEING REPAIRED'], [X(14.5), Y(1) - 4]);
+    call(X(14.5) + 8, Y(6) + 20, 'caution', ['AUTOCANNON (FWD STBD)', 'CONDUIT CUT · NO POWER'], [X(14.5), Y(5) + 4], true);
+    // the plan's key, printed along the pane's foot
+    let kx = 22;
+    const ky = mid - 22, key = (draw, word) => { draw(kx, ky); kx += 26; kx += T(S, kx, ky - 5, word, { level: 'dim' }) + 22; };
+    const sq = (lv, step) => (x, y) => planBox(S, { X: () => x - 4, Y: () => y - 13, t: 26 }, 0, 0, 1, 1, lv, step);
+    key(sq('dim', 4), 'SYSTEM');
+    key(sq('full', 2), 'OUT OF ACTION');
+    key((x, y) => { for (let i = -2; i <= 2; i++) { S.dot(x + 9 + i * 2.6, y + i * 2.6, { size: 1.6, level: 'full' }); if (i) S.dot(x + 9 + i * 2.6, y - i * 2.6, { size: 1.6, level: 'full' }); } }, 'BREACH');
+    key((x, y) => { S.dotLine(x, y, x + 8, y, fine); cap(x + 10, y); cap(x + 16, y); }, 'CONDUIT, CUT');
+    key((x, y) => person(S, x + 9, y, { working: true }), 'CREW AT WORK');
+
+    // the systems, grouped by type, a dash where the game has no such value; the switch acts on the focus
+    const sh = mid - top - KH - 9, s0 = rx + 12;
+    pane(S, rx, top, rw, sh, 'SYSTEMS');
+    SC.pager(S, rx + rw - 12 - 80, top + 8, 1, 2);
+    const sg = SC.grid(S, s0, top + 46, 53, 11 * 1.5);
+    [['SYSTEM', 3], ['HEALTH', 28, 'r'], ['POWER', 31], ['STATE', 37]].forEach(([h, c, a]) =>
+      S.legend(sg.cx(a ? c + 1 : c) - (a ? 1.5 : 0), top + 39, h, { size: 13, level: 'dim', align: a ? 'right' : 'left', ghost: false }));
+    [['REACTOR M', '100%', '-', 'ON'], ['ENGINES ×2', '100%', 'OK', 'ON'], ['RCS ×8', '-', '-', '7 ON · 1 STOPPED'],
+      ['COILGUN (NOSE)', '100%', 'OK', 'ON'], ['AUTOCANNON (FWD PORT)', '20%', 'OK', 'DAMAGED', 'amber', true],
+      ['AUTOCANNON (FWD STBD)', '100%', 'NONE', 'CUT OFF', 'amber'], ['HARPOON (AFT PORT)', '100%', 'OK', 'ON'],
+      ['LASER (AFT STBD)', '100%', 'OK', 'ON'], ['LIFE SUPPORT', '100%', 'OK', 'ON'], ['HELM', '100%', 'OK', 'ON'],
+      ['WEAPONS CONSOLE', '100%', 'OK', 'ON'],
+    ].forEach(([n, h, pw, st, sev, focus], i) => {
+      sg.pips(0, i * 1.5, sev);
+      sg.row(i * 1.5, SC.cols([[n, 21], ['', 1], [h, 4, 'r'], ['', 2], [pw, 4], ['', 2], [st, 16]]), { c: 2, focus, cursor: focus });
+    });
+    T(S, sg.cx(3), top + 46 + 11 * 20.25 + 12, 'PG 2: TANKS, CARGO BAYS, ESCAPE POD, DOCKING PORT', { level: 'dim' });
+    SC.keyStrip(S, rx + 8, top + sh + 5, rw - 16, [{ t: 'SWITCH', k: 'ENTER', led: 'green', ledOn: true }], { slots: 4, labelY: top + sh - 7 * P - 6 });
+
+    // damage control: the crew's jobs as the game posts them, and who has each or why it waits
+    const dy0 = mid + 6, dh = bot - dy0;
+    pane(S, 12, dy0, lw, dh, 'DAMAGE CONTROL');
+    T(S, 12 + lw - 12 - SC.width(15), dy0 + 9, '3 JOBS · 2 WAIT', { level: 'dim' });
+    const dg = SC.grid(S, 22, dy0 + 46, 74, 3 * 1.5);
+    [['TASK', 3], ['WHERE', 35], ['WHO', 47]].forEach(([h, c]) => S.legend(dg.cx(c), dy0 + 39, h, { size: 13, level: 'dim', ghost: false }));
+    [['REPAIR AUTOCANNON (FWD PORT)', 'BRIDGE', 'ADA', 'amber'], ['SEAL BREACH', 'HOLD', '‖ WAITS: UNDER FIRE', 'red'],
+      ['REPAIR RCS THRUSTER', 'OUTSIDE', '‖ WAITS: BATTLE STATIONS']].forEach(([task, where, who, sev], i) => {
+      dg.pips(0, i * 1.5, sev);
+      dg.text(3, i * 1.5, SC.cols([[task, 30], ['', 2], [where, 10], ['', 2], [who, 24]]));
+    });
+    let ny = dy0 + 46 + 3 * 20.25 + 16;
+    for (const [term, why] of [['UNDER FIRE:', 'WITHIN 2 TILES OF WHERE CREW WERE HIT THIS FIGHT (COLE, HOLD)'],
+      ['BATTLE STATIONS:', 'WORK OUTSIDE WAITS FOR SOMEONE SENT OUT']]) {
+      const tw = T(S, dg.cx(3), ny, term);
+      T(S, dg.cx(3) + tw + CELL, ny, why, { level: 'dim' });
+      ny += 18;
+    }
+
+    // power: each circuit's reactors, output against rating, the store; what no reactor reaches
+    pane(S, rx, dy0, rw, dh, 'POWER');
+    const p0 = rx + 12, pv = p0 + 104;
+    let py = dy0 + 36;
+    const lab = (t2, y2) => S.legend(p0, y2, t2, { size: 13, level: 'dim', ghost: false });
+    lab('CIRCUIT 1', py + 14);
+    let px = pv + T(S, pv, py + 4, 'REACTOR M') + 14;
+    px = SC.figure(S, px, py, 14, '3.0', null, { cells: 2 });
+    K.fits(SC.figure(S, px + 2, py, 14, '3.0', 'MW', { label: 'OF', cells: 2 }), rx + rw - 12, 'M2 circuit');
+    py += 30; lab('STORE', py + 12);
+    S.bar(pv, py + 4, 200, 7, 20, 0.8, { level: 'norm', gap: 1.2 });
+    SC.figure(S, pv + 212, py, 12, '80', '%', { cells: 3 });
+    py += 32; lab('CUT OFF', py + 10);
+    K.pip(S, pv + 3, py + 4.5, 'amber', true); K.pip(S, pv + 12, py + 4.5, 'red', false);
+    T(S, pv + 2 * CELL + 4, py, 'AUTOCANNON (FWD STBD)');
+    T(S, pv + 2 * CELL + 4, py + 15, 'NO REACTOR REACHES IT', { level: 'dim' });
+    py += 42; lab('CONDUITS', py + 10);
+    T(S, pv, py, '1 CUT, IN THE BRIDGE');
+    T(S, pv, py + 15, 'THE CREW CAN ONLY RESET A SHORT;', { level: 'dim' });
+    T(S, pv, py + 30, 'A YARD REPAIRS A CUT: 400 CR', { level: 'dim' });
     S.finish();
   };
 
