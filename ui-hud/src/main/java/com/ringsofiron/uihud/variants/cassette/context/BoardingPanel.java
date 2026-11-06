@@ -12,6 +12,7 @@ import com.ringsofiron.uihud.variants.cassette.YardPart;
 import com.ringsofiron.uihud.variants.cassette.YardText;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -52,7 +53,7 @@ final class BoardingPanel extends YardPart {
         state = Kit.wrap(state(b), Kit.chars(p, W - 40f, 13f), 2);
         rows.clear();
         if (party(b) != null) rows.add(Row.PARTY);
-        if (b.salvage && b.parts.size > 0) rows.add(Row.SALVAGE);
+        if (b.salvage && worth(b) > 0) rows.add(Row.SALVAGE);
         if (b.cargo.size > 0) rows.add(Row.CARGO);
         if (b.taken && b.prisoners > 0) {
             rows.add(Row.HELD);
@@ -111,6 +112,30 @@ final class BoardingPanel extends YardPart {
         if (undefended(b)) return null;
         if (!b.boardRefusal.isEmpty()) return "CAN'T GO";
         return "READY";
+    }
+
+    /** The parts worth taking (v20): still on its hull and worth something, so not an escape pod, which the game puts no price on. */
+    static int worth(BoardingBoard b) {
+        int n = 0;
+        for (int i = 0; i < b.parts.size; i++) if (worthTaking(b.parts.get(i))) n++;
+        return n;
+    }
+
+    /** What the parts worth taking sell for, together. */
+    static double worthTotal(BoardingBoard b) {
+        double v = 0;
+        for (int i = 0; i < b.parts.size; i++) if (worthTaking(b.parts.get(i))) v += b.parts.get(i).value;
+        return v;
+    }
+
+    private static boolean worthTaking(Part p) {
+        return !p.off && p.value > 0;
+    }
+
+    /** The salvage row's words after its count: "PARTS · 7,550 CR". */
+    static String worthWords(BoardingBoard b) {
+        int n = worth(b);
+        return (n == 1 ? "PART · " : "PARTS · ") + String.format(Locale.ROOT, "%,.0f CR", worthTotal(b));
     }
 
     /** Parts marked to strip and not yet off. */
@@ -188,12 +213,10 @@ final class BoardingPanel extends YardPart {
                 break;
             }
             case SALVAGE: {
+                // The parts worth taking and what they sell for (v20); what is marked and off is the hover's
                 p.legend("SALVAGE", 26f, base, Yard.INK);
-                float dw = p.drums(92f, y, String.valueOf(Math.min(99, marked(b))), 10f, 17f, 14f, false);
-                float lw = p.legend("MARKED", 92f + dw + 5f, base, Yard.INK);
-                float ox = 92f + dw + 5f + lw + 14f;
-                float ow = p.drums(ox, y, String.valueOf(Math.min(99, off(b))), 10f, 17f, 14f, false);
-                p.legend("OFF", ox + ow + 5f, base, Yard.INK);
+                float dw = p.drums(92f, y, String.valueOf(Math.min(99, worth(b))), 10f, 17f, 14f, false);
+                p.legend(worthWords(b), 92f + dw + 6f, base, Yard.INK);
                 break;
             }
             case CARGO: {
@@ -226,13 +249,16 @@ final class BoardingPanel extends YardPart {
         switch (rows.get(i)) {
             case PARTY:
                 return !b.boardRefusal.isEmpty() && !b.boarding && !b.taken ? b.boardRefusal : null;
-            case SALVAGE:
+            case SALVAGE: {
                 if (!b.salvageRefusal.isEmpty()) return b.salvageRefusal;
+                int m = marked(b), o = off(b);
+                String counts = m + o == 0 ? "Nothing marked yet: [K] Boarding to mark the parts" : m + " marked, " + o + " off";
                 for (int k = 0; k < b.parts.size; k++) {
                     Part part = b.parts.get(k);
-                    if (part.marked && !part.status.isEmpty()) return part.name + ": " + part.status;
+                    if (part.marked && !part.off && !part.status.isEmpty()) return counts + "; " + part.name + ": " + part.status;
                 }
-                return null;
+                return counts;
+            }
             case HELD:
                 return berthsFree < 0 ? null : "Only as many prisoners come across as there are berths: " + berthsFree + " free";
             default:

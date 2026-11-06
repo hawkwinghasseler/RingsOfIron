@@ -3,6 +3,7 @@ package com.ringsofiron.uihud.variants.cassette.context;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.BoardingProvider.BoardingBoard;
+import com.ringsofiron.uihud.providers.BoardingProvider.Part;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
 import com.ringsofiron.uihud.providers.ShieldStatusProvider.ShieldStatus;
 import com.ringsofiron.uihud.providers.TargetStatusProvider.TargetStatus;
@@ -255,6 +256,29 @@ class ContextTextTest {
         assertEquals(null, BoardingPanel.party(u));
         u.taken = true;
         assertEquals("Taken: undefended", BoardingPanel.state(u));
+    }
+
+    @Test
+    void theSalvageRowCountsThePartsWorthTakingAndWhatTheySellFor() {
+        BoardingBoard b = new BoardingBoard();
+        b.salvage = true;
+        String[] names = {"Laser Mk1", "Reactor", "Escape Pod", "Harpoon Launcher"};
+        double[] values = {2250, 2000, 0, 1500};
+        for (int i = 0; i < names.length; i++) {
+            Part p = b.addPart();
+            p.name = names[i];
+            p.value = values[i];
+        }
+        assertEquals(3, BoardingPanel.worth(b), "an escape pod is worth nothing: left out");
+        assertEquals(5750, BoardingPanel.worthTotal(b), 1e-9);
+        assertEquals("PARTS · 5,750 CR", BoardingPanel.worthWords(b));
+        // Off its hull, a part is no longer one to take
+        b.parts.get(0).marked = b.parts.get(0).off = true;
+        assertEquals(2, BoardingPanel.worth(b));
+        assertEquals("PARTS · 3,500 CR", BoardingPanel.worthWords(b));
+        b.parts.get(1).off = true;
+        assertEquals("PART · 1,500 CR", BoardingPanel.worthWords(b));
+        assertEquals(2, BoardingPanel.off(b));
     }
 
     @Test
