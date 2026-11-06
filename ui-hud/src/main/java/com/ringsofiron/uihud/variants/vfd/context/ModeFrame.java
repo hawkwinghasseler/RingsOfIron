@@ -37,6 +37,8 @@ final class ModeFrame {
     String closeKey = "";
     /** The slate's frame rather than the terminals' plate, with the silk on its housing. */
     boolean slate;
+    /** Only the foot strip, on the glass across the frame's bottom: the mode draws the rest itself (the controls' card). */
+    boolean footOnly;
     String brand = "SLATE", owner = "CAPTAIN";
     /** The slate's title in large dots, at this pitch. */
     static final float SLATE_TITLE_PITCH = 2.5f;
@@ -116,6 +118,10 @@ final class ModeFrame {
             paintSlate(f);
             return;
         }
+        if (footOnly) {
+            paintFoot(f);
+            return;
+        }
         float ty = y + (tabRow ? TABS_H : 0f);
         f.plate(x, y, w, h, 7f, 8f);
         f.module(x, ty, w, TITLE_H, f.o().filaments(0).noGlare().radius(2f));
@@ -130,6 +136,11 @@ final class ModeFrame {
             else o.norm();
             f.dm(tabX[i] + (slot - lw) / 2f, ty + 10f, tabs[i], o);
         }
+        paintFoot(f);
+    }
+
+    /** The foot strip: the feed's line at its left, the keys that close the mode at its right. */
+    private void paintFoot(Filament f) {
         float fy = y + h - FOOT_H;
         f.module(x, fy, w, FOOT_H, f.o().filaments(0).noGlare().radius(2f));
         float fx = x + 12f;
@@ -186,7 +197,7 @@ final class ModeFrame {
             return;
         }
         float ty = y + (tabRow ? TABS_H : 0f);
-        for (int i = 0; tabRow && i < tabCount; i++) a.box(TAB + i, tabX[i], y, tabSlot[i], ty + TITLE_H - y);
+        for (int i = 0; tabRow && !footOnly && i < tabCount; i++) a.box(TAB + i, tabX[i], y, tabSlot[i], ty + TITLE_H - y);
         if (closeX0 > 0f) a.box(CLOSE, closeX0, y + h - FOOT_H, x + w - closeX0, FOOT_H);
     }
 }

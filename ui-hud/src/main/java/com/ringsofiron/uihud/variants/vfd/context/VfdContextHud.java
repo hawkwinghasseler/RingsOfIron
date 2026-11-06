@@ -75,6 +75,8 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
     float p2Y, goalY, navY, threatsY, lockY, stripY, panelY, x3Y, faceFoot, shieldsFoot, shieldsH, promptY, ordersFoot, rackY;
     double now;
     float time;
+    /** The ship lost or the career over: the lost card shows, and the HUD under it is dark. */
+    private boolean lost;
     private final float[] centre = new float[4];
 
     @Override
@@ -92,7 +94,9 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         actor.setBounds(0f, 0f, w, h);
         actor.setUnitsPx(host.uiScale());
         UiHud hud = host.hud();
-        boolean fullScreen = modes.up() || hud != null && (hud.openWindow() != null || hud.isMapOpen());
+        // The lost card is over the HUD as it stood, gone dark; a mode takes the whole screen
+        boolean fullScreen = modes.current != null || hud != null && (hud.openWindow() != null || hud.isMapOpen());
+        lost = modes.lost;
         BoardingBoard board = hud == null || hud.getBoardingWindow() == null ? null : hud.getBoardingWindow().getBoard();
         layout(d, w, h, delta, fullScreen, board);
         boxes(actor);
@@ -222,11 +226,13 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
 
     @Override
     public void paint(Filament f) {
-        boolean dim = interrupts.card;
+        boolean dim = interrupts.card && !lost;
         float w = width;
+        // The ship lost: every tube off, every ghost showing, the world's marks gone with them
+        f.dark = lost;
         // The projected world first: every widget covers it
         f.origin(0f, 0f);
-        world.paint(f);
+        if (!lost) world.paint(f);
         // The racks
         TopRack.paintRack(f, w);
         if (!sit.fullScreen) {

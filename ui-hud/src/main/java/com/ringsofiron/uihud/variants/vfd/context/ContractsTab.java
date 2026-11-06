@@ -54,7 +54,8 @@ final class ContractsTab extends ListTab {
 
     ContractsTab() {
         super("CONTRACTS", ClassicWindow.MISSIONS, "J");
-        keys.define(2, 2);
+        // Set as nav done, Enter stays on it: giving up is walked to, never landed on
+        keys.define(2, 2).guard(GIVE_UP);
     }
 
     @Override

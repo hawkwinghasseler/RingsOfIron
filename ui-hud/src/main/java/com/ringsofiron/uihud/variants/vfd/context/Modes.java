@@ -13,6 +13,7 @@ import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.FilamentActor;
 import com.ringsofiron.uihud.variants.vfd.screens.Boards;
+import com.ringsofiron.uihud.variants.vfd.screens.LostCard;
 
 import java.util.Locale;
 
@@ -36,8 +37,8 @@ import java.util.Locale;
 final class Modes implements Filament.Painter, FilamentActor.Clicks {
     /** The plate under a mode, which takes the clicks that miss everything on it. */
     static final int PLATE = 99;
-    /** Where a tab's own click ids start. */
-    static final int TAB_IDS = 100;
+    /** Where a tab's own click ids start, and the lost card's ways on. */
+    static final int TAB_IDS = 100, LOST_IDS = 80;
     /** How often the boards are read while a mode shows. */
     static final float REFRESH = 0.25f;
     /** How long an order's answer holds the foot's feed line. */
@@ -51,8 +52,12 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
     final ShipMode ship = new ShipMode();
     final BoardingMode boarding = new BoardingMode();
     final RecordMode record = new RecordMode();
-    private final Mode[] all = {station, ship, boarding, record};
+    final ControlsMode controls = new ControlsMode();
+    private final Mode[] all = {station, ship, boarding, record, controls};
     Mode current;
+    /** The ship lost or the career over: the card shows over the dark HUD, and no mode opens. */
+    boolean lost;
+    final LostCard lostCard = new LostCard();
     private float sinceRefresh;
     float time;
     /** An order's answer for the foot, its source, how long it still holds, and the feed's revision when it was said. */
@@ -117,6 +122,8 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
             case CREW:
             case BOARDING:
             case LOG:
+            case HELP:
+            case GAME_OVER:
                 return true;
             default:
                 return false;
@@ -141,14 +148,28 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
                 return boarding;
             case LOG:
                 return record;
+            case HELP:
+                return controls;
             default:
                 return null;
         }
     }
 
     boolean open(ClassicWindow w) {
-        HudData d = data();
+        return open(w, data());
+    }
+
+    /** Opens the mode for {@code w} on {@code d}, or the lost card for the game-over screen. */
+    boolean open(ClassicWindow w, HudData d) {
         if (d == null) return false;
+        if (w == ClassicWindow.GAME_OVER) {
+            // The game opens it while the career is over, and it holds the keys' screen to itself
+            if (!d.gameOver.shown) return false;
+            closeAll();
+            lost = true;
+            return true;
+        }
+        if (lost) return false;
         boards.refresh(d);
         sinceRefresh = 0f;
         return open(modeFor(w), w, d);
@@ -167,11 +188,13 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
     }
 
     boolean showing(ClassicWindow w) {
+        if (w == ClassicWindow.GAME_OVER) return lost;
         return current != null && current.showing(w);
     }
 
     void close(ClassicWindow w) {
-        if (showing(w)) closeAll();
+        if (w == ClassicWindow.GAME_OVER) lost = false;
+        else if (showing(w)) closeAll();
     }
 
     void closeAll() {
@@ -181,9 +204,9 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
         if (s != null && s.getScrollFocus() == actor) s.setScrollFocus(null);
     }
 
-    /** Whether a mode shows now. */
+    /** Whether a mode shows now, or the lost card. */
     boolean up() {
-        return current != null;
+        return current != null || lost;
     }
 
     /**
@@ -192,6 +215,8 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
      * anywhere; the record itself closes them on J.
      */
     boolean keyDown(int keycode) {
+        // The lost card's keys are the game's
+        if (lost) return false;
         if (keycode == Keys.J && current != record && !available(ClassicWindow.MISSIONS)) {
             HudData d = data();
             if (d == null) return false;
@@ -253,11 +278,19 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
             }
             if (!current.available(boards, d)) closeAll();
         }
-        actor.setVisible(current != null);
-        if (current == null) return;
+        actor.setVisible(up());
+        if (!up() || d == null) return;
         float w = host.width(), h = host.height();
         actor.setBounds(0f, 0f, w, h);
         actor.setUnitsPx(host.uiScale());
+        if (current == null) {
+            // The lost card: every click is its, or nothing's
+            lostCard.place(w, h, d.gameOver);
+            actor.clearBoxes();
+            actor.box(PLATE, 0f, 0f, w, h);
+            lostCard.boxes(actor, LOST_IDS, d.gameOver);
+            return;
+        }
         current.update(boards, d, delta);
         foot(d, delta);
         current.layout(w, h);
@@ -285,15 +318,26 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
 
     @Override
     public void paint(Filament f) {
-        if (current == null) return;
+        if (!up()) return;
         f.origin(0f, 0f);
+        if (current == null) {
+            HudData d = data();
+            if (d != null) lostCard.paint(f, d.gameOver);
+            return;
+        }
         current.paint(f, time);
         hud.paintInterruptsOver(f);
     }
 
     @Override
     public void clicked(int id) {
-        if (current != null && id != PLATE) current.clicked(id);
+        if (id == PLATE) return;
+        if (current != null) {
+            current.clicked(id);
+        } else if (lost && id >= LOST_IDS && id < TAB_IDS) {
+            HudData d = data();
+            if (d != null) lostCard.clicked(id - LOST_IDS, d.gameOver);
+        }
     }
 
     /** Whether {@code keycode} is a digit key 1 to 9. */

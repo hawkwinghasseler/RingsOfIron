@@ -21,6 +21,8 @@ public final class SoftKeys {
     /** A key's own cap ("→"), or null: walked, and pressed with Enter. */
     private final String[] caps = new String[MAX];
     private final boolean[] on = new boolean[MAX];
+    /** Keys the walk never lands on by itself: one that can't be undone, walked to only by the player. */
+    private final boolean[] guarded = new boolean[MAX];
     private final Filament.Led[] leds = new Filament.Led[MAX];
     private final boolean[] ledOn = new boolean[MAX];
     private final String[] shownCaps = new String[MAX];
@@ -42,6 +44,7 @@ public final class SoftKeys {
             words[i] = "";
             caps[i] = null;
             on[i] = true;
+            guarded[i] = false;
             leds[i] = null;
             ledOn[i] = false;
         }
@@ -60,6 +63,15 @@ public final class SoftKeys {
     /** Key {@code i} answers to its own key, printed on its cap ("ENTER", "→"); it is not walked to. */
     public SoftKeys cap(int i, String cap) {
         if (i >= 0 && i < n) caps[i] = cap;
+        return this;
+    }
+
+    /**
+     * Key {@code i} does what can't be undone (give up a contract): when the key walked to can't be
+     * taken, the walk doesn't move on to it by itself, so a second Enter never presses it unasked.
+     */
+    public SoftKeys guard(int i) {
+        if (i >= 0 && i < n) guarded[i] = true;
         return this;
     }
 
@@ -99,11 +111,14 @@ public final class SoftKeys {
         return i >= 0 && i < n && caps[i] == null && on[i] && !words[i].isEmpty();
     }
 
-    /** Walks to the first walked key that can be taken, when the one walked to can't be now. */
+    /**
+     * Walks to the first walked key that can be taken, when the one walked to can't be now; never to a
+     * guarded key, so the walk stays put when only one of those can be.
+     */
     public void settle() {
         if (walk >= 0 && walk < n && caps[walk] == null && on[walk] && !words[walk].isEmpty()) return;
         for (int i = 0; i < n; i++) {
-            if (caps[i] == null && on[i] && !words[i].isEmpty()) {
+            if (caps[i] == null && on[i] && !guarded[i] && !words[i].isEmpty()) {
                 walk = i;
                 return;
             }
@@ -189,7 +204,7 @@ public final class SoftKeys {
         boolean walking = anyWalked();
         for (int i = 0; i < n; i++) {
             boolean walkedHere = walking && caps[i] == null && i == walk;
-            shownCaps[i] = caps[i] != null ? caps[i] : walkedHere ? "ENTER" : "";
+            shownCaps[i] = caps[i] != null ? caps[i] : walkedHere && on[i] ? "ENTER" : "";
             states[i] = words[i].isEmpty() ? Glass.Key.BLANK : !on[i] ? Glass.Key.DIM : walkedHere ? Glass.Key.FOCUS : Glass.Key.ON;
         }
         // Only the keys defined: the rest of the slots stay bare bezel
@@ -202,7 +217,7 @@ public final class SoftKeys {
         for (int i = 0; i < n; i++) {
             if (words[i].isEmpty()) continue;
             boolean walkedHere = walking && caps[i] == null && i == walk;
-            String cap = caps[i] != null ? caps[i] : walkedHere ? "ENTER" : "";
+            String cap = caps[i] != null ? caps[i] : walkedHere && on[i] ? "ENTER" : "";
             float kx = x + i * SLATE_SLOT, kw = slateKeyWidth(caps[i]);
             Filament.Opt silk = f.o().size(12f).centre().ink(on[i] ? Ink.SLATE_KEY_SILK : Ink.SLATE_KEY_SILK_DIM);
             f.silk(kx + SLATE_SLOT / 2f, labelY, words[i], silk);

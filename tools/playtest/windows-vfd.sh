@@ -3,8 +3,9 @@
 # mockups (documentation/ui-overhaul/vfd): docked at Highport, the station's terminal on each of its
 # tabs (the market with a trade, the yard and a hardpoint's weapons on offer, the missions with an
 # offer taken, the hire); under Context, the ship on each of its tabs, with trouble aboard, the field
-# refit away from the station, the captain's record on each of its tabs, docked and away, and boarding
-# the raider. Keyboard only. Needs Xvfb, xdotool and ImageMagick's import.
+# refit away from the station, the captain's record on each of its tabs, docked and away, the
+# controls card, boarding the raider, and the ship lost. Keyboard only. Needs Xvfb, xdotool and
+# ImageMagick's import.
 #   tools/playtest/windows-vfd.sh <context|stations|task> [out-dir] [WxH] [ui-scale]
 #   (default build/playtest-windows-vfd-<spec>, 1920x1200, the automatic scale)
 # Run from the repository root.
@@ -72,6 +73,13 @@ if [ "$SPEC" = context ]; then
   key 3; pause 1; shot w15-contracts
   key l; pause 0.8; shot w15-to-log
   key l; pause 0.8; shot w15-closed
+  # The controls (M6): F1 lays the printed card over the game, the keys for where you are first, and
+  # Pg Dn turns to the rest; 2 turns it to the Gamepad; F1 takes it away
+  key F1; pause 1.2; shot w17-controls
+  key Next; pause 0.6; shot w17-controls-more
+  key Prior; pause 0.3
+  key 2; pause 0.8; shot w17-gamepad
+  key F1; pause 0.8; shot w17-closed
   # Away from the station: Y is the crew's field refit, in the Loadout, and closes it from there
   key u; pause 5; cmd away 600; pause 3
   key y; pause 1.2; shot w10-field-refit
@@ -90,5 +98,11 @@ if [ "$SPEC" = context ]; then
   key Left; pause 0.4; shot w11-boarding-walk
   pause 12; shot w11-boarding-across
   key k; pause 0.8; shot w11-closed
+  # The ship lost: the HUD goes dark under the lost card, which names the game's keys; Enter (the
+  # game's) loads the latest autosave, if there is one, and the HUD comes back
+  cmd dev "def k = GameWorld.Crash.getDeclaredConstructor(String, Double.TYPE); k.accessible = true; def f = GameWorld.getDeclaredField('crash'); f.accessible = true; f.set(world, k.newInstance('Luna', world.engine.simSeconds as double)); 'crashed'"
+  pause 2; shot w18-lost
+  key F1; pause 0.6; shot w18-lost-f1
+  key Return; pause 8; shot w18-loaded
 fi
 finish
