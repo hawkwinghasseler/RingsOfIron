@@ -43,13 +43,15 @@ Life cycle, all on the render thread:
 
 1. `attach` when the variant is picked, or the game starts with it. Everything you add to the stage
    goes in `host.layer()`, a `Group` filling the stage above the classic panels and the world
-   markers and below the windows and the map. The host clears it on detach.
+   markers and below the windows and the map, or for your own screens in place of the windows
+   `host.screenLayer()`, above the windows and the map (below). The host clears both on detach.
 2. `update(delta)` once a frame, after the game has updated and the data layer has been refreshed,
    before the stage acts and draws.
 3. `resize(width, height, uiScale)` when the window or the UI scale changes. The stage's units are
    already resized; this is where a variant that generates its own fonts rebuilds them.
 4. `keyDown` for keys the classic HUD did not use, before the game's own bindings see them. Not
-   called while a window or the map has the keys. Return true for a key you used and the game's
+   called while a classic window or the map has the keys; called while one of your own screens
+   shows, the map's panels among them. Return true for a key you used and the game's
    binding for it does nothing that frame (`UiHud.keyUsedByVariant`): Alt with 1 picks your page
    and gives no helm order. The game reads its bindings whatever modifier is held, so take a key
    only when it means yours (with Alt held, say); one you take is gone from the game that frame.
@@ -62,10 +64,11 @@ A variant that throws from `attach` leaves the classic HUD up rather than none, 
 `keeps()` returns the classic pieces that stay up under the variant (`ClassicPart`): the flight
 panel, the gauges, the radar, the ship panel, the orbit panel, the missile banner, the threat
 overlay, the world markers, the game's status column, the key hint line, the docked banner and the
-E prompt. Everything not in the set is hidden for you, each frame. Windows (market, yard, missions,
-crew, boarding, the console window and the map) and the world overlays the game draws under the HUD (burn
-arrows, fire arcs) stay until a variant replaces them in its own PR. The magnified bubbles stay too,
-but a variant can steer them and draw their rims itself (below).
+E prompt. Everything not in the set is hidden for you, each frame. The windows, the map's panels and
+the game's text panels stay classic unless the variant shows its own screens for them (below). The
+world overlays the game draws under the HUD (burn arrows, fire arcs) stay until a variant replaces
+them in its own PR. The magnified bubbles stay too, but a variant can steer them and draw their rims
+itself (below).
 
 ### The magnified bubbles
 
@@ -85,6 +88,54 @@ default leaves them as the classic HUD has them:
 
 The game reads the hooks as the variant left them at its last `update`, and fills `insets` before
 this frame's `update`, so the pictures and the variant's rims never fall a frame apart.
+
+### Screens in place of the windows
+
+A variant can show its own screens for the classic windows, the map's panels and the game's text
+panels (`ClassicWindow`), whatever shape its spec gives them: a side panel, a full-screen mode with
+tabs, a terminal that serves several. Four hooks on `HudVariant`, each doing nothing by default:
+
+- `replaces(window)`: whether the variant shows its own screen for it. Read once on attach.
+- `open(window)`: show the screen, or turn an open one to it (a station terminal to its market tab).
+  True when it shows now.
+- `showing(window)`: whether it shows now. A terminal that serves several shows the one on its tab.
+- `close(window)`: close it (its key again, Esc, or the game: the ship undocked).
+
+The game keeps everything else, so the screens behave as the classic windows do whoever draws them:
+
+- **When a window can open stays the game's word** (`UiHud.available`): the market only while
+  docked, boarding only while latched, the yard where there is one or the crew's field refit away
+  from one. The variant is asked to open only then, and a screen whose window can no longer open is
+  closed for it on the next frame.
+- **The keys stay the game's**: T, Y, J, K, I, M, L and F1 open and close the variant's screens as
+  they do the classic windows, and E at a console opens its console screen. Esc closes the topmost
+  window, whoever shows it: the log and the controls first, then the map, then the windows. An Esc
+  used that way neither pauses nor quits.
+- **Opening one from another**: `host.hud().open(window)`, `close`, `toggle` and `isOpen` work on a
+  window whoever shows it, so a yard screen's Ships for sale is `open(ClassicWindow.SHIPYARD)`.
+- **The game's checks see your screens**: while one shows, the game's flight and walking keys stop
+  where they stop for the classic window (a console, the log), the burn planner's keys leave the
+  arrow keys and Enter to you, the pad is in menu mode, and Esc closes the screen before it pauses.
+- **Switching variants keeps what was open**: cycling with a window up opens it again, shown by
+  whoever shows it now. Not a console's screen (E opens it again).
+
+Each window's data and actions come through the provider the classic window reads, mirrored on
+`HudData` (below). A screen goes in `host.screenLayer()`, over the classic windows and the map, and
+takes clicks only on its own actors: a click off them reaches the map or the world under it.
+
+| `ClassicWindow` | The classic window | What a screen reads and acts through |
+|---|---|---|
+| `MAP` | The map (M): its orbit canvas, and the side panel of orbit, burn, fly it, target and view | `orbitPath`, `planner`, `trafficMap`. The canvas stays the game's, with its zoom, panning, burn handles and contact picks, and fills the stage when the variant shows the panels: the classic side panel is hidden |
+| `CONSOLE` | The window E opens at a console | `console`: the console entity (its `SubsystemComponent` has the system, health and switch), what E found there, and the game's own actions at it ("Take fire control", with its key) |
+| `TRADE` | The station market (T, docked) | `trade` |
+| `YARD` | The yard (Y): repairs, tanks, refits, furnishings, Rebuild decks; away from a yard, the field refit | `yard` |
+| `SHIPYARD` | Ships for sale, the trade-in, a prize to hand over | `shipyard` |
+| `MISSIONS` | The mission board (J) | `missions` |
+| `BOARDING` | Boarding and salvage (K, latched) | `boarding` |
+| `CREW` | The crew roster (I) | `crew` |
+| `LOG` | The notice log (L) | `messages`, the last fifty notices with their time |
+| `HELP` | The controls panel (F1) | `hints.collectAll(frame)`: every hint by where it applies, with the player's keys |
+| `GAME_OVER` | Ship lost or career over | `gameOver`: what happened, and the ways on with their keys. It opens and closes by itself; the game keeps its keys there (Enter, the quick load, Esc), so show them but don't take them |
 
 ## The common data layer
 
@@ -117,10 +168,15 @@ their contents.
 | `key("FIRE")` | the key bound to an action, for a prompt |
 | `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
 | `dockHint` | the docked banner's text, or "" when not docked |
+| `console` | the console E opened while the variant shows its console screen: the entity, what E found, the game's actions there (`UiHud.registerConsoleAction`); empty otherwise |
+| `gameOver` | ship lost or career over: shown, which, the title ("SHIP LOST"), what happened in one line, and the ways on, each with its key, what it does and the action a click runs (`GameOverChoices`) |
 | `insets` | the game's magnified bubbles this frame, at most three: the craft, what each is for (the player's ship, the lock, the nav target), the craft's label as the game has it, the bubble's middle and radius (UI units, y up), where the craft is, whether it is in view and whether the bubble sits right over it, how far the craft reaches as drawn, and its distance. Filled before `update`, and empty on deck (`PictureInPicture.report`) |
 
 `targeting`, `orbitInfo`, `interactor` and `physics` are the classic providers, set on `UiHud` as
-before and mirrored here.
+before and mirrored here. So are the classic windows' providers, for a variant's own screens: `trade`,
+`yard`, `shipyard`, `missions`, `boarding`, `crew`, `orbitPath`, `planner` and `trafficMap`. A screen
+calls them when it draws, as the classic window's refresh does (each fills a board), and acts
+through them.
 
 ### Alerts
 

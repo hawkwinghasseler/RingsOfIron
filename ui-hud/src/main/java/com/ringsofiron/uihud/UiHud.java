@@ -56,9 +56,11 @@ import com.ringsofiron.uihud.widgets.BoardingWindow;
 import com.ringsofiron.uihud.widgets.YardWindow;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.HudVariants;
+import com.ringsofiron.uihud.variants.Screens;
 
 /**
  * Entry point to the ui-hud module: builds the Scene2D stage, the HUD widgets and the ECS
@@ -83,7 +85,10 @@ import com.ringsofiron.uihud.variants.HudVariants;
  *
  * <p>The HUD is drawn by the classic panels or by one of the UI overhaul variants ({@link HudVariants},
  * picked in Settings, Interface, HUD). A variant draws in its own layer from {@link #getData()}, the
- * common data layer, and hides the classic panels it replaces ({@link ClassicPart}).
+ * common data layer, and hides the classic panels it replaces ({@link ClassicPart}). It may also show
+ * its own screens in place of the windows, the map's panels and the game's text panels
+ * ({@link ClassicWindow}): {@link #open}, {@link #close}, {@link #toggle} and {@link #isOpen} work on
+ * a window whoever shows it, and the keys above open the variant's screens the same way.
  */
 public class UiHud implements Disposable {
     private final ViewportManager viewports;
@@ -98,6 +103,13 @@ public class UiHud implements Disposable {
     private final IntSet variantKeys = new IntSet();
     /** The HUD variant's layer: above the classic panels, below the windows and the map. */
     private final Group variantLayer = new Group();
+    /** The variant's screens in place of the classic windows: above the windows and the map. */
+    private final Group screenLayer = new Group();
+    /** Who shows each window, the map's panels and the text panels: the classic HUD or the variant. */
+    private final Screens screens = new Screens();
+    /** The game's own actions at a console by console id, for a variant's console screen ({@link #registerConsoleAction}). */
+    private final ObjectMap<String, com.badlogic.gdx.utils.Array<HudData.ConsoleAction>> consoleActions = new ObjectMap<>();
+    private final java.util.EnumSet<ClassicWindow> wasOpen = java.util.EnumSet.noneOf(ClassicWindow.class);
     private final HudData data = new HudData();
     /** The variant drawing now, or null for the classic HUD, and its id. */
     private HudVariant variant;
@@ -277,6 +289,9 @@ public class UiHud implements Disposable {
         stage.addActor(shipyardWindow);
         stage.addActor(boardingWindow);
         stage.addActor(crewWindow);
+        screenLayer.setTouchable(Touchable.childrenOnly);
+        stage.addActor(screenLayer);
+        registerWindows();
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         hudRenderSystem.keepClear(threatBanner, () -> threatOverlay.isVisible() && threatBanner.getText().length() > 0);
@@ -333,16 +348,26 @@ public class UiHud implements Disposable {
     /** Handles HUD keys. Public so games that route input themselves can forward keys. */
     public boolean handleKey(int keycode) {
         if (handleClassicKey(keycode)) return true;
-        // Keys the HUD did not use go to the variant, unless a window has the keys
-        boolean used = variant != null && openWindow() == null && !isMapOpen() && variant.keyDown(keycode);
+        // Keys the HUD did not use go to the variant, unless a classic window or the map has the
+        // keys; the variant's own screens, the map's panels among them, have them first
+        boolean used = variant != null && openWindow() == null && (!isMapOpen() || screens.replaced(ClassicWindow.MAP))
+                && variant.keyDown(keycode);
         if (used) variantKeys.add(keycode);
         return used;
     }
 
+    /** A window's key (T, J, K, I): closes it if it is open, else opens it if it can; false when it can't, so the key goes on. */
+    private boolean keyToggles(ClassicWindow window) {
+        if (!isOpen(window) && !available(window)) return false;
+        toggle(window);
+        return true;
+    }
+
     /**
-     * Whether the HUD variant used {@code keycode} this frame ({@link HudVariant#keyDown}): the game
-     * reads its bindings by polling, so it asks here and leaves a key the variant took alone (Alt with
-     * a digit picks an MFD page, not a helm order).
+     * Whether the HUD variant used {@code keycode} this frame ({@link HudVariant#keyDown}), or Esc
+     * closed a window: the game reads its bindings by polling, so it asks here and leaves a key the
+     * HUD took alone (Alt with a digit picks an MFD page, not a helm order; Esc that closed the map
+     * neither pauses nor quits).
      */
     public boolean keyUsedByVariant(int keycode) {
         return variantKeys.contains(keycode);
@@ -358,74 +383,38 @@ public class UiHud implements Disposable {
         if (window != null && focusNav.key(window, keycode)) return true;
         switch (keycode) {
             case Input.Keys.E:
-                if (consoleWindow.isOpen()) return false;
+                if (isOpen(ClassicWindow.CONSOLE)) return false;
                 return interactPromptSystem.interact();
             case Input.Keys.ESCAPE:
-                if (isMapOpen()) {
-                    setMapVisible(false);
-                    return true;
-                }
-                if (tradeWindow.isOpen()) {
-                    tradeWindow.setOpen(false);
-                    return true;
-                }
-                if (yardWindow.isOpen()) {
-                    yardWindow.setOpen(false);
-                    return true;
-                }
-                if (missionWindow.isOpen()) {
-                    missionWindow.setOpen(false);
-                    return true;
-                }
-                if (shipyardWindow.isOpen()) {
-                    shipyardWindow.setOpen(false);
-                    return true;
-                }
-                if (boardingWindow.isOpen()) {
-                    boardingWindow.setOpen(false);
-                    return true;
-                }
-                if (crewWindow.isOpen()) {
-                    crewWindow.setOpen(false);
-                    return true;
-                }
-                if (!consoleWindow.isOpen()) return false;
-                consoleWindow.close();
+                // The topmost window, whoever shows it; the game leaves an Esc used here alone
+                if (!screens.back()) return false;
+                variantKeys.add(keycode);
                 return true;
             case Input.Keys.T:
-                if (!tradeWindow.isOpen() && !tradeWindow.isDocked()) return false;
-                tradeWindow.setOpen(!tradeWindow.isOpen());
-                return true;
+                return keyToggles(ClassicWindow.TRADE);
             case Input.Keys.Y:
                 // The station yard; the shipyard window is one of its services, and has the key to
                 // itself where there is no yard, as when handing over a prize off a station
-                if (shipyardWindow.isOpen()) {
-                    shipyardWindow.setOpen(false);
+                if (isOpen(ClassicWindow.SHIPYARD)) {
+                    close(ClassicWindow.SHIPYARD);
                     return true;
                 }
-                if (yardWindow.isOpen()) {
-                    yardWindow.setOpen(false);
+                if (isOpen(ClassicWindow.YARD)) {
+                    close(ClassicWindow.YARD);
                     return true;
                 }
-                if (yardWindow.isAvailable() && !yardWindow.isField()) return yardWindow.setOpen(true);
+                if (yardWindow.isAvailable() && !yardWindow.isField()) return open(ClassicWindow.YARD);
                 // No yard: a prize to hand over first, else the crew's own field refit
-                if (shipyardWindow.isAvailable() && shipyardWindow.setOpen(true)) return true;
-                return yardWindow.isAvailable() && yardWindow.setOpen(true);
+                if (shipyardWindow.isAvailable() && open(ClassicWindow.SHIPYARD)) return true;
+                return yardWindow.isAvailable() && open(ClassicWindow.YARD);
             case Input.Keys.J:
-                if (!missionWindow.isOpen() && !missionWindow.isAvailable()) return false;
-                missionWindow.setOpen(!missionWindow.isOpen());
-                return true;
+                return keyToggles(ClassicWindow.MISSIONS);
             case Input.Keys.K:
-                if (!boardingWindow.isOpen() && !boardingWindow.isAvailable()) return false;
-                boardingWindow.setOpen(!boardingWindow.isOpen());
-                return true;
+                return keyToggles(ClassicWindow.BOARDING);
             case Input.Keys.I:
-                if (!crewWindow.isOpen() && !crewWindow.isAvailable()) return false;
-                crewWindow.setOpen(!crewWindow.isOpen());
-                return true;
+                return keyToggles(ClassicWindow.CREW);
             case Input.Keys.M:
-                setMapVisible(!isMapOpen());
-                return true;
+                return toggle(ClassicWindow.MAP);
             case Input.Keys.V:
                 if (viewKey != null) viewKey.run();
                 else viewMode.toggle();
@@ -438,7 +427,10 @@ public class UiHud implements Disposable {
     private final FocusNav focusNav = new FocusNav();
     private com.badlogic.gdx.scenes.scene2d.Group focusWindow;
 
-    /** The window that has the keys, or null: the console, market, yard, mission board or boarding window. */
+    /**
+     * The classic window that has the keys, or null: the console, market, yard, mission board or
+     * boarding window. A variant's own screens are not among them: see {@link #windowHasKeys}.
+     */
     public com.badlogic.gdx.scenes.scene2d.Group openWindow() {
         if (consoleWindow.isOpen()) return consoleWindow;
         if (tradeWindow.isOpen()) return tradeWindow;
@@ -450,7 +442,161 @@ public class UiHud implements Disposable {
 
     private void openConsole(Entity console, InteractableConsoleComponent data) {
         interactPromptSystem.setPromptsEnabled(false);
+        if (screens.replaced(ClassicWindow.CONSOLE)) {
+            // The variant's console screen reads the console from the data layer
+            this.data.console.set(console, data, consoleActions.get(data.consoleId));
+            if (!screens.open(ClassicWindow.CONSOLE)) consoleClosed();
+            return;
+        }
         consoleWindow.open(console, data, consoleLayouts.get(data.consoleId), consoleExtras.get(data.consoleId));
+    }
+
+    /** The console screen is shut: the prompts come back, as when the classic window closes. */
+    private void consoleClosed() {
+        data.console.clear();
+        interactPromptSystem.setPromptsEnabled(true);
+    }
+
+    /**
+     * What a variant's console screen offers at consoles with this id beside the system's switch, as
+     * {@link #registerConsoleExtra} adds a button to the classic window ("Take fire control" at the
+     * weapons console): its words, the {@code Action} name of its key, and what it does. Read into
+     * {@code HudData#console} when the console opens.
+     */
+    public void registerConsoleAction(String consoleId, String label, String action, Runnable run) {
+        com.badlogic.gdx.utils.Array<HudData.ConsoleAction> list = consoleActions.get(consoleId);
+        if (list == null) consoleActions.put(consoleId, list = new com.badlogic.gdx.utils.Array<>());
+        list.add(new HudData.ConsoleAction(label, action, run));
+    }
+
+    // --- Windows, whoever shows them ---------------------------------------------------------
+
+    /** The classic HUD's own windows and the map, as the router sees them. The game adds its text panels ({@link #registerWindow}). */
+    private void registerWindows() {
+        screens.register(ClassicWindow.MAP, new Screens.Classic() {
+            @Override
+            public boolean available() {
+                return true;
+            }
+
+            @Override
+            public boolean isOpen() {
+                return maneuverMap.isVisible();
+            }
+
+            @Override
+            public boolean setOpen(boolean open) {
+                showMap(open);
+                return open;
+            }
+        });
+        screens.register(ClassicWindow.CONSOLE, new Screens.Classic() {
+            @Override
+            public boolean available() {
+                return consoleWindow.isOpen() || data.console.isOpen();
+            }
+
+            @Override
+            public boolean isOpen() {
+                return consoleWindow.isOpen();
+            }
+
+            @Override
+            public boolean setOpen(boolean open) {
+                // A console opens from E at it (openConsole): only closing works from here
+                if (!open) consoleWindow.close();
+                return consoleWindow.isOpen();
+            }
+        });
+        screens.register(ClassicWindow.TRADE, classic(tradeWindow::isDocked, tradeWindow::isOpen, tradeWindow::setOpen));
+        screens.register(ClassicWindow.YARD, classic(yardWindow::isAvailable, yardWindow::isOpen, yardWindow::setOpen));
+        screens.register(ClassicWindow.SHIPYARD, classic(shipyardWindow::isAvailable, shipyardWindow::isOpen, shipyardWindow::setOpen));
+        screens.register(ClassicWindow.MISSIONS, classic(missionWindow::isAvailable, missionWindow::isOpen, missionWindow::setOpen));
+        screens.register(ClassicWindow.BOARDING, classic(boardingWindow::isAvailable, boardingWindow::isOpen, boardingWindow::setOpen));
+        screens.register(ClassicWindow.CREW, classic(crewWindow::isAvailable, crewWindow::isOpen, crewWindow::setOpen));
+    }
+
+    private static Screens.Classic classic(java.util.function.BooleanSupplier available, java.util.function.BooleanSupplier isOpen,
+                                           java.util.function.Predicate<Boolean> setOpen) {
+        return new Screens.Classic() {
+            @Override
+            public boolean available() {
+                return available.getAsBoolean();
+            }
+
+            @Override
+            public boolean isOpen() {
+                return isOpen.getAsBoolean();
+            }
+
+            @Override
+            public boolean setOpen(boolean open) {
+                return setOpen.test(open);
+            }
+        };
+    }
+
+    /**
+     * What the game does for a window it draws itself: the notice log, the controls panel and the
+     * ship-lost screen ({@link ClassicWindow#LOG}, {@link ClassicWindow#HELP},
+     * {@link ClassicWindow#GAME_OVER}). With it registered, their keys and Esc go through
+     * {@link #toggle} and {@link #close}, and a variant that replaces one shows its screen instead.
+     */
+    public void registerWindow(ClassicWindow window, Screens.Classic classic) {
+        screens.register(window, classic);
+    }
+
+    /** Whether the variant drawing now shows its own screen for {@code window}; the game then leaves it to the variant. */
+    public boolean replaces(ClassicWindow window) {
+        return screens.replaced(window);
+    }
+
+    /** Whether {@code window} can open now: the market while docked, boarding while latched, a console while one is in use. */
+    public boolean available(ClassicWindow window) {
+        if (window == ClassicWindow.CONSOLE && screens.replaced(window)) return data.console.isOpen();
+        return screens.available(window);
+    }
+
+    /** Whether {@code window} is open, the classic window or the variant's screen for it. */
+    public boolean isOpen(ClassicWindow window) {
+        return screens.isOpen(window);
+    }
+
+    /** Opens {@code window} if it can open now, the classic window or the variant's screen for it; whether it is open. */
+    public boolean open(ClassicWindow window) {
+        return screens.open(window);
+    }
+
+    /** Closes {@code window}, whoever shows it. */
+    public void close(ClassicWindow window) {
+        screens.close(window);
+        if (window == ClassicWindow.CONSOLE && screens.replaced(window) && !screens.isOpen(window) && data.console.isOpen()) consoleClosed();
+    }
+
+    /** Its key: closes {@code window} if it is open, else opens it if it can; true when it did either. */
+    public boolean toggle(ClassicWindow window) {
+        return screens.toggle(window);
+    }
+
+    /**
+     * Whether Esc would close something here: the map, a window, the notice log or the controls,
+     * whoever shows it. The game asks before pausing or quitting on Esc. Not the ship-lost screen.
+     */
+    public boolean windowOpen() {
+        return screens.anyOpen();
+    }
+
+    /**
+     * Whether a window has the arrow keys and Enter (and the pad, which sends them): a classic window,
+     * or any screen of the variant's but the map's panels. The game leaves those keys alone then.
+     */
+    public boolean windowHasKeys() {
+        if (openWindow() != null) return true;
+        if (variant == null) return false;
+        for (ClassicWindow w : ClassicWindow.values()) {
+            if (w != ClassicWindow.MAP && w != ClassicWindow.GAME_OVER && screens.replaced(w) && screens.isOpen(w)) return true;
+        }
+        return false;
     }
 
     /**
@@ -539,12 +685,14 @@ public class UiHud implements Disposable {
 
     /** Feeds the orbit map, small and full screen; null leaves them empty. */
     public void setOrbitPath(OrbitPathProvider orbitPath) {
+        data.orbitPath = orbitPath;
         orbitMap.setProvider(orbitPath);
         maneuverMap.setProvider(orbitPath);
     }
 
     /** What the full-screen orbit map's mouse planning and buttons do; null leaves them doing nothing. */
     public void setManeuverPlanner(ManeuverPlannerProvider planner) {
+        data.planner = planner;
         maneuverMap.setPlanner(planner);
     }
 
@@ -575,6 +723,7 @@ public class UiHud implements Disposable {
 
     /** Feeds the station market window ([T] while docked at a station); null hides it. */
     public void setTrade(TradeProvider trade) {
+        data.trade = trade;
         tradeWindow.setProvider(trade);
     }
 
@@ -584,11 +733,13 @@ public class UiHud implements Disposable {
 
     /** Feeds the station yard window ([Y] while docked where a yard can work on the ship); null hides it. */
     public void setYard(YardProvider yard) {
+        data.yard = yard;
         yardWindow.setProvider(yard);
     }
 
     /** Feeds the boarding and salvage window ([K] while latched to another ship); null hides it. */
     public void setBoarding(BoardingProvider boarding) {
+        data.boarding = boarding;
         boardingWindow.setProvider(boarding);
     }
 
@@ -602,6 +753,7 @@ public class UiHud implements Disposable {
 
     /** Feeds the mission board ([J] while docked at a station, or holding a contract); null hides it. */
     public void setMissions(MissionProvider missions) {
+        data.missions = missions;
         missionWindow.setProvider(missions);
     }
 
@@ -611,6 +763,7 @@ public class UiHud implements Disposable {
 
     /** Feeds the crew roster ([I] whenever the player has a ship); null hides it. */
     public void setCrew(CrewProvider crew) {
+        data.crew = crew;
         crewWindow.setProvider(crew);
     }
 
@@ -620,6 +773,7 @@ public class UiHud implements Disposable {
 
     /** Feeds the shipyard window (the yard window's Ships for sale, or [Y] with a prize to hand over and no yard); null hides it. */
     public void setShipyard(ShipyardProvider shipyard) {
+        data.shipyard = shipyard;
         shipyardWindow.setProvider(shipyard);
     }
 
@@ -629,11 +783,18 @@ public class UiHud implements Disposable {
 
     /** Off-bubble traffic for the map (M), drawn over the orbits. Without one the map shows only orbits. */
     public void setTrafficMap(TrafficMapProvider provider) {
+        data.trafficMap = provider;
         maneuverMap.setTraffic(provider);
     }
 
-    /** Opens the map (orbits, burns and traffic), or closes it. */
+    /** Opens the map (orbits, burns and traffic), or closes it: the game's canvas, with the variant's panels round it when it shows them. */
     public void setMapVisible(boolean visible) {
+        if (visible) open(ClassicWindow.MAP);
+        else close(ClassicWindow.MAP);
+    }
+
+    /** The map's canvas (and its own panel, unless the variant shows the panels) up or down. */
+    private void showMap(boolean visible) {
         if (visible) {
             maneuverMap.getTraffic().refresh();
             maneuverMap.refresh();
@@ -683,7 +844,12 @@ public class UiHud implements Disposable {
             data.promptAction = interactPromptSystem.getAction();
             data.dockHint = dockHintRef.isVisible() ? dockHintRef.getText().toString() : "";
             data.refresh();
+            screens.update();
             variant.update(delta);
+            // The variant closed its console screen itself: the prompts come back
+            if (data.console.isOpen() && !screens.isOpen(ClassicWindow.CONSOLE)) consoleClosed();
+            // Over the windows and the map, which come to the front when they open
+            if (screenLayer.getZIndex() != stage.getRoot().getChildren().size - 1) screenLayer.toFront();
         }
         applyHidden();
         stage.act(delta);
@@ -734,9 +900,17 @@ public class UiHud implements Disposable {
      */
     public void setVariant(String id) {
         HudVariants.Entry entry = HudVariants.find(id);
+        // What is open now opens again under the next variant, whoever shows it there
+        wasOpen.clear();
+        screens.opened(wasOpen);
+        if (data.console.isOpen()) {
+            consoleClosed();
+            consoleWindow.close();
+        }
         if (variant != null) {
             variant.detach();
             variantLayer.clearChildren();
+            screenLayer.clearChildren();
             variant = null;
         }
         variantId = entry.id;
@@ -744,7 +918,7 @@ public class UiHud implements Disposable {
         HudVariant next = entry.create();
         if (next != null) {
             try {
-                next.attach(new HudVariantHost(this, variantLayer));
+                next.attach(new HudVariantHost(this, variantLayer, screenLayer));
                 variant = next;
                 for (ClassicPart p : ClassicPart.values()) if (!next.keeps().contains(p)) hidden.add(p);
                 variant.resize(com.badlogic.gdx.Gdx.graphics == null ? 0 : com.badlogic.gdx.Gdx.graphics.getWidth(),
@@ -752,12 +926,15 @@ public class UiHud implements Disposable {
             } catch (RuntimeException e) {
                 // A variant that cannot start leaves the classic HUD up rather than none
                 variantLayer.clearChildren();
+                screenLayer.clearChildren();
                 hidden.clear();
                 variant = null;
                 variantId = HudVariants.CLASSIC;
                 if (com.badlogic.gdx.Gdx.app != null) com.badlogic.gdx.Gdx.app.error("UiHud", "HUD variant " + entry.id + " failed to start", e);
             }
         }
+        screens.setVariant(variant, wasOpen);
+        maneuverMap.setOwnPanel(!screens.replaced(ClassicWindow.MAP));
         // Everything the last variant hid comes back as the view shows it, then this one's hiding applies
         flightPanel.setVisible(true);
         gauges.setVisible(true);

@@ -65,7 +65,7 @@ public class ManeuverMap extends Table {
     private final TrafficLayer traffic;
     private java.util.function.Consumer<String> pickListener;
     private final Label orbitInfo, burnInfo, planInfo, hint;
-    private final Table burnButtons, proposalButtons;
+    private final Table panel, burnButtons, proposalButtons;
     private final TextButton focusButton, planButton;
     private ManeuverPlannerProvider planner;
     private float sinceRefresh = REFRESH_INTERVAL;
@@ -98,7 +98,7 @@ public class ManeuverMap extends Table {
         hint = new Label("", skin, "dim");
         hint.setWrap(true);
 
-        Table panel = new Table();
+        panel = new Table();
         panel.setBackground(skin.getDrawable("panel"));
         panel.pad(10f);
         panel.top().left();
@@ -227,6 +227,25 @@ public class ManeuverMap extends Table {
 
     public OrbitMap getMap() {
         return map;
+    }
+
+    /**
+     * Shows or hides the side panel (orbit, burn, fly it, target, view): a HUD variant that shows the
+     * map's panels itself ({@code ClassicWindow.MAP}) hides it, and the orbit canvas takes the whole
+     * screen under the variant's panels.
+     */
+    public void setOwnPanel(boolean shown) {
+        if (panel.isVisible() == shown) return;
+        panel.setVisible(shown);
+        com.badlogic.gdx.scenes.scene2d.ui.Cell<?> cell = getCell(panel);
+        if (shown) cell.width(PANEL_WIDTH).pad(44f, 0f, 10f, 10f);
+        else cell.width(0f).pad(0f);
+        invalidate();
+    }
+
+    /** Whether the side panel shows ({@link #setOwnPanel}). */
+    public boolean hasOwnPanel() {
+        return panel.isVisible();
     }
 
     public Focus getFocus() {

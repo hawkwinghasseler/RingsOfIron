@@ -34,6 +34,8 @@ import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.modding.ModTrustDialog;
 import com.ringsofiron.uihud.text.HudText;
+import com.ringsofiron.uihud.variants.ClassicWindow;
+import com.ringsofiron.uihud.variants.Screens;
 
 /**
  * Creates the game for {@link GameOptions}: the viewports and HUD, the world and its scenario, the
@@ -161,6 +163,7 @@ public final class GameBootstrap {
         world.combatEvents.detonations.add((signal, boom) -> pipeline.explode(boom.worldPoint.x, boom.worldPoint.y));
 
         listenToTheWorld(hud);
+        registerPanels(hud);
 
         world.hints.registerKey(HintRegistry.Context.ANY, "Esc", options.hosted ? "menu" : "quit", 90);
         dev = new DevTools(session, pipeline, scenario, refit::isOpen);
@@ -170,6 +173,71 @@ public final class GameBootstrap {
                 dev.clicks, dev.scenarioClicks, input.exteriorClicks, input.wheel));
         start(scenario);
         return this;
+    }
+
+    /**
+     * The game's own full-screen panels, the notice log (L), the controls (F1) and the ship-lost
+     * screen, as windows of the HUD's: their keys and Esc go through it, so a HUD variant can show its
+     * own screens for them ({@code ClassicWindow}).
+     */
+    private void registerPanels(UiHud hud) {
+        hud.registerWindow(ClassicWindow.LOG, new Screens.Classic() {
+            @Override
+            public boolean available() {
+                return true;
+            }
+
+            @Override
+            public boolean isOpen() {
+                return session.logOpen;
+            }
+
+            @Override
+            public boolean setOpen(boolean open) {
+                session.logOpen = open;
+                if (open) {
+                    session.logScroll = 0;
+                    session.helpOpen = false;
+                }
+                return open;
+            }
+        });
+        hud.registerWindow(ClassicWindow.HELP, new Screens.Classic() {
+            @Override
+            public boolean available() {
+                return true;
+            }
+
+            @Override
+            public boolean isOpen() {
+                return session.helpOpen;
+            }
+
+            @Override
+            public boolean setOpen(boolean open) {
+                session.helpOpen = open;
+                if (open) session.logOpen = false;
+                return open;
+            }
+        });
+        // It shows while the career is over, and goes when a save is loaded: nothing opens or closes it
+        hud.registerWindow(ClassicWindow.GAME_OVER, new Screens.Classic() {
+            @Override
+            public boolean available() {
+                return world.getCrash() != null || world.getCareerOver() != null;
+            }
+
+            @Override
+            public boolean isOpen() {
+                return available();
+            }
+
+            @Override
+            public boolean setOpen(boolean open) {
+                return isOpen();
+            }
+        });
+        hud.getData().ending = new GameOverChoices(session, saves);
     }
 
     /** The seats, the view, and what the world tells the player: rescues, tows, ships bought and disabled. */
@@ -188,6 +256,10 @@ public final class GameBootstrap {
                     input.takeControlButton(body, skin, "Take fire control: every gun", SubsystemType.WEAPONS));
             hud.registerConsoleExtra("turret_mount", (body, skin, console, data) ->
                     input.takeControlButton(body, skin, "Take the gun", SubsystemType.TURRET_MOUNT));
+            // ... and so do a HUD variant's own console screens
+            hud.registerConsoleAction("weapons", "Take fire control: every gun", Action.VIEW.name(),
+                    () -> input.takeControl(SubsystemType.WEAPONS));
+            hud.registerConsoleAction("turret_mount", "Take the gun", Action.VIEW.name(), () -> input.takeControl(SubsystemType.TURRET_MOUNT));
             // Pushed off, knocked out or the console shot away: back on deck
             world.bridge.unseated.add((signal, why) -> {
                 session.show(why);
@@ -236,7 +308,7 @@ public final class GameBootstrap {
         else if (options.firstPlay) session.firstPlay = FirstPlay.start(world, game);
         else game.beginCareer();
         if (scenario == null && !options.firstPlay && options.openingWanted) {
-            session.opening = new OpeningGuide(world.contracts, world.guides, () -> session.hud.getMissionWindow().isOpen(),
+            session.opening = new OpeningGuide(world.contracts, world.guides, () -> session.hud.isOpen(ClassicWindow.MISSIONS),
                     OpeningGuide.Step.OPEN_BOARD);
         }
         if (scenario == null) session.matchViewToSeat();

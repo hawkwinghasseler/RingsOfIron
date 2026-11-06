@@ -199,14 +199,13 @@ public class GameShell implements ApplicationListener {
         return game == null || paused;
     }
 
-    /** A HUD window, the map or the game's notice log or controls panel is open: Esc closes it first. */
+    /**
+     * A HUD window, the map or the game's notice log or controls panel is open, whoever draws it (the
+     * classic HUD or a variant's own screen), or a developer tool: Esc closes it first.
+     */
     boolean hudWindowOpen() {
         UiHud hud = game.getHud();
-        return hud.isMapOpen() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
-                || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getCrewWindow().isOpen()
-                || hud.getShipyardWindow().isOpen()
-                || hud.getConsoleWindow().isOpen() || game.isOverlayOpen() || game.isDevConsoleOpen()
-                || game.isDebugMenuOpen();
+        return hud.windowOpen() || game.isOverlayOpen() || game.isDevConsoleOpen() || game.isDebugMenuOpen();
     }
 
     @Override
@@ -217,7 +216,7 @@ public class GameShell implements ApplicationListener {
         // Typing into the developer console is text, not the player's bindings
         input.setRemapping(game != null && !paused && !game.isRefitOpen() && !game.isDevConsoleTyping());
         // A menu or window takes the pad for moving between its buttons; the map does not
-        pad.setMenuMode(menuShown() || (game != null && (game.getHud().openWindow() != null || game.isOverlayOpen())));
+        pad.setMenuMode(menuShown() || (game != null && (game.getHud().windowHasKeys() || game.isOverlayOpen())));
         input.update();
         if (pending != null) {
             Runnable r = pending;
