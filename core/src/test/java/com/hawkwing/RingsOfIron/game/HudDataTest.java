@@ -133,6 +133,27 @@ class HudDataTest {
     }
 
     @Test
+    void aHullBreachRaisesAWarningInTheRoomItOpensOnto() {
+        data.refresh();
+        assertEquals(0, data.alerts.size());
+        ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
+        int[] hole = hullBesideARoom(grid);
+        grid.getTile(hole[0], hole[1]).setIntegrity(0f);
+        // Let the room vent: the breach is still its breach once the air is gone
+        run(120);
+        data.refresh();
+        AlertRegistry.Alert breach = null;
+        for (AlertRegistry.Alert a : data.alerts.all()) if ("BREACH".equals(a.code)) breach = a;
+        assertNotNull(breach, () -> "no breach alert: " + first());
+        assertEquals(AlertRegistry.Level.WARNING, breach.level);
+        assertEquals(AlertRegistry.Category.LIFE_SUPPORT, breach.category);
+        assertFalse(breach.room.isEmpty());
+        assertEquals(hole[0], breach.tileX);
+        assertEquals(hole[1], breach.tileY);
+        assertEquals(1, breach.count);
+    }
+
+    @Test
     void aSwitchedOffSystemShowsAsAFaultAndAnAlert() {
         SubsystemComponent life = system(SubsystemComponent.SubsystemType.LIFE_SUPPORT);
         life.switchedOn = false;
@@ -194,6 +215,22 @@ class HudDataTest {
     }
 
     /** Sets one floor tile of the ship alight, as a hit does. */
+    /** A hull tile with a room's air tile beside it and no edge wall between. */
+    private static int[] hullBesideARoom(ShipGridComponent grid) {
+        for (int y = 0; y < grid.height; y++) {
+            for (int x = 0; x < grid.width; x++) {
+                Tile t = grid.getTile(x, y);
+                if (t == null || t.wallType != Tile.WallType.HULL) continue;
+                for (com.ringsofiron.interiorgrid.Side s : com.ringsofiron.interiorgrid.Side.values()) {
+                    if (grid.compartmentAt(x + s.dx, y + s.dy) != null && !grid.isEdgeBlocked(x, y, x + s.dx, y + s.dy)) {
+                        return new int[]{x, y};
+                    }
+                }
+            }
+        }
+        throw new IllegalStateException("no hull beside a room");
+    }
+
     private Tile burn() {
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         for (int y = 0; y < grid.height; y++) {
