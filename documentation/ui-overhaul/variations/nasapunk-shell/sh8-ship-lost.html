@@ -1,0 +1,33 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shell: ship lost</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="shell.js"></script>
+<script>
+// The ship is lost: every display on the deck shows its red X (a failed display, the style's own
+// mark for it), MASTER WARN is lit, and CDU-1 carries the one line that says what happened, then
+// the ways on: the latest autosave (Enter, where the cursor starts), the quick save (F9) and the
+// menu (Esc).
+let s = deckBehind({ failed: true });
+s += shellCdu(406, 153, {
+  lines: [
+    { L: { label: 'PATROL CORVETTE · DAY 3 · 14:22:05', data: 'STRUCK THE SURFACE OF THE MOON' } },
+    null,
+    { L: { label: 'AUTOSAVE 2 · DAY 3 · 12:00 · ENTER', data: 'LOAD AUTOSAVE', prompt: true, cursor: true } },
+    { L: { label: 'QUICK SAVE · DAY 3 · 14:02 · F9', data: 'LOAD QUICK SAVE', prompt: true } },
+    null,
+    { L: { label: 'ESC', data: 'MENU', prompt: true }, R: { data: 'QUIT GAME', prompt: true } },
+  ],
+  body: (gx, gy, gw) => {
+    const t = 'SHIP LOST', w = tw(t, S_TITLE, true, 0.8) + 14, bx = gx + gw / 2 - w / 2;
+    return rect(bx, gy + 5, w, 22, { stroke: C.red, sw: 1.5 }) + text(gx + gw / 2, gy + 21, t, { size: S_TITLE, bold: true, fill: C.red, anchor: 'middle', track: 0.8 });
+  },
+}).svg;
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

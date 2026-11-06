@@ -1,0 +1,161 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Task: ship's book, log</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="task.js"></script>
+<script>
+// BOOK, the ship's book (task spec, section 7), on its LOG tab: docked at Highport on day 3 after the
+// Raider was beaten and taken (T2, T5), as in T7, with L pressed, which opens the book on this
+// tab. The frame is T7's: CHR and ALR above, the header row, the tabs on their keys, and the list,
+// here the whole width, since an entry needs no page of its own.
+//
+// The log is the spec's (round 11): every notice and every alert, newest first under a divider for
+// each day, each stamped with its game time, and filtered on the soft keys under the glass: ALERTS,
+// IMPORTANT and INFO, each lit green while it shows. It keeps the last 500 entries and is saved
+// with the game (the game's NoticeLog keeps 50 and saves none); the header counts what it holds by
+// filter, four days at about 20 a day. The notices are the game's own words, with ships named in
+// full (round 9): the bounty taken and done, by the title the game gives it, which names the
+// target's faction (ContractPostings: "Raider of the Void Raiders"), done the moment its ship
+// is beaten and paid at once, 7 500 CR and +6 with the Patrol; the disablement (GameBootstrap); the
+// collar (PlayerDocking); the taking, which the first strip order made, since the Raider flies with
+// nobody aboard (Boarding.takeUndefended, task spec round 14), so no airlock was forced and nobody is
+// held; the laser stripped and stowed (Salvage, at a twentieth of its price) within two minutes of
+// it, a tile's 10 s of work and the walk there and back; and Highport's clearance, port 2 for the
+// corvette's S port. Thousands take the style's thin space, and a unit after a number is the word
+// list's (CR).
+//
+// An alert is logged once, as it is raised, in its full text (9.2): its code in capitals, then
+// what and where, and the action it named, dim, since it was the advice of that moment; it keeps
+// the band's level as its mark, ◆ a warning, ▲ a caution. When it clears, its entry gains the time
+// at the right, in the log's own stamps, rather than a second entry. The game's WARNING notices
+// become their alerts (9.2's table), so Cole's serious wound ("Cole is seriously wounded and down
+// until treated") is WOUNDED, with nobody free while Ada fought the
+// fire; it cleared once Ada began to treat Cole, whose wound treatment brought down to the light
+// one T7 shows (CrewHealthSystem). The fire is sized in tiles burning, as the game counts them
+// (Alert.count, round 16), and its entry was revised in place as it spread to T2's three, as a
+// worsening alert's is; Ada took it on at once, so it stayed a caution. The missile warning is
+// raised at launch, already under 20 s
+// from 3.2 km, and cleared as point defense downs the second harpoon. An IMPORTANT notice has a
+// white dot; INFO has no mark. The rooms take the spec's rule (Hold). There is no INTERCEPT: the
+// Raider waits near Highport and the rails' traffic doesn't fly it (HostileTraffic), so it never moves
+// to intercept (round 13 gives that alert a lane pirate's name, Pirate raider 3).
+//
+// The screens share the wireframes' clock (DAY 3 · 14:22:05); the log gives the story's own times
+// before it: the bounty taken at Highport at 09:12, so that at T2's fight, at 12:12, 2D 21H were
+// left of its 3 days.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 6 });
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
+s += alertBand({});
+
+s += consoleBody(8, 96, 1264, 698, { plate: 'SHIP\'S BOOK', sub: 'PATROL CORVETTE' });
+
+// the log: [time, mark ('w' warning, 'c' caution, 'i' important, '' info), text or the alert's
+// [code, what and where, action], and for an alert the time it cleared]
+const DAY3 = [
+  ['14:20:31', '', 'Docked at Highport'],
+  ['14:16:50', '', 'Highport gives clearance: port 2 is armed for you'],
+  ['12:33:05', '', 'Undocked from Raider'],
+  ['12:32:20', '', 'The Laser Mk1 is in the hold (sells for 2 250 CR)'],
+  ['12:31:41', '', 'The Laser Mk1 is off Raider; it\'s being carried home'],
+  ['12:30:48', '', 'Raider is taken'],
+  ['12:30:12', '', 'Docked at Raider'],
+  ['12:29:40', '', 'Your collar has hold of Raider; drawing in'],
+  ['12:16:02', 'i', 'Contract done: Raider of the Void Raiders is beaten. Paid 7 500 CR, standing +6 with Terran Patrol Authority'],
+  ['12:16:02', '', 'Raider is disabled: reactor down'],
+  ['12:12:02', 'w', ['MISSILE', '2 inbound  impact 13 s', 'F decoy'], '12:12:14'],
+  ['12:11:20', 'c', ['FIRE', 'Hold, 3 tiles', 'Ada on it'], '12:14:31'],
+  ['12:11:20', 'c', ['WOUNDED', 'Cole down', 'nobody free to treat'], '12:14:50'],
+  ['09:20:05', '', 'Undocked from Highport'],
+  ['09:12:20', '', 'Contract taken: Bounty: Raider of the Void Raiders'],
+];
+// what the log holds: four days, day 3's above and days 0 to 2 below them, by filter
+const BY = { ALERTS: 8, IMPORTANT: 4, INFO: 59 }, HELD = BY.ALERTS + BY.IMPORTANT + BY.INFO;
+
+// ---- BOOK.H, where you are, and what the log holds ----
+s += du(16, 118, 1248, 62, {
+  id: 'hdr', b: 8,
+  content: (gx, gy, gw) => {
+    let g = parts(gx + 12, gy + 21, [['SHIP\'S BOOK', C.white, S_TITLE], ['PATROL CORVETTE', C.white, 13], ['·', C.dim, 12], ['DOCKED AT HIGHPORT', C.dim, 12]], { gap: 10 }).svg;
+    g += parts(gx + 12, gy + 39, [['HOLDS', C.dim, 12], [HELD + ' ENTRIES', C.white, 13], ['·', C.dim, 12], ['ALERTS', C.dim, 12], [String(BY.ALERTS), C.white, 13], ['·', C.dim, 12], ['IMPORTANT', C.dim, 12], [String(BY.IMPORTANT), C.white, 13], ['·', C.dim, 12], ['INFO', C.dim, 12], [String(BY.INFO), C.white, 13], ['·', C.dim, 12], ['KEEPS THE LAST 500, SAVED WITH THE GAME', C.dim, 12]], { gap: 8 }).svg;
+    const ck = (x, k) => softKey(x, gy + 8, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 21.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+    g += ck(gx + gw - 53 - tw('BACK TO THE DECK', S_LABEL, true, 0.6), 'ESC') + text(gx + gw - 12, gy + 22, 'BACK TO THE DECK', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+    return g;
+  },
+}).svg;
+
+// ---- the tabs, each on its key where it has one; the shown one in white ----
+s += du(16, 186, 1248, 34, {
+  id: 'tabs', b: 5,
+  content: (gx, gy, gw) => {
+    let g = '', x = gx + 10;
+    const cap = (x, k) => softKey(x, gy + 5, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 18.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+    [['', 'SHIP'], ['I', 'CREW'], ['J', 'CONTRACTS'], ['', 'CAREER'], ['L', 'LOG', true]].forEach(([k, t, on]) => {
+      if (k) { g += cap(x, k); x += tw(k, 12, true) + 20; }
+      g += text(x, gy + 19, t, { size: S_LABEL, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+      if (on) g += line(x, gy + 23, x + tw(t, 12, true, 0.8), gy + 23, C.white, 1.5);
+      x += tw(t, 12, true, 0.8) + 30;
+    });
+    g += text(gx + gw - 10, gy + 19, 'J OPENS CONTRACTS HERE ONLY UNDOCKED: DOCKED, IT OPENS THE TERMINAL', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    return g;
+  },
+}).svg;
+
+// the kind's mark: the band's level for an alert, a white dot for an important notice
+function mark(x, y, k) {
+  const cy = y - 4.6;
+  if (k === 'w') return sym.diamond(x, cy, 4.6, C.red, 1.2, C.red);
+  if (k === 'c') return path(`M${x} ${cy - 5.4} L${x + 5.8} ${cy + 4.6} L${x - 5.8} ${cy + 4.6} Z`, C.amber, 1.2, { fill: C.amber });
+  if (k === 'i') return `<circle cx="${x}" cy="${cy}" r="3.4" fill="${C.white}"/>`;
+  return '';
+}
+
+// ---- BOOK.1, the log: newest first, under its day, filtered by kind on the keys below ----
+s += du(16, 228, 1248, 558, {
+  id: 'log', b: 8, plate: 'BOOK-1  LOG  P/N 7130-15',
+  keys: { bottom: [{ t: 'ALERTS', state: 'on' }, { t: 'IMPORTANT', state: 'on' }, { t: 'INFO', state: 'on' }] },
+  content: (gx, gy, gw, gh) => {
+    const pages = Math.ceil(HELD / DAY3.length);
+    let g = cduHead(gx, gy, gw, 'LOG', { left: 'NEWEST FIRST · ↑ ↓ OR THE WHEEL SCROLL', page: '1/' + pages });
+    const L = gx + 14, MK = L + 6, T = L + 22, N = L + 116, R = gx + gw - 12;
+    g += text(T, gy + 48, 'TIME', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + text(N, gy + 48, 'ENTRY', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 });
+    // the key to the marks, once, at the head of the column
+    {
+      let x = R;
+      [['i', 'IMPORTANT'], ['c', 'CAUTION'], ['w', 'WARNING']].forEach(([k, t]) => {
+        g += text(x, gy + 48, t, { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+        x -= tw(t, S_LABEL, true, 0.6) + 12;
+        g += mark(x, gy + 48, k);
+        x -= 22;
+      });
+    }
+    g += line(L - 2, gy + 54, R, gy + 54, C.graticule, 1);
+    let y = gy + 74;
+    g += divider(gx, y, gw, 'DAY 3');
+    y += 22;
+    DAY3.forEach(([t, k, n, cleared]) => {
+      g += mark(MK, y, k);
+      g += text(T, y, t, { size: S_CELL, bold: true, fill: C.white });
+      if (Array.isArray(n)) {
+        // an alert in its full text: the code, where and who, and the action it named, dim
+        const [code, what, act] = n;
+        let x = N;
+        g += text(x, y, code, { size: S_CELL, bold: true, fill: C.white, track: 0.5 }); x += tw(code, S_CELL, true, 0.5) + 12;
+        g += text(x, y, what, { size: S_CELL, fill: C.white, track: 0.1 }); x += tw(what, S_CELL, false, 0.1) + 14;
+        if (act) g += text(x, y, act, { size: S_CELL, fill: C.dim, track: 0.1 });
+        // the time it cleared, which the entry gains in place of a second entry
+        if (cleared) g += text(R, y, 'CLEARED ' + cleared, { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+      } else g += text(N, y, n, { size: S_CELL, bold: k === 'i', fill: C.white, track: 0.1 });
+      y += 22;
+    });
+    return g;
+  },
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shell: load</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="shell.js"></script>
+<script>
+// The load list, five saves a page: each save's line-select key loads it, its name and game time in
+// the data line and its ship, credits and where (new in the task spec) in the label line above.
+// The arrows move the cursor; DELETE on R6 deletes the cursor's save, under a guard: the first
+// press lifts it, the second deletes. Page 1 of 2: NEXT PAGE (Page Down) shows the sixth.
+let s = backdrop();
+const save = (name, t, sub, cur) => ({ L: { label: sub, parts: [[name, C.white], [t, C.white, 13, false]], cursor: cur } });
+s += shellConsole({
+  head: 'LOAD', page: '1/2',
+  lines: [
+    save('QUICK SAVE', 'DAY 3 · 14:22', 'PATROL CORVETTE · 18 450 CR · HIGHPORT', true),
+    save('AUTOSAVE 2', 'DAY 3 · 12:00', 'PATROL CORVETTE · 16 210 CR · SHACKLETON ICE'),
+    save('AUTOSAVE 1', 'DAY 2 · 12:00', 'PATROL CORVETTE · 11 900 CR · HIGHPORT'),
+    save('BEFORE THE RAID', 'DAY 2 · 08:41', 'PATROL CORVETTE · 9 340 CR · ANVIL YARDS'),
+    save('SAVE 2', 'DAY 1 · 19:05', 'PATROL CORVETTE · 7 120 CR · HIGHPORT'),
+    { L: { data: 'RTN', prompt: true }, R: { label: 'QUICK SAVE', data: 'DELETE', prompt: true, guard: 'closed' } },
+  ],
+  foot: { padPrompt: 'SAVED 6 NOV 07:41 · ENTER LOADS' },
+});
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

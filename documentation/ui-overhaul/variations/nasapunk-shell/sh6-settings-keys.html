@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shell: settings, controls</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="shell.js"></script>
+<script>
+// Settings, the controls (the keys), page 2 of 5 (flight, weapons, map and burns, helm, station and windows).
+// Each binding is a field: the action's name in the label, its key as the data. The player pressed
+// DECOY's key to bind it and then pressed R, which LAUNCH MISSILE has: both show amber, the field
+// reads R? and the scratchpad says what R does now. R again swaps the two keys; Esc keeps F. RESET
+// KEYS puts every page back to the defaults, under a guard.
+let s = backdrop();
+s += shellConsole({
+  head: 'CONTROLS · WEAPONS', page: '2/5',
+  lines: [
+    { L: { label: 'FIRE GUNS', data: 'SPACE' }, R: { label: 'NEXT TARGET', data: 'TAB' } },
+    { L: { label: 'LAUNCH MISSILE', data: 'R', c: C.amber }, R: { label: 'CUT DOOR / NEXT BURN', data: 'B' } },
+    { L: { label: 'DECOY / FORCE DOOR', data: 'R?', c: C.amber, cursor: true }, R: { label: 'RAISE / LOWER SHIELDS', data: '9' } },
+    { L: { label: 'ABANDON SHIP (TWICE)', data: 'P' }, R: { label: 'SHIELD TRIM', data: '8' } },
+    null,
+    { L: { data: 'RTN', prompt: true }, R: { label: 'ALL FIVE PAGES', data: 'RESET KEYS', prompt: true, guard: 'closed' } },
+  ],
+  foot: { padPrompt: 'R IS LAUNCH MISSILE · R AGAIN SWAPS THEM', padColor: C.amber },
+});
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

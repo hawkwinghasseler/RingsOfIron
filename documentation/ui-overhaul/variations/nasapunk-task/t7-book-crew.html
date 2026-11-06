@@ -1,0 +1,136 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Task: ship's book, crew</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="task.js"></script>
+<script>
+// BOOK, the ship's book (task spec, section 7), on its CREW tab: docked at Highport on day 3 with the
+// Raider taken (T5). I opened it here. The frame is the terminal's (T6): CHR and ALR above, the
+// header row, the tabs on their keys, the list on the left and the selected person in full on the
+// right.
+//
+// All of it is the game's (CrewRoster, CrewRecord, CrewMedical, Spacewalks, Prisoners): the starting
+// crew are the service's, so they draw no wage; skills are gunnery, engineering, marine and medicine
+// from 0 to 100, and Cole's marine skill is the 50 it started at, since the Raider flew with nobody
+// aboard and was taken by the first strip order, with no boarding (task spec round 14); a person's
+// history counts ships beaten, the ships taken that they boarded, the enemies they downed and, from
+// six minutes of it, hours of work, or reads New (every second of work also raises engineering, so
+// Cole, with none, is still at 50); a condition is OK or unconscious with the health left, a light
+// wound with it, or a serious or critical wound with what is being done about it. The job is the
+// game's own words for it (CrewTasks, Idle): an engineer never mans a console (a damaged system is
+// mended in seconds, and the rest of the damage is the yard's), so Ada, with nothing to mend, is
+// idle, and the rest man the consoles (a crewman the helm, a marine the weapons), where the lightly
+// wounded see to themselves (CrewHealthSystem); a suit goes back to its locker, which fills it. The
+// four aboard take 4 of the corvette's 8 berths. No prisoners are held, so their section says so and
+// the keys have no HAND OVER ALL. Send out is offered only for work outside in the person's trade,
+// and a marine's is only fetching someone adrift. The task spec adds each person's job now and
+// where, and their suit.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 4 });
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
+s += alertBand({});
+
+s += consoleBody(8, 96, 1264, 698, { plate: 'SHIP\'S BOOK', sub: 'PATROL CORVETTE' });
+
+// ---- BOOK.H, where you are ----
+s += du(16, 118, 1248, 62, {
+  id: 'hdr', b: 8,
+  content: (gx, gy, gw) => {
+    let g = parts(gx + 12, gy + 21, [['SHIP\'S BOOK', C.white, S_TITLE], ['PATROL CORVETTE', C.white, 13], ['·', C.dim, 12], ['DOCKED AT HIGHPORT', C.dim, 12]], { gap: 10 }).svg;
+    g += parts(gx + 12, gy + 39, [['BERTHS', C.dim, 12], ['4 OF 8', C.white, 13], ['·', C.dim, 12], ['WAGES', C.dim, 12], ['0 CR A WEEK, ALL IN THE SERVICE', C.white, 13], ['·', C.dim, 12], ['MEDICAL STORES', C.dim, 12], ['5', C.white, 13]], { gap: 8 }).svg;
+    const ck = (x, k) => softKey(x, gy + 8, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 21.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+    g += ck(gx + gw - 53 - tw('BACK TO THE DECK', S_LABEL, true, 0.6), 'ESC') + text(gx + gw - 12, gy + 22, 'BACK TO THE DECK', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+    return g;
+  },
+}).svg;
+
+// ---- the tabs, each on its key where it has one; the shown one in white ----
+s += du(16, 186, 1248, 34, {
+  id: 'tabs', b: 5,
+  content: (gx, gy, gw) => {
+    let g = '', x = gx + 10;
+    const cap = (x, k) => softKey(x, gy + 5, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 18.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+    [['', 'SHIP'], ['I', 'CREW', true], ['J', 'CONTRACTS'], ['', 'CAREER'], ['L', 'LOG']].forEach(([k, t, on]) => {
+      if (k) { g += cap(x, k); x += tw(k, 12, true) + 20; }
+      g += text(x, gy + 19, t, { size: S_LABEL, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+      if (on) g += line(x, gy + 23, x + tw(t, 12, true, 0.8), gy + 23, C.white, 1.5);
+      x += tw(t, 12, true, 0.8) + 30;
+    });
+    g += text(gx + gw - 10, gy + 19, 'J OPENS CONTRACTS HERE ONLY UNDOCKED: DOCKED, IT OPENS THE TERMINAL', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    return g;
+  },
+}).svg;
+
+// ---- BOOK.1, the people aboard: the crew, then the prisoners ----
+const list = du(16, 228, 760, 558, {
+  id: 'list', b: 8, plate: 'BOOK-1  CREW  P/N 7130-11',
+  keys: { bottom: [{ t: 'HOLD EVA IN' }, { t: 'SUITS AT STATIONS', state: 'on' }] },
+  content: (gx, gy, gw, gh) => {
+    let g = cduHead(gx, gy, gw, 'CREW', { left: '3 CREW', page: '1/1' });
+    const L = gx + 14;
+    const cols = [{ t: 'NAME', w: 78 }, { t: 'ROLE', w: 96 }, { t: 'CONDITION', w: 150 }, { t: 'JOB NOW', w: 214 }, { t: 'WHERE', w: 70 }, { t: 'MORALE', w: 66, align: 'right' }];
+    const gr = grid(L, gy + 54, cols, [
+      [{ t: 'ADA', bold: true }, 'ENGINEER', 'OK 100%', 'IDLE', 'HOLD', '72%'],
+      [{ t: 'BEA', bold: true }, 'CREWMAN', 'OK 100%', 'MANNING THE HELM', 'BRIDGE', '70%'],
+      { cells: [{ t: 'COLE', bold: true }, 'MARINE', 'LIGHT WOUND 64%', 'MANNING THE WEAPONS', 'BRIDGE', '78%'], cursor: true },
+    ], { rule: 0, rh: 24 });
+    g += gr.svg;
+    // the prisoners: none held, so the section says so
+    g += divider(gx, gy + 170, gw, 'PRISONERS');
+    g += text(L, gy + 196, 'NONE HELD', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
+    // the ship-wide orders, with the state each is in
+    g += divider(gx, gy + 228, gw, 'ORDERS FOR EVERYONE');
+    g += text(L, gy + 254, 'EVA', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + text(L + 100, gy + 254, 'CREW GO OUT FOR WORK OUTSIDE AS IT COMES', { size: S_CELL, bold: true, fill: C.white, track: 0.3 });
+    g += text(L, gy + 276, 'SUITS', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + text(L + 100, gy + 276, 'ON AT BATTLE STATIONS', { size: S_CELL, bold: true, fill: C.white, track: 0.3 });
+    g += text(L, gy + 298, 'HIRING', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + text(L + 100, gy + 298, '5 LOOKING FOR A BERTH AT HIGHPORT: THE TERMINAL\'S CREW TAB', { size: S_CELL, fill: C.white, track: 0.2 });
+    return g;
+  },
+});
+s += list.svg;
+
+// ---- BOOK.2, the cursor's person in full ----
+const det = du(784, 228, 480, 558, {
+  id: 'det', b: 8, plate: 'BOOK-2  PERSON  P/N 7130-12', footRoom: 34,
+  content: (gx, gy, gw, gh) => {
+    let g = cduHead(gx, gy, gw, 'COLE', { left: 'MARINE' });
+    const L = gx + 14, V = gx + 112, R = gx + gw - 14;
+    const lab = (y, t) => text(L, y, t, { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 });
+    const val = (y, t, o = {}) => text(o.x ?? V, y, t, { size: o.size || S_CELL, bold: o.bold !== false, fill: o.c || C.white, track: 0.3, anchor: o.anchor || 'start' });
+    // skills as four bars on a 0 to 100 scale
+    g += lab(gy + 54, 'SKILLS');
+    [['GUNNERY', 75], ['ENGINEERING', 50], ['MARINE', 50], ['MEDICINE', 50]].forEach(([t, v], i) => {
+      const y = gy + 54 + i * 20;
+      g += text(V, y, t, { size: S_LABEL, bold: true, fill: C.white, track: 0.4 });
+      g += rect(V + 112, y - 8, 180, 7, { fill: '#26303A' }) + rect(V + 112, y - 8, 180 * v / 100, 7, { fill: C.white });
+      g += text(R, y, String(v), { size: S_CELL, bold: true, fill: C.white, anchor: 'end' });
+    });
+    g += divider(gx, gy + 148, gw, 'NOW');
+    g += lab(gy + 172, 'CONDITION') + val(gy + 172, 'LIGHT WOUND 64%');
+    g += val(gy + 190, 'WORKS SLOWER TILL IT HEALS BY ITSELF', { bold: false });
+    g += lab(gy + 212, 'MORALE') + val(gy + 212, '78%');
+    g += lab(gy + 232, 'JOB') + val(gy + 232, 'MANNING THE WEAPONS, IN THE BRIDGE');
+    g += lab(gy + 252, 'SUIT') + val(gy + 252, 'PRESSURE SUIT, IN ITS LOCKER') + text(R, gy + 252, 'AIR 10:00', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += divider(gx, gy + 282, gw, 'SERVICE');
+    g += lab(gy + 306, 'WAGE') + val(gy + 306, 'NONE: IN THE PATROL\'S SERVICE');
+    g += lab(gy + 326, 'HISTORY') + val(gy + 326, '1 SHIP BEATEN');
+    // what the role takes on, which is also why SEND OUT is dark: a marine's tasks, by the game's
+    // affinities, the strongest first (CrewRole)
+    g += lab(gy + 348, 'TAKES ON') + val(gy + 348, 'FIGHTING, THE GUNS, BOARDING, DOORS,');
+    g += val(gy + 366, 'RESCUES AND FIRES, AND A HAND CARRYING', { bold: false });
+    g += val(gy + 384, 'AND WITH THE WOUNDED', { bold: false });
+    g += scratchpad(gx, gy, gw, gh, '', { prompt: 'LET GO LEAVES COLE AT HIGHPORT · NO WORK OUTSIDE FOR COLE' });
+    return g;
+  },
+});
+s += det.svg;
+// its keyboard: the person's orders, the one that can't be given now greyed
+s += hardKey(det.gx + 2, det.gy + det.gh + 6, 62, 21, 'LET GO', {}) + hardKey(det.gx + 74, det.gy + det.gh + 6, 62, 21, 'SEND\nOUT', {});
+s += text(det.gx + 74 + 31, det.gy + det.gh + 34.5, 'NO WORK', { size: 6, bold: true, fill: '#8E9298', anchor: 'middle', track: 0.8, legend: true });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

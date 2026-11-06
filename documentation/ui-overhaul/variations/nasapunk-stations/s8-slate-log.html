@@ -1,0 +1,212 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Stations: the slate, log</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="stations.js"></script>
+<script>
+// The slate's Log tab (the stations spec, 10.4): "every alert and callout, newest first, filterable
+// by station and severity; the last 500". On deck, docked at Highport on S7's visit, after the
+// First Play fight (S2, S3), the latch and the salvage (S5) and the way home. L opened the slate on
+// this tab (16.1), and the captain has scrolled down to the fight. On deck the slate runs the full
+// height and the world's centre moves left by half its width, as in S7; nothing is wrong aboard, so
+// the annunciator is dark and the ticker empty.
+//
+// What the Log holds (10.4, rounds 17 and 18): a line for each event, newest first. An alert as it
+// is raised is the words of its callout if one was spoken, else its own text (13.7), with its
+// severity's mark; as it clears, its record (13.7: "Fire in the bridge out after 1:42", "Missiles
+// gone after 0:13"), with the same mark, hollow. Advisories and crew lines answering an order are
+// logged with their station tag and speaker, as on the ticker; responses are not (13.6), so taking
+// the bounty, before the undocking, has no line. Today's notices come in as advisories under 13.4's
+// station (COMMS for docking, latching and salvage; TAC for another ship disabled; CMD for the
+// contract and boarding progress), spoken by whoever deals with it, else the one at the station,
+// else SHIP, and a station's own message in the station's name (13.5: "Highport: clearance granted,
+// port 2."). Each is in the notice's own words where they fit 50 characters ("Raider is taken",
+// "Undocked from Raider", "The Chaingun Mk1 is in the hold (sells for 900 cr)", with the word
+// list's CR), and in the spec's shorter ones where they don't: a contract's end names it by its
+// target and kind, how it ended and what it paid (13.5, round 18), so the game's 108 characters,
+// "Contract done: Raider of the Void Raiders is beaten. Paid 7,500 cr, standing +6 with Terran
+// Patrol Authority" (ContractBoard.end), are "Raider bounty done: +7 500 CR, +6 standing", the
+// whole sentence staying on the Contracts tab, under Ended. The times are First Play's day 0
+// (GameHudText counts days from 0), with walkthrough E at 00:06:44 (round 16): the fight comes
+// minutes after the undocking, as First Play turns the raider on the ship once it is 2 km clear
+// (FirstPlay's FIGHT step, GameScenario.provokeRaider).
+//
+// The fight: First Play's raider is a ship placed close by (GameScenario), not a pirate on the
+// rails, so it raises no PIRATES caution, and nothing flies it home: it never breaks off
+// (HostileTraffic flies only the pirates on the rails). It comes into the guns' range, opens fire
+// (HOSTILE FIRING) and throws two harpoons, which point defense shoots down 13 s later (S2's lines;
+// "in range" and "missile down" are the gunner's callouts, 5.4). A hit from its chaingun shorts the
+// aft starboard gun, whose sparks light the bridge (S3: the breaker recloses 45 s after the short,
+// DamageStates.AUTO_RESET, and Ada has the fire out in 1:42). It fights on until it is disabled,
+// reactor down, which ends its fire and pays the bounty at once (ContractBoard: 7 500 and +6 for a
+// ship the corvette's match, Difficulty 1 for a new ensign), and the corvette latches on (S5).
+// Walkthrough E, S2, is the moment at 00:06:44 with both harpoons still inbound. The Raider flies
+// with nobody aboard (GameScenario gives it no crew), so no party goes across: the first part
+// marked takes it (Boarding.takeUndefended), and the page starts there, the captain having marked
+// the chaingun 11 s after S5. Above the page, four newer lines: the chaingun in the hold, selling
+// for a twentieth of its 18 000 (Salvage.SALE_SHARE), the undocking, the clearance and the docking.
+// The credits are the game's sum: 5 000 to start (GameScenario.STARTING_CREDITS) and the bounty's
+// 7 500.
+//
+// The filters are two rows of positions at the top of the tab, each with its count, as on the
+// context variation's record (C9): station takes one station or all, and severity is a threshold,
+// each position keeping what is more serious. ← and → step the focused row, under FocusNav; ↑ and
+// ↓ scroll the list. The set position is white and underlined, as a tab is, and NAV, with nothing
+// in it, is dark.
+let s = space({ planet: false, seed: 12 });
+
+// The world: S7's, the corvette's deck at Highport's arm, the camera on the captain, 240 left (6.2)
+const K = 56, OX = 392 - 4.4 * K, OY = 400 - (6 - 3.5) * K, X = tx => OX + tx * K, Y = ty => OY + (6 - ty) * K;
+{
+  const ax = X(7.3), aw = X(9.7) - X(7.3);
+  s += rect(ax, -4, aw, Y(6) + 8, { fill: '#3E434A', stroke: '#24282C', sw: 1.5 });
+  for (let yy = Y(6) - 30; yy > 0; yy -= 30) s += line(ax + 2, yy, ax + aw - 2, yy, '#2E3237', 2);
+  s += line(ax + 10, -4, ax + 10, Y(6), '#4D535B', 1.5) + line(ax + aw - 10, -4, ax + aw - 10, Y(6), '#4D535B', 1.5);
+  s += rect(X(7.1), Y(6) - 12, X(9.9) - X(7.1), 14, { fill: '#30353B', stroke: '#1E2125', sw: 1.5 });
+}
+s += corvetteDeck(OX, OY, K, {
+  id: 's8',
+  crew: [[4.2, 4.45], [10.25, 4.55], [10.3, 3.45]],
+  avatar: [4.4, 1.55],
+  labels: true, labelAt: { hold: [4.0, 3.0], bridge: [10.5, 2.3] },
+});
+const CX = 392;
+s += statusStrip({ state: 'DOCKED', cx: CX });
+s += annunciator(CX, 44, [], {});
+
+// The log, newest first: [time, station, severity ('w', 'c', '' advisory; '-' hollow: a clearing),
+// line]. A callout's speaker leads its line, as on the ticker.
+const LOG = [
+  ['00:42:50', 'COMMS', '', 'SHIP: docked at Highport, port 2.'],
+  ['00:41:30', 'COMMS', '', 'Highport: clearance granted, port 2.'],
+  ['00:29:40', 'COMMS', '', 'SHIP: undocked from Raider.'],
+  ['00:28:52', 'COMMS', '', 'SHIP: the Chaingun Mk1 is in the hold (sells for 900 CR).'],
+  ['00:27:21', 'CMD', '', 'SHIP: Raider is taken.'],
+  ['00:27:05', 'COMMS', '', 'SHIP: docked at Raider.'],
+  ['00:15:37', 'CMD', '', 'SHIP: Raider bounty done: +7 500 CR, +6 standing.'],
+  ['00:15:37', 'TAC', 'c-', 'Raider firing on you: cleared after 9:12'],
+  ['00:15:37', 'TAC', '', 'Cole: Raider is disabled: reactor down.'],
+  ['00:10:05', 'ENG', 'c-', 'Fire in the bridge out after 1:42'],
+  ['00:09:02', 'ENG', 'c-', 'Aft starboard gun back after 0:45'],
+  ['00:08:23', 'ENG', 'c', 'Ada: fire in the bridge, I\'m on it.'],
+  ['00:08:17', 'ENG', 'c', 'SHIP: aft starboard gun shorted, resets itself.'],
+  ['00:06:49', 'TAC', 'w-', 'Missiles gone after 0:13'],
+  ['00:06:47', 'TAC', '', 'Cole: one harpoon down.'],
+  ['00:06:36', 'HELM', '', 'Bea: holding position.'],
+  ['00:06:36', 'TAC', 'w', 'Cole: harpoons from port. PD has them.'],
+  ['00:06:25', 'TAC', 'c', 'Cole: Raider has opened fire, Captain.'],
+  ['00:05:45', 'TAC', '', 'Cole: Raider\'s in range.'],
+  ['00:04:50', 'HELM', '', 'Bea: holding your heading, Captain.'],
+  ['00:01:20', 'COMMS', '', 'SHIP: undocked from Highport.'],
+];
+const TOP = 4;   // the lines scrolled past, above: the list is at the taking and the fight
+const count = f => LOG.filter(f).length;
+
+// a severity mark: ◆ a warning, ▲ a caution, hollow once cleared; an advisory has none
+function mark(x, y, k) {
+  const cy = y - 4.7, open = k.endsWith('-');
+  if (k[0] === 'w') return sym.diamond(x, cy, 4.4, C.red, 1.4, open ? 'none' : C.red);
+  if (k[0] === 'c') return path(`M${x} ${cy - 5.2} L${x + 5.6} ${cy + 4.4} L${x - 5.6} ${cy + 4.4} Z`, C.amber, 1.4, { fill: open ? 'none' : C.amber });
+  return '';
+}
+
+// ---- the slate, on its Log tab, full height on deck ----
+const P = { x: 784, y: 16, w: 480, h: 768 };
+const tabW = t => (tw(t, 12, true, 0.6) + 14) / 60;
+s += consoleFace(P.x, P.y, P.w, P.h, {
+  id: 'slate', b: 16, title: 'SLATE', titleSize: 11, plate: 'SLATE-1  CMD  P/N 6020-01',
+  tabs: ['SHIP', 'CREW', 'MEDICAL', 'EVA', 'CONTRACTS', 'CAREER', { t: 'LOG', state: 'cur' }].map(t => typeof t === 'string' ? { t, w: tabW(t) } : Object.assign(t, { w: tabW(t.t) })),
+  // the filters step with the arrows once focused; the list scrolls with ↑ ↓, the pages and the wheel
+  footer: [{ t: 'FILTER', k: '← →' }, { t: 'SCROLL', k: '↑ ↓' }, { t: 'CLOSE', k: 'ESC' }],
+  content: (gx, gy, gw, gh) => {
+    let c = '';
+    const L = gx + 12, R = gx + gw - 12;
+    const rule = y => line(gx + 4, y, gx + gw - 4, y, C.graticule, 1);
+    const head = (x, y, t, fill = C.dim) => text(x, y, t, { size: 12, bold: true, fill, track: 0.6 });
+    c += text(L, gy + 40, 'ENSIGN  ·  PATROL CORVETTE', { size: 12, bold: true, fill: C.dim, track: 0.6 }) + text(R, gy + 40, '12 500 CR', { size: SB, bold: true, fill: C.white, anchor: 'end', track: 0.4 });
+    c += rule(gy + 48);
+
+    // the filters: each a row of positions under its name, with their counts, the one set white
+    // and underlined, an empty one dark; the focus, in the cursor's colour, is on the station row
+    const filter = (y, rows, right) => {
+      const wOf = ([t, n, , mk]) => (mk ? 15 : 0) + tw(t, 12, true, 0.4) + 6 + tw(String(n), 12, true);
+      const gap = right ? 22 : (R - L - rows.reduce((a, r) => a + wOf(r), 0)) / (rows.length - 1);
+      let o = '', x = L;
+      rows.forEach(r => {
+        const [t, n, on, mk] = r, ink = on ? C.white : n ? C.dim : C.lensLegend, x0 = x;
+        if (mk) { o += mark(x + 5, y, mk); x += 15; }
+        o += text(x, y, t, { size: 12, bold: true, fill: ink, track: 0.4 });
+        x += tw(t, 12, true, 0.4) + 6;
+        o += text(x, y, String(n), { size: 12, bold: true, fill: ink });
+        x = x0 + wOf(r);
+        if (on) o += line(x0, y + 5, x, y + 5, C.white, 1.5);
+        x += gap;
+      });
+      return o;
+    };
+    const ST = ['HELM', 'NAV', 'TAC', 'ENG', 'COMMS', 'CMD'];
+    c += head(L, gy + 68, 'STATION') + text(R, gy + 68, 'ONE, OR ALL', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.4 });
+    c += filter(gy + 89, [['ALL', LOG.length, true], ...ST.map(t => [t, count(r => r[1] === t)])]);
+    c += rect(L - 5, gy + 74, R - L + 10, 21, { stroke: C.cyan, sw: 1.5, r: 1 });
+    c += head(L, gy + 114, 'SEVERITY') + text(R, gy + 114, 'EACH KEEPS WHAT IS MORE SERIOUS', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.4 });
+    c += filter(gy + 135, [['ALL', LOG.length, true], ['CAUTION', count(r => r[2]), false, 'c'], ['WARNING', count(r => r[2][0] === 'w'), false, 'w']], true);
+    c += rule(gy + 148);
+
+    // the list, under its day, scrolled to the fight: mark, time, station, then the line as the
+    // ticker gave it; a line too long for the column takes a second, never cut (7.2)
+    const MK = L + 4, T = L + 14, SN = L + 80, M = L + 138, room = R - M;
+    let y = gy + 170;
+    // the day, and at the end of its rule the key to the hollow marks
+    {
+      const kt = 'HOLLOW: CLEARED', kx = R - tw(kt, 12, true, 0.4);
+      c += head(L, y, 'DAY 0', C.white) + line(L + tw('DAY 0', 12, true, 0.6) + 10, y - 4.5, kx - 44, y - 4.5, C.graticule, 1);
+      c += text(R, y, kt, { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.4 });
+      c += mark(kx - 12, y, 'c-') + mark(kx - 28, y, 'w-');
+    }
+    y += 24;
+    LOG.slice(TOP).forEach(([t, st, k, msg]) => {
+      c += mark(MK, y, k);
+      c += text(T, y, t, { size: SB, bold: true, fill: C.white });
+      c += text(SN, y, st, { size: 12, bold: true, fill: C.dim, track: 0.6 });
+      // the speaker in bold, as on the ticker
+      const m = /^([A-Z][a-z]*|SHIP):\s/.exec(msg);
+      let lines = [msg];
+      if (tw(msg, SB) > room) {
+        // a number keeps its digit groups and its unit on one line: "+7 500 CR" never breaks
+        const words = msg.split(' ').reduce((a, w) => {
+          if (a.length && (/^CR[,.]?$/.test(w) || /^\d{3}/.test(w) && /\d$/.test(a[a.length - 1]))) a[a.length - 1] += ' ' + w;
+          else a.push(w);
+          return a;
+        }, []);
+        let a = words.shift();
+        while (words.length && tw(a + ' ' + words[0], SB) <= room) a += ' ' + words.shift();
+        lines = [a, words.join(' ')];
+      }
+      lines.forEach((ln, i) => {
+        const ly = y + i * 17;
+        if (i === 0 && m) {
+          c += text(M, ly, m[1] + ':', { size: SB, bold: true, fill: C.white });
+          c += text(M + tw(m[1] + ': ', SB, true), ly, ln.slice(m[0].length), { size: SB, fill: C.white });
+        } else c += text(i ? M + 10 : M, ly, ln, { size: SB, fill: C.white });
+      });
+      y += 22 + (lines.length - 1) * 17;
+    });
+    // the start of the log
+    c += text(M, y + 2, 'THE START OF THE LOG', { size: 12, bold: true, fill: C.lensLegend, track: 0.5 });
+
+    // the foot: what is kept, and what is above the page
+    c += rule(gy + gh - 48);
+    c += text(L, gy + gh - 30, 'KEPT: THE LAST 500', { size: 12, bold: true, fill: C.dim, track: 0.5 });
+    c += text(R, gy + gh - 30, TOP + ' NEWER ABOVE', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    return c;
+  },
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

@@ -1,0 +1,191 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Task: controls</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="task.js"></script>
+<script>
+// The controls reference (task spec, the shell's Controls, F1): "every action grouped by post, then
+// screens, with the player's bindings and the pad's buttons". F1 pressed at the helm at rest near
+// Highport (T1's moment). The frame is the book's (T7): CHR and ALR above, the header row naming the
+// close key, and the reference on one page, three columns of ACTION, KEY and PAD: the posts (deck,
+// helm, gunnery), then the screens and panels (map, terminal, book, boarding, console), then what
+// works at any post.
+//
+// Every key is the game's default (Action) with the task spec's destinations (section 10): I opens
+// the book on Crew, L on Log, J the terminal's Contracts docked and the book's undocked, K the
+// boarding panel, and Esc the top layer, one a press, then the pause menu; the controls reference
+// opens over everything, screens too, so Esc closes it first (round 11's closing order). Every pad
+// button is the game's (GamepadKeys) where the game has one: the left stick flies and walks, the
+// right stick strafes and its click is rotation assist, A or RT fires (A also uses), B a missile, X
+// the decoy or a door, Y the view, LT the next target, the d-pad warp, the port and undocking,
+// Start the menu, Back tapped the map, and Back held a second layer (the boards, the burn's
+// steering, a quick save, abandon). The rest are section 10's, which closes the pad's gaps (round
+// 11): the right stick aims the guns in hand, from the lock, and R3 puts the aim back on it; RB and
+// LB work the shields at the helm and the guns, so they no longer double the strafe; Back held with
+// the right stick zooms; R3 on deck works the lights; L3 puts the focus on the HUD, where the d-pad
+// moves through CHR, ALR, ANN, HLM, OBJ, FLT, WPN and SNS and A does what a click would, which
+// reaches the next port, the guns the trigger fires, the helm orders and a destination; the map is
+// worked as a screen, its keys its buttons, the bumpers stepping the destination and the triggers
+// warp; in the book the bumpers step the tabs; and the pause menu holds Controls and Load. The
+// wheel zooms and O switches the lighting at every post (GameInput), so both are under ANY POST.
+// Every action has a pad button now: B, which cuts a door on deck, calls the tow when stranded and
+// selects the next burn on the map, is Back with RT on the pad (GamepadKeys' Back layer; task spec
+// round 13), since the pad's own B is the missile's R.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 7 });
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
+s += alertBand({});
+
+s += consoleBody(8, 96, 1264, 698, { plate: 'CONTROLS', sub: 'EVERY ACTION' });
+
+// ---- the header: what this is, and its close key ----
+s += du(16, 118, 1248, 62, {
+  id: 'hdr', b: 8,
+  content: (gx, gy, gw) => {
+    let g = parts(gx + 12, gy + 21, [['CONTROLS', C.white, S_TITLE], ['EVERY ACTION, BY POST, THEN SCREENS', C.dim, 12]], { gap: 10 }).svg;
+    g += parts(gx + 12, gy + 39, [['KEYS', C.dim, 12], ['THE DEFAULTS: REBIND THEM IN SETTINGS › CONTROLS', C.white, 13], ['·', C.dim, 12], ['PAD', C.dim, 12], ['A SECOND LAYER WHILE BACK IS HELD', C.white, 13]], { gap: 8 }).svg;
+    const ck = (x, k) => softKey(x, gy + 8, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 21.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+    g += ck(gx + gw - 53 - tw('BACK TO THE HELM', S_LABEL, true, 0.6), 'ESC') + text(gx + gw - 12, gy + 22, 'BACK TO THE HELM', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+    return g;
+  },
+}).svg;
+
+// the reference, a column at a time, the posts first: [section, where it applies, rows of [action,
+// keys, pad]]; a key in brackets is
+// no key (written dim), and a null pad is a dash
+const COL1 = [
+  ['DECK', 'ON FOOT', [
+    ['WALK', ['W', 'A', 'S', 'D'], 'L STICK'],
+    ['USE: CONSOLE, LOCKER', ['E'], 'A'],
+    ['SIT AT THE CONSOLE', ['V'], 'Y'],
+    ['FORCE A SHUT DOOR', ['F'], 'X'],
+    ['CUT A SHUT DOOR', ['B'], 'BACK+RT'],
+  ]],
+  ['CONSOLE', 'E AT A SYSTEM\'S CONSOLE', [
+    ['THROW ITS SWITCH', ['ENTER'], 'FOCUS, A'],
+    ['AT A GUN: TAKE IT', ['V'], 'Y'],
+  ]],
+  ['HELM', 'V AT THE HELM', [
+    ['THRUST', ['W', 'S'], 'L STICK ↑ ↓'],
+    ['TURN', ['A', 'D'], 'L STICK ← →'],
+    ['STRAFE', ['Z', 'C'], 'R STICK'],
+    ['ROTATION ASSIST', ['X'], 'R3'],
+    ['GUNS', ['SPACE'], 'A, RT'],
+    ['MISSILE', ['R'], 'B'],
+    ['DECOY', ['F'], 'X'],
+    ['NEXT TARGET', ['TAB'], 'LT'],
+    ['SHIELDS UP / DOWN', ['9'], 'RB'],
+    ['SHIELD TRIM', ['8'], 'LB'],
+    ['ARM PORT, CLEARANCE', ['G'], 'D-PAD ←'],
+    ['NEXT PORT', ['H'], 'L3, FLT, A'],
+    ['UNDOCK, CAST OFF', ['U'], 'D-PAD →'],
+    ['TIME WARP DOWN / UP', [',', '.'], 'D-PAD ↓ ↑'],
+    ['STAND UP', ['V'], 'Y'],
+  ]],
+];
+const COL2 = [
+  ['GUNNERY', 'THE CONSOLE, OR ONE GUN', [
+    ['AIM; BACK ON THE LOCK', ['MOUSE'], 'R STICK; R3'],
+    ['FIRE, OR A CLICK', ['SPACE'], 'A, RT'],
+    ['THE GUNS IT FIRES', ['(A CLICK)'], 'L3, WPN, A'],
+    ['MISSILE', ['R'], 'B'],
+    ['DECOY', ['F'], 'X'],
+    ['NEXT TARGET', ['TAB'], 'LT'],
+    ['SHIELDS UP / DOWN', ['9'], 'RB'],
+    ['SHIELD TRIM', ['8'], 'LB'],
+    ['STAND UP', ['V'], 'Y'],
+  ]],
+  ['MAP', 'M, AT ANY POST', [
+    ['OPEN', ['M'], 'BACK, TAPPED'],
+    ['PLAN A BURN', ['N'], 'BACK+LT'],
+    ['NEXT BURN', ['B'], 'BACK+RT'],
+    ['PROGRADE / RETROGRADE', ['↑', '↓'], 'BACK+D-PAD ↑ ↓'],
+    ['RADIAL OUT / IN', ['→', '←'], 'BACK+D-PAD → ←'],
+    ['LATER / EARLIER', [']', '['], 'BACK+RB LB'],
+    ['DELETE THE BURN', ['DELETE'], 'BACK+R3'],
+    ['EXEC OR ERASE THE PLAN', ['ENTER', 'BKSP'], 'FOCUS, A'],
+    ['NEXT / LAST DESTINATION', ['Q', '⇧Q'], 'RB, LB'],
+    ['PLAN TO IT', [';'], 'FOCUS, A'],
+    ['WARP TO THE NEXT BURN', ['/'], 'FOCUS, A'],
+    ['TIME WARP DOWN / UP', [',', '.'], 'LT, RT'],
+  ]],
+];
+const COL3 = [
+  ['TERMINAL', 'DOCKED, WITH CLEARANCE', [
+    ['CONTRACTS', ['J'], 'BACK+A'],
+    ['MARKET', ['T'], 'BACK+X'],
+    ['YARD', ['Y'], 'BACK+Y'],
+  ]],
+  ['BOOK', 'AT ANY POST', [
+    ['SHIP, FROM A LAMP', ['(A CLICK)'], 'L3, ANN, A'],
+    ['CONTRACTS, UNDOCKED', ['J'], 'BACK+A'],
+    ['CREW, LOG', ['I', 'L'], 'THEN RB, LB'],
+  ]],
+  ['BOARDING', 'LATCHED, OR IN EVA REACH', [
+    ['OPEN THE PANEL', ['K'], 'BACK+B'],
+  ]],
+  ['ANY POST', 'WHEREVER YOU ARE', [
+    ['FOCUS THE HUD', ['(THE POINTER)'], 'L3, D-PAD'],
+    ['HELM ORDERS', ['1–6', '0'], 'L3, HLM, A'],
+    ['ACKNOWLEDGE ALERTS', ['(UNBOUND)'], 'L3, ALR, A'],
+    ['SET A DESTINATION', ['(A CLICK)'], 'L3, OBJ, A'],
+    ['ZOOM, VIEW OR MAP', ['WHEEL'], 'BACK+R STICK'],
+    ['LIGHTS', ['O'], 'R3, ON DECK'],
+    ['CONTROLS', ['F1'], 'START, CONTROLS'],
+    ['QUICK SAVE, LOAD', ['F5', 'F9'], 'BACK+L3; START'],
+    ['ABANDON SHIP, TWICE', ['P'], 'BACK+START'],
+    ['CALL THE TOW, TWICE', ['B'], 'BACK+RT'],
+    ['CLOSE, THEN PAUSE', ['ESC'], 'START'],
+  ]],
+];
+
+// a key cap, 16 tall, as the hint line draws them (arrows as glyphs)
+const capW = k => tw(k, 12, true) + 10;
+const cap = (x, y, k) => softKey(x, y - 13, capW(k), 16, false) + text(x + capW(k) / 2, y - 1, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+
+s += du(16, 186, 1248, 600, {
+  id: 'ref', b: 8, plate: 'CTL-1  REFERENCE  P/N 7130-20',
+  content: (gx, gy, gw, gh) => {
+    let g = '';
+    const cw = (gw - 20) / 3, KX = 174, PX = 268, RH = 19;
+    const column = (i, sections) => {
+      const x = gx + 10 + i * cw, R = x + cw - 14;
+      let y = gy + 22;
+      g += text(x, y, 'ACTION', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + text(x + KX, y, 'KEY', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 }) + text(x + PX, y, 'PAD', { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 });
+      g += line(x - 2, y + 6, R, y + 6, C.graticule, 1);
+      y += 30;
+      sections.forEach(([name, where, rows], si) => {
+        if (si) y += 6;
+        g += text(x, y, name, { size: S_LABEL, bold: true, fill: C.white, track: 0.8 }) + text(R, y, where, { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+        g += line(x + tw(name, S_LABEL, true, 0.8) + 8, y - 4.5, R - tw(where, S_LABEL, true, 0.5) - 8, y - 4.5, C.graticule, 1);
+        y += 22;
+        rows.forEach(([act, keys, pad]) => {
+          g += text(x, y, act, { size: S_LABEL, bold: true, fill: C.white, track: 0.4 });
+          let kx = x + KX;
+          keys.forEach(k => {
+            if (k[0] === '(') { g += text(kx, y, k.slice(1, -1), { size: S_LABEL, bold: true, fill: C.dim, track: 0.4 }); kx += tw(k, 12, true, 0.4) + 4; return; }
+            g += cap(kx, y, k); kx += capW(k) + 3;
+          });
+          g += pad ? text(x + PX, y, pad, { size: S_LABEL, bold: true, fill: C.white, track: 0.3 }) : text(x + PX, y, '—', { size: S_LABEL, bold: true, fill: C.dim });
+          y += RH;
+        });
+      });
+    };
+    column(0, COL1);
+    column(1, COL2);
+    column(2, COL3);
+    // the foot: the pad in a screen
+    const fy = gy + gh - 12;
+    g += line(gx + 6, fy - 18, gx + gw - 6, fy - 18, C.graticule, 1);
+    g += text(gx + 10, fy, 'IN A SCREEN OR PANEL, AND IN HUD FOCUS, THE D-PAD MOVES, A PRESSES AND B GOES BACK; LB RB CHANGE TAB', { size: S_LABEL, bold: true, fill: C.dim, track: 0.4 });
+    return g;
+  },
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

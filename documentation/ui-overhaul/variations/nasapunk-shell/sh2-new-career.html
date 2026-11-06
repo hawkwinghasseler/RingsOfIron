@@ -1,0 +1,36 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shell: new career</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="shell.js"></script>
+<script>
+// A new career, mid-entry: the player has typed a seed and it sits in the scratchpad; the seed line
+// still reads RANDOM until its key (or Enter, with the cursor on it) puts it there. The sponsor is
+// an option select: the one chosen large in cyan, the other small and dim, and its key swaps them.
+// START is on R6 and the way back on L6, as on every page of this unit.
+let s = backdrop();
+s += shellConsole({
+  head: 'NEW CAREER',
+  lines: [
+    { L: { label: 'SEED', data: 'RANDOM', c: C.dim, cursor: true } },
+    null,
+    { L: { label: 'SERVE', parts: optSel(['TERRAN PATROL', 'SELENE COMBINE'], 0) } },
+    null,
+    null,
+    { L: { data: 'RTN', prompt: true }, R: { data: 'START', prompt: true } },
+  ],
+  body: (gx, gy, gw, gh, rowY) => {
+    const note = (y, a, b) => text(gx + 22, y, a, { size: S_CELL, fill: C.white, track: 0.2 }) + (b ? text(gx + 22, y + 18, b, { size: S_CELL, fill: C.white, track: 0.2 }) : '') + line(gx + 12, y - 14, gx + 12, y + (b ? 22 : 4), C.graticule, 1);
+    return note(rowY(1) - 14, 'THE SAME SEED GIVES THE SAME START;', 'EMPTY ROLLS A NEW WORLD')
+      + note(rowY(3) - 14, 'THE PATROL STARTS YOU AT HIGHPORT,', 'IN EARTH ORBIT');
+  },
+  foot: { pad: '2026', padRight: 'ENTER PUTS IT ON THE LINE' },
+});
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

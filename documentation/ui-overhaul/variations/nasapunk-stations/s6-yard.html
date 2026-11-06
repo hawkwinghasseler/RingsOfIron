@@ -1,0 +1,108 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Stations: the yard</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="stations.js"></script>
+<script>
+// The station link's Yard tab (the stations spec, 10.3), which goes full screen as the Plot does
+// (10.1): it hides the band and brings its own annunciator and ticker. Docked at Highport after the
+// raider fight of S2 and S3, with the raider's chaingun, stripped in S5, in the hold. The
+// player has pressed REPAIR ALL, so the footer shows the game's response and the work is under
+// way. What reaches a yard is what the crew can't make whole: they mend a damaged system in seconds
+// (a repair restores a tenth of full health a second), so S3's nose gun is long mended, and a field
+// repair frames a wrecked hull tile back up only to 20% (RcsThruster.FIELD_REPAIR), so the bow's
+// starboard tile, holed in the fight, comes first. The live parts of the title bar (the station and
+// its owner, credits, the hold) are on the glass; the bezel carries only the panel's name.
+//
+// All of it is the game's (StationYard, YardWork): repairs are priced by the damage, 400 a hull tile,
+// 150 a wall, 3 000 a system and 400 a conduit for each whole point lost, and the yard restocks the
+// hull patches and medical stores with them for nothing; propellant costs 0.5 a kilogram; every
+// weapon with a price is on sale, cheapest first, new at its price or used at half, coming in at
+// 60%; a salvaged one fits from the hold for nothing; and the yard gives a quarter of its price for
+// the weapon a refit takes out. The mounts are named by position as S2 names them.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 6 });
+s += bezelBody(0, 0, 1280, 800, 0);
+s += annunciator(640, 8, [], {});
+
+const tabs = ['MARKET', { t: 'YARD', state: 'cur' }, 'CONTRACT BOARD', 'HIRING', 'INFIRMARY'];
+s += consoleFace(8, 84, 1264, 708, {
+  id: 'yard', b: 16, title: 'STATION LINK', titleSize: 11, plate: 'DU-6  STATION LINK  P/N 5410-02',
+  tabs,
+  footer: [{ t: 'REPAIR ALL', state: 'on' }, { t: 'FILL TANKS' }, { t: 'FIT SALVAGED', k: 'ENT' }, { t: 'FURNISH' }, { t: 'REBUILD DECKS' }, { t: 'CLOSE', k: 'ESC' }],
+  content: (gx, gy, gw, gh) => {
+    let g = '';
+    const L = gx + 14, R = gx + gw - 14, M = gx + 560;
+    const rule = (x1, y, x2) => line(x1, y, x2, y, C.graticule, 1);
+    const head = (x, y, t) => text(x, y, t, { size: 12, bold: true, fill: C.white, track: 0.8 });
+    const note = (x, y, t, o = {}) => text(x, y, t, { size: 12, bold: true, fill: o.c || C.dim, anchor: o.anchor || 'start', track: 0.5 });
+    // the title bar's live part: where, and what you have
+    g += text(L, gy + 50, 'HIGHPORT', { size: 15, bold: true, fill: C.white, track: 0.8 }) + note(L + 96, gy + 50, 'TERRAN PATROL AUTHORITY · YOUR SPONSOR');
+    g += parts(R, gy + 50, [['CREDITS', C.dim, 12], ['12 500 CR', C.white, 13], ['·', C.dim, 12], ['HOLD', C.dim, 12], ['14 OF 40 M³', C.white, 13]], { gap: 8, anchor: 'end' }).svg;
+    g += rule(gx + 4, gy + 62, gx + gw - 4);
+
+    // ---- repairs, under way ----
+    g += head(L, gy + 88, 'REPAIRS') + note(M - 30, gy + 88, 'UNDER WAY · PRICED BY THE DAMAGE', { anchor: 'end' });
+    const rep = grid(L, gy + 112, [{ t: 'WHAT', w: 150 }, { t: 'WHERE', w: 140 }, { t: 'HEALTH', w: 56, align: 'right' }, { t: 'CR', w: 60, align: 'right' }, { t: '', w: 110, align: 'right' }], [
+      [{ t: 'HULL', bold: true }, 'BOW, STBD SIDE', '20%', '320', { t: 'REPAIRING', c: C.green, size: 12, bold: true }],
+      [{ t: 'HULL', bold: true }, 'AFT, PORT SIDE', '45%', '220', ''],
+      [{ t: 'HULL', bold: true }, 'AFT, PORT SIDE', '70%', '120', ''],
+      [{ t: 'CONDUIT', bold: true }, 'BRIDGE', '50%', '200', ''],
+      [{ t: 'WALL', bold: true }, 'BRIDGE', '60%', '60', ''],
+    ], { rule: 0, rh: 22 });
+    g += rep.svg;
+    g += note(L, gy + 252, 'ABOUT 920 CR, PAID AS THE WORK IS DONE');
+    g += note(L, gy + 270, 'THE HULL PATCHES AND MEDICAL STORES ARE RESTOCKED WITH IT, FREE');
+
+    // ---- tanks ----
+    g += rule(gx + 4, gy + 288, M - 24);
+    g += head(L, gy + 312, 'TANKS') + note(M - 30, gy + 312, 'FILL TANKS: 260 CR', { anchor: 'end', c: C.white });
+    const tk = grid(L, gy + 336, [{ t: 'TANK', w: 150 }, { t: 'LEVEL', w: 70, align: 'right' }, { t: 'SHORT', w: 96, align: 'right' }, { t: 'CR A KG', w: 76, align: 'right' }, { t: 'CR', w: 70, align: 'right' }], [
+      [{ t: 'PROPELLANT', bold: true }, '74%', '520 KG', '0.5', '260'],
+      [{ t: 'OXYGEN', bold: true }, 'FULL', '', '2', ''],
+      [{ t: 'NITROGEN', bold: true }, 'FULL', '', '1', ''],
+    ], { rule: 0, rh: 22 });
+    g += tk.svg;
+
+    // ---- furnishings ----
+    g += rule(gx + 4, gy + 428, M - 24);
+    g += head(L, gy + 452, 'FURNISHINGS') + note(M - 30, gy + 452, '3 ABOARD: THE SUIT LOCKERS', { anchor: 'end', c: C.white });
+    g += note(L, gy + 476, '20 ON SALE, FROM A DARTBOARD AT 120 TO AN EVA LOCKER AT 12 000');
+    g += note(L, gy + 494, 'FURNISH BUYS ONE TO PLACE ON THE DECK');
+    g += note(L, gy + 512, 'REBUILD DECKS OPENS THE SHIP EDITOR');
+
+    // ---- refits, a row per mount ----
+    g += line(M - 12, gy + 72, M - 12, gy + gh - 52, C.graticule, 1);
+    g += head(M, gy + 88, 'REFITS') + note(R, gy + 88, '18 WEAPONS ON SALE, CHEAPEST FIRST', { anchor: 'end' });
+    const rf = grid(M, gy + 112, [{ t: 'MOUNT', w: 86 }, { t: 'FITTED', w: 150 }, { t: 'FIT INSTEAD', w: 150 }, { t: 'NEW', w: 66, align: 'right' }, { t: 'USED', w: 66, align: 'right' }, { t: 'SALVAGED', w: 112, align: 'right' }], [
+      [{ t: 'NOSE', bold: true }, 'COILGUN MK1', { t: '‹ ›', c: C.dim }, '', '', ''],
+      { cells: [{ t: 'FWD PORT', bold: true }, 'AUTOCANNON MK1', { t: 'CHAINGUN MK1', bold: true, c: C.cyan }, '18 000', '9 000', { t: '1 IN THE HOLD', c: C.white, bold: true }], cursor: true },
+      [{ t: 'FWD STBD', bold: true }, 'AUTOCANNON MK1', { t: '‹ ›', c: C.dim }, '', '', ''],
+      [{ t: 'AFT PORT', bold: true }, 'HARPOON LAUNCHER', { t: '‹ ›', c: C.dim }, '', '', ''],
+      [{ t: 'AFT STBD', bold: true }, 'LASER MK1', { t: '‹ ›', c: C.dim }, '', '', ''],
+    ], { rule: 0, rh: 26 });
+    g += rf.svg;
+    g += note(M, gy + 268, '← AND → STEP THE CURSOR\'S MOUNT THROUGH WHAT IS ON SALE');
+    // the cursor's refit in full: what goes, what comes, and what it costs each way
+    g += rule(M - 4, gy + 288, gx + gw - 4);
+    g += head(M, gy + 312, 'FWD PORT') + note(M + 86, gy + 312, 'AUTOCANNON MK1 OUT, CHAINGUN MK1 IN', { c: C.white });
+    const row = (y, l, v, d) => note(M, y, l) + text(M + 120, y, v, { size: 13, bold: true, fill: C.white, track: 0.3 }) + (d ? note(R, y, d, { anchor: 'end' }) : '');
+    g += row(gy + 340, 'SALVAGED', 'FREE: THE RAIDER\'S, FROM THE HOLD', 'ENTER FITS IT');
+    g += row(gy + 360, 'USED', '9 000 CR, COMING IN AT 60%', '');
+    g += row(gy + 380, 'NEW', '18 000 CR', '');
+    g += row(gy + 404, 'TRADE-IN', '3 000 CR FOR THE AUTOCANNON', 'A QUARTER OF ITS PRICE');
+    g += row(gy + 424, 'HOLD', '13 OF 40 M³ ONCE THE CRATE IS OUT', '');
+
+    // the footer's response line: what the last key did
+    g += text(L, gy + gh - 30, 'REPAIRS ORDERED: ABOUT 920 CR, PAID AS THE WORK IS DONE', { size: 12, bold: true, fill: C.white, track: 0.5 });
+    return g;
+  },
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

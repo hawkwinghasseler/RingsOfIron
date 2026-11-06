@@ -1,0 +1,251 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: record, log</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="context.js"></script>
+<script>
+// M5, the captain's record (the context spec, 10.5), on its Log tab, drawn at version 17 and with
+// First Play's Raider as version 19 has it, flying with nobody aboard: the Log keeps a fight's
+// record. First Play's NOTICES step says "L opens the notice log: the fight, the bounty and the
+// yard's work are all there". Docked at Highport at the helm after the fight with the raider, the
+// taking of it and its chaingun stripped, and the yard's repairs ordered, the captain has pressed
+// L, which opens M5 on this tab, scrolled down to the fight, and opened the line of the
+// raider's hits on the corvette (Enter on the focused line, or a click), so the whole fight is on
+// the page with one line open. The mode's frame is C8's: P1 above (nothing is wrong, so no
+// chip), the title row with the rank and the tabs on their numbers, the filters, the list, and the
+// foot row with the feed and the close keys. The feed is empty: the last message, the yard's, has had
+// its 5 s.
+//
+// The list is every message with its day and time, newest first, under a header for each day that
+// stays at the top as the list scrolls, and with them what the feed leaves to P2 and P3 (P4): each
+// condition as it is raised and as it clears, each missile fired at the ship and how it ended, and
+// the hits the ship takes from guns, merged as the feed merges its own. So the record says what
+// caused the damage. Three missiles came: point defense shot down two, and the second got through to
+// the hold, since the captain was on deck (C8), where there is no decoy to throw; it breached the
+// hold, stopped the RCS block bolted there and wounded Cole. Two hits from the raider's guns cut the
+// conduit under the forward starboard autocannon and left the forward port one at 20%: two SYSTEM
+// DOWN cautions, the port one cleared by Ada's repair, the starboard one waiting for the yard. The
+// hold's air is one row at a time (P2, version 17): BREACH while the breach is open, VACUUM once the
+// crew have patched it after the fight and the hold is still airless, PRESS LOW while it refills,
+// and the clearing timed from the first. A condition takes the catalogue's long form, its room by
+// section 5.5, and the source of what it is about: the hull, the air and the systems Engineering's,
+// a wound Crew's; a missile is Gunnery's, as point defense is, and its lines are warnings; hits taken
+// are Gunnery's too, and notable. The missiles are told in the game's voice for other craft ("Raider
+// opens its port to you"). The feed's merged gunnery lines stay, each opening to its events with
+// their times: for the ship's own hits, the gun that fired and the room of the raider it hit (the
+// raider is a corvette too, so its rooms are BRIDGE and HOLD); for hits taken, the room each landed
+// in and what it did. A merged line takes its first event's time.
+//
+// The other texts are the game's own notices with P4's source tags, as in version 15: the bounty
+// (ContractBoard: a bounty is done the moment its ship is beaten, 7 500 cr and 6 standing with the
+// Patrol), the disablement, the latch and the collar (PlayerDocking), the taking (Boarding), the
+// chaingun off the raider and in the hold, at a twentieth of its price new (Salvage), the leak
+// patched (DamageControl) and the yard's order (StationYard). Nobody defends the raider, so no
+// party goes and nobody is held: the first part marked takes it (Boarding.takeUndefended, the
+// spec's section 8), and the taking's notice names no prisoners. Thousands take the style's thin
+// space, and a unit after a number is the word list's (CR).
+//
+// The severity marks are P2's shapes: ◆ a warning, ▲ a caution, a white dot a notable (the game's
+// IMPORTANT) message, nothing for routine; a clearing, and a missile's end, keep the row's mark,
+// hollow. The two filters are controls at the top of the tab, stepped with ← and → once focused
+// (FocusNav) or by a click on a position; the set position is white and underlined, as a tab is.
+// The source filter takes one source or all, and severity is a threshold: each position keeps what
+// is more serious. The focus, in the cursor's colour, is on the opened line. The list scrolls
+// with ↑ and ↓ once it has the focus, Page Up and Page Down, and the wheel.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 14 });
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 01:44:50', warp: '1×' });
+s += consoleBody(0, 28, 1280, 772, {});
+s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M5  RECORD', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
+
+const rowsep = (gx, y, gw) => line(gx + 6, y, gx + gw - 6, y, C.graticule, 1);
+const head = (gx, gy, gw, t, right) => text(gx + 10, gy + 20, t, { size: V, bold: true, fill: C.white, track: 0.8 })
+  + (right ? text(gx + gw - 10, gy + 20, right, { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) : '') + rowsep(gx, gy + 28, gw);
+// the severity marks: P2's diamond for a warning and triangle for a caution, a white dot for a
+// notable message; a condition's clearing and a missile's end ('w-', 'c-') keep the mark, hollow
+function mark(x, y, k) {
+  const cy = y - 4.7, open = k.endsWith('-');
+  if (k[0] === 'w') return sym.diamond(x, cy, 4.6, C.red, 1.4, open ? 'none' : C.red);
+  if (k[0] === 'c') return path(`M${x} ${cy - 5.4} L${x + 5.8} ${cy + 4.6} L${x - 5.8} ${cy + 4.6} Z`, C.amber, 1.4, { fill: open ? 'none' : C.amber });
+  if (k[0] === 'n') return `<circle cx="${x}" cy="${cy}" r="3.4" fill="${C.white}"/>`;
+  return '';
+}
+
+// ---- the title row: the rank, the mode, and the tabs on their keys (the close keys are the foot's) ----
+s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 51, 'ENSIGN', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(18 + tw('ENSIGN', V, true, 0.8) + 12, 51, 'CAPTAIN\'S RECORD', { size: LB, bold: true, fill: C.dim, track: 0.8 });
+{
+  let x = 290;
+  [['1', 'CAREER'], ['2', 'STANDING'], ['3', 'CONTRACTS'], ['4', 'LOG', true]].forEach(([k, t, on]) => {
+    s += capKey(x, 38, k);
+    x += capW(k) + 7;
+    s += text(x, 51, t, { size: LB, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+    if (on) s += line(x, 55, x + tw(t, LB, true, 0.8), 55, C.white, 1.5);
+    x += tw(t, LB, true, 0.8) + 26;
+  });
+}
+
+// ---- the log's entries, newest first ----
+// [time, source, severity ('w' warning, 'c' caution, 'n' notable, '' routine; 'w-' and 'c-' a
+// clearing or a missile's end), text, { merged: a line of hits, open: its events when opened,
+// focus: the line with the focus }]
+const LOG = [
+  ['01:43:10', 'STATION', '', 'Repairs ordered: about 920 CR, paid as the work is done'],
+  ['01:40:05', 'LOG', '', 'Autosaved on docking'],
+  ['01:40:05', 'HELM', '', 'Docked at Highport'],
+  ['01:36:20', 'STATION', '', 'Highport gives clearance: port 2 is armed for you'],
+  ['01:33:50', 'HELM', '', 'Undocked from Raider'],
+  ['01:26:35', 'BOARDING', '', 'The Chaingun Mk1 is in the hold (sells for 900 CR)'],
+  ['01:26:02', 'BOARDING', '', 'The Chaingun Mk1 is off Raider; it\'s being carried home'],
+  ['01:25:12', 'BOARDING', '', 'Raider is taken'],
+  ['01:24:40', 'HELM', '', 'Docked at Raider'],
+  ['01:24:10', 'HELM', '', 'Your collar has hold of Raider; drawing in'],
+  ['01:23:05', 'HELM', '', 'Raider opens its port to you; port armed'],
+  ['00:34:40', 'ENGINEERING', 'c-', 'Low pressure: HOLD, cleared after 14:14'],
+  ['00:32:10', 'ENGINEERING', 'c', 'Low pressure: HOLD'],
+  ['00:31:30', 'ENGINEERING', 'w', 'Vacuum: HOLD'],
+  ['00:31:30', 'ENGINEERING', '', 'Leak patched, and warp is clear. The hull needs a yard for full repairs'],
+  ['00:26:50', 'SPONSOR', 'n', 'Contract done: Raider of the Void Raiders is beaten. Paid 7 500 CR, standing +6 with Terran Patrol Authority'],
+  ['00:26:50', 'GUNNERY', '', 'Raider is disabled: reactor down'],
+  // closed, as the other lines of hits are; opened it would list, newest first, 00:26:50 NOSE "Hit
+  // its reactor, in the BRIDGE", 00:26:49 FWD PORT "Hit its BRIDGE", 00:26:47 NOSE "Hit its HOLD"
+  // and 00:26:46 FWD PORT "Hit its BRIDGE": the gun that fired and the raider's room it hit
+  ['00:26:46', 'GUNNERY', '', '4 hits on Raider', { merged: true }],
+  ['00:23:15', 'GUNNERY', 'w-', 'Raider\'s missile is shot down by point defense'],
+  ['00:23:02', 'GUNNERY', 'w', 'Raider fires a missile at you'],
+  ['00:22:50', 'ENGINEERING', 'c-', 'System down: FWD PORT, cleared after 2:29'],
+  ['00:22:40', 'GUNNERY', '', '3 hits on Raider', { merged: true }],
+  ['00:20:26', 'CREW', '', 'Cole is lightly wounded and working slower'],
+  ['00:20:26', 'ENGINEERING', 'w', 'Hull breach: HOLD'],
+  ['00:20:26', 'GUNNERY', 'w-', 'Raider\'s missile hits the HOLD'],
+  ['00:20:21', 'ENGINEERING', 'c', 'System down: FWD PORT'],
+  ['00:20:17', 'ENGINEERING', 'c', 'System down: FWD STBD'],
+  ['00:20:17', 'GUNNERY', 'n', '2 hits from Raider', { merged: true, open: [
+    ['00:20:21', 'BRIDGE', 'Hit the FWD PORT autocannon: down to 20%'],
+    ['00:20:17', 'BRIDGE', 'Hit the conduit under FWD STBD: cut'],
+  ], focus: true }],
+  ['00:20:13', 'GUNNERY', 'w', 'Raider fires a missile at you'],
+  ['00:18:05', 'GUNNERY', 'w-', 'Raider\'s missile is shot down by point defense'],
+  ['00:17:52', 'GUNNERY', 'w', 'Raider fires a missile at you'],
+  ['00:17:30', 'GUNNERY', '', '2 hits on Raider', { merged: true }],
+  ['00:16:40', 'GUNNERY', '', 'Target locked: Raider'],
+  ['00:02:05', 'HELM', '', 'Undocked from Highport'],
+  ['00:02:05', 'LOG', '', 'Autosaved on undocking'],
+  ['00:01:20', 'SPONSOR', '', 'Contract taken: Bounty: Raider of the Void Raiders'],
+  ['00:00:00', 'SPONSOR', 'n', 'Welcome aboard, Ensign.'],
+];
+const count = f => LOG.filter(f).length;
+const TOP = 11;   // the entries scrolled past, above: the list is at the fight
+
+// ---- the filters: the source and the severity, each a control in a row of its positions ----
+s += du(8, 64, 1264, 76, {
+  id: 'flt', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = '';
+    const L = gx + 10, KX = L + 92, P0 = L + 160, TR = gx + gw - 12;
+    // a filter: its name, the keys that step it once it has the focus, and its positions, each with
+    // its count; the one set is white and underlined, as a tab is, and an empty one is dark
+    const width = ([t, n, , mk]) => (mk ? 17 : 0) + tw(t, B, true, 0.4) + 7 + tw(String(n), B, true);
+    const filter = (y, name, rows, gap) => {
+      let o = lab(L, y, name) + anyKey(KX, y - 13, '←') + anyKey(KX + arrowW + 4, y - 13, '→');
+      let x = P0;
+      rows.forEach(r => {
+        const [t, n, on, mk] = r, ink = on ? C.white : n ? C.dim : C.lensLegend, x0 = x;
+        if (mk) { o += mark(x + 5, y, mk); x += 17; }
+        o += text(x, y, t, { size: B, bold: true, fill: ink, track: 0.4 });
+        x += tw(t, B, true, 0.4) + 7;
+        o += text(x, y, String(n), { size: B, bold: true, fill: ink });
+        x = x0 + width(r);
+        if (on) o += line(x0, y + 5, x, y + 5, C.white, 1.5);
+        x += gap;
+      });
+      return [o, x];
+    };
+    const SOURCES = ['HELM', 'GUNNERY', 'SHIELDS', 'ENGINEERING', 'MEDICAL', 'CREW', 'BOARDING', 'STATION', 'SPONSOR', 'COMMS', 'LOG'];
+    const src = [['ALL', LOG.length, true], ...SOURCES.map(t => [t, count(r => r[1] === t)])];
+    // the source's positions spread over the row's width
+    const gap = (TR - P0 - src.reduce((a, r) => a + width(r), 0)) / (src.length - 1);
+    g += filter(gy + 24, 'SOURCE', src, gap)[0];
+    const [o2, x2] = filter(gy + 52, 'SEVERITY', [['ALL', LOG.length, true], ['NOTABLE', count(r => r[2]), false, 'n'],
+      ['CAUTION', count(r => r[2] && r[2][0] !== 'n'), false, 'c'], ['WARNING', count(r => r[2][0] === 'w'), false, 'w']], gap + 6);
+    g += o2 + text(x2 + 8, gy + 52, 'EACH KEEPS WHAT IS MORE SERIOUS', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    // the key to the hollow marks
+    const kt = 'HOLLOW: CLEARED, OR A MISSILE\'S END';
+    g += text(TR, gy + 52, kt, { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.4 });
+    const kx = TR - tw(kt, LB, true, 0.4) - 12;
+    g += mark(kx - 18, gy + 52, 'w-') + mark(kx - 2, gy + 52, 'c-');
+    return g;
+  },
+}).svg;
+
+// ---- the log: the entries, newest first, under their day, scrolled to the fight ----
+s += du(8, 146, 1264, 598, {
+  id: 'log', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = head(gx, gy, gw, 'LOG', 'NEWEST FIRST · SHOWS ' + LOG.length + ' OF ' + LOG.length);
+    const L = gx + 10, MK = L + 5, T = L + 18, SRC = L + 104, M = L + 218, TR = gx + gw - 12, foot = gy + gh - 34;
+    g += lab(T, gy + 48, 'TIME') + lab(SRC, gy + 48, 'SOURCE') + lab(M, gy + 48, 'MESSAGE');
+    // the day's header, kept at the top as the list scrolls
+    let y = gy + 74, shown = 0;
+    g += lab(L, y, 'DAY 0', { fill: C.white }) + line(L + tw('DAY 0', LB, true, 0.6) + 10, y - 4.5, TR - 14, y - 4.5, C.graticule, 1);
+    y += 24;
+    for (const [t, src, k, msg, o = {}] of LOG.slice(TOP)) {
+      const ev = o.open || [];
+      if (y + ev.length * 20 > foot - 10) break;
+      g += mark(MK, y, k);
+      g += text(T, y, t, { size: B, bold: true, fill: C.white });
+      g += text(SRC, y, src, { size: LB, bold: true, fill: C.dim, track: 0.6 });
+      // a merged line of hits opens: its caret points down when open
+      if (o.merged) {
+        const cx = M - 11, cy = y - 4.7;
+        g += path(o.open ? `M${cx - 4} ${cy - 2.5} L${cx + 4} ${cy - 2.5} L${cx} ${cy + 3} Z` : `M${cx - 2.5} ${cy - 4} L${cx + 3} ${cy} L${cx - 2.5} ${cy + 4} Z`, C.white, 1, { fill: C.white });
+      }
+      g += text(M, y, msg, { size: B, bold: k === 'n', fill: C.white, track: 0.1 });
+      // the focus, in the cursor's colour, on the opened line
+      if (o.focus) g += rect(L - 4, y - 15, TR - L - 4, 21, { stroke: C.cyan, sw: 1.5, r: 1 });
+      // its events, each with its time, the gun that fired and where it hit, on a bracket
+      if (ev.length) {
+        const y0 = y + 6;
+        ev.forEach(([et, gun, what], i) => {
+          const ey = y + 20 * (i + 1) + 2;
+          g += line(M + 2, ey - 4.5, M + 9, ey - 4.5, C.dim, 1);
+          g += text(T, ey, et, { size: B, bold: true, fill: C.dim });
+          g += text(SRC, ey, gun, { size: LB, bold: true, fill: C.dim, track: 0.6 });
+          g += text(M + 16, ey, what, { size: B, fill: C.white, track: 0.1 });
+        });
+        g += line(M + 2, y0, M + 2, y + 20 * ev.length - 2.5, C.dim, 1);
+        y += 20 * ev.length + 2;
+      }
+      y += 22;
+      shown++;
+    }
+    // the scroll bar: the track, and the thumb for the part in view
+    const ty0 = gy + 64, ty1 = foot - 14, th = ty1 - ty0;
+    g += rect(TR - 4, ty0, 4, th, { fill: C.graticule }) + rect(TR - 4, ty0 + th * TOP / LOG.length, 4, th * shown / LOG.length, { fill: C.dim });
+    // the foot: how to scroll and open, and what is above and below
+    g += rowsep(gx, foot, gw);
+    let x = L;
+    const fy = foot + 21, ky = foot + 8;
+    g += anyKey(x, ky, '↑'); x += arrowW + 4;
+    g += anyKey(x, ky, '↓'); x += arrowW + 8;
+    g += capKey(x, ky, 'PAGE UP'); x += capW('PAGE UP') + 4;
+    g += capKey(x, ky, 'PAGE DOWN'); x += capW('PAGE DOWN') + 8;
+    g += text(x, fy, 'OR THE WHEEL SCROLL', { size: LB, bold: true, fill: C.dim, track: 0.5 }); x += tw('OR THE WHEEL SCROLL', LB, true, 0.5) + 28;
+    g += capKey(x, ky, 'ENTER'); x += capW('ENTER') + 8;
+    g += text(x, fy, 'OR A CLICK OPENS A LINE OF HITS', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    g += text(TR, fy, TOP + ' NEWER ABOVE · ' + (LOG.length - TOP - shown) + ' OLDER BELOW', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    return g;
+  },
+}).svg;
+
+// ---- the foot row: the feed (empty: the last message has had its time), and the close keys ----
+s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
+s += capKey(1106, 754, 'L') + text(1130, 767, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1154, 754, 'ESC') + text(1264, 767, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

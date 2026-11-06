@@ -1,0 +1,137 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Task: boarding panel, taken</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="task.js"></script>
+<script>
+// BRD, the boarding panel (task spec, section 7), in its third phase: taken. Latched to the Raider
+// (the game's name for it), port to port. The Raider flies with nobody aboard and carries no cargo
+// (GameScenario), so no party went: the first part marked took it (Boarding.takeUndefended, task
+// spec round 14), and the salvage is under way. Ada strips the laser, and Cole waits beside the
+// mount to carry it home. The panel runs down the right side so the deck stays in sight, and on the
+// latched ship's deck the workers carry their work tags (OVL's deck set) and the marked parts their
+// cyan outlines. Once taken there is no recall (Boarding.recall), so ACROSS says only what each
+// person does, and latched on, nobody can get to the engines from inside, since they hang outside
+// the stern wall, so they read EVA ONLY before they are marked (round 15, Salvage.reachable).
+//
+// The raider is the game's (GameScenario's corvette_raider): the player's corvette refitted by
+// pirates, so its plan is the corvette's, two rooms either side of one door. Docked ships lie half
+// a turn apart, port to port, so it lies over the corvette's port side, upside down and nose aft.
+// The salvage numbers are the game's (Salvage, Shipyard) as round 14 gives them: the list runs most
+// valuable first, in the game's names and statuses; a station pays a twentieth of a part's price
+// (2 250 CR for the laser); a tile's work is 10 s at the usual rate, so the guns take 10 s and the
+// reactor 40 s; and every part comes off as a 1 m³ crate. The prize is worth 213 000 (its 96 hull
+// tiles and its guns): a station within 2 km takes it in for a twentieth of that whole, or for a
+// fiftieth of what is left once anything is off it, each gun taken off taking its price new with it,
+// so the laser and the harpoon launcher bring it to 2 760. At Highport, the sponsor's, it can be
+// turned in instead for the bounty's +6.
+let s = space({ px: 1400, py: 1700, pr: 900, seed: 5 });
+
+// ---- the deck: our corvette below, the raider above it ----
+const K = 34, OX = 150, OY = 486, G = 1.3;
+const X = tx => OX + tx * K, Y = ty => OY + (6 - ty) * K;
+// a point on the raider (its own chassis coordinates) on the screen: half a turn about the collar
+const RX = tx => OX + (17 - tx) * K, RY = ty => OY - (6 + G - ty) * K;
+// the raider: the corvette's deck drawn in place and turned half a turn about the collar's middle;
+// its reactor is down, so its consoles are dark and its deck under emergency light. Ada strips the
+// laser at the aft starboard mount, and Cole stands by it to carry the crate home
+s += `<g transform="rotate(180 ${X(8.5)} ${OY - G * K / 2})">` + corvetteDeck(OX, OY, K, {
+  id: 'rd', unpowered: true, dark: 0.28, stencils: false,
+  scorch: [[16, 4]],
+  crew: [[12.35, 1.75], [13.15, 2.3]],
+}) + '</g>';
+// the collar between the two ports: a pressurised tunnel, its floor plates and its two walls
+s += rect(X(7.2), RY(6), 2.6 * K, G * K, { fill: '#1D2125' }) + line(X(7.2), RY(6), X(7.2), Y(6), '#59616A', 3) + line(X(9.8), RY(6), X(9.8), Y(6), '#59616A', 3);
+for (let i = 1; i < 4; i++) s += line(X(7.2), RY(6) + i * G * K / 4, X(9.8), RY(6) + i * G * K / 4, '#272C31', 1);
+// our corvette: Bea at the helm, the captain by the dock
+s += corvetteDeck(OX, OY, K, {
+  id: 'cv', crew: [[10.25, 4.55]], avatar: [7.6, 4.2], labels: true, labelAt: { hold: [4, 4.55], bridge: [12.9, 3.3] },
+});
+
+// OVL, the deck set on the latched ship: the marked parts outlined in cyan (the player's command),
+// and the workers tagged in white with their work
+const markBox = (tx, ty, w, h) => rect(RX(tx + w) + 2, RY(ty) + 2, w * K - 4, h * K - 4, { stroke: C.cyan, sw: 1.5, dash: '5 3' });
+s += markBox(11, 1, 1, 1) + markBox(11, 4, 1, 1);
+s += workTag(RX(12.35), RY(1.75), 330, 186, 'ADA', 'STRIPPING THE LASER', { progress: 0.4 });
+s += workTag(RX(13.15), RY(2.3), 60, 196, 'COLE', 'WAITING TO CARRY');
+
+// ---- the fixed zones ----
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
+s += annunciatorPanel({});
+// OBJ is hidden: the bounty was paid the moment the Raider was beaten (ContractBoard), and nothing else
+// is held.
+
+// ---- BRD, down the right side ----
+s += du(864, 72, 408, 688, {
+  id: 'brd', plate: 'DU-7  BOARDING  P/N 4410-21',
+  content: (gx, gy, gw, gh) => {
+    let g = '';
+    const L = gx + 12, R = gx + gw - 12, V = gx + 86;
+    const lab = (y, t) => text(L, y, t, { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 });
+    const val = (x, y, t, o = {}) => text(x, y, t, { size: o.size || S_CELL, bold: o.bold !== false, fill: o.c || C.white, anchor: o.anchor || 'start', track: 0.4 });
+    const note = (x, y, t, c = C.dim, o = {}) => text(x, y, t, { size: S_LABEL, bold: true, fill: c, track: 0.5, anchor: o.anchor || 'start' });
+    g += cduHead(gx, gy, gw, 'BOARDING');
+    // the ship and how it stands: taken, with nobody aboard, and what had beaten it
+    g += lab(gy + 48, 'SHIP') + val(V, gy + 48, 'RAIDER', { size: S_DATA });
+    g += lab(gy + 68, 'STATE') + val(V, gy + 68, 'TAKEN', { c: C.green }) + val(V + tw('TAKEN', S_CELL, true, 0.4) + 6, gy + 68, '· NOBODY ABOARD');
+    g += note(V, gy + 85, 'WAS: REACTOR DOWN');
+    g += lab(gy + 104, 'LINK') + val(V, gy + 104, 'LATCHED, PORT TO PORT');
+    g += lab(gy + 122, 'COST') + val(V, gy + 122, 'NONE: OUTLAWS');
+    // who is across, and at what
+    g += divider(gx, gy + 146, gw, 'ACROSS');
+    g += val(L, gy + 166, 'ADA') + note(L + 44, gy + 166, 'ENGINEER') + val(R, gy + 166, 'STRIPPING THE LASER', { anchor: 'end', bold: false });
+    g += val(L, gy + 184, 'COLE') + note(L + 44, gy + 184, 'MARINE') + val(R, gy + 184, 'WAITING TO CARRY', { anchor: 'end', bold: false });
+    // the salvage, most valuable first: a mark box (cyan, filled) on what is marked to strip; Enter
+    // marks the cursor's part, or calls off a marked part's work (Salvage.mark toggles it). A part
+    // the link can't reach says so before it is marked. The four dearest show, and the last row
+    // opens the rest
+    g += divider(gx, gy + 210, gw, 'SALVAGE');
+    const box = (y, on) => rect(L, y - 9.5, 9, 9, on ? { fill: C.cyan } : { stroke: C.dim, sw: 1.2 });
+    const cols = [{ t: 'PART', w: 148 }, { t: 'CR', w: 44, align: 'right' }, { t: 'WORK', w: 48, align: 'right' }, { t: '', w: 104, align: 'right' }];
+    const parts = [
+      ['LASER MK1', '2 250', '10 S', 'STRIPPING 40%', true],
+      ['REACTOR', '2 000', '40 S', '', false],
+      ['HARPOON LAUNCHER', '1 500', '10 S', 'MARKED', true],
+      ['ENGINE', '1 250', '20 S', 'EVA ONLY', false],
+    ];
+    const gr = grid(L + 16, gy + 230, cols, parts.map(([n, cr, wk, st, m]) => ({
+      cells: [n, cr, wk, { t: st, c: m ? C.cyan : C.dim, size: 12, bold: true }],
+    })), { rule: 0, rh: 20 });
+    g += gr.svg;
+    parts.forEach(([, , , , m], i) => { g += box(gr.rowY(i), m); });
+    // the rest, as one row the cursor can reach
+    const ry = gr.rowY(3) + 20;
+    g += val(L + 16, ry, '11 MORE · 5 500 CR IN ALL', { bold: false }) + val(R, ry, 'SHOW ALL>', { anchor: 'end', size: S_DATA });
+    // the cursor spans the row from its mark box
+    g += cursor(L - 5, gr.rowY(1) - 14, gw - 14, 19);
+    g += note(L, ry + 26, '2 MARKED · 3 750 CR · EACH A 1 M³ CRATE');
+    // the cargo aboard it, and our hold after all of it
+    g += divider(gx, ry + 52, gw, 'CARGO');
+    g += val(L, ry + 72, 'HOLD EMPTY', { bold: false });
+    g += lab(ry + 92, 'OUR HOLD') + val(V, ry + 92, '6 OF 40 M³') + note(R, ry + 92, '21 AFTER ALL OF IT', C.dim, { anchor: 'end' });
+    // the prisoners: nobody was aboard
+    g += divider(gx, ry + 118, gw, 'PRISONERS');
+    g += val(L, ry + 138, 'NONE ABOARD', { bold: false });
+    // the prize's terms: what a station within 2 km pays for it, whole and once the marked parts are
+    // off, and the turn-in at the sponsor's station
+    g += divider(gx, ry + 164, gw, 'PRIZE');
+    g += note(L, ry + 184, 'A STATION WITHIN 2 KM TAKES IT IN');
+    g += lab(ry + 204, 'SALE') + val(V, ry + 204, '10 650 CR WHOLE');
+    g += note(V, ry + 222, '2 760 ONCE THE MARKED PARTS ARE OFF', C.amber);
+    g += lab(ry + 242, 'TURN IN') + val(V, ry + 242, 'AT HIGHPORT: +6 STANDING');
+    // the scratchpad line: what Enter does on the cursor's row
+    g += scratchpad(gx, gy, gw, gh, '', { prompt: 'ENTER MARKS THE REACTOR · 2 000 CR, 40 S' });
+    return g;
+  },
+}).svg;
+
+s += hintLine([['K', 'CLOSE'], ['W/A/S/D', 'WALK'], ['F1', 'CONTROLS']]);
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

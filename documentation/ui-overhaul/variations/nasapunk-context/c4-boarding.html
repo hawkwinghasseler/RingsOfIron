@@ -1,0 +1,78 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: boarding, latched</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="context.js"></script>
+<script>
+// Walkthrough 11.13 (version 19): day 6, and the fight is over. Pirate raider 3, a Light Raider the
+// player held a bounty on, cut thrust and surrendered, and the corvette latched on, port to port.
+// Cole, the ship's marine and so its boarding party, stepped aboard, the crew of three yielded, and
+// the raider is taken: its crew are held aboard it, against the corvette's four berths free (eight,
+// four aboard). Latched, the ship can't fly, so the screen is the docked one: P1, its helm field
+// empty; H4's quiet lights; X2 where the station panel would be; and the feed's notice of the
+// taking, in the game's words. P5 is not drawn: the bounty paid the moment the raider surrendered
+// (ContractBoard), and nothing else is held. The raider is still the Lock, but there is no lock
+// card: X2 names it, and its range says nothing at 40 m. Nothing is lit, so no master cue stands
+// at the bottom centre. This is the moment of the taking (version 20), 2 s on, so the feed still
+// has its notice: Cole is coming home, and nothing is marked yet, so SALV gives the ten parts worth
+// taking and what a station would pay for them, 7 550 CR (the escape pod, which sells for nothing,
+// isn't one). C6 is 12 s on. The raider has no CARGO row, since a pirate's loot never goes into its
+// hold.
+let s = space({ px: 1180, py: -900, pr: 1100, seed: 21 });
+// The pair: the Light Raider's port on top (5..7, 4, three tiles along the hull) meets the
+// corvette's port (7..9, 5), centre to centre. Docked ships lie half a turn apart, so the raider
+// sits over the corvette's port side upside down, nose aft.
+// Units are the corvette's hull art (64 a tile, origin at chassis corner (13, 3), y down).
+const SX = 640, SY = 404, K = 0.22, PCX = -374.4, PCY = -182.4;
+const toScreen = (ax, ay) => [SX + (ax - PCX) * K, SY + (ay - PCY) * K];
+s += `<g transform="translate(${SX} ${SY}) scale(${K}) translate(${-PCX} ${-PCY})">`
+  + `<g transform="translate(-480 -352) rotate(180)">${hullArt('raider', 0, 0, 0, K, { side: 'beaten', raw: true })}</g>`
+  + rect(-330, -212, 84, 22, { fill: '#2A2E33', stroke: '#15181B', sw: 1 / K })   // the latched collar
+  + hullArt('corvette', 0, 0, 0, K, { raw: true }) + '</g>';
+// W1: the Lock's brackets on the raider, in the beaten colour, and its name alone (X2 has its state)
+{
+  const [x0, y0] = toScreen(-1145.6, -540), [x1, y1] = toScreen(76.8, -150), c = C.dim, k = 12;
+  s += haloed((cc, w) => path(`M${x0} ${y0 + k} V${y0} H${x0 + k} M${x1 - k} ${y0} H${x1} V${y0 + k} M${x1} ${y1 - k} V${y1} H${x1 - k} M${x0 + k} ${y1} H${x0} V${y1 - k}`, cc, w), c, 1.8);
+  s += text(x0, y0 - 9, 'PIRATE RAIDER 3', { size: LB, bold: true, fill: C.white, track: 0.6, halo: true });
+}
+
+s += statusStrip({ seat: 'HELM', clock: 'DAY 6 · 10:15:00', warp: '1×' });
+s += feed([['BOARDING', 'Pirate raider 3 is taken: 3 held']]);
+
+// X2, the boarding panel, in R-MID where the station panel would be (v5: seven rows, 308 x up to
+// 150): the other ship and how it is held, its state on a row of its own, the party, salvage, the
+// prisoners held aboard it against the berths free, and the two ways on (K opens M4, where the
+// orders are; U at the helm casts off)
+s += du(960, ZC.rmid.y, 308, 150, {
+  id: 'x2', b: 6,
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 8, M = L + 58, P = 17;
+    let yy = gy + 16;
+    const words = (x, y, parts) => { let px = x; parts.forEach(([t, col]) => { c += text(px, y, t, { size: B, bold: true, fill: col || C.white, track: 0.3 }); px += tw(t, B, true, 0.3) + 4; }); };
+    c += lab(L, yy, 'BOARD'); words(M, yy, [['PIRATE RAIDER 3'], ['·', C.dim], ['LATCHED']]); yy += P;
+    words(M, yy, [['TAKEN:', C.green], ['CREW SURRENDERED']]); yy += P;
+    // version 11: the party is the ship's marines (Cole alone), and once the craft is taken it
+    // stands down and goes home
+    c += lab(L, yy, 'PARTY'); words(M, yy, [['1'], ['·', C.dim], ['COMING HOME']]); yy += P;
+    // version 20: until a part is marked, the parts worth taking and what a station would pay
+    c += lab(L, yy, 'SALV'); words(M, yy, [['10 PARTS'], ['·', C.dim], ['7 550'], ['CR', C.dim]]); yy += P;
+    c += lab(L, yy, 'HELD'); words(M, yy, [['3'], ['·', C.dim], ['4 BERTHS FREE']]);
+    // the two keys as buttons, 26 tall
+    const btn = (bx, bw, key, t) => { c += rect(bx, gy + 108, bw, 26, { fill: '#1F2226', stroke: '#3A434D', sw: 1, r: 1.5 }) + capKey(bx + 5, gy + 112, key, 18) + text(bx + 5 + capW(key) + 8, gy + 125.5, t, { size: B, bold: true, fill: C.white, track: 0.5 }); };
+    btn(L - 2, 136, 'K', 'BOARDING');
+    btn(gx + gw - 6 - 136, 136, 'U', 'CAST OFF');
+    return c;
+  },
+}).svg;
+
+// H4: three quiet lenses
+s += condLights(12, 748, ['HULL', 'POWER', 'LIFE SUP']);
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

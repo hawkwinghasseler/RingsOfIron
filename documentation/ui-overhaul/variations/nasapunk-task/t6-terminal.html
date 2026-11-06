@@ -1,0 +1,139 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Task: station terminal, contracts</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="task.js"></script>
+<script>
+// TRM, the station terminal (task spec, section 7), on its CONTRACTS tab: docked at Highport on day
+// 3, J opened it here. The screen's frame is the task spec's: CHR and ALR stay above, a header row
+// says where you are (TRM.H), the tabs run under it, and the body is the list on the left with the
+// selected item's detail on the right. Highport repairs and refits but sells no ships (the Patrol's
+// shipyard is Anvil Yards), so the terminal has four tabs, each on its key where it has one (J, T and
+// Y, the game's), the shown one in white. The offers are sorted by pay, operations first.
+//
+// The offers are the game's (ContractBoard, ContractPostings), posted when the board is first
+// read on the day, so each runs from 14:22: a bounty pays 7 500 and +6 over 3 days; an escort
+// 1 500 and +4, a patrol 1 000 and +3, each due in 2 days near Earth; an ordinary delivery pays a
+// fee of 15% of the cargo's value, at least 500, on top of the agreed price for the cargo, which
+// the player buys here and the giver buys there. The list's pay is net of what the cargo costs
+// here, and its standing names a giver who isn't the sponsor (task spec round 11). The cursor is on
+// round 11's urgent delivery, the one Shackleton Ice's food shortage posts at Highport
+// (WorldEvents.urgentDelivery): enough food to fill the 40 m³ hold, bought here at 25 and paid for
+// there at half again the buyer's 52, 78 a unit, with the 500 fee (15% of 3 120 is less), for +5
+// with the Selene Mining Combine, the short station's owner, and due 3 days after day 3's roll, Day
+// 6 00:00, whatever the distance. Its 3.8-day transfer (the map's, T4) arrives 1 d 9 h 40 m late,
+// and the hold has 34 m³ free. Failing costs half the standing offered. An operation is offered
+// once the rank it needs is held, so Clear the Lanes shows locked, with the game's reason. REACH is
+// the spec's addition: the travel time and delta-v from here, against the delta-v left and the
+// deadline.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 3 });
+s += chronometer({ day: 'DAY 3', time: '14:22:05', warp: '1×' });
+s += alertBand({});
+
+s += consoleBody(8, 96, 1264, 698, { plate: 'STATION TERMINAL', sub: 'HIGHPORT  ·  DATA LINK' });
+
+// ---- TRM.H, where you are ----
+s += du(16, 118, 1248, 62, {
+  id: 'hdr', b: 8,
+  content: (gx, gy, gw) => {
+    let g = '';
+    const L = gx + 12;
+    const p = parts(L, gy + 21, [['HIGHPORT', C.white, S_TITLE], ['TERRAN PATROL AUTHORITY', C.white, 13], ['YOUR SPONSOR', C.dim, 12], ['·', C.dim, 12], ['STANDING', C.dim, 12], ['22', C.white, 13]], { gap: 10 });
+    g += p.svg;
+    g += parts(L, gy + 39, [['CREDITS', C.dim, 12], ['18 450 CR', C.white, 13], ['·', C.dim, 12], ['HOLD', C.dim, 12], ['6 OF 40 M³', C.white, 13], ['·', C.dim, 12], ['CONTRACTS', C.dim, 12], ['1 OF 3 HELD', C.white, 13]], { gap: 8 }).svg;
+    const ck = (x, k) => softKey(x, gy + 8, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 21.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+    g += ck(gx + gw - 53 - tw('BACK TO THE DECK', S_LABEL, true, 0.6), 'ESC') + text(gx + gw - 12, gy + 22, 'BACK TO THE DECK', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+    return g;
+  },
+}).svg;
+
+// ---- the tabs: the terminal's pages, each on its key, the shown one in white ----
+s += du(16, 186, 1248, 34, {
+  id: 'tabs', b: 5,
+  content: (gx, gy, gw) => {
+    let g = '', x = gx + 10;
+    const cap = (x, k) => softKey(x, gy + 5, tw(k, 12, true) + 12, 18, false) + text(x + (tw(k, 12, true) + 12) / 2, gy + 18.5, k, { size: 12, bold: true, fill: C.stencil, anchor: 'middle' });
+    // CREW has no key of its own: I opens the ship's book, whose Crew tab links here while docked
+    [['J', 'CONTRACTS', true], ['T', 'MARKET'], ['Y', 'YARD'], ['', 'CREW']].forEach(([k, t, on]) => {
+      if (k) { g += cap(x, k); x += tw(k, 12, true) + 20; }
+      g += text(x, gy + 19, t, { size: S_LABEL, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+      if (on) g += line(x, gy + 23, x + tw(t, 12, true, 0.8), gy + 23, C.white, 1.5);
+      x += tw(t, 12, true, 0.8) + 30;
+    });
+    g += text(gx + gw - 10, gy + 19, 'NO SHIPYARD HERE: HIGHPORT SELLS NO SHIPS, ANVIL YARDS DOES', { size: S_LABEL, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    return g;
+  },
+}).svg;
+
+// ---- TRM.1, the offers ----
+s += du(16, 228, 800, 558, {
+  id: 'list', b: 8, plate: 'TRM-1  CONTRACTS  P/N 7130-04',
+  keys: { bottom: [{ t: 'BY PAY', state: 'on' }, 'BY TIME', 'BY DISTANCE'] },
+  content: (gx, gy, gw, gh) => {
+    let g = cduHead(gx, gy, gw, 'CONTRACTS', { left: 'OFFERS · 5 TODAY, 1 AN OPERATION; 1 URGENT', page: '1/1' });
+    const L = gx + 14;
+    const cols = [{ t: 'TYPE', w: 64 }, { t: 'JOB', w: 232 }, { t: 'PAY', w: 54, align: 'right' }, { t: 'STDG', w: 86, align: 'right' }, { t: 'DUE', w: 56, align: 'right' }, { t: 'REACH', w: 62, align: 'right' }, { t: 'ΔV M/S', w: 70, align: 'right' }, { t: '', w: 128, align: 'right' }];
+    const ok = { t: 'OK', c: C.white, bold: true };
+    const rows = [
+      { cells: ['OPER', 'CLEAR THE LANES  1 OF 3', '8 000', '+6', '', '', '', { t: 'NEEDS LIEUTENANT', c: C.dim, size: 12, bold: true }], dim: true },
+      { cells: ['BOUNTY', 'RAIDER OF THE VOID RAIDERS', '7 500', '+6', '3D', 'HERE', '', ok] },
+      // the urgent delivery: late on the only transfer that reaches it, which REACH says in amber
+      { cells: ['DELIV', '40 FOOD TO SHACKLETON ICE', '2 620', '+5 SELENE', '2D 9H', '3D 19H', '3 912', { t: 'LATE 1D 9H', c: C.amber, bold: true }], cursor: true },
+      { cells: ['ESCORT', 'HAULER KESTREL TO ANVIL YARDS', '1 500', '+4', '2D', '2:06:00', '3 000', ok] },
+      { cells: ['PATROL', 'DEEPWELL DEPOT AND BACK', '1 000', '+3', '2D', '2:00:00', '1 860', ok] },
+      { cells: ['DELIV', '18 FOOD TO ANVIL YARDS', '860', '+3', '2D', '2:06:00', '3 000', ok] },
+    ];
+    const gr = grid(L, gy + 56, cols, rows, { rh: 26, rule: 0 });
+    g += gr.svg;
+    const ny = gy + 56 + gr.h + 26;
+    g += text(L, ny, 'PAY IN CR, NET: A DELIVERY\'S FEE AND THE BUYER\'S PRICE, LESS THE CARGO HERE', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
+    g += text(L, ny + 18, 'STDG: WITH YOUR SPONSOR, OR WITH THE GIVER NAMED', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
+    g += text(L, ny + 36, 'REACH: THE TRAVEL TIME AND ΔV FROM HERE, AGAINST THE 7 007 LEFT AND EACH DEADLINE', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
+    return g;
+  },
+}).svg;
+
+// ---- TRM.2, the selected offer in full ----
+const det = du(824, 228, 440, 558, {
+  id: 'det', b: 8, plate: 'TRM-2  TERMS  P/N 7130-05', footRoom: 34,
+  content: (gx, gy, gw, gh) => {
+    let g = cduHead(gx, gy, gw, 'DELIVERY', { left: 'TERMS' });
+    const L = gx + 14, V = gx + 108, R = gx + gw - 14;
+    const lab = (y, t) => text(L, y, t, { size: S_LABEL, bold: true, fill: C.dim, track: 0.6 });
+    const val = (y, t, o = {}) => text(o.x ?? V, y, t, { size: o.size || S_CELL, bold: o.bold !== false, fill: o.c || C.white, track: 0.3, anchor: o.anchor || 'start' });
+    const aside = (y, t, o = {}) => text(o.x ?? R, y, t, { size: S_LABEL, bold: true, fill: o.c || C.dim, anchor: o.anchor || 'end', track: 0.5 });
+    // the title the game gives it (Contract.title), then why it was posted (WorldEvents' reason)
+    g += text(L, gy + 52, 'DELIVER 40 FOOD TO SHACKLETON ICE', { size: S_DATA, bold: true, fill: C.white, track: 0.5 });
+    g += lab(gy + 76, 'WHY') + val(gy + 76, 'SHACKLETON ICE IS SHORT OF FOOD') + aside(gy + 76, 'URGENT', { c: C.white });
+    g += lab(gy + 96, 'GIVER') + val(gy + 96, 'SELENE MINING COMBINE') + aside(gy + 96, 'POSTED HERE');
+    g += lab(gy + 120, 'CARGO') + val(gy + 120, '40 M³ OF FOOD, BOUGHT HERE');
+    g += val(gy + 138, 'AT 25 A UNIT: 1 000 CR', { bold: false });
+    g += lab(gy + 162, 'PAY') + val(gy + 162, '500 CR FEE ON DELIVERY');
+    g += val(gy + 180, 'PLUS 78 A UNIT FOR THE FOOD: 3 120', { bold: false });
+    g += text(V, gy + 198, '2 620 CR CLEAR OF WHAT THE FOOD COSTS', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 });
+    g += lab(gy + 222, 'STANDING') + val(gy + 222, '+5 WITH SELENE') + aside(gy + 222, 'FAILED OR GIVEN UP  −2.5');
+    g += lab(gy + 242, 'DUE') + val(gy + 242, 'DAY 6 00:00') + aside(gy + 242, 'IN 2D 9H');
+    g += divider(gx, gy + 270, gw, 'ROUTE');
+    g += lab(gy + 294, 'TO') + val(gy + 294, 'SHACKLETON ICE, AT THE MOON');
+    g += lab(gy + 314, 'TRANSFER') + val(gy + 314, '2 BURNS · 3 912 M/S · 3D 19H');
+    // the arrival against the deadline, in amber where it is late (the CONTRACT caution's word)
+    g += lab(gy + 334, 'ARRIVES') + val(gy + 334, 'DAY 7 09:40') + aside(gy + 334, '1D 9H 40M LATE', { c: C.amber });
+    g += lab(gy + 354, 'AFTER IT') + val(gy + 354, '3 095 M/S LEFT') + aside(gy + 354, 'HOME 520');
+    g += divider(gx, gy + 382, gw, 'HOLD');
+    g += lab(gy + 406, 'NEEDS') + val(gy + 406, '40 M³') + text(V + 52, gy + 406, '34 FREE', { size: S_LABEL, bold: true, fill: C.dim, track: 0.5 }) + aside(gy + 406, '6 M³ SHORT', { c: C.amber });
+    g += scratchpad(gx, gy, gw, gh, '', { prompt: 'ENTER TAKES IT · 2 OF 3 HELD AFTER' });
+    return g;
+  },
+});
+s += det.svg;
+// its keyboard: TAKE (Enter), and SHOW ROUTE (M) opens the map with the transfer proposed
+s += hardKey(det.gx + 2, det.gy + det.gh + 6, 62, 21, 'TAKE', { k: 'ENTER' }) + hardKey(det.gx + 74, det.gy + det.gh + 6, 62, 21, 'SHOW\nROUTE', { k: 'M' });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

@@ -1,0 +1,183 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: fire control</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="context.js"></script>
+<script>
+// Walkthrough 11.5: the captain at the weapons console of a gunship (it has a shield emitter, which
+// the starting corvette lacks), Bea holding the helm. A raider has fired one missile; point
+// defense is on it. The other hostile is out at 14 km. The ship is unhurt, so P2 is dark and H4's
+// three lights are out.
+let s = space({ px: 1500, py: 1300, pr: 900, seed: 11 });
+const SX = 640, SY = 405, HDG = -35, K = 0.085;
+// a point of the gunship's hull art on screen (art units, nose +x, port -y)
+const ART = HULL_ART.gunship, ACX = (ART.x0 + ART.x1) / 2;
+const onShip = (ax, ay) => { const r = HDG * Math.PI / 180, dx = (ax - ACX) * K, dy = ay * K; return [SX + dx * Math.cos(r) - dy * Math.sin(r), SY + dx * Math.sin(r) + dy * Math.cos(r)]; };
+s += hullArt('gunship', SX, SY, HDG, K);
+// W6: the missile, its predicted track to the hull and where it would strike; point defense's
+// stream from the forward port autocannon reaching for it. It is 1.3 km from where it would strike:
+// a harpoon closes at 30 m/s² (MissileDef.closingBurn), so from the Lock's 3.4 km it lands about
+// 15 s after launch. Version 6 counts that burn in the impact time (section 14), so F4 reads the
+// true 3 s (the game's coasting figure would read 4).
+const [MX, MY] = [742, 318], [IX, IY] = onShip(560, -250), [PX, PY] = onShip(500, -230);
+s += W.track(`M${MX} ${MY} Q${708} ${352} ${IX} ${IY}`);
+s += W.impact(IX, IY, 7);
+s += haloed((c, w) => line(PX, PY, MX - 6, MY + 6, c, w, { dash: '2 5' }), C.white, 1.6);
+s += W.missile(MX, MY, 232);
+// W5: the nose cannon's hit lane and lead reticle on the Lock (its hit chance is F2's). A kiting
+// ship doesn't circle (NpcCombatComponent.Stance.KITE), so it moves along the line of sight: here
+// it eases in at 12 m/s, and the 2.2 s shot (3.4 km at 1 500 m/s plus that closing) leads it by
+// 27 m, 2 units at this zoom. The reticle sits on the target, inside the lock brackets, as it does
+// in nearly every fight in this game: NPC pilots match your velocity and close at 80 m/s at most
+// (140 backing off when kiting), with 25 m/s of drift. LeadReticle's line back to the target is
+// 2 units long here, so it doesn't show.
+const [NX, NY] = onShip(844.8, 0), [RX, RY] = [842, 262];
+const LX = RX - 1.97 * 0.816, LY = RY + 1.97 * 0.578;   // 27 m toward the ship
+s += W.hitLane(NX, NY, LX, LY);
+// W1: the Lock, named only (its range is F1's). Raider 2 is 14 km off at bearing 117, off screen
+// at this zoom (72.8 a km), so it gets one edge marker where its bearing leaves the clear world, at
+// the scope's bezel; no range on it, since F4 has it (W1's off-screen rule)
+s += W.contact('hostile', RX, RY, { locked: true, label: ['RAIDER'], lx: 26, ly: -10 });
+s += W.reticle(LX, LY);
+{
+  const b = 117 * Math.PI / 180, ux = Math.sin(b), uy = -Math.cos(b), EX = 1056, EY = SY + (EX - SX) / ux * uy;
+  const arm = (sgn) => { const r = Math.PI + sgn * 0.6, ax = ux * Math.cos(r) - uy * Math.sin(r), ay = ux * Math.sin(r) + uy * Math.cos(r); return [EX + 12 * ax, EY + 12 * ay]; };
+  const [p1, p2] = [arm(1), arm(-1)];
+  s += haloed((c, w) => path(`M${p1[0]} ${p1[1]} L${EX} ${EY} L${p2[0]} ${p2[1]}`, c, w), C.red, 2.5);
+  s += text(EX - 16, EY - 8, 'RAIDER 2', { size: LB, bold: true, fill: C.red, anchor: 'end', track: 0.6, halo: true });
+}
+
+s += statusStrip({ seat: 'FIRE CONTROL', authority: 'HELM: BEA · HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:44:05', warp: '1×' });
+// P3: at fire control F4 has each missile's impact time, bearing and point defense, so P3 keeps
+// the count and the decoy (P3 in version 6), and PD ON is F4's alone
+s += threatAlert('1 MISSILE INBOUND', ['DECOY READY', { key: 'F' }]);
+// P4: gunnery's events of the last 5 s merge into one line
+s += feed([['GUNNERY', '2 hits on Raider']]);
+
+// F4 threat list (L-MID): inbound missiles by impact time, then the hostiles other than the Lock.
+// Rows are 24 tall: a click on one locks it.
+s += du(12, ZC.lmid.y, 308, 12 + 2 * 24, {
+  id: 'f4', b: 6,
+  content: (gx, gy, gw) => {
+    let c = '';
+    const R = gx + gw - 6, T = gx + 150, D = gx + 162;
+    let yy = gy + 16.7;
+    c += sym.chevron(gx + 11, yy - 5, 0, C.red, 1.5, 5.5) + text(gx + 24, yy, 'MSL', { size: B, bold: true, fill: C.red, track: 0.4 });
+    // version 8: each missile names the ship that fired it, not a bearing with no stated reference
+    c += val(T, yy, 'T−0:03', null, { anchor: 'end' }) + text(D, yy, 'RAIDER', { size: B, bold: true, fill: C.red, track: 0.4 });
+    c += I.box(R - 56, yy - 14, 56, 18, 'PD ON', 'engaged', { size: LB });
+    c += line(gx + 4, gy + 24, gx + gw - 4, gy + 24, C.graticule, 1);
+    yy += 24;
+    c += sym.diamond(gx + 11, yy - 4.7, 4.6, C.red, 1.4) + text(gx + 24, yy, 'RAIDER 2', { size: B, bold: true, fill: C.red, track: 0.4 });
+    c += val(T, yy, '14', 'KM', { anchor: 'end' }) + text(D, yy, 'CLOSING', { size: B, fill: C.white, track: 0.3 });
+    return c;
+  },
+}).svg;
+
+// F1 full lock card (R-MID): name and state, the FIRING ON YOU flag lit, then what is known
+s += du(960, ZC.rmid.y, 308, 148, {
+  id: 'f1', b: 6,
+  content: (gx, gy, gw) => {
+    let c = '';
+    const L = gx + 8, R = gx + gw - 8, M = gx + 154;
+    c += sym.diamond(L + 6, gy + 14, 5, C.red, 1.4, C.red) + path(`M${L - 2} ${gy + 9} v-4 h4 M${L + 10} ${gy + 5} h4 v4 M${L + 14} ${gy + 19} v4 h-4 M${L + 2} ${gy + 23} h-4 v-4`, C.red, 1.2);
+    c += text(L + 22, gy + 20, 'RAIDER', { size: V, bold: true, fill: C.red, track: 0.5 });
+    c += lab(R - valW('2.2', 'S') - 6, gy + 20, 'SHOT', { anchor: 'end' }) + val(R, gy + 20, '2.2', 'S', { anchor: 'end' });   // 3.4 km at the heavy shell's 1 500 m/s, closing 12: 3 400 / 1 512
+    c += I.box(L, gy + 30, 78, 20, 'HOSTILE', 'warning', { size: B });
+    c += rect(L + 86, gy + 30, R - L - 86, 20, { fill: C.red, r: 1.5 }) + text((L + 86 + R) / 2, gy + 44.7, '◆ FIRING ON YOU', { size: B, bold: true, fill: '#0A0A0A', anchor: 'middle', track: 0.6 });
+    c += line(gx + 4, gy + 58, gx + gw - 4, gy + 58, C.graticule, 1);
+    let yy = gy + 77;
+    c += lab(L, yy, 'RNG') + val(L + 44, yy, '3.4', 'KM') + lab(M, yy, 'CLOSING') + val(R, yy, '12', 'M/S', { anchor: 'end' }); yy += 19;
+    // a kiter's motion relative to you runs along the line of sight: REL is its closing speed, and its
+    // course points at you (the Raider sits at bearing 055)
+    c += lab(L, yy, 'REL') + val(L + 44, yy, '12', 'M/S') + lab(M, yy, 'COURSE') + val(R, yy, '235°', null, { anchor: 'end' }); yy += 19;
+    c += lab(L, yy, 'DOING') + text(L + 60, yy, 'KITING AT GUN RANGE', { size: B, fill: C.white, track: 0.3 }); yy += 19;
+    c += lab(L, yy, 'KNOWN') + text(L + 60, yy, 'ENGINE DAMAGED', { size: B, fill: C.white, track: 0.3 });
+    return c;
+  },
+}).svg;
+
+// F3 shield control (L-BOTTOM, H4's three lights under it). The ring is the control: a click on a
+// side leans the shield there, on the centre sets it even. Each sector's width is the cloud there.
+s += du(12, 558, 308, 186, {
+  id: 'f3', b: 6,
+  content: (gx, gy, gw, gh) => {
+    let c = '';
+    const cx = gx + 70, cy = gy + gh / 2, r = 50;
+    const thick = [0.95, 0.8, 0.6, 0.5, 0.42, 0.5, 0.6, 0.8];   // leaned to the bow
+    const p = (a, R) => [cx + R * Math.sin(a * Math.PI / 180), cy - R * Math.cos(a * Math.PI / 180)];
+    thick.forEach((t, i) => {
+      const a0 = i * 45 - 22.5 + 2.5, a1 = i * 45 + 22.5 - 2.5, w = 2 + t * 8, rr = r + w / 2;
+      const [x0, y0] = p(a0, rr), [x1, y1] = p(a1, rr), col = t <= 0.05 ? C.red : t < 0.35 ? C.amber : C.white;
+      c += `<path d="M${x0} ${y0} A${rr} ${rr} 0 0 1 ${x1} ${y1}" fill="none" stroke="${col}" stroke-width="${w}"/>`;
+    });
+    const [t0x, t0y] = p(-24, r + 17), [t1x, t1y] = p(24, r + 17);
+    c += `<path d="M${t0x} ${t0y} A${r + 17} ${r + 17} 0 0 1 ${t1x} ${t1y}" fill="none" stroke="${C.cyan}" stroke-width="2.5"/>`;
+    c += hullArt('gunship', cx, cy, -90, 0.05, { outline: true });
+    const X = gx + 152, R = gx + gw - 8;
+    c += lab(X, gy + 20, 'CLOUD') + val(X, gy + 44, '230', 'OF 300 KG', { size: 20 });
+    c += I.box(X, gy + 56, R - X, 24, 'RAISED', 'engaged', { size: B });
+    c += I.box(X, gy + 86, R - X, 24, 'TRIM  BOW', 'selected', { size: B });
+    c += line(X, gy + 122, R, gy + 122, C.graticule, 1);
+    c += lab(X, gy + 140, 'EMITTER S') + text(R, gy + 140, 'HOLDING', { size: B, bold: true, fill: C.white, anchor: 'end' });
+    // the figure beside a bar is a value, at 15 (version 8, 12.4)
+    c += lab(X, gy + 158, 'HEAT') + val(R, gy + 158, '40%', null, { anchor: 'end' });
+    c += I.hbar(X + 44, gy + 158, R - X - 84, 0.4, { notch: 1, notchColor: C.red });
+    return c;
+  },
+}).svg;
+s += condLights(12, 748, ['HULL', 'POWER', 'LIFE SUP']);
+
+// F2 weapons rack (bottom centre) under the master alert hood. One row per mount: who fires it,
+// its state, the hit chance on the Lock (pips and word, in the hit-chance cyan), launchers' rounds.
+s += masterHood(330, 638, 620, null);
+s += du(330, 638, 620, 150, {
+  id: 'f2', b: 8,
+  content: (gx, gy, gw) => {
+    let c = '';
+    const R = gx + gw - 10;
+    // Version 6's sample: an idle point-defense mount reads READY (the state list has no IDLE), the
+    // engaging one says what it engages, and the launchers are ready with what they hold. A
+    // launcher reloads in 1 s, and one that had just fired would have its harpoon on screen. Each
+    // weapon is the game's name for it, mark and all (version 19, WeaponDef.name)
+    const rows = [
+      ['NOSE', 'HEAVY CANNON', ['READY'], [2, '62%', 'FAIR'], '', 'YOU'],
+      ['FWD PORT', 'AUTOCANNON MK1', ['ENGAGING MSL', C.green], null, '', 'PD'],
+      ['FWD STBD', 'AUTOCANNON MK1', ['READY'], null, '', 'PD'],
+      ['AFT PORT', 'HARPOON LAUNCHER', ['READY'], null, '3 LEFT', 'YOU'],
+      ['AFT STBD', 'HARPOON LAUNCHER', ['READY'], null, '4 LEFT', 'YOU'],
+    ];
+    rows.forEach(([mount, weapon, [st, stc, stv], hit, ammo, who], i) => {
+      const top = gy + 7 + i * 24, yy = top + 16.7;
+      if (i) c += line(gx + 4, top, gx + gw - 4, top, C.graticule, 1);
+      c += text(gx + 12, yy, mount, { size: B, bold: true, fill: C.white, track: 0.4 });
+      c += text(gx + 100, yy, weapon, { size: B, fill: C.white, track: 0.3 });
+      c += text(gx + 256, yy, st, { size: B, bold: true, fill: stc || C.white, track: 0.4 });
+      if (stv) c += val(gx + 256 + tw(st, B, true, 0.4) + 8, yy, stv, null, { size: B });
+      if (hit) {
+        const [pips, pct, word] = hit;
+        for (let k = 0; k < 3; k++) c += `<circle cx="${gx + 376 + k * 9}" cy="${yy - 4.5}" r="3" fill="${k < pips ? C.cyan : 'none'}" stroke="${C.cyan}" stroke-width="1.2"/>`;
+        c += text(gx + 402, yy, pct, { size: B, bold: true, fill: C.cyan }) + text(gx + 440, yy, word, { size: B, bold: true, fill: C.cyan, track: 0.4 });
+      }
+      if (ammo) c += text(gx + 490, yy, ammo, { size: B, fill: C.white, track: 0.3 });
+      c += text(R, yy, who, { size: B, bold: true, fill: who === 'YOU' ? C.cyan : C.white, anchor: 'end', track: 0.6 });
+    });
+    return c;
+  },
+}).svg;
+
+// H5 contact scope at 5 km (version 6's new step), the smallest holding the Lock and every inbound
+// missile, as combat sets it; Raider 2 at 14 km
+// is past the rim, a tick at its bearing
+s += contactScope([
+  { kind: 'hostile', x: 0.554, y: -0.392, locked: true },
+  { kind: 'missile', x: 0.280, y: -0.240, a: 232 },
+], { heading: 55, range: '5', rim: [[117, 'hostile']] });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Stations: helm, cruise</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="stations.js"></script>
+<script>
+// Walkthrough C: seated at the helm, cruising, condition Green. Nothing is wrong, so the status
+// strip, the annunciator and the ticker are dark, both MFDs are folded to their rails and the
+// station board is dim. The cluster and the world carry everything. Cole, the marine, has the
+// weapons console, as marines take it whenever the player is not there.
+let s = space({ px: 1180, py: 1500, pr: 1000 });
+const SX = 640, SY = 308, HDG = 75;
+s += hull(SX, SY, HDG, 0.9);
+
+// Neutral traffic: icon only in Green
+s += W.contact('neutral', 380, 190, {});
+s += W.contact('neutral', 300, 470, {});
+
+// Velocity markers in the ORBIT frame, 70 from the ship
+const at = (deg, r) => [SX + r * Math.sin(deg * Math.PI / 180), SY - r * Math.cos(deg * Math.PI / 180)];
+const [px, py] = at(HDG, 70), [rx, ry] = at(HDG + 180, 70);
+s += W.pro(px, py) + W.retro(rx, ry);
+// Burn 1 cue along prograde: its number only (spec round 10); the time is the Next slot's
+const [bax, bay] = at(HDG, 16);
+s += haloed((c, w) => line(bax, bay, ...at(HDG, 50), c, w), C.magenta, 2.5);
+{ const [ex, ey] = at(HDG, 52), r = HDG * Math.PI / 180, ax = ex - 10 * Math.sin(r + 0.45), ay = ey + 10 * Math.cos(r + 0.45), cx2 = ex - 10 * Math.sin(r - 0.45), cy2 = ey + 10 * Math.cos(r - 0.45); s += haloed((c, w) => path(`M${ax} ${ay} L${ex} ${ey} L${cx2} ${cy2}`, c, w), C.magenta, 2.5); }
+s += text(...at(HDG + 34, 56), '1', { size: 12, bold: true, fill: C.magenta });
+
+// Highport: the nav target, labelled with its name only (its numbers are in the Reference slot)
+const HX = 930, HY = 250;
+s += stationHull(HX, HY, 0.28);
+s += W.contact('station', HX, HY, { nav: true, label: ['HIGHPORT'], lx: 26, ly: 4 });
+// Long-range optics on the nav target: a CCTV feed (11.3), clear of the top column. Its corners
+// carry what the word list has for a camera (OPT n, what it shows) and the zoom; no mode tag, since
+// the game's cameras have one mode
+s += haloed((c, w) => line(HX + 12, HY - 14, 1040, 206, c, w), 'rgba(238,241,243,0.5)', 1);
+s += W.cctv(1040, 112, 176, 110, {
+  id: 1, tl: 'OPT 2  NAV', br: 'HIGHPORT  ×24',
+  picture: (cx, cy) => `<g opacity="0.85" filter="url(#mono)">${stationHull(cx, cy, 0.74)}</g>`,
+});
+
+// Prompt line, 8 above the band: learning hints, quiet
+s += promptHints(640, Z.prompt.y, [['N', 'PLAN A BURN'], ['M', 'PLOT'], ['Q', 'NAV TARGET']]);
+
+// Band: folded MFD rails either side of the helm cluster
+s += foldedRail(Z.mfdL.x, Z.mfdL.y, [{ t: 'NAV' }, { t: 'PLAN' }, PIN, FOLDED]);
+s += foldedRail(Z.mfdR.x, Z.mfdR.y, [{ t: 'SENSORS' }, { t: 'WEAPONS' }, { t: 'DEFENSE' }, PIN, FOLDED]);
+
+const cl = du(Z.cluster.x, Z.cluster.y, 480, 160, {
+  id: 3, b: 8, title: 'HELM',
+  content: (gx, gy, gw, gh) => {
+    // Five fixed slots, top to bottom: Velocity, Reference, Next event, Trigger, Delta-v. A slot
+    // with nothing to show goes dark in place; nothing moves (8.1).
+    let c = '';
+    const L = gx + 10, R = gx + gw - 10, row = (i) => gy + 2 + i * 28;
+    for (let i = 1; i < 5; i++) c += line(gx + 4, row(i), gx + gw - 4, row(i), C.graticule, 1);
+    const lab = (x, y, t, o = {}) => text(x, y, t, { size: 12, bold: true, fill: C.dim, track: 0.4, ...o });
+    const val = (x, y, t, o = {}) => text(x, y, t, { size: SB, bold: true, fill: C.white, ...o });
+    // 1 Velocity: frame tag, speed, control chip, assist chip, thruster lamps
+    const bw = t => tw(t, 12, true, 0.5) + 12;
+    c += I.box(L, row(0) + 5, bw('ORBIT'), 18, 'ORBIT', 'normal', { size: 12 });
+    c += text(L + bw('ORBIT') + 10, row(0) + 22, '7.67', { size: 19, bold: true, fill: C.white }) + text(L + bw('ORBIT') + 15 + tw('7.67', 19, true), row(0) + 22, 'KM/S', { size: 12, fill: C.dim });
+    // which thrusters fire: MAIN and RCS, the task variation's names for them (both dark: coasting)
+    c += lens(R - 36, row(0) + 6, 36, 16, 'RCS', null) + lens(R - 78, row(0) + 6, 40, 16, 'MAIN', null);
+    c += I.box(R - 86 - bw('ASSIST'), row(0) + 5, bw('ASSIST'), 18, 'ASSIST', 'engaged', { size: 12 }) + I.box(R - 92 - bw('ASSIST') - bw('MANUAL'), row(0) + 5, bw('MANUAL'), 18, 'MANUAL', 'normal', { size: 12 });
+    // 2 Reference: the nav target; name, range, closing, CPA (it truncates from the right). At
+    // 1.2 km closing 3.9 m/s, 140 m at closest is 5:03 away at constant velocity (t = closing ×
+    // range / speed², speed 3.93 m/s), as walkthrough C gives it since spec round 14
+    let x = L;
+    c += `<circle cx="${x + 6}" cy="${row(1) + 14}" r="5.5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/><circle cx="${x + 6}" cy="${row(1) + 14}" r="1.4" fill="${C.magenta}"/>`;
+    x += 18; c += val(x, row(1) + 19, 'HIGHPORT', { fill: C.magenta, track: 0.4 }); x += tw('HIGHPORT', SB, true, 0.4) + 14;
+    [['RNG', '1.2 KM'], ['CLOSING', '3.9 M/S'], ['CPA', '140 M  T−5:03']].forEach(([l, v]) => { c += lab(x, row(1) + 19, l); x += tw(l, 12, true, 0.4) + 5; c += val(x, row(1) + 19, v); x += tw(v, SB, true) + 14; });
+    // 3 Next event: what, when, how much
+    c += lab(L, row(2) + 19, 'NEXT');
+    c += path(`M${L + 50} ${row(2) + 8} l6 6 l-6 6 l-6 -6 z`, C.magenta, 1.5, { fill: C.glass });
+    c += val(L + 64, row(2) + 19, 'BURN 1', { fill: C.magenta, track: 0.4 }) + val(L + 64 + tw('BURN 1', SB, true, 0.4) + 10, row(2) + 19, 'T−12:04');
+    c += val(R, row(2) + 19, '210 M/S  PROGRADE', { anchor: 'end', fill: C.white });
+    // 4 Trigger: dark in Green with no target locked. Dark is not absent: its three lenses sit unlit,
+    // legends dim, as MAIN and RCS do (a slot for a system the hull lacks is a blank instead)
+    { const lw = 64; [['GUNS', 0], ['MSL', 1], ['DECOY', 2]].forEach(([t, i]) => { c += lens(L + i * (lw + 8), row(3) + 6, lw, 16, t, null); }); }
+    // 5 Delta-v: pointer, the plan's bracket (magenta, like the burn), the notch at what home takes
+    c += lab(L, row(4) + 19, 'ΔV');
+    c += text(L + 120, row(4) + 19.5, '1\u2009840', { size: 15, bold: true, fill: C.white, anchor: 'end' }) + text(L + 124, row(4) + 19, 'M/S', { size: 12, fill: C.dim });
+    const bx = L + 168, bw2 = R - bx - 96, max = 2500;
+    c += I.hbar(bx, row(4) + 19, bw2, 1840 / max, { bracket: [(1840 - 210) / max, 1840 / max], notch: 1210 / max });
+    c += lab(R - 46, row(4) + 19, 'HOME', { anchor: 'end' }) + val(R, row(4) + 19, '1\u2009210', { anchor: 'end' });
+    return c;
+  }
+});
+s += cl.svg;
+
+s += stationBoard([[1, 'HELM', '', 'you'], [2, 'NAV', '', 'you'], [3, 'TAC', 'COLE', 'crew'], [4, 'ENG', '--', 'empty'], [5, 'COMMS', '', 'you'], [6, 'CMD', '', 'none']], { dim: true, day: 'DAY 3', time: '14:22:05' });
+
+document.getElementById('out').innerHTML = svgPage(`<defs><filter id="mono"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="1.5"/><feFuncG type="linear" slope="1.5"/><feFuncB type="linear" slope="1.5"/></feComponentTransfer></filter></defs>` + s);
+</script>
+</body></html>

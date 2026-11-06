@@ -1,0 +1,181 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: the map</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="context.js"></script>
+<script>
+// M1, the map, as a full-screen mode (the context spec, 10.1 and 11.9, version 14), opened with M at
+// the helm at the moment of C1: P1 above, then the mode's frame. The map has no tabs, so its title
+// row is the system's name alone and the number keys keep the helm orders, since the plan is flown
+// from here. The Plan panel is on the left, Target and traffic on the right, the view row across the
+// top of the map between them, the timeline under the map, and the foot row with the one-line feed
+// and the keys that close the mode.
+//
+// The trip to Shackleton Ice is planned a leg at a time, as the game plans it (PlayerTransfer): the
+// burn that leaves Earth is planned and accepted, solid magenta, and selected in cyan with its
+// handles; the capture at the Moon is planned at the crossing, so the path stops at the Moon's
+// sphere of influence and the capture is an estimate in the burns list and on the timeline (dashed).
+// The planner's Hohmann transfer: 3 084 m/s from 400 km, an apoapsis at 378 000 km, the sphere in
+// 3.3 days, the capture for about 793 m/s and the station one orbit later, 4.2 days out. The Moon
+// moves 54 degrees in that time, so the map draws it twice, as the game does (PlayerOrbitPath): where
+// it is now, with the Nav's ring on Shackleton Ice, and as a ghost, its outline and sphere, where it
+// will be at the plan's closest approach (ghostTime), labelled with that time (version 14). The
+// delivery is due in 5.2 days, so the plan makes it.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 5 });
+s += controlDefs();
+s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:33:10', warp: '1×' });
+s += consoleBody(0, 28, 1280, 772, {});
+// the bottom bezel carries the mode's plate
+s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M1  MAP', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
+
+const kvl = (x, y, t) => text(x, y, t, { size: LB, bold: true, fill: C.dim, track: 0.6 });
+const rowsep = (gx, y, gw) => line(gx + 6, y, gx + gw - 6, y, C.graticule, 1);
+// the capture's mark: a burn diamond, dashed while it is the planner's estimate
+const estMark = (x, y) => path(`M${x} ${y - 6} L${x + 6} ${y} L${x} ${y + 6} L${x - 6} ${y} Z`, C.magenta, 1.6, { fill: C.glass, dash: '3 2' });
+
+// ---- the title row: no tabs ----
+s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 51, 'EARTH SYSTEM', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(146, 51, 'MAP', { size: LB, bold: true, fill: C.dim, track: 0.8 });
+
+// ---- the Plan panel ----
+// The fly-it orders sit on the soft keys with the helm order keys they share (version 10: the map
+// leaves the number keys working); the burn's own two actions are under the burns list, as today's
+// map groups them
+s += du(8, 64, 324, 680, {
+  id: 'plan', b: 8, keys: { bottom: [{ t: 'FLY BURNS', k: '1', w: 1.25 }, { t: 'AUTOPILOT', k: '6', w: 1.2 }, { t: 'WARP', k: '/', w: 0.8 }] },
+  content: (gx, gy, gw, gh) => {
+    const L = gx + 10, R = gx + gw - 10;
+    let g = text(L, gy + 20, 'PLAN', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(R, gy + 20, '1 BURN · ACCEPTED', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) + rowsep(gx, gy + 28, gw);
+    // orbit now: the apoapsis would come after burn 1, so it is left out, as H2 leaves it
+    g += kvl(L, gy + 50, 'ORBIT NOW') + text(gx + 104, gy + 50, 'EARTH', { size: B, bold: true, fill: C.white, track: 0.4 });
+    g += kvl(L, gy + 70, 'PE') + val(gx + 150, gy + 70, '397', 'KM', { anchor: 'end' }) + text(R, gy + 70, 'T−8:40', { size: B, bold: true, fill: C.white, anchor: 'end' });
+    g += kvl(L, gy + 89, 'PERIOD') + text(gx + 150, gy + 89, '1:32:24', { size: V, bold: true, fill: C.white, anchor: 'end' });
+    g += rowsep(gx, gy + 103, gw);
+    // the burns: the one planned, then the leg still to come
+    g += kvl(L, gy + 123, 'BURNS');
+    const gr = grid(L, gy + 145, [{ t: '', w: 22 }, { t: 'IN', w: 84 }, { t: 'ΔV', w: 56, align: 'right' }, { t: 'PRO', w: 70, align: 'right' }, { t: 'RAD', w: 54, align: 'right' }], [
+      { cells: ['1', 'T−12:05', '3 084', '+3 084', '+0'], cursor: true },
+    ], { rh: 20 });
+    g += gr.svg;
+    g += kvl(L, gy + 194, 'THEN AT THE MOON');
+    g += estMark(L + 6, gy + 209) + text(L + 22, gy + 214, 'CAPTURE', { size: B, bold: true, fill: C.magenta, track: 0.4 }) + text(L + 106, gy + 214, 'T−4D 2H', { size: B, fill: C.white }) + text(L + 252, gy + 214, 'ABOUT 793', { size: B, fill: C.white, anchor: 'end' });
+    g += text(L + 22, gy + 232, 'AN ESTIMATE TILL THE CROSSING PLANS IT', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    // the burn's actions: delete the selected one, or clear them all
+    g += korry(L, gy + 246, 120, 30, 'DELETE BURN', '') + capKey(L + 128, gy + 252, 'DEL');
+    g += korry(L + 176, gy + 246, 112, 30, 'CLEAR ALL', '');
+    g += rowsep(gx, gy + 290, gw);
+    // what the selected burn does
+    g += kvl(L, gy + 310, 'SELECTED') + text(gx + 104, gy + 310, 'BURN 1 →  AP 378 000 KM', { size: B, bold: true, fill: C.cyan, track: 0.3 });
+    g += kvl(gx + 104, gy + 329, 'MOON SOI') + text(R, gy + 329, 'T−3D 6H', { size: B, bold: true, fill: C.white, anchor: 'end' });
+    g += rowsep(gx, gy + 343, gw);
+    // the totals: what the plan needs (burn 1 and the capture's estimate), what there is, the arrival
+    g += kvl(L, gy + 363, 'ΔV NEED') + val(gx + 196, gy + 363, '3 877', 'M/S', { anchor: 'end' });
+    g += kvl(L, gy + 383, 'ΔV HAVE') + val(gx + 196, gy + 383, '5 606', 'M/S', { anchor: 'end' });
+    g += kvl(L, gy + 403, 'ARRIVAL') + text(gx + 196, gy + 403, 'DAY 4 · 04:40', { size: V, bold: true, fill: C.white, anchor: 'end' }) + text(R, gy + 403, 'T−4D 4H', { size: B, fill: C.white, anchor: 'end' });
+    g += kvl(L, gy + 422, 'DEADLINE') + text(gx + 196, gy + 422, 'DAY 5 · 05:30', { size: B, fill: C.white, anchor: 'end' });
+    return g;
+  },
+}).svg;
+
+// ---- the map, with the view row across its top ----
+const plot = du(338, 64, 604, 548, {
+  id: 'plot', b: 8, keys: { top: [{ t: 'CENTRE: EARTH', w: 1.5 }, { t: 'FIT' }, { t: 'ALL TRAFFIC', w: 1.4 }] },
+  content: (gx, gy, gw, gh) => {
+    let g = '';
+    const sp = systemPlot({
+      // burn 1 is 12 minutes off, 47 degrees on round the 92-minute orbit
+      ex: gx + 252, ey: gy + 276, R: 222, now: -19, at: 35, plan: 'planned', selected: 0, leg: 'soi', freehold: 161, shipLead: -47,
+      layers: { stations: true, traffic: true, pirates: true },
+      haulers: [[gx + 312, gy + 284, 9, -6], [gx + 468, gy + 238, -8, 7], [gx + 180, gy + 398, -4, 9], [gx + 470, gy + 462, 8, -2]],
+      prop: '+3 084', rad: '+0', b1label: '',
+    });
+    g += sp.svg;
+    const [mx, my] = sp.moonNow, [ax, ay] = sp.moonAt, [ex, ey] = sp.earth, [sx, sy] = sp.soi;
+    g += ring(mx, my, 12, C.magenta, 1.5) + text(mx - 18, my + 24, 'SHACKLETON ICE', { size: LB, bold: true, fill: C.magenta, anchor: 'end', track: 0.6 }) + text(mx - 18, my + 40, 'MOON · 3 STATIONS', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += text(ax + sp.rSoi * 0.7 + 6, ay - sp.rSoi * 0.7 - 4, 'MOON AT CPA  ·  T−4D 2H', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    // where the leg ends: the capture and the approach are drawn once the crossing plans them
+    g += text(sx - 12, sy + 4, 'CAPTURE PLANNED HERE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    // the Earth's names above and right of it, clear of Freehold, opposite the Moon
+    g += text(ex + 14, ey - 30, 'EARTH', { size: LB, bold: true, fill: C.dim, track: 0.6 }) + text(ex + 14, ey - 14, '3 STATIONS', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    g += scaleBar(gx + gw - 92, gy + gh - 18, 60, '100 000 KM');
+    return g;
+  },
+});
+s += plot.svg;
+
+// ---- the timeline, between the panels under the map ----
+// hours from now: burn 1 at 0:12:05, the sphere at day 3 07:15, the capture's estimate at day 4
+// 02:40, the arrival at 04:40, the deadline at day 5 05:30
+const END = 124.95, TL = (h) => Math.log(1 + h / 3) / Math.log(1 + END / 3);
+s += du(338, 618, 604, 126, {
+  id: 'tl', b: 8,
+  content: (gx, gy, gw, gh) => {
+    const x0 = gx + 22, w0 = gw - 50;
+    let g = kvl(gx + 10, gy + 18, 'TIMELINE');
+    // the cursor's event, the next one, with its warp-to
+    g += text(gx + gw - 40, gy + 18, 'WARP TO BURN 1', { size: LB, bold: true, fill: C.cyan, anchor: 'end', track: 0.5 }) + capKey(gx + gw - 32, gy + 5, '/');
+    g += timelineStrip(x0, gy + 56, w0, [
+      { h: 0.2, label: 'BURN 1', c: C.cyan, row: 0 },
+      { h: 78.70, label: 'MOON SOI', c: C.white, shape: 'tick', lx: 300, level: 10 },
+      { h: 98.11, label: 'CAPTURE', c: C.magenta, dash: '3 2', lx: 380, level: 14 },
+      { h: 100.11, label: 'ARRIVE', c: C.white, shape: 'tick', lx: 452, level: 18 },
+      { h: 124.95, label: 'DEADLINE', c: C.white, shape: 'flag', lx: 522, level: 22 },
+    ], { end: END, t0: 3, ticks: [[24, '1D'], [48, '2D'], [72, '3D'], [96, '4D']] });
+    g += cursor(x0 + w0 * TL(0.2) - 28, gy + 31, 56, 34);
+    return g;
+  },
+}).svg;
+
+// ---- Target and traffic ----
+// Version 10 adds Next target beside the transfer's keys. Nothing is proposed, so ACCEPT and
+// DISCARD have no function and their keys are dark
+s += du(948, 64, 324, 680, {
+  id: 'tgt', b: 8, keys: { bottom: [{ t: 'NEXT', k: 'Q' }, { t: 'PLAN', k: ';' }, { t: 'ACCEPT', k: '⏎', state: 'na' }, { t: 'DISCARD', k: '⌫', state: 'na' }] },
+  content: (gx, gy, gw, gh) => {
+    const L = gx + 10, R = gx + gw - 10;
+    let g = text(L, gy + 20, 'NAV', { size: V, bold: true, fill: C.white, track: 0.8 }) + rowsep(gx, gy + 28, gw);
+    g += text(L, gy + 52, 'SHACKLETON ICE', { size: V, bold: true, fill: C.magenta, track: 0.5 }) + val(R, gy + 52, '384 000', 'KM', { anchor: 'end' });
+    g += text(L, gy + 70, 'ICE MINE · SELENE COMBINE · NEUTRAL', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    // around another body: the body and the plan's arrival, not a closest approach (H2's rule)
+    g += kvl(L, gy + 92, 'AT') + text(gx + 104, gy + 92, 'THE MOON', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += kvl(L, gy + 111, 'ARRIVAL') + text(gx + 104, gy + 111, 'T−4D 4H', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += kvl(L, gy + 130, 'SERVES') + text(gx + 104, gy + 130, 'DELIVERY · 40 FOOD', { size: B, fill: C.white, track: 0.3 });
+    g += rowsep(gx, gy + 144, gw);
+    // contacts
+    g += kvl(L, gy + 164, 'CONTACTS') + text(R, gy + 164, 'BY DISTANCE ▾', { size: LB, bold: true, fill: C.cyan, anchor: 'end', track: 0.5 });
+    const gr = grid(L, gy + 186, [{ t: '', w: 18 }, { t: 'NAME', w: 176 }, { t: 'KM', w: 98, align: 'right' }], [
+      [{ t: '□', c: C.white }, 'HIGHPORT', '3.0'],
+      [{ t: '□', c: C.white }, 'HAULER KESTREL', '3.1'],
+      [{ t: '□', c: C.white }, 'DEEPWELL DEPOT', '9 800'],
+      [{ t: '□', c: C.white }, 'ANVIL YARDS', '18 400'],
+      [{ t: '□', c: C.white }, 'FREEHOLD', '203 100'],
+      [{ t: '□', c: C.magenta }, { t: 'SHACKLETON ICE', c: C.magenta }, { t: '384 000', c: C.magenta }],
+      [{ t: '□', c: C.white }, 'SELENE FORGE', '384 300'],
+      [{ t: '□', c: C.white }, 'CRISIUM ORE WORKS', '384 900'],
+    ], { rh: 20, rule: 4 });
+    g += gr.svg;
+    g += text(L, gy + 366, '+ 9 HAULERS · PAGE 1/2', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    g += rowsep(gx, gy + 380, gw);
+    // the layers: lit while on
+    g += kvl(L, gy + 400, 'LAYERS');
+    [['STATIONS', 1], ['HAULERS', 1], ['PIRATES', 1], ['DERELICTS', 1], ['OBJECTIVES', 1], ['TENSION', 0]].forEach(([t, on], i) => {
+      const bx = L + (i % 3) * 98, by = gy + 412 + Math.floor(i / 3) * 32;
+      g += I.box(bx, by, 90, 24, t, on ? 'engaged' : 'off', { size: 12 });
+    });
+    return g;
+  },
+}).svg;
+
+// ---- the foot row: the one-line feed, and the keys that close the mode ----
+s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 767, 'LOG', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(56, 767, 'Autosaved.', { size: B, fill: C.white, track: 0.2 });
+s += capKey(1106, 754, 'M') + text(1132, 767, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1156, 754, 'ESC') + text(1264, 767, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>
