@@ -1,6 +1,6 @@
 # FILAMENT × Context-driven
 
-The context-driven functional design (`functional-context.md`, version 14) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
+The context-driven functional design (`functional-context.md`, version 15) built in the FILAMENT style ([`style-vfd.md`](../style-vfd.md)). The spec decides what each widget shows, where and when; this page records how FILAMENT builds it, what the style changes beyond the look, and the critique of each round.
 
 Mockups are drawn by [`vfd/src/context.js`](../vfd/src/context.js) over the game's hull art and a real deck capture; `vfd/src/export.sh` re-renders them.
 
@@ -32,7 +32,7 @@ The full-screen modes (spec section 10) are built in the mode frame of the guide
 
 ![Station](vfd/context-station.jpg)
 
-**11.11 Ship, systems (M2).** Battle stations aboard the patrol corvette, Systems showing. The plan draws every system where the corvette's chassis mounts it, with its conduits, RCS blocks and crew. One hit wrecked the hull tile under the hold's port-aft RCS quad: a wrecked hull tile is a breach, and a block stops while its tile is down, so the breach, the stopped thruster and Cole's light wound are the one hit. The FWD PORT autocannon is out of action at 20% with Ada repairing it, and the FWD STBD one is cut off, its conduit broken in its tile. What is wrong is called out with its severity glyph, the gun in the list's focus is bracketed, and the plan's key runs along its foot. The list pages at eleven rows with the guns' amber pips and a dash where the game has no value; one `SWITCH` key acts on the focused row, its LED lit while that system is on. Damage control lists the three jobs with who has each or why it waits (`‖`), and says what each wait means; Power gives the reactor against its rating, the store, what no reactor reaches and the yard's price for the cut.
+**11.11 Ship, systems (M2).** Battle stations aboard the patrol corvette, Systems showing. The plan draws every system where the corvette's chassis mounts it, with its conduits, RCS blocks and crew. One hit wrecked the hull tile under the hold's port-aft RCS quad: a wrecked hull tile is a breach, and a block stops while its tile is down, so the breach, the stopped thruster and Cole's light wound are the one hit, and the breach's callout names all three. The FWD PORT autocannon is out of action at 20% with Ada repairing it, and the FWD STBD one is cut off, its conduit broken in its tile. What is wrong is called out with its severity glyph, the gun in the list's focus is bracketed, and the plan's key runs along its foot. The list pages at eleven rows with the guns' amber pips and a dash where the game has no value. Every system has its switch, and the keys act on the focused row: `SWITCH` (Enter), its LED green while that system is on, and `OPEN` (→), which lists a group's members under its row, each with its own switch, so on a single gun's row it is dim. On the reactor's row `SWITCH` is guarded as 7.7's keys are: the first press sets its LED blinking amber and the second switches. The RCS blocks are not systems, so on their row `SWITCH` is dim. Damage control lists the three jobs with who has each or why it waits (`‖`), and its notes say what the hit did, what each wait means and why the cut conduit is not on the board; Power gives the reactor against its rating, the store, what no reactor reaches and the yard's price for the cut. The feed is the game's wound notice.
 
 ![Ship, systems](vfd/context-ship.jpg)
 
@@ -152,6 +152,10 @@ Version 14 took both round-5 notes. M1 draws the Moon twice, as the game does, t
 
 The guide gained the ship's plan (18.3) and a wider fourteen-segment field for a screen's title, up to 16 cells (5.2): `PATROL CORVETTE` is 15.
 
+## Round 10
+
+Version 15 took both round-6 notes: 11.11's stopped RCS quad, the HOLD's breach and Cole's light wound are one hit on one hull tile, and every system takes the switch, a group's row switching the group and the reactor's guarded. M2 is redrawn for them: the breach's callout names Cole's wound; the board's notes give the hit, the two waits and why a cut conduit shows under Power; the feed is the game's wound notice (`CrewMedical`); and `OPEN` sits beside `SWITCH` for a group's members. Checking version 15 against the game found nothing more: the RCS blocks belong to the ship's grid, not its systems (`ShipGridComponent.rcsThrusters`), and sealing the breach leaves the quad stopped until the repair outside frames its tile again, as 11.11 now says. Converged.
+
 ## Functional notes sent to the context designer
 
 Round 1 (all answered by version 3): keep P2 lit under X3, decoys have no stock, shields as a share, on-screen hazard tags for D3, states as one word.
@@ -178,7 +182,7 @@ Round 5 (after version 13; both taken in version 14):
 1. **M1's ghost.** The game's map draws the Moon where it is now and, where the leg meets its sphere, a ghost: the Moon's outline and sphere where it will be by then (`MapPainter.ghost`, the Centre key's encounter). At T-3.3 d that is about 43° further along its orbit, and the Nav's brackets stay on Shackleton Ice where it is now. Wireframe 09 draws one Moon, at the meeting, and FILAMENT follows it. Suggest the wireframe show both, or the text say which one the plot shows.
 2. **M1's Nav card.** 10.1's table gives it a closest approach; for a Nav around another body, wireframe 09 gives the body and the arrival, as H2 does since version 10. Suggest the table say so.
 
-Round 6 (after version 14):
+Round 6 (after version 14; both taken in version 15):
 
 1. **The stopped RCS block is on the breach.** The game stops a block only while the hull tile it is bolted to is wrecked (`RcsThruster.fieldRepairable`), and a wrecked hull tile beside the interior is a breach (`Tile.isHullBreach`, the `SealBreachTask` the scan posts). Every block on the corvette stands on such a tile, so 11.11's one stopped block puts a breach on its tile, and with the only breach in the HOLD, the block is one of the hold's two aft quads. FILAMENT draws the port one: one hit made the breach, stopped the quad and wounded Cole, and its two jobs are the seal from inside and the thruster's repair outside. Suggest 11.11's text say so, or the sample's breach move to where it can't stop a block.
 2. **Which systems have a switch.** Wireframe 11 gives `[off]` to the reactor and the coilgun only; the game lets every system be switched off (`SubsystemComponent.switchedOn`, `ConsoleWindow`'s switch). FILAMENT has one `SWITCH` key on the focused row, its LED lit while that system is on. Suggest 10.2 say which systems take the switch: all, as the game has it, or a subset and why.

@@ -930,7 +930,7 @@
     const f = modeFrame(S, 12, 40, 1256, 748, {
       title: 'PATROL CORVETTE',
       tabs: [{ t: 'SYSTEMS', k: '1', active: true }, { t: 'CREW', k: '2' }, { t: 'CARGO', k: '3' }, { t: 'LOADOUT', k: '4' }],
-      feed: ['CREW', 'ADA BACK INSIDE'], close: 'I',
+      feed: ['CREW', 'COLE IS LIGHTLY WOUNDED AND WORKING SLOWER'], close: 'I',
     });
     const top = f.y, bot = f.bottom, lw = 750, rx = 12 + lw + 6, rw = 1268 - rx, mid = top + 380;
 
@@ -971,8 +971,8 @@
       lines.forEach((ln, i) => T(S, x + 2 * CELL, y + i * 13.5, ln, { level: i ? 'dim' : 'norm' }));
       S.dotLine(from[0], from[1], x - 3, below ? y + 5 : y + (lines.length - 1) * 13.5 + 13, { size: 1, step: 2, level: 'dim' });
     };
-    call(X(3.5) + 3, top + 31, 'warning', ['BREACH', 'RCS THRUSTER STOPPED'], [X(3.5), Y(0) - 4]);
-    call(X(14.5) + 8, top + 31, 'caution', ['AUTOCANNON (FWD PORT)', '20% · BEING REPAIRED'], [X(14.5), Y(1) - 4]);
+    call(X(3.5) + 3, top + 24, 'warning', ['BREACH', 'RCS THRUSTER STOPPED', 'COLE LIGHTLY WOUNDED'], [X(3.5), Y(0) - 4]);
+    call(X(14.5) + 8, top + 24, 'caution', ['AUTOCANNON (FWD PORT)', '20% · BEING REPAIRED'], [X(14.5), Y(1) - 4]);
     call(X(14.5) + 8, Y(6) + 20, 'caution', ['AUTOCANNON (FWD STBD)', 'CONDUIT CUT · NO POWER'], [X(14.5), Y(5) + 4], true);
     // the plan's key, printed along the pane's foot
     let kx = 22;
@@ -984,7 +984,10 @@
     key((x, y) => { S.dotLine(x, y, x + 8, y, fine); cap(x + 10, y); cap(x + 16, y); }, 'CONDUIT, CUT');
     key((x, y) => person(S, x + 9, y, { working: true }), 'CREW AT WORK');
 
-    // the systems, grouped by type, a dash where the game has no such value; the switch acts on the focus
+    // the systems, grouped by type, a dash where the game has no such value. Every system has its switch, and
+    // the keys act on the focused row: SWITCH, its LED green while the system is on (on the reactor's row the
+    // first press sets it blinking amber and the second switches); OPEN lists a group's members under its row,
+    // each with its own switch, so on a single system's row it is dim. RCS blocks are not systems: no switch.
     const sh = mid - top - KH - 9, s0 = rx + 12;
     pane(S, rx, top, rw, sh, 'SYSTEMS');
     SC.pager(S, rx + rw - 12 - 80, top + 8, 1, 2);
@@ -1001,7 +1004,7 @@
       sg.row(i * 1.5, SC.cols([[n, 21], ['', 1], [h, 4, 'r'], ['', 2], [pw, 4], ['', 2], [st, 16]]), { c: 2, focus, cursor: focus });
     });
     T(S, sg.cx(3), top + 46 + 11 * 20.25 + 12, 'PG 2: TANKS, CARGO BAYS, ESCAPE POD, DOCKING PORT', { level: 'dim' });
-    SC.keyStrip(S, rx + 8, top + sh + 5, rw - 16, [{ t: 'SWITCH', k: 'ENTER', led: 'green', ledOn: true }], { slots: 4, labelY: top + sh - 7 * P - 6 });
+    SC.keyStrip(S, rx + 8, top + sh + 5, rw - 16, [{ t: 'SWITCH', k: 'ENTER', led: 'green', ledOn: true }, { t: 'OPEN', k: '→', dim: true }], { slots: 4, labelY: top + sh - 7 * P - 6 });
 
     // damage control: the crew's jobs as the game posts them, and who has each or why it waits
     const dy0 = mid + 6, dh = bot - dy0;
@@ -1015,10 +1018,12 @@
       dg.text(3, i * 1.5, SC.cols([[task, 30], ['', 2], [where, 10], ['', 2], [who, 24]]));
     });
     let ny = dy0 + 46 + 3 * 20.25 + 16;
-    for (const [term, why] of [['UNDER FIRE:', 'WITHIN 2 TILES OF WHERE CREW WERE HIT THIS FIGHT (COLE, HOLD)'],
-      ['BATTLE STATIONS:', 'WORK OUTSIDE WAITS FOR SOMEONE SENT OUT']]) {
+    for (const [term, why] of [['ONE HIT:', "THE BREACH, THE STOPPED THRUSTER AND COLE'S LIGHT WOUND"],
+      ['UNDER FIRE:', 'WITHIN 2 TILES OF WHERE CREW WERE HIT THIS FIGHT'],
+      ['BATTLE STATIONS:', 'WORK OUTSIDE WAITS FOR SOMEONE SENT OUT'],
+      ['CUT CONDUIT:', 'ONLY A YARD REPAIRS ONE, SO IT SHOWS UNDER POWER']]) {
       const tw = T(S, dg.cx(3), ny, term);
-      T(S, dg.cx(3) + tw + CELL, ny, why, { level: 'dim' });
+      K.fits(dg.cx(3) + tw + CELL + T(S, dg.cx(3) + tw + CELL, ny, why, { level: 'dim' }), 12 + lw - 12, 'M2 note');
       ny += 18;
     }
 
