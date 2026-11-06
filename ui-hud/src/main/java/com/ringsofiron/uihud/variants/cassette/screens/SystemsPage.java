@@ -1,0 +1,568 @@
+package com.ringsofiron.uihud.variants.cassette.screens;
+
+import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.ObjectMap;
+import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.MountFootprint;
+import com.ringsofiron.interiorgrid.RcsThruster;
+import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
+import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.uihud.data.AlertRegistry;
+import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.providers.PowerStatusProvider;
+import com.ringsofiron.uihud.variants.ClassicWindow;
+import com.ringsofiron.uihud.variants.cassette.Yard;
+import com.ringsofiron.uihud.variants.cassette.YardFonts;
+import com.ringsofiron.uihud.variants.cassette.YardPaint;
+
+import java.util.Locale;
+
+/**
+ * The ship's systems (Context's M2 Systems, v15): the ship's plan as a mimic board, a lamp in each
+ * system lit by its state; every system on a ledger tube with its health, its power and its state,
+ * and its switch on a soft key (the reactor's under a guard, since switching it off darkens the ship;
+ * a group's switching the group, and opening to list each with its own; the RCS blocks with none);
+ * the damage control board, every hazard and repair job the game raises with who has it; and the
+ * power: each circuit's reactors, output against rating and store, and what no reactor reaches.
+ * The switches are the classic console window's ({@code SubsystemComponent.switchedOn}).
+ */
+final class SystemsPage extends ListPage {
+    private static final Color MIMIC_TOP = Yard.hex("3F4B43"), MIMIC_FOOT = Yard.hex("333D37");
+    private static final Color MIMIC_RIM = Yard.hex("1F2420"), FLOOR = Yard.hex("56655A");
+    private static final Color PAINT = Yard.hex("EFE8D6"), BLOCK = Yard.hex("232823");
+    private static final Color RED = Yard.P_RED;
+    private final ShipSystems systems = new ShipSystems();
+    private final Array<SubsystemComponent> found = new Array<>();
+    private final Array<AlertRegistry.Alert> jobs = new Array<>();
+    /** The worst job in each room, by the room's name: the plan tints the room. */
+    private final ObjectMap<String, AlertRegistry.Level> troubled = new ObjectMap<>();
+    private HudData data;
+    private final Ledger D = new Ledger(), W = new Ledger();
+    private Boards b;
+    private ShipGridComponent grid;
+    // The plan as last drawn: its origin, a tile's size, and whether it stands bow up (else bow to the right)
+    private float ox, oy, px;
+    private boolean turned;
+    private int gw, gh;
+
+    SystemsPage() {
+        super("SYSTEMS", "SHIP", ClassicWindow.CREW);
+    }
+
+    @Override
+    boolean offered() {
+        return b != null && grid != null && systems.all.size > 0;
+    }
+
+    @Override
+    void refresh(Boards boards) {
+        b = boards;
+        HudData d = b.data;
+        found.clear();
+        Entity ship = d == null ? null : d.ctx.ship;
+        grid = ship == null ? null : ship.getComponent(ShipGridComponent.class);
+        ShipSubsystemRegistryComponent registry = ship == null ? null : ship.getComponent(ShipSubsystemRegistryComponent.class);
+        if (registry != null) {
+            for (int i = 0; i < registry.subsystems.size; i++) {
+                SubsystemComponent s = registry.subsystems.get(i).getComponent(SubsystemComponent.class);
+                if (s != null) found.add(s);
+            }
+        }
+        systems.read(found, grid, d == null ? null : d::roomAt, d == null ? null : d.weaponFrame.mounts);
+        keepSelection();
+        jobs(d == null ? null : d.alerts, jobs);
+        data = d;
+        troubled.clear();
+        for (int i = 0; i < jobs.size; i++) {
+            AlertRegistry.Alert a = jobs.get(i);
+            if (a.room.isEmpty() || a.id.startsWith("sys:")) continue;
+            AlertRegistry.Level had = troubled.get(a.room);
+            if (had == null || a.level.ordinal() > had.ordinal()) troubled.put(a.room, a.level);
+        }
+    }
+
+    /**
+     * The damage control board's jobs: what the game raises about the hull, the air, fire, systems,
+     * power and the crew, warnings first. Combat, flight and the captain's own state are other widgets'.
+     * An advisory is no one's job (a system switched off, crew outside), and a room's air is one job,
+     * as P2 shows it: its breach while one is open, else its vacuum or its low pressure.
+     */
+    static void jobs(AlertRegistry alerts, Array<AlertRegistry.Alert> out) {
+        out.clear();
+        if (alerts == null) return;
+        Array<AlertRegistry.Alert> all = alerts.all();
+        for (int lv = AlertRegistry.Level.values().length - 1; lv > AlertRegistry.Level.ADVISORY.ordinal(); lv--) {
+            for (int i = 0; i < all.size; i++) {
+                AlertRegistry.Alert a = all.get(i);
+                if (a.level.ordinal() != lv) continue;
+                AlertRegistry.Category c = a.category;
+                if (c != AlertRegistry.Category.ENGINEERING && c != AlertRegistry.Category.LIFE_SUPPORT
+                        && c != AlertRegistry.Category.CREW && c != AlertRegistry.Category.SHIP) continue;
+                if (a.id.startsWith("air:") && alerts.get("breach:" + a.id.substring("air:".length())) != null) continue;
+                out.add(a);
+            }
+        }
+    }
+
+    /** A job in the board's words: "FIRE", "HULL BREACH", a system by its name and state ("ENGINE SHORTED"). */
+    static String task(AlertRegistry.Alert a, ShipSystems systems) {
+        if (a.id.startsWith("sys:")) {
+            ShipSystems.Sys y = systems == null ? null : systems.at(a.tileX, a.tileY);
+            return y != null ? y.name + " " + y.state.label : Fmt.upper(a.text.isEmpty() ? a.code : a.text);
+        }
+        return Fmt.upper(ConditionLog.longForm(a));
+    }
+
+    /** Where a job is: its room, the casualty's name, or a system outside every room by its side. */
+    static String place(AlertRegistry.Alert a, ShipSystems systems) {
+        if (a.id.startsWith("casualty:")) return Fmt.upper(ConditionLog.where(a));
+        if (!a.room.isEmpty()) return a.room;
+        ShipSystems.Sys y = a.id.startsWith("sys:") && systems != null ? systems.at(a.tileX, a.tileY) : null;
+        return y != null && !y.where.isEmpty() ? y.where : "—";
+    }
+
+    /** A row's state cut to {@code room}: a group's last counts go first ("1 SHORTED · 1 ON" to "1 SHORTED"). */
+    static String fit(String state, int room) {
+        String s = state;
+        while (s.length() > room) {
+            int cut = s.lastIndexOf(" · ");
+            if (cut < 0) break;
+            s = s.substring(0, cut);
+        }
+        return Ledger.cut(s, room);
+    }
+
+    /** Who has a job: "2 CREW", "UNASSIGNED", or a dash where the game can't say. */
+    static String who(AlertRegistry.Alert a) {
+        if (a.handling < 0) return "—";
+        if (a.handling == 0) return "UNASSIGNED";
+        return a.handling + " CREW";
+    }
+
+    @Override
+    int count() {
+        return systems.rows.size;
+    }
+
+    @Override
+    void row(YardPaint p, int i, int r, boolean s) {
+        ShipSystems.Row row = systems.rows.get(i);
+        Color ink = row.worst.bad() ? RED : row.worst == ShipSystems.State.OFF ? DIM : AMBER;
+        if (row.kind == ShipSystems.Row.GROUP) put(p, s, 1, r, row.open ? "-" : "+", ink);
+        int nameAt = row.kind == ShipSystems.Row.MEMBER ? 5 : 3;
+        put(p, s, nameAt, r, Ledger.cut(row.name, 22 - nameAt), ink);
+        put(p, s, 22, r, Ledger.cut(row.where, 11), ink);
+        String health = Float.isNaN(row.health) ? "—" : Math.round(row.health * 100f) + "%";
+        if (s) L.revRight(p, 39, r, health);
+        else L.right(p, 39, r, health, ink);
+        put(p, s, 41, r, row.power, row.power.equals("NONE") ? RED : ink);
+        put(p, s, 47, r, fit(row.state, Math.max(4, L.cols - 48)), ink);
+    }
+
+    private void put(YardPaint p, boolean s, float c, int r, String t, Color ink) {
+        if (s) L.rev(p, c, r, t);
+        else L.at(p, c, r, t, ink);
+    }
+
+    @Override
+    void keys() {
+        if (sel < 0 || sel >= systems.rows.size) return;
+        ShipSystems.Row row = systems.rows.get(sel);
+        switch (row.kind) {
+            case ShipSystems.Row.RCS:
+                softKey("SWITCH", "RCS BLOCKS HAVE NO SWITCH: EACH FIRES WHILE ITS HULL TILE STANDS");
+                return;
+            case ShipSystems.Row.GROUP:
+                if (row.allOn && row.guarded) guardedKey("ALL OFF", null);
+                else softKey(row.allOn ? "ALL OFF" : "ALL ON", null);
+                softKey(row.open ? "SHUT" : "OPEN", null);
+                return;
+            default:
+                if (row.allOn && row.guarded) guardedKey("SWITCH OFF", null);
+                else softKey(row.allOn ? "SWITCH OFF" : "SWITCH ON", null);
+        }
+    }
+
+    @Override
+    void press(int k) {
+        if (sel < 0 || sel >= systems.rows.size) return;
+        ShipSystems.Row row = systems.rows.get(sel);
+        if (row.kind == ShipSystems.Row.GROUP && k == 1) {
+            systems.openOrShut(sel);
+            return;
+        }
+        String said = systems.toggle(sel);
+        if (said != null) say(said);
+    }
+
+    @Override
+    String empty() {
+        return "NO SYSTEMS ABOARD";
+    }
+
+    // --- Drawing -----------------------------------------------------------------------------
+
+    @Override
+    void draw(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        float gap = 8f, bx = x + 8f, by = y + 6f, bw = w - 16f, bh = h - 12f;
+        float lw = Math.round((bw - gap) * 0.5f), rw = bw - gap - lw;
+        float th = Math.round((bh - gap) * 0.58f), fh = bh - gap - th;
+        float rx = bx + lw + gap, fy = by + th + gap;
+        plan(p, hits, bx, by, lw, th);
+        list(p, hits, rx, by, rw, th);
+        board(p, bx, fy, lw, fh);
+        power(p, rx, fy, rw, fh);
+    }
+
+    /** The systems on their tube, the selected one's switch on the soft keys under it. */
+    private void list(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        BigConsole.bay(p, x, y, w, h, null, false);
+        int cols = Math.max(56, Ledger.colsIn(w - 38f)), rows = Math.max(8, Ledger.rowsIn(h - 52f));
+        L.set(x + 12f, y + 10f, cols, rows);
+        L.under(p, false);
+        int down = 0;
+        for (int i = 0; i < systems.all.size; i++) if (systems.all.get(i).state.bad()) down++;
+        String count = systems.all.size + " SYSTEMS" + (down > 0 ? " · " + down + " DOWN" : "");
+        title(p, "SYSTEMS", count);
+        L.at(p, 3, 1, "SYSTEM", DIM);
+        L.at(p, 22, 1, "WHERE", DIM);
+        L.right(p, 39, 1, "HEALTH", DIM);
+        L.at(p, 41, 1, "POWER", DIM);
+        L.at(p, 47, 1, "STATE", DIM);
+        drawList(p, hits, 2, rows - 3);
+        drawSoftRow(p, hits);
+        L.over(p);
+        drawSoftKeys(p, hits);
+    }
+
+    /** The damage control board: each job, where it is and who has it. */
+    private void board(YardPaint p, float x, float y, float w, float h) {
+        BigConsole.bay(p, x, y, w, h, null, false);
+        int cols = Math.max(40, Ledger.colsIn(w - 24f)), rows = Math.max(4, Ledger.rowsIn(h - 20f));
+        D.set(x + 12f, y + 10f, cols, rows);
+        D.under(p, false);
+        D.bar(p, 0);
+        D.rev(p, 1, 0, "DAMAGE CONTROL");
+        D.revRight(p, cols - 1, 0, jobs.size == 0 ? "NO JOBS" : jobs.size == 1 ? "1 JOB" : jobs.size + " JOBS");
+        int whoAt = cols - 12, whereAt = whoAt - 12;
+        if (jobs.size == 0) {
+            D.at(p, 1, 2, "NOTHING FOR THE CREW TO DO", DIM);
+        } else {
+            D.at(p, 3, 1, "TASK", DIM);
+            D.at(p, whereAt, 1, "WHERE", DIM);
+            D.at(p, whoAt, 1, "WHO", DIM);
+            int room = rows - 2;
+            for (int k = 0; k < jobs.size && k < room; k++) {
+                int r = 2 + k;
+                if (k == room - 1 && jobs.size > room) {
+                    D.at(p, 3, r, "+" + (jobs.size - k) + " MORE", DIM);
+                    break;
+                }
+                AlertRegistry.Alert a = jobs.get(k);
+                boolean warn = a.level == AlertRegistry.Level.WARNING;
+                Color ink = warn ? RED : a.level == AlertRegistry.Level.CAUTION ? AMBER : DIM;
+                if (warn) D.warning(p, 1, r, RED);
+                else if (a.level == AlertRegistry.Level.CAUTION) D.caution(p, 1, r, AMBER);
+                D.at(p, 3, r, Ledger.cut(task(a, systems), whereAt - 4), ink);
+                D.at(p, whereAt, r, Ledger.cut(place(a, systems), 11), ink);
+                String who = who(a);
+                D.at(p, whoAt, r, who, a.handling == 0 ? RED : ink);
+            }
+        }
+        D.over(p);
+    }
+
+    /** The power board: each circuit's reactors, output of rating and store; what no reactor reaches. */
+    private void power(YardPaint p, float x, float y, float w, float h) {
+        BigConsole.bay(p, x, y, w, h, null, false);
+        int cols = Math.max(40, Ledger.colsIn(w - 24f)), rows = Math.max(4, Ledger.rowsIn(h - 20f));
+        W.set(x + 12f, y + 10f, cols, rows);
+        W.under(p, false);
+        PowerStatusProvider.PowerFrame f = b == null || b.data == null ? null : b.data.powerFrame;
+        W.bar(p, 0);
+        W.rev(p, 1, 0, "POWER");
+        if (f != null && f.circuits.size > 0) W.revRight(p, cols - 1, 0, watts(f.outputWatts) + " OF " + watts(f.ratedWatts));
+        int r = 1;
+        if (f == null || f.circuits.size == 0) {
+            W.at(p, 1, 2, "NO REACTOR FEEDS THE SHIP", RED);
+            W.over(p);
+            return;
+        }
+        for (int i = 0; i < f.circuits.size && r < rows; i++, r++) {
+            PowerStatusProvider.Circuit c = f.circuits.get(i);
+            Color ink = c.reactors == 0 || c.outputWatts <= 0 ? RED : AMBER;
+            W.at(p, 1, r, "CIRCUIT " + (i + 1), ink);
+            W.at(p, 12, r, c.reactors == 1 ? "REACTOR" : c.reactors + " REACTORS", ink);
+            W.at(p, 24, r, watts(c.outputWatts) + " OF " + watts(c.ratedWatts), ink);
+            // The store as a bar on the tube, its share at the end
+            float share = c.charge();
+            int c0 = 41, c1 = Math.max(c0 + 4, cols - 6);
+            if (c1 - c0 >= 4) {
+                float bx = W.cx(c0), bw = (c1 - c0) * Ledger.COL - 4f, top = W.rowTop(r) + 5f;
+                p.frame(bx, top, bw, 9f, 1f, Ledger.DIM, 0.9f);
+                if (share > 0f) p.rect(bx + 1.5f, top + 1.5f, (bw - 3f) * Math.min(1f, share), 6f, share < 0.25f ? RED : AMBER);
+                W.right(p, cols, r, Math.round(share * 100f) + "%", share < 0.25f ? RED : ink);
+            }
+        }
+        // What isn't working for want of power, or tripped or stunned off its circuit
+        boolean any = false;
+        for (int i = 0; i < f.faults.size && r < rows; i++) {
+            PowerStatusProvider.SystemRow s = f.faults.get(i);
+            String why = why(s);
+            if (why == null) continue;
+            if (!any) {
+                W.rule(p, r - 1);
+                any = true;
+            }
+            Color ink = s.fault == PowerStatusProvider.Fault.NO_POWER ? RED : AMBER;
+            W.at(p, 1, r, faultName(s.fault), ink);
+            W.at(p, 12, r, Ledger.cut(s.system + (s.room.isEmpty() ? "" : " (" + s.room + ")"), 22), ink);
+            W.at(p, 35, r, Ledger.cut(why, cols - 36), ink);
+            r++;
+        }
+        if (!any && r < rows) W.at(p, 1, r, "EVERY SYSTEM SWITCHED ON HAS POWER", DIM);
+        W.over(p);
+    }
+
+    /** What the power board says of a system not working, or null for what isn't its business. */
+    static String why(PowerStatusProvider.SystemRow s) {
+        switch (s.fault) {
+            case NO_POWER:
+                return "NO REACTOR REACHES IT";
+            case SHORTED:
+                return Float.isNaN(s.timer) ? "RESETS SOON" : "RECLOSES IN " + ShipSystems.seconds(s.timer);
+            case STUNNED:
+                return Float.isNaN(s.timer) ? "BACK SOON" : "BACK IN " + ShipSystems.seconds(s.timer);
+            default:
+                return null;
+        }
+    }
+
+    static String faultName(PowerStatusProvider.Fault f) {
+        switch (f) {
+            case NO_POWER:
+                return "CUT OFF";
+            case SHORTED:
+                return "SHORTED";
+            case STUNNED:
+                return "STUNNED";
+            case OFF:
+                return "OFF";
+            case DISABLED:
+                return "DAMAGED";
+            default:
+                return "WRECKED";
+        }
+    }
+
+    /** "3.0 MW", "850 KW", "40 W". */
+    static String watts(double w) {
+        if (w >= 1e6) return String.format(Locale.ROOT, "%.1f MW", w / 1e6);
+        if (w >= 1e3) return String.format(Locale.ROOT, "%.0f KW", w / 1e3);
+        return String.format(Locale.ROOT, "%.0f W", Math.max(0, w));
+    }
+
+    // --- The mimic board ---------------------------------------------------------------------
+
+    /** The ship's plan painted on the enamel, a lamp in each system, its hazards marked. */
+    private void plan(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        BigConsole.bay(p, x, y, w, h, "SHIP'S PLAN", false);
+        float mx = x + 12f, my = y + 24f, mw = w - 24f, mh = h - 24f - 30f;
+        p.rrect(mx - 2f, my - 2f, mw + 4f, mh + 4f, 4f, MIMIC_RIM);
+        p.vgrad(mx, my, mw, mh, MIMIC_TOP, MIMIC_FOOT);
+        legendRow(p, x + 14f, y + h - 12f, w - 28f);
+        ShipGridComponent g = grid;
+        if (g == null || g.width == 0 || g.height == 0) {
+            p.textC(YardFonts.Face.LEGEND, 12f, "NO SHIP", mx + mw / 2f, my + mh / 2f, Yard.INK_LIGHT);
+            return;
+        }
+        gw = g.width;
+        gh = g.height;
+        // Bow to the right, or bow up where that gives the tiles more room; the bow's end engraved,
+        // with room kept for the word
+        float pad = 18f, aw = mw - 2f * pad, ah = mh - 2f * pad, word = p.width(YardFonts.Face.LEGEND, 10f, "BOW");
+        float straight = Math.min((aw - word - 10f) / gw, ah / gh), side = Math.min(aw / gh, (ah - 16f) / gw);
+        turned = side > straight * 1.08f;
+        // At large scale (Context's M2), with a cap so a small ship's tiles don't grow coarse
+        px = Math.min(38f, turned ? side : straight);
+        float pw = (turned ? gh : gw) * px, ph = (turned ? gw : gh) * px;
+        ox = mx + (mw - pw - (turned ? 0f : word + 10f)) / 2f;
+        oy = my + (mh - ph + (turned ? 16f : 0f)) / 2f;
+        if (turned) p.text(YardFonts.Face.LEGEND, 10f, "BOW", ox + pw / 2f - word / 2f, oy - 7f, Yard.INK_LIGHT, 0.7f);
+        else p.text(YardFonts.Face.LEGEND, 10f, "BOW", ox + pw + 10f, oy + ph / 2f + 3.5f, Yard.INK_LIGHT, 0.7f);
+        float t = p.time();
+        boolean blink = (t % 1f) < 0.55f;
+        // The decks: each floor tile, a room with a job in it washed red for a warning (fire, breach,
+        // vacuum), mustard for a caution (low pressure, smoke)
+        for (int ty = 0; ty < gh; ty++) {
+            for (int tx = 0; tx < gw; tx++) {
+                Tile tile = g.getTile(tx, ty);
+                if (tile == null || !tile.isFloor()) continue;
+                float l = left(tx, ty, 1, 1), tp = top(tx, ty, 1, 1);
+                p.rect(l, tp, px, px, FLOOR, 0.6f);
+                AlertRegistry.Level trouble = troubled.size == 0 || data == null ? null : troubled.get(data.roomAt(tx, ty));
+                if (trouble == AlertRegistry.Level.WARNING) p.rect(l, tp, px, px, RED, blink ? 0.34f : 0.22f);
+                else if (trouble == AlertRegistry.Level.CAUTION) p.rect(l, tp, px, px, Yard.MUSTARD, 0.22f);
+            }
+        }
+        // The hull and walls painted as lines through their tiles
+        float lw = Math.max(1.5f, Math.min(4f, px * 0.32f));
+        for (int ty = 0; ty < gh; ty++) {
+            for (int tx = 0; tx < gw; tx++) {
+                Tile tile = g.getTile(tx, ty);
+                if (tile == null || !tile.isWall()) continue;
+                Color c = tile.isHullBreach() ? RED : tile.isIntactWall() ? PAINT : Yard.MUSTARD;
+                float cx = cx(tx + 0.5f, ty + 0.5f), cy = cy(tx + 0.5f, ty + 0.5f);
+                p.circle(cx, cy, lw / 2f, c, 0.92f);
+                if (wall(g, tx + 1, ty)) p.line(cx, cy, cx(tx + 1.5f, ty + 0.5f), cy(tx + 1.5f, ty + 0.5f), lw, c, 0.92f);
+                if (wall(g, tx, ty + 1)) p.line(cx, cy, cx(tx + 0.5f, ty + 1.5f), cy(tx + 0.5f, ty + 1.5f), lw, c, 0.92f);
+                // A diagonal hull where no square path joins the two
+                if (wall(g, tx + 1, ty + 1) && !wall(g, tx + 1, ty) && !wall(g, tx, ty + 1))
+                    p.line(cx, cy, cx(tx + 1.5f, ty + 1.5f), cy(tx + 1.5f, ty + 1.5f), lw, c, 0.92f);
+                if (wall(g, tx - 1, ty + 1) && !wall(g, tx - 1, ty) && !wall(g, tx, ty + 1))
+                    p.line(cx, cy, cx(tx - 0.5f, ty + 1.5f), cy(tx - 0.5f, ty + 1.5f), lw, c, 0.92f);
+            }
+        }
+        edges(p, g, lw * 0.6f);
+        // The systems: each footprint a block, a lamp at its heart
+        int selRow = sel;
+        for (int i = 0; i < systems.all.size; i++) {
+            ShipSystems.Sys y0 = systems.all.get(i);
+            MountFootprint f = y0.s.footprint;
+            if (f == null) continue;
+            float l = left(f.originX, f.originY, f.width(), f.height()), tp = top(f.originX, f.originY, f.width(), f.height());
+            float bw = (turned ? f.height() : f.width()) * px, bh = (turned ? f.width() : f.height()) * px;
+            float inset = Math.min(2f, px * 0.12f);
+            p.rect(l + inset, tp + inset, bw - 2f * inset, bh - 2f * inset, BLOCK, 0.85f);
+            p.frame(l + inset, tp + inset, bw - 2f * inset, bh - 2f * inset, 1f, PAINT, 0.45f);
+            ShipSystems.State st = ShipSystems.state(y0.s);
+            float r = Math.max(2.2f, Math.min(7f, Math.min(bw, bh) * 0.24f));
+            lamp(p, l + bw / 2f, tp + bh / 2f, r, st, blink);
+            int row = systems.rowOf(y0.s);
+            if (row >= 0) {
+                if (row == selRow) {
+                    p.frame(l - 2f, tp - 2f, bw + 4f, bh + 4f, 2f, Yard.ORANGE, 0.95f);
+                }
+                hits.add(p, l, tp, bw, bh, this, ROW + row);
+            }
+        }
+        // The RCS blocks on the hull: a pip each, lit while it fires
+        for (int i = 0; i < g.rcsThrusters.size; i++) {
+            RcsThruster r = g.rcsThrusters.get(i);
+            boolean works = r.works(g);
+            p.lamp(cx(r.x + 0.5f, r.y + 0.5f), cy(r.x + 0.5f, r.y + 0.5f), Math.max(1.6f, Math.min(3.4f, px * 0.18f)),
+                    works ? Yard.GREEN_LAMP : Yard.RED_LAMP, works || blink);
+        }
+        // Fire over everything, a system's block too: a flicker and a hot core on each burning tile
+        for (int ty = 0; ty < gh; ty++) {
+            for (int tx = 0; tx < gw; tx++) {
+                Tile tile = g.getTile(tx, ty);
+                if (tile == null || !tile.isBurning()) continue;
+                float cx = cx(tx + 0.5f, ty + 0.5f), cy = cy(tx + 0.5f, ty + 0.5f), core = px * 0.42f;
+                p.glow(cx, cy, px * 1.1f, Yard.ORANGE, blink ? 0.85f : 0.55f);
+                p.rect(cx - core / 2f, cy - core / 2f, core, core, Yard.ORANGE, blink ? 0.95f : 0.7f);
+            }
+        }
+    }
+
+    /** The thin walls between tiles; a bulkhead's door picked out in mustard. */
+    private void edges(YardPaint p, ShipGridComponent g, float lw) {
+        if (g.edgeH != null) {
+            for (int ty = 0; ty < g.edgeH.length; ty++) {
+                for (int tx = 0; tx < g.edgeH[ty].length; tx++) {
+                    EdgeWall e = g.edgeH[ty][tx];
+                    if (e == null || e.isDestroyed()) continue;
+                    edge(p, tx, ty, tx + 1, ty, e, lw);
+                }
+            }
+        }
+        if (g.edgeV != null) {
+            for (int ty = 0; ty < g.edgeV.length; ty++) {
+                for (int tx = 0; tx < g.edgeV[ty].length; tx++) {
+                    EdgeWall e = g.edgeV[ty][tx];
+                    if (e == null || e.isDestroyed()) continue;
+                    edge(p, tx, ty, tx, ty + 1, e, lw);
+                }
+            }
+        }
+    }
+
+    private void edge(YardPaint p, float gx0, float gy0, float gx1, float gy1, EdgeWall e, float lw) {
+        float x0 = cx(gx0, gy0), y0 = cy(gx0, gy0), x1 = cx(gx1, gy1), y1 = cy(gx1, gy1);
+        if (!e.hasBulkhead) {
+            p.line(x0, y0, x1, y1, lw, PAINT, 0.7f);
+            return;
+        }
+        // A door: the frame's ends in paint, the leaf in mustard
+        float mx0 = x0 + (x1 - x0) * 0.25f, my0 = y0 + (y1 - y0) * 0.25f, mx1 = x0 + (x1 - x0) * 0.75f, my1 = y0 + (y1 - y0) * 0.75f;
+        p.line(x0, y0, mx0, my0, lw, PAINT, 0.7f);
+        p.line(mx1, my1, x1, y1, lw, PAINT, 0.7f);
+        p.line(mx0, my0, mx1, my1, lw, Yard.MUSTARD, e.bulkheadSealed ? 0.95f : 0.45f);
+    }
+
+    private static boolean wall(ShipGridComponent g, int x, int y) {
+        if (x < 0 || y < 0 || x >= g.width || y >= g.height) return false;
+        Tile t = g.getTile(x, y);
+        return t != null && t.isWall();
+    }
+
+    /** A system's lamp: green while it works, amber for a while (stunned, shorted) or cut off, red when damage has it. */
+    private static void lamp(YardPaint p, float cx, float cy, float r, ShipSystems.State st, boolean blink) {
+        switch (st) {
+            case ON:
+                p.lamp(cx, cy, r, Yard.GREEN_LAMP, true);
+                return;
+            case OFF:
+                p.lamp(cx, cy, r, Yard.WHITE_LAMP, false);
+                return;
+            case STUNNED:
+            case SHORTED:
+                p.lamp(cx, cy, r, Yard.AMBER_LAMP, blink);
+                return;
+            case CUT_OFF:
+                p.lamp(cx, cy, r, Yard.AMBER_LAMP, true);
+                return;
+            default:
+                p.lamp(cx, cy, r, Yard.RED_LAMP, true);
+        }
+    }
+
+    /** The lamps' meanings, engraved under the board. */
+    private void legendRow(YardPaint p, float x, float baseline, float w) {
+        String[] names = {"WORKING", "OFF", "STUNNED, SHORTED", "CUT OFF", "DAMAGED", "BLOCK"};
+        ShipSystems.State[] states = {ShipSystems.State.ON, ShipSystems.State.OFF, ShipSystems.State.STUNNED,
+                ShipSystems.State.CUT_OFF, ShipSystems.State.DAMAGED, null};
+        float cx = x;
+        for (int i = 0; i < names.length; i++) {
+            if (states[i] == null) p.lamp(cx + 4f, baseline - 4f, 3f, Yard.GREEN_LAMP, true);
+            else lamp(p, cx + 4f, baseline - 4f, 3f, states[i], true);
+            String label = i == names.length - 1 ? "RCS " + names[i] : names[i];
+            float tw = p.legend(label, cx + 12f, baseline, Yard.INK);
+            cx += 12f + tw + 18f;
+            if (cx > x + w - 40f) break;
+        }
+    }
+
+    // A point of the grid on the board. The grid's +x is the bow and its +y is port (Box2D's body
+    // axes): bow to the right puts port up, and bow up puts port to the left
+    private float cx(float gx, float gy) {
+        return turned ? ox + (gh - gy) * px : ox + gx * px;
+    }
+
+    private float cy(float gx, float gy) {
+        return turned ? oy + (gw - gx) * px : oy + (gh - gy) * px;
+    }
+
+    /** The left and top of the tiles from ({@code x}, {@code y}), {@code w} by {@code h} of them. */
+    private float left(int x, int y, int w, int h) {
+        return Math.min(cx(x, y), cx(x + w, y + h));
+    }
+
+    private float top(int x, int y, int w, int h) {
+        return Math.min(cy(x, y), cy(x + w, y + h));
+    }
+}

@@ -7,7 +7,9 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.PixmapPacker;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.IntMap;
 
@@ -123,6 +125,73 @@ public final class YardFonts implements Disposable {
             return fallback(size);
         } finally {
             if (generator != null) generator.dispose();
+        }
+    }
+
+    /**
+     * A font of its own, outside any {@link YardFonts}: {@code face} at {@code size} UI units for
+     * {@code scale}, on pages it owns, for a skin whose labels keep it ({@link YardSkin}). With
+     * {@code caps}, small letters are drawn as capitals, as the style engraves its legends, without
+     * the game's own words changing.
+     */
+    public static BitmapFont own(Face face, float size, float scale, boolean caps) {
+        BitmapFont f = create(face, size, scale, null);
+        if (caps) caps(f);
+        return f;
+    }
+
+    /**
+     * Rasterises {@code font} again for {@code scale} in place, as {@code HudFonts.rescale} does for the
+     * classic skin, so the labels already holding it draw at the new size with no rebuilding.
+     */
+    public static void remake(BitmapFont font, Face face, float size, float scale, boolean caps) {
+        BitmapFont fresh = own(face, size, scale, caps);
+        BitmapFont.BitmapFontData to = font.getData(), from = fresh.getData();
+        if (to.glyphs.length != from.glyphs.length) {
+            fresh.dispose();
+            return;
+        }
+        System.arraycopy(from.glyphs, 0, to.glyphs, 0, from.glyphs.length);
+        to.imagePaths = from.imagePaths;
+        to.fontFile = from.fontFile;
+        to.padTop = from.padTop;
+        to.padRight = from.padRight;
+        to.padBottom = from.padBottom;
+        to.padLeft = from.padLeft;
+        to.lineHeight = from.lineHeight;
+        to.capHeight = from.capHeight;
+        to.ascent = from.ascent;
+        to.descent = from.descent;
+        to.down = from.down;
+        to.blankLineScale = from.blankLineScale;
+        to.scaleX = from.scaleX;
+        to.scaleY = from.scaleY;
+        to.cursorX = from.cursorX;
+        to.spaceXadvance = from.spaceXadvance;
+        to.xHeight = from.xHeight;
+        to.missingGlyph = from.missingGlyph;
+        // The old pages go; the new ones now belong to the font that was there
+        Array<TextureRegion> pages = font.getRegions();
+        Array<Texture> old = new Array<>();
+        for (int i = 0; i < pages.size; i++) {
+            Texture t = pages.get(i).getTexture();
+            if (!old.contains(t, true)) old.add(t);
+        }
+        pages.clear();
+        pages.addAll(fresh.getRegions());
+        boolean owned = font.ownsTexture();
+        font.setOwnsTexture(true);
+        if (owned) for (int i = 0; i < old.size; i++) old.get(i).dispose();
+        font.setUseIntegerPositions(fresh.usesIntegerPositions());
+        // Its textures live on in font, so fresh is left for the collector rather than disposed
+    }
+
+    /** Small letters drawn as capitals: each takes its capital's glyph. */
+    static void caps(BitmapFont f) {
+        BitmapFont.BitmapFontData d = f.getData();
+        for (char c = 'a'; c <= 'z'; c++) {
+            BitmapFont.Glyph up = d.getGlyph(Character.toUpperCase(c));
+            if (up != null) d.setGlyph(c, up);
         }
     }
 

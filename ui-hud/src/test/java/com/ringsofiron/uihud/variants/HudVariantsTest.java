@@ -1,5 +1,8 @@
 package com.ringsofiron.uihud.variants;
 
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.uihud.data.Insets;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -7,6 +10,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +47,27 @@ class HudVariantsTest {
             assertNotNull(v, e.id);
             assertEquals("com.ringsofiron.uihud.variants." + e.style.id + "." + e.spec.id, v.getClass().getPackage().getName());
         }
+    }
+
+    @Test
+    void aVariantLeavesTheGamesInsetsAsTheClassicHudHasThemUnlessItSaysOtherwise() {
+        HudVariant v = new HudVariant() {
+            @Override
+            public void attach(HudVariantHost host) {
+            }
+
+            @Override
+            public void update(float delta) {
+            }
+        };
+        Array<Rectangle> panels = new Array<>();
+        v.panels(panels);
+        assertEquals(0, panels.size);
+        assertFalse(v.drawsInsets());
+        Insets.Room room = new Insets.Room().set(0f, 0f, 0f);
+        v.insetRoom(room);
+        assertEquals(0f, room.side + room.above + room.below);
+        for (Insets.Role role : Insets.Role.values()) assertTrue(v.wantsInset(role), role.name());
     }
 
     @Test

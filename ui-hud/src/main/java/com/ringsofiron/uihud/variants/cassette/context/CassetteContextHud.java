@@ -8,12 +8,16 @@ import com.ringsofiron.uihud.providers.BoardingProvider.BoardingBoard;
 import com.ringsofiron.uihud.providers.ObjectiveProvider.Objective;
 import com.ringsofiron.uihud.providers.TargetStatusProvider.TargetStatus;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
+import com.ringsofiron.uihud.variants.ShellLook;
 import com.ringsofiron.uihud.variants.cassette.YardCanvas;
 import com.ringsofiron.uihud.variants.cassette.YardPaint;
 import com.ringsofiron.uihud.variants.cassette.YardPart;
+import com.ringsofiron.uihud.variants.cassette.YardScreens;
 import com.ringsofiron.uihud.widgets.BoardingWindow;
+import com.ringsofiron.uihud.widgets.MapPainter;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -33,6 +37,12 @@ import java.util.Set;
  * <p>Keys: backslash acknowledges the master cue; Alt+O swings the orders panel up over the seat's
  * instrument and down again. The panel shows the orders and the game's own keys give them, so a key that
  * gives a lasting order (a helm order, the autopilot, the shields) closes it on its way to the game.
+ *
+ * <p>The full-screen modes (section 10) are the Yard Standard's, the same under the three Cassette HUDs
+ * ({@link YardScreens}): the menus, the map with its bays (M1), and the game's windows as consoles. P1's
+ * rail stays above a mode, the only unit that does, and P2's counts show on its chip: a second rail, on
+ * a canvas of its own in the screen layer over the map and the consoles. The telex of the ship lost or
+ * the career over has the whole screen.
  */
 public class CassetteContextHud implements HudVariant {
     /** The actions whose keys close the orders panel as they reach the game; trim, approach and the guarded two keep it. */
@@ -47,6 +57,9 @@ public class CassetteContextHud implements HudVariant {
     private final Conditions.Shown shown = new Conditions.Shown();
     private YardPaint paint;
     private YardCanvas canvas;
+    /** The rail over a mode, on its canvas in the screen layer. */
+    private YardCanvas over;
+    private HeaderRail modeRail;
 
     private HeaderRail rail;
     private CautionBoard caution;
@@ -73,6 +86,10 @@ public class CassetteContextHud implements HudVariant {
     private Coaming coaming;
     private Veil veil;
     private YardPart[] all = new YardPart[0];
+    /** The menus, the map and the windows in the Yard Standard: the modes, under the rail. */
+    private final YardScreens screens = new YardScreens();
+    /** What the instruments show while a mode is up: nothing, so P2 counts every condition. */
+    private final Conditions.Shown none = new Conditions.Shown();
 
     @Override
     public void attach(HudVariantHost host) {
@@ -80,9 +97,13 @@ public class CassetteContextHud implements HudVariant {
         paint = new YardPaint();
         paint.fonts.setScale(host.uiScale());
         canvas = new YardCanvas(paint);
+        over = new YardCanvas(paint);
         ContextFrame f = frame;
         Runnable ack = this::acknowledge;
         rail = new HeaderRail(f);
+        modeRail = new HeaderRail(f);
+        modeRail.visible = false;
+        over.add(modeRail);
         caution = new CautionBoard(f, conditions);
         threat = new ThreatUnit(f);
         placard = new EmergencyPlacard(f);
@@ -124,11 +145,15 @@ public class CassetteContextHud implements HudVariant {
         for (int i = 0; i < all.length; i++) all[i] = canvas.parts().get(i);
         host.layer().addActor(canvas);
         canvas.setBounds(0f, 0f, host.width(), host.height());
+        screens.attach(host, HeaderRail.H);
+        host.screenLayer().addActor(over);
+        over.setBounds(0f, 0f, host.width(), host.height());
     }
 
     @Override
     public void update(float delta) {
         if (host == null || paint == null) return;
+        screens.update(delta);
         HudData d = host.data();
         UiHud hud = host.hud();
         BoardingWindow bw = hud.getBoardingWindow();
@@ -138,11 +163,18 @@ public class CassetteContextHud implements HudVariant {
         f.screenW = host.width();
         f.screenH = host.height();
         canvas.setBounds(0f, 0f, f.screenW, f.screenH);
+        over.setBounds(0f, 0f, f.screenW, f.screenH);
         intercom.update(d);
-        if (f.seat == ContextFrame.Seat.NONE || f.map) {
-            // No ship to show, or the map over everything: the units wait
+        // A mode is up (the map, a console in a window's place, or the deck console's window), or the telex
+        boolean telex = screens.showing(ClassicWindow.GAME_OVER);
+        boolean mode = f.map || hud.windowOpen() || telex;
+        modeRail.visible = false;
+        if (f.seat == ContextFrame.Seat.NONE || mode) {
+            // No ship to show, or a mode over everything: the units wait, but for the rail over a mode; the
+            // telex has the whole screen
             orders.open = false;
             for (YardPart p : all) p.visible = false;
+            if (f.seat != ContextFrame.Seat.NONE && !telex) railOverMode(d);
             return;
         }
         scope.update(d);
@@ -282,6 +314,28 @@ public class CassetteContextHud implements HudVariant {
         }
     }
 
+    /**
+     * P1 over a mode: P2's board is drawn up into the rail, and its counts show on the chip, each lens lit
+     * while the master cue is lit for its level (the backslash puts it out).
+     */
+    private void railOverMode(HudData d) {
+        ContextFrame f = frame;
+        conditions.update(d, f, none, f.time, 0f);
+        int warnings = 0, cautions = 0;
+        for (int i = 0; i < conditions.all.size; i++) {
+            if (conditions.all.get(i).warning) warnings++;
+            else cautions++;
+        }
+        HeaderRail r = modeRail;
+        r.chip = true;
+        r.warnings = warnings;
+        r.cautions = cautions;
+        r.warningLit = conditions.cue.lit && conditions.cue.warning;
+        r.cautionLit = conditions.cue.lit && !conditions.cue.warning;
+        r.visible = true;
+        r.place(0f, 0f, f.screenW, HeaderRail.H);
+    }
+
     /** The objective's face (H1): the guide's step while it runs, else the tracked contract where it matters. */
     private static Clipboard.Mode clipboardMode(HudData d, ContextFrame f, boolean helm, boolean fire, boolean gun, boolean deck) {
         if (f.guided) return Clipboard.Mode.GUIDE;
@@ -346,6 +400,8 @@ public class CassetteContextHud implements HudVariant {
     @Override
     public boolean keyDown(int keycode) {
         if (host == null || paint == null) return false;
+        // A console that shows has the keys first
+        if (screens.keyDown(keycode)) return true;
         prompt.keyPressed(keycode);
         intercom.keyPressed();
         // Escape is never the HUD's: with no window open it is the game's way out
@@ -378,14 +434,51 @@ public class CassetteContextHud implements HudVariant {
     public void resize(int width, int height, float uiScale) {
         if (paint != null) paint.fonts.setScale(uiScale);
         if (canvas != null && host != null) canvas.setBounds(0f, 0f, host.width(), host.height());
+        if (over != null && host != null) over.setBounds(0f, 0f, host.width(), host.height());
+        screens.resize(uiScale);
     }
 
     @Override
     public void detach() {
+        screens.dispose();
+        if (over != null) over.remove();
         if (paint != null) paint.dispose();
         paint = null;
         canvas = null;
+        over = null;
         all = new YardPart[0];
+    }
+
+    // --- The modes: the Yard Standard's menus, map and windows ----------------------------------------
+
+    @Override
+    public boolean replaces(ClassicWindow window) {
+        return screens.replaces(window);
+    }
+
+    @Override
+    public boolean open(ClassicWindow window) {
+        return screens.open(window);
+    }
+
+    @Override
+    public boolean showing(ClassicWindow window) {
+        return screens.showing(window);
+    }
+
+    @Override
+    public void close(ClassicWindow window) {
+        screens.close(window);
+    }
+
+    @Override
+    public ShellLook shellLook() {
+        return screens.shellLook();
+    }
+
+    @Override
+    public MapPainter mapPainter() {
+        return screens.mapPainter();
     }
 
     /** The world overlays stay: contact markers and missile paths. Everything else is the Yard's. */

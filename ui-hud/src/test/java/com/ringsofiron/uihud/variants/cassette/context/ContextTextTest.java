@@ -36,6 +36,17 @@ class ContextTextTest {
     }
 
     @Test
+    void theRailsChipCountsOnOneDrumEach() {
+        // A closed window at zero, the count to nine, and nine for more
+        assertEquals(" ", HeaderRail.count(0));
+        assertEquals("3", HeaderRail.count(3));
+        assertEquals("9", HeaderRail.count(12));
+        // The chip's window sits between BATTLE STATIONS (to 610) and the clock, which stands right of it
+        assertTrue(HeaderRail.CHIP_X >= 612f, "chip at " + HeaderRail.CHIP_X);
+        assertTrue(624f + HeaderRail.AFTER >= HeaderRail.CHIP_X + HeaderRail.CHIP_W + 8f, "clock at " + (624f + HeaderRail.AFTER));
+    }
+
+    @Test
     void aRowsDetailIsTenCharacters() {
         Conditions.Row r = new Conditions.Row();
         r.detail = "ENGINEERING BAY";
