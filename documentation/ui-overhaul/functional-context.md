@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 15.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 16.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -60,7 +60,7 @@ value (a time, a distance, a setting) still has one home.
 
 **Conditions are not events.** Something that *is true now* (a fire, low propellant, a missile
 inbound) goes to the caution and warning panel and stays while it is true. Something that *happened*
-(a contract paid, a crewman back inside) goes to the message feed and fades. Today both share one
+(a contract paid, a crewman back in from EVA) goes to the message feed and fades. Today both share one
 column and one timer.
 
 **The captain's question is "is someone on it?"** The crew fight fires, seal breaches and treat the
@@ -669,14 +669,23 @@ decoy cooldown.
 the mode.
 
 **Message anatomy.** Source tag · text. Sources: Helm, Gunnery, Shields, Engineering, Medical, Crew,
-Boarding, Station, Sponsor, Comms, Log.
+Boarding, Station, Sponsor, Comms, Log. A notice takes the source of what it is about: Helm, the
+helm's orders, burns and autopilot; Gunnery, hits, kills and the ship's own launches; Shields, raising,
+trim and trips; Engineering, power, shorts and repairs; Medical, treatment, stabilising and stores;
+Crew, a crew member's own news (a wound, a death, EVA out and in, morale, a promotion); Boarding, the
+party and the craft it boards; Station, clearance, trades, the yard, the infirmary and prisoners
+handed over; Sponsor, contracts, pay and bounties; Comms, other craft's hails; Log, saves and the
+game itself.
 
 **Behaviour.** Routine messages hold 5 s, notable ones 8 s (today's INFO and IMPORTANT). A repeat
 within the hold counts ("×3") instead of stacking (as `NoticeLog` already does). Every message goes to
-the Log (M5). A message that only restates a condition in P2 is not posted to the feed.
+the Log (M5), and so do the events the feed leaves to other widgets, Log-only and at their row's
+severity: each P2 condition as it is raised and as it clears ("VACUUM HOLD", "VACUUM HOLD cleared,
+2:10"), and each missile P3 counts, when it is fired at the ship and how it ended (shot down, or
+where it hit), so a fight's record has its hits. A message that only restates a condition in P2 is not posted to the feed.
 
-**Examples.** "Station: clearance granted, port 2"; "Sponsor: payday, 2,000 cr"; "Crew: Ada back
-inside"; "Gunnery: Raider disabled"; "Log: autosaved".
+**Examples.** "Station: clearance granted, port 2"; "Sponsor: payday, 2,000 cr"; "Crew: Ada is back
+in from EVA"; "Gunnery: Raider disabled"; "Log: autosaved".
 
 **In combat** the feed would flood with hits and kills, so it summarises: gunnery events from the last
 5 s merge into one line ("Gunnery: 3 hits on Raider"), and routine messages from other sources wait in
@@ -1414,13 +1423,22 @@ party's positions while they are aboard.
 
 Tabs: **Career** (rank, sponsor, budget and next pay, promotions, bounty record), **Standing** (each
 faction, and tension by region), **Contracts** (held contracts in full, which one is tracked by P5,
-set as Nav, give up), **Log** (every message, with day and time, filterable by source and severity;
-L opens this tab).
+set as Nav, give up), **Log** (every message, with day and time, and the conditions and missiles P4 leaves to P2 and P3,
+as they start and end; filterable by source and severity; L opens this tab). The Log keeps the
+feed's merged gunnery line ("Gunnery: 3 hits on Raider"), so a fight fits a page, and opening the
+line lists the events in it with their times. The two filters are controls at the top of the tab,
+stepped with ← and → once focused (`FocusNav`, as every mode's controls are) or by a click; the list
+scrolls with ↑ and ↓ once it has the focus, Page Up and Page Down, and the wheel, as today's log does.
 
 ### 10.6 M6 Controls
 
 The F1 panel as today, with the current seat and situations first ("Here: Helm, approach") and the
-rest below. Gamepad layout as its own tab.
+rest below. Gamepad layout as its own tab. Its sections are the seats and situations P1 names (helm,
+fire control, gun and deck; docked, boarding and emergency; the map; anywhere), so the gun seat has
+its own: the pointer aims that gun alone, Fire or a click fires it, the wheel zooms, V stands up, and
+the rest are fire control's keys. Today's hints file a gun under the weapons console
+(`HintRegistry.Context.WEAPONS`, "the weapons console or a gun"); the registry needs a gun context,
+which `Bridge.playerAtGun` already tells apart (section 14).
 
 ### 10.7 Shell
 
@@ -1676,7 +1694,8 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 |---|---|---|
 | `UiContextProvider` | New | Seat (helm, fire control, gun and which, deck); situation flags with their reasons; helm authority (who, order, autopilot, held reason); battle stations; warp hold reason |
 | `ConditionProvider` | New | The P2 catalogue as structured rows: code, severity, detail, location tiles, handling (assigned crew count, or held and why: under fire or outside), timer and its kind (harm or recovery) |
-| `MessageProvider` | Change `NoticeLog` | Each notice with a source and a kind split into event or condition; conditions stop posting as notices |
+| `MessageProvider` | Change `NoticeLog` | Each notice with a source (P4's list) and a kind split into event or condition; conditions stop posting as notices. The Log also takes P2's conditions from `ConditionProvider` and P3's missiles from `ThreatProvider` as they start and end, and keeps each merged gunnery line's events |
+| `HintRegistry` | Change | A gun context apart from the weapons console's, so M6 lists the gun seat's keys under the seat P1 names |
 | `ShieldStatusProvider` | New | Whether the ship has an emitter at all; stock, capacity, cloud, scattered, adrift, stowed, raised, lowered for dock, trim, sector thickness (8), emitters (holding, heat, trip) |
 | `PowerStatusProvider` | New | Per circuit: reactors, rated and actual output, store and refill; systems switched on but cut off from every reactor; shorts with their reset time (`DamageStates.AUTO_RESET`, 45 s) and stuns with theirs |
 | Room names | New, in interior-grid | Each compartment's name by section 5.5's rule, kept with the layout |
@@ -1772,3 +1791,4 @@ largest scale, and the centre stays clear.
 | 13 | 4 (NASA-punk critique) | Wireframe 11's RCS row reads a dash for power, as for health: the game's RCS blocks draw no power (`RcsThruster`, `RcsThrust`: a block fires while its hull tile stands and there is propellant), and the systems list dashes any value the game doesn't have |
 | 14 | 4 (VFD critique) | M1 draws a body the plan meets twice, as the game does: where it is now, with the Nav's mark on its station, and as a ghost where it will be at the plan's closest approach, labelled with that time; wireframe 09 shows both, the ghost 54° further along the Moon's orbit. M1's Nav card follows H2's NAV rule, so for a Nav around another body it gives that body and the arrival, not a closest approach. Section 14 lists `OrbitPathProvider`'s ghost time and gives the boarding party's states as X2 has them |
 | 15 | 4 (VFD critique) | Wireframe 11's stopped RCS block and the HOLD's breach are one hit on the same hull tile, the aft port quad's, which also wounded Cole: a block stops only while its tile is wrecked, and every one of the corvette's stands on hull next to the interior, so a stopped block always comes with a breach or a sealed one. The systems list gives every system its switch, as the game does, with a group's row switching the group and the reactor's guarded. Wireframe 11's feed line is the game's wound notice |
+| 16 | 4 (NASA-punk critique) | The Log keeps a fight's record: P2's conditions and P3's missiles go to it, Log-only, as they start and end, since the feed leaves them out; it keeps the feed's merged gunnery lines, each opening to its events. P4 says which source each notice takes. The Log's filters step with ← and → under `FocusNav` and the list scrolls as today's log does. M6 gives the gun seat its own section, which needs a gun hint context (section 14). P4's example crew line is the game's own ("Ada is back in from EVA") |
