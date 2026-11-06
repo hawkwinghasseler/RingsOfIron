@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shell: settings, interface</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="shell.js"></script>
+<script>
+// Settings, the interface page, with a change waiting. Most settings act as soon as they are set;
+// what rebuilds the screen waits for EXEC. The player has picked another HUD, so the page title
+// reads MOD, the new choice is shaded (the computer's reverse video) with the one in use named in
+// its label, EXEC's light bar is lit and L6 offers ERASE in place of RTN. EXEC (F10) swaps the HUD;
+// ERASE, or leaving the page, keeps the one in use. The option selects (key hints, colours, motion)
+// show the live option large in cyan; each key steps to the next and acts at once. The cursor has
+// moved on to KEY HINTS.
+let s = backdrop();
+s += shellConsole({
+  head: 'INTERFACE', mod: true, page: '1/1', exec: 'lit',
+  lines: [
+    { L: { label: 'HUD · IN USE NASA-PUNK: TASK', data: 'NASA-PUNK: STATIONS', prompt: true, mod: true } },
+    { L: { label: 'KEY HINTS', parts: optSel(['LEARNING', 'FULL', 'OFF'], 0), cursor: true }, R: { label: 'MOTION', parts: optSel(['FULL', 'REDUCED'], 0) } },
+    { L: { label: 'COLOURS', parts: optSel(['STANDARD', 'COLOUR-BLIND'], 0) } },
+    null,
+    null,
+    { L: { data: 'ERASE', prompt: true } },
+  ],
+  foot: { padPrompt: 'EXEC SWAPS THE HUD · ERASE KEEPS IT' },
+});
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

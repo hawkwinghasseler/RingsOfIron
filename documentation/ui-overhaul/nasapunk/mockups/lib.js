@@ -87,7 +87,8 @@ function du(x, y, w, h, o = {}) {
   const b = o.b || 12, keyRow = 14;
   const kb = o.keys || {};
   const padT = kb.top ? keyRow : 0, padB = kb.bottom ? keyRow : 0, padL = kb.left ? keyRow : 0, padR = kb.right ? keyRow : 0;
-  const gx = x + b + padL, gy = y + b + padT, gw = w - 2 * b - padL - padR, gh = h - 2 * b - padT - padB - (o.plate ? 10 : 0);
+  // o.footRoom: bezel left free under the glass, for a keyboard drawn by the caller (cdu())
+  const gx = x + b + padL, gy = y + b + padT, gw = w - 2 * b - padL - padR, gh = h - 2 * b - padT - padB - (o.plate ? 10 : 0) - (o.footRoom || 0);
   let s = bezelBody(x, y, w, h);
   // a thin bezel (o.b under 8) has no room for its fasteners beside the glass
   if (b >= 8) s += fastener(x + 6, y + 6) + fastener(x + w - 6, y + 6) + fastener(x + 6, y + h - 6) + fastener(x + w - 6, y + h - 6);

@@ -1,0 +1,161 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: the map</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="context.js"></script>
+<script>
+// M1, the map, as a full-screen mode (the context spec, 10.1): P1 above, then the mode's frame, a
+// title row, the Plan panel on the left, Target and traffic on the right, the timeline between them
+// under the map, and the foot row with the one-line feed and the close keys. The same day and the
+// same transfer to Shackleton Ice as the task variation's map, here accepted: the planned path is
+// solid magenta and burn 1 is selected, cyan, with its handles and the result it gives (an
+// apoapsis at the Moon's distance). The arrival still misses the delivery's deadline, so the total
+// carries LATE, and the timeline shows the deadline before the arrival. The timeline's cursor is
+// on burn 1, the next event, with its warp-to.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 5 });
+s += statusStrip({ seat: 'HELM', clock: 'DAY 3 · 14:22:05', warp: '1×' });
+s += consoleBody(0, 28, 1280, 772, {});
+// the bottom bezel carries the mode's plate
+s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M1  MAP', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
+
+const kvl = (x, y, t) => text(x, y, t, { size: LB, bold: true, fill: C.dim, track: 0.6 });
+const rowsep = (gx, y, gw) => line(gx + 6, y, gx + gw - 6, y, C.graticule, 1);
+
+// ---- the title row ----
+s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 51, 'EARTH SYSTEM', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(146, 51, 'MAP', { size: LB, bold: true, fill: C.dim, track: 0.8 });
+s += capKey(1106, 38, 'M') + text(1132, 51, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1156, 38, 'ESC') + text(1264, 51, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+
+// ---- the Plan panel ----
+s += du(8, 64, 324, 680, {
+  id: 'plan', b: 8, keys: { bottom: [{ t: 'HELM FLIES', k: '1', state: 'on', w: 1.3 }, { t: 'AUTOPILOT', k: '6', w: 1.2 }, { t: 'WARP', k: '/', w: 0.8 }, { t: 'CLEAR', w: 0.7 }] },
+  content: (gx, gy, gw, gh) => {
+    let g = text(gx + 10, gy + 20, 'PLAN', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(gx + gw - 10, gy + 20, '2 BURNS · ACCEPTED', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) + rowsep(gx, gy + 28, gw);
+    // orbit now
+    g += kvl(gx + 10, gy + 50, 'ORBIT NOW') + text(gx + 104, gy + 50, 'EARTH', { size: B, bold: true, fill: C.white, track: 0.4 });
+    g += kvl(gx + 10, gy + 70, 'AP') + val(gx + 150, gy + 70, '403', 'KM', { anchor: 'end' }) + text(gx + gw - 10, gy + 70, 'T-24:10', { size: B, bold: true, fill: C.white, anchor: 'end' });
+    g += kvl(gx + 10, gy + 89, 'PE') + val(gx + 150, gy + 89, '397', 'KM', { anchor: 'end' }) + text(gx + gw - 10, gy + 89, 'T-1:10:22', { size: B, bold: true, fill: C.white, anchor: 'end' });
+    g += kvl(gx + 10, gy + 108, 'PERIOD') + text(gx + 150, gy + 108, '1:32:24', { size: V, bold: true, fill: C.white, anchor: 'end' });
+    g += rowsep(gx, gy + 122, gw);
+    // the burns
+    g += kvl(gx + 10, gy + 142, 'BURNS');
+    const gr = grid(gx + 10, gy + 164, [{ t: '', w: 22 }, { t: 'IN', w: 84 }, { t: 'ΔV', w: 56, align: 'right' }, { t: 'PRO', w: 70, align: 'right' }, { t: 'RAD', w: 54, align: 'right' }], [
+      { cells: ['1', 'T-1:29:51', '3 084', '+3 084', '+0'], cursor: true }, ['2', 'T-3D 17H', '828', '−828', '+0'],
+    ], { rh: 20 });
+    g += gr.svg;
+    g += rowsep(gx, gy + 214, gw);
+    // what the selected burn does
+    g += kvl(gx + 10, gy + 234, 'SELECTED') + text(gx + 104, gy + 234, 'BURN 1 →  AP 384 000 KM', { size: B, bold: true, fill: C.cyan, track: 0.3 });
+    g += text(gx + 104, gy + 252, 'MEETS THE MOON IN 3.3 D', { size: B, fill: C.white, track: 0.3 });
+    g += rowsep(gx, gy + 266, gw);
+    // the totals
+    g += kvl(gx + 10, gy + 286, 'ΔV NEED') + val(gx + 196, gy + 286, '3 912', 'M/S', { anchor: 'end' });
+    g += kvl(gx + 10, gy + 306, 'ΔV HAVE') + val(gx + 196, gy + 306, '7 007', 'M/S', { anchor: 'end' });
+    g += kvl(gx + 10, gy + 326, 'ARRIVAL') + text(gx + 196, gy + 326, 'DAY 7 09:40', { size: V, bold: true, fill: C.white, anchor: 'end' }) + flag(gx + 206, gy + 325, 'LATE 22H', C.amber, { size: 12 });
+    g += kvl(gx + 10, gy + 345, 'DEADLINE') + text(gx + 196, gy + 345, 'DAY 6 11:00', { size: B, fill: C.white, anchor: 'end' });
+    g += rowsep(gx, gy + 360, gw);
+    // who flies it
+    g += kvl(gx + 10, gy + 380, 'BURN 1') + text(gx + 104, gy + 380, 'BEA AT THE HELM FLIES IT', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += kvl(gx + 10, gy + 400, 'BURN 2') + text(gx + 104, gy + 400, 'BEA, ON HER WATCH', { size: B, fill: C.white, track: 0.3 });
+    g += rowsep(gx, gy + 414, gw);
+    // where the plan leaves the ship
+    g += kvl(gx + 10, gy + 434, 'AFTER IT') + text(gx + 104, gy + 434, 'MOON · 100 KM CIRCULAR', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += kvl(gx + 10, gy + 454, 'ΔV LEFT') + val(gx + 196, gy + 454, '3 095', 'M/S', { anchor: 'end' });
+    g += kvl(gx + 10, gy + 474, 'HOME') + text(gx + 104, gy + 474, '520 M/S FROM THERE', { size: B, fill: C.white, track: 0.3 });
+    return g;
+  },
+}).svg;
+
+// ---- the map ----
+const plot = du(338, 64, 604, 548, {
+  id: 'plot', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = '';
+    const sp = systemPlot({
+      ex: gx + 252, ey: gy + 282, R: 222, now: -15, at: 35, plan: 'planned', selected: 0,
+      layers: { stations: true, traffic: true, pirates: true },
+      haulers: [[gx + 312, gy + 290, 9, -6], [gx + 468, gy + 244, -8, 7], [gx + 180, gy + 404, -4, 9], [gx + 470, gy + 468, 8, -2]],
+      pirates: [[gx + 376, gy + 190, 'RAIDER']],
+      prop: '+3 084', rad: '+0', b1label: '', b2lx: 14, b2ly: 18,
+    });
+    g += sp.svg;
+    const [mx, my] = sp.moonNow, [ax, ay] = sp.moonAt, [ex, ey] = sp.earth;
+    g += ring(mx, my, 12, C.magenta, 1.5) + text(mx - 18, my + 24, 'SHACKLETON ICE', { size: LB, bold: true, fill: C.magenta, anchor: 'end', track: 0.6 }) + text(mx - 18, my + 40, 'MOON · 3 STATIONS', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += text(ax - sp.rSoi * 0.7 - 6, ay - sp.rSoi * 0.7 - 4, 'MOON AT THE ENCOUNTER', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += text(ex - 14, ey - 30, 'EARTH', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 }) + text(ex - 14, ey - 14, '3 STATIONS', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    g += scaleBar(gx + gw - 92, gy + gh - 18, 60, '100 000 KM');
+    return g;
+  },
+});
+s += plot.svg;
+
+// ---- the timeline, between the panels under the map ----
+const TL = (h) => Math.log(1 + h / 3) / Math.log(1 + 91.3 / 3);
+s += du(338, 618, 604, 126, {
+  id: 'tl', b: 8,
+  content: (gx, gy, gw, gh) => {
+    const x0 = gx + 22, w0 = gw - 50;
+    let g = kvl(gx + 10, gy + 18, 'TIMELINE');
+    // the cursor's event, the next one, with its warp-to
+    g += text(gx + gw - 40, gy + 18, 'WARP TO BURN 1', { size: LB, bold: true, fill: C.cyan, anchor: 'end', track: 0.5 }) + capKey(gx + gw - 32, gy + 5, '/');
+    g += timelineStrip(x0, gy + 56, w0, [
+      { h: 0.4, label: 'AP', c: C.white, shape: 'tick', row: 0 },
+      { h: 1.5, label: 'BURN 1', c: C.cyan, row: 0 },
+      { h: 68.6, label: 'DEADLINE', c: C.amber, shape: 'flag', lx: 330, level: 10 },
+      { h: 79.2, label: 'MOON SOI', c: C.white, shape: 'tick', lx: 404, level: 14 },
+      { h: 88.8, label: 'BURN 2', c: C.magenta, lx: 468, level: 18 },
+      { h: 91.3, label: 'ARRIVE', c: C.white, shape: 'tick', lx: 526, level: 22 },
+    ], { end: 91.3, t0: 3, ticks: [[24, '1 D'], [48, '2 D']] });
+    g += cursor(x0 + w0 * TL(1.5) - 28, gy + 31, 56, 34);
+    return g;
+  },
+}).svg;
+
+// ---- Target and traffic ----
+s += du(948, 64, 324, 680, {
+  id: 'tgt', b: 8, keys: { bottom: [{ t: 'PLAN', k: ';' }, { t: 'ACCEPT', k: '⏎', state: 'na' }, { t: 'DISCARD', k: '⌫' }] },
+  content: (gx, gy, gw, gh) => {
+    let g = text(gx + 10, gy + 20, 'NAV', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(gx + gw - 10, gy + 20, 'Q NEXT TARGET', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) + rowsep(gx, gy + 28, gw);
+    g += text(gx + 10, gy + 52, 'SHACKLETON ICE', { size: V, bold: true, fill: C.magenta, track: 0.5 }) + val(gx + gw - 10, gy + 52, '385 479', 'KM', { anchor: 'end' });
+    g += text(gx + 10, gy + 70, 'ICE MINE · SELENE COMBINE · NEUTRAL', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    g += kvl(gx + 10, gy + 92, 'CLOSEST') + text(gx + 104, gy + 92, '3.2 KM  ·  T-3.8 D', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += kvl(gx + 10, gy + 111, 'SERVES') + text(gx + 104, gy + 111, 'DELIVERY · FOOD, 18 M³', { size: B, fill: C.white, track: 0.3 });
+    g += rowsep(gx, gy + 126, gw);
+    // contacts
+    g += kvl(gx + 10, gy + 146, 'CONTACTS') + text(gx + gw - 10, gy + 146, 'BY DISTANCE ▾', { size: LB, bold: true, fill: C.cyan, anchor: 'end', track: 0.5 });
+    const gr = grid(gx + 10, gy + 168, [{ t: '', w: 18 }, { t: 'NAME', w: 176 }, { t: 'KM', w: 98, align: 'right' }], [
+      [{ t: '□', c: C.white }, 'HIGHPORT', '3.0'],
+      [{ t: '□', c: C.white }, 'FREIGHTER', '3.1'],
+      [{ t: '□', c: C.white }, 'DEEPWELL DEPOT', '2 015'],
+      [{ t: '□', c: C.white }, 'ANVIL YARDS', '13 640'],
+      [{ t: '◇', c: C.red }, { t: 'RAIDER', c: C.red }, { t: '152 300', c: C.red }],
+      [{ t: '□', c: C.white }, 'FREEHOLD', '198 900'],
+      [{ t: '□', c: C.magenta }, { t: 'SHACKLETON ICE', c: C.magenta }, { t: '385 479', c: C.magenta }],
+      [{ t: '□', c: C.white }, 'SELENE FORGE', '385 820'],
+    ], { rh: 20, rule: 4 });
+    g += gr.svg;
+    g += text(gx + 10, gy + 348, '+ 9 HAULERS, 2 STATIONS · PAGE 1/3', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    g += rowsep(gx, gy + 362, gw);
+    // the layers: lit while on
+    g += kvl(gx + 10, gy + 382, 'LAYERS');
+    [['STATIONS', 1], ['HAULERS', 1], ['PIRATES', 1], ['DERELICTS', 1], ['OBJECTIVES', 1], ['TENSION', 0]].forEach(([t, on], i) => {
+      const bx = gx + 10 + (i % 3) * 98, by = gy + 394 + Math.floor(i / 3) * 32;
+      g += I.box(bx, by, 90, 24, t, on ? 'engaged' : 'off', { size: 12 });
+    });
+    return g;
+  },
+}).svg;
+
+// ---- the foot row: the one-line feed ----
+s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 767, 'LOG', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(56, 767, 'Autosaved before the plan.', { size: B, fill: C.white, track: 0.2 });
+s += text(1264, 767, 'ESC CLOSES THE MAP', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

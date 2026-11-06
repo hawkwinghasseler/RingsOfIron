@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shell: save</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="shell.js"></script>
+<script>
+// The save page from the pause menu. A new name typed into the scratchpad goes on the NAME line;
+// under the divider, the saves it could write over instead. The player has picked SAVE 2, so its
+// name is on the NAME line and SAVE carries a guard with what it replaces: writing over a save can't
+// be undone, so the first press lifts the guard and the second saves. Typing a new name takes the
+// guard away.
+let s = backdrop();
+const old = (name, t, sub, o = {}) => ({ L: Object.assign({ label: sub, parts: [[name, o.c || C.white], [t, C.white, 13, false]] }, o) });
+s += shellConsole({
+  head: 'SAVE', page: '1/1',
+  lines: [
+    { L: { label: 'NAME', data: 'SAVE 2', c: C.cyan } },
+    null,
+    old('BEFORE THE RAID', 'DAY 2 · 08:41', 'PATROL CORVETTE · 9 340 CR · ANVIL YARDS'),
+    old('SAVE 2', 'DAY 1 · 19:05', 'PATROL CORVETTE · 7 120 CR · HIGHPORT', { c: C.cyan, cursor: true }),
+    old('SAVE 1', 'DAY 0 · 00:00', 'PATROL CORVETTE · 5 000 CR · HIGHPORT'),
+    { L: { data: 'RTN', prompt: true }, R: { label: 'REPLACES SAVE 2', data: 'SAVE', prompt: true, guard: 'closed' } },
+  ],
+  body: (gx, gy, gw, gh, rowY) => divider(gx, rowY(1) - 5, gw, 'OR WRITE OVER'),
+  foot: { padPrompt: 'TYPE A NEW NAME · ENTER PUTS IT ON THE LINE' },
+});
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

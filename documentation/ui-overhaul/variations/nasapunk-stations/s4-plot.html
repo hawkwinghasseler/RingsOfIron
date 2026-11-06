@@ -1,0 +1,66 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Stations: the plot</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="stations.js"></script>
+<script>
+// The Plot (the stations spec, 10.2): a full-screen panel, opened with M at the helm, whose console
+// hosts Navigation, so it is owned and its keys work (elsewhere it opens read-only, keys greyed).
+// It hides the band and brings its own annunciator and ticker; the panel has the grammar of every
+// panel: a title bar with the station and console, tabs (MAP with traffic, PLAN, TARGETS), the body,
+// and a footer of soft keys with their key caps that shows the last key's response.
+//
+// The same day and transfer as the other two variations' maps, accepted: the path solid magenta,
+// the burns on it. The cursor is on the path, two days out, and reads what is there. Nothing is
+// wrong aboard, so the annunciator is dark (dark ship) and the ticker carries the helmsman's word
+// on the burn she will fly. The MAP tab carries no plan numbers: their home is the PLAN tab.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 5 });
+s += bezelBody(0, 0, 1280, 800, 0);
+// the panel's own annunciator and ticker, across its top
+s += annunciator(640, 8, [], {});
+s += ticker(280, 66, [['HELM', 'Bea:', 'burn 1 is mine, in an hour and a half.']]);
+
+s += consoleFace(8, 84, 1264, 708, {
+  id: 'plot', b: 16, title: 'NAV  ·  HELM CONSOLE', titleSize: 11, plate: 'DU-4  NAV PLOT  P/N 5210-01',
+  tabs: [{ t: 'MAP', state: 'cur' }, 'PLAN', 'TARGETS'],
+  footer: [{ t: 'PLAN TRANSFER', k: ';' }, { t: 'DISCARD', k: 'BKSP' }, { t: 'WARP TO BURN', k: '/' }, { t: 'NEXT TARGET', k: 'Q' }, { t: 'LAYERS', k: 'L' }, { t: 'CLOSE', k: 'ESC' }],
+  content: (gx, gy, gw, gh) => {
+    let g = '';
+    const sp = systemPlot({
+      ex: gx + 470, ey: gy + 318, R: 262, now: -15, at: 35, plan: 'planned',
+      layers: { stations: true, traffic: true, pirates: true },
+      haulers: [[gx + 548, gy + 300, 9, -6], [gx + 724, gy + 246, -8, 7], [gx + 366, gy + 440, -4, 9], [gx + 690, gy + 470, 8, -2], [gx + 260, gy + 260, 6, 6]],
+      pirates: [[gx + 612, gy + 186, 'RAIDER']],
+      b1lx: -12, b1ly: -14, b2lx: 16, b2ly: 18,
+    });
+    g += sp.svg;
+    const [mx, my] = sp.moonNow, [ax, ay] = sp.moonAt, [ex, ey] = sp.earth;
+    g += ring(mx, my, 12, C.magenta, 1.5) + text(mx + 18, my + 5, 'SHACKLETON ICE', { size: 12, bold: true, fill: C.magenta, track: 0.6 }) + text(mx + 18, my + 21, 'MOON · 3 STATIONS', { size: 12, bold: true, fill: C.dim, track: 0.5 });
+    g += text(ax + sp.rSoi * 0.72 + 8, ay - sp.rSoi * 0.72 - 2, 'MOON AT THE ENCOUNTER', { size: 12, bold: true, fill: C.dim, track: 0.5 });
+    g += text(ex - 14, ey + 30, 'EARTH', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.6 }) + text(ex - 14, ey + 46, '3 STATIONS', { size: 12, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+    // the cursor on the path, two days out, with what is under it
+    const [cx, cy] = sp.pathAt(0.62);
+    g += plotCursor(cx, cy, '');
+    const rx = cx + 16, ry = cy + 24;
+    g += rect(rx - 6, ry - 15, 196, 62, { fill: 'rgba(5,7,10,0.9)', stroke: '#1E3A46', sw: 1 });
+    g += text(rx, ry, 'ON THE PLAN', { size: 12, bold: true, fill: C.cyan, track: 0.6 }) + text(rx + 184, ry, 'T-2.1 D', { size: 13, bold: true, fill: C.cyan, anchor: 'end' });
+    g += text(rx, ry + 18, 'FROM EARTH', { size: 12, bold: true, fill: C.dim, track: 0.5 }) + text(rx + 184, ry + 18, '213 400 KM', { size: 13, bold: true, fill: C.white, anchor: 'end' });
+    g += text(rx, ry + 36, 'SPEED', { size: 12, bold: true, fill: C.dim, track: 0.5 }) + text(rx + 184, ry + 36, '1 020 M/S', { size: 13, bold: true, fill: C.white, anchor: 'end' });
+    // the title of the view, and the layers that are on
+    g += text(gx + 14, gy + 50, 'EARTH SYSTEM', { size: 15, bold: true, fill: C.white, track: 0.8 });
+    g += text(gx + 14, gy + 68, 'STATIONS · TRAFFIC · PIRATES', { size: 12, bold: true, fill: C.dim, track: 0.5 });
+    g += scaleBar(gx + gw - 100, gy + gh - 40, 68, '100 000 KM');
+    // the footer's response line: what the last key did
+    g += text(gx + 14, gy + gh - 30, 'PLAN ACCEPTED · BURN 1 T-1:29:51, BEA AT THE HELM FLIES IT', { size: 12, bold: true, fill: C.white, track: 0.5 });
+    return g;
+  },
+}).svg;
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

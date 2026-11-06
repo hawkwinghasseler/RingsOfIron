@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shell: main menu</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="shell.js"></script>
+<script>
+// The main menu: the flight computer at power-up, set in a console with the game's name engraved
+// on it. The menu is its MENU page: each choice on a line-select key, the newest save's summary
+// under CONTINUE (task spec, shell), the keyboard's cursor on CONTINUE. The build is the unit's
+// part number, on its plate. Behind it, the game's backdrop: stars and the Earth's limb.
+let s = backdrop();
+s += shellConsole({
+  head: 'MENU',
+  lines: [
+    { L: { label: 'NEWEST SAVE', data: 'CONTINUE', prompt: true, cursor: true } },
+    null,
+    { L: { label: 'SEED AND SPONSOR', data: 'NEW CAREER', prompt: true }, R: { label: 'GUIDED', data: 'FIRST PLAY', prompt: true } },
+    { L: { label: '6 SAVES', data: 'LOAD', prompt: true }, R: { data: 'SETTINGS', prompt: true } },
+    null,
+    { R: { data: 'QUIT', prompt: true } },
+  ],
+  // the newest save, in the row under CONTINUE: its name and game time, then ship, credits and where
+  body: (gx, gy, gw, gh, rowY) => {
+    const y = rowY(1) - 14;
+    return line(gx + 12, y - 15, gx + 12, y + 22, C.graticule, 1)
+      + text(gx + 22, y, 'QUICK SAVE  ·  DAY 3  ·  14:22:05', { size: S_CELL, bold: true, fill: C.white, track: 0.3 })
+      + text(gx + 22, y + 18, 'PATROL CORVETTE  ·  18 450 CR  ·  HIGHPORT', { size: S_CELL, fill: C.white, track: 0.2 });
+  },
+  foot: { padPrompt: 'ARROWS OR THE PAD CHOOSE · ENTER SELECTS' },
+});
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>

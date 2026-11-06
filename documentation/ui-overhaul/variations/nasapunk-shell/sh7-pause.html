@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shell: pause</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="shell.js"></script>
+<script>
+// The pause menu in a game: CDU-1 alone in front of the deck, which keeps 40 per cent of its light.
+// Resume, save and load, settings and the controls (F1) are on their keys. With play unsaved, both
+// quits carry guards: the player has pressed QUIT GAME once, so its guard stands open and its
+// label says the next press quits. A label over an action names its key where it has one (Esc,
+// F1). The seed is on the scratchpad line.
+let s = deckBehind({ dim: 0.4 });
+s += shellCdu(406, 153, {
+  head: 'PAUSED', headLeft: 'DAY 3 · 14:22',
+  lines: [
+    { L: { label: 'ESC', data: 'RESUME', prompt: true }, R: { data: 'SAVE', prompt: true } },
+    { L: { label: '6 SAVES', data: 'LOAD', prompt: true }, R: { data: 'SETTINGS', prompt: true } },
+    { R: { label: 'F1', data: 'CONTROLS', prompt: true } },
+    null,
+    null,
+    { L: { label: '20 MIN UNSAVED', data: 'QUIT TO MENU', prompt: true, guard: 'closed' }, R: { label: 'AGAIN QUITS', data: 'QUIT GAME', prompt: true, guard: 'open', cursor: true } },
+  ],
+  foot: { padPrompt: 'SEED 2026' },
+}).svg;
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>
