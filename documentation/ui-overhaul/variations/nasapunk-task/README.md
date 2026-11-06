@@ -1,6 +1,6 @@
 # Nasa-punk × Task-driven
 
-The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 16 now, on
+The task-driven functional spec (`functional-task.md`, round 9 when drawn and round 17 now, on
 branch `claude/project-thread-nfiuf0`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at

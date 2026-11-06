@@ -12,7 +12,7 @@ at 1280 x 800.
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14; S7 at round 15, S9 at 16, S8 at 18, S5 at 19 | Converged in round 5; S7 to S9 drawn in round 7, and S5 to S8 redrawn for the crewless Raider; converged again at round 19 |
 | Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 20 | Converged in round 5, and again at versions 13 to 18 and at version 20 in round 7 |
-| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 16 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 16 in round 7; converged again at round 16 |
+| Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 17 | Converged in round 5; round 9 drawn in round 6, rounds 11 to 17 in round 7; converged again at round 16 |
 
 ## Round 1 (3 November 2026)
 
@@ -662,7 +662,8 @@ puts none into a room venting to space. T3's fire tag reads `FIRE  3 TILES`, T2'
 `FIRE  HOLD, 3 TILES  ADA ON IT`, and T8's log entry was revised in place as the fire grew to three; in all
 three someone is on the fire and the captain is in the bridge, so it stays a caution. No Nasa-punk
 task screen draws the book's Ship tab or a life support panel, so the new line isn't drawn, and
-nothing meaningful is left.
+nothing meaningful is left. Round 17 changes only the crisis panel (the tow's fee, each way out's
+full cost, and the crew's line on a short), which no Nasa-punk task screen draws.
 
 ## Next
 
