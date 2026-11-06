@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 15.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 16.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -404,7 +404,7 @@ The tutorial layer (First Play objectives and the opening walkthrough) is **out 
 |---|---|---|
 | Condition | YELLOW or RED (12); RED with "BATTLE STATIONS" when the player called it | In Yellow and Red; dark in Green |
 | State | DOCKED or LATCHED | While it holds |
-| Emergency text | The state and the player's options, keys first, in at most 44 characters: "DISABLED [P][P] ABANDON [B][B] TOW". The tow is offered only while the beacon would answer (`DistressBeacon.refusal`; not with missiles inbound), so under fire it reads "DISABLED [P][P] ABANDON". Once abandon ship is ordered, P launches the pods with whoever is in them: "ABANDON SHIP [P] LAUNCH NOW". The cause is not repeated here, since its tile is already up (POWER / NONE for a reactor down, HULL for a broken hull; 13.4). The SHIP callout names it in the game's words (`DisabledComponent.Reason.label`): "SHIP: disabled, reactor down." The log line has the full sentence: "Ship disabled: reactor down. P twice abandons ship, B twice calls a tow" | In Emergency |
+| Emergency text | The state and the player's options, keys first, in at most 44 characters: "DISABLED [P][P] ABANDON [B][B] TOW". The tow is offered only while the beacon would answer (`DistressBeacon.refusal`; not with missiles inbound), so under fire it reads "DISABLED [P][P] ABANDON". Once abandon ship is ordered, P launches the pods with whoever is in them: "ABANDON SHIP [P] LAUNCH NOW". The cause is not repeated here, since its tile is already up (POWER / NONE for a reactor down, HULL for a broken hull; 13.4). The SHIP callout names it in the game's words (`DisabledComponent.Reason.label`): "SHIP: disabled, reactor down.", and the log keeps that line (10.4) | In Emergency |
 
 In Green, undocked and with no emergency, the whole strip is dark (3.4).
 
@@ -559,7 +559,7 @@ Locking a target and setting the nav target count as orders to the ship's sensor
 | **Helm console panel** | [E] at the helm, seated or standing | Helm, Navigation (with Open plot), Comms, Cargo | Helm console window, docking readout lines, tow prompts |
 | **Plot** | [M] at a console hosting Navigation; [M] elsewhere opens it read-only | Map (with traffic), Plan, Targets | `ManeuverMap` side panel, orbit minimap, navigation readout lines |
 | **Tactical board** | [E] at the weapons console | Contacts, Weapons, Defense | Status column's target and missile lines |
-| **Gun panel** | [E] at a gun | The mount: weapon, state, ammunition, who works it; take it in hand | The gun's console window and "Take the gun" button |
+| **Gun panel** | [E] at a gun | The mount: weapon, state, ammunition, who works it and its mode, in the WEAPONS page's words (AT WILL, TRIGGER, HOLD, PD AUTO; YOURS once in hand); its switch [Enter], as the console window has it; take it in hand. For a point-defense mount, the panel says before the captain sits that in hand it hunts no missiles, since the player aims it (`PlayerGunnery.inHand`), and names any side no other point-defense mount can then cover ("FWD PORT can't see to starboard") | The gun's console window and "Take the gun" button |
 | **Engineering** | [E] at the reactor (Power) or life support (Atmos) | Power, Atmos, Damage, Systems, Tanks & propulsion, Shields | `ConsoleWindow`'s default layout, ship gauges, ship minimap |
 | **Station link** | Docked only, anywhere aboard: [T], [Y], [J], or the berth card | Market, Yard, Shipyard, Contract board, Hiring, Infirmary | `TradeWindow`, `YardWindow`, `ShipyardWindow`, `MissionWindow`'s offers, `CrewWindow`'s hires |
 | **Slate** | Anywhere aboard: [I], [J] when not docked, [K], [L], or the CMD tile | Ship, Crew, Medical, EVA, Boarding, Prisoners, Contracts, Career, Log | `CrewWindow`, `BoardingWindow`, `MissionWindow`'s held contracts, notice log, budget line |
@@ -593,7 +593,16 @@ The captain's own panel, anywhere aboard. Its title bar carries the captain's ra
 | Prisoners | When held: who, faction, what can be done with them here |
 | Contracts | Held: what, time left, where; set as nav target; give up |
 | Career | Rank, sponsor, standing per faction, weekly budget and next payday, record; faction tension |
-| Log | Every alert and callout, newest first, filterable by station and severity; the last 500 |
+| Log | What happened aboard, newest first, the last 500 lines; filters by station and severity (below) |
+
+**The Log** holds one line for each event, newest first:
+
+- Each alert when it is raised: the words of its callout if one was spoken, else the alert's own text (13.7), with the alert's severity mark. An alert revised in place (13.3) rewrites its line; one that escalates adds a line at the new severity.
+- Each alert when it clears: its record (13.7), with the same mark, hollow.
+- Each advisory, and each crew line answering an order ("HELM  Bea: holding your heading, Captain."), with its station tag and speaker as in the ticker. A repeat within its hold counts ("x3") instead of adding a line.
+- Not responses (13.6).
+
+The filters are two rows above the lines: station (ALL, then the six) and severity as a threshold (ALL, CAUTION and up, WARNING), each position keeping what is more serious. With `FocusNav`, ← → steps the focused filter row and ↑ ↓ scrolls the lines.
 
 **Station assignment** (new) is the console a person mans whenever nothing else needs them. AUTO keeps today's choice, by the console's priority and the role's affinity (`ManConsoleTask`, `CrewRole`). An assignment changes only which console: a fire, a casualty or a boarding still pulls the person off first, as it does now, and they go back to their console after.
 
@@ -824,10 +833,49 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 - Every callout fits 50 characters after the station tag, the speaker's name included (7.2).
 - A callout carries no countdown. Spoken once, a number is stale a second later and would disagree with the tile or page beside it, where the countdown ticks.
 - Callouts are limited to one per station every 3 s; the rest go to the log only.
+- Today's notices reach the ticker as advisories under the station 13.4 gives them (COMMS for clearance, latching and undocking, yard work and salvage; NAV for burns due, SOI changes and warp dropped; CMD for contracts, promotion, payday and boarding progress). The speaker follows the first rule above, so with nobody at Comms clearance is "COMMS  SHIP: docked at Highport, port 2." The line is the notice's own text where it fits 50 characters, and a shorter one written when its system moves to the `AlertBus` where it doesn't. A notice still posted without a station (`NoticeLog.post`, 19) goes under CMD, the captain's own.
 
 ### 13.6 Responses
 
-A response shows where the player is looking: on the prompt line (Z7), or in the footer of an open panel. 4 s, no sound beyond the UI click. It never goes in the ticker.
+A response shows where the player is looking: on the prompt line (Z7), or in the footer of an open panel. 4 s, no sound beyond the UI click. It never goes in the ticker, and it is not logged: it answers the player's own input, at the moment they are looking. What an order changes that the player may want later, such as a tow called and what it cost, is an advisory, and the log has those.
+
+### 13.7 Log texts
+
+What the log says when an alert is raised with no callout spoken, and when it clears. The raised text is the sentence the tile abbreviates, naming its instance; the record is the same subject, the verb that ended it, and how long it held. Where no verb fits, "cleared after". Names and numbers are the walkthroughs' examples.
+
+| Alert | Raised | Cleared |
+|---|---|---|
+| Missile | 2 missiles inbound from port | Missiles gone after 0:12 |
+| Boarders | Boarders latched on, Pirate Corvette | Boarders gone after 4:20 |
+| Impact | On an impact course, 12:40 to impact | Off the impact course after 3:05 |
+| Collision risk | On collision course with Highport, 0:42 | Clear of Highport after 0:30 |
+| Ship disabled | Ship disabled: reactor down | Ship under way again after 6:12 |
+| Abandon ship | Abandon ship ordered | Pods away with 3 aboard |
+| Fire | Fire in the bridge | Fire in the bridge out after 1:42 |
+| Breach venting | The hold is venting | Breach in the hold sealed after 3:10 |
+| Out of patches | Out of hull patches | Hull patches restocked |
+| Short circuit | Aft starboard gun shorted | Aft starboard gun back after 0:45 |
+| Tank burst | Oxygen tank burst in the hold | Oxygen tank in the hold repaired |
+| Hull integrity | Hull at 74% | Hull back over 75% |
+| Oxygen tanks dry | Oxygen tanks dry | Oxygen tanks refilled |
+| Crew air | Cole's suit air: 3:50 left | Cole back in air after 2:10 |
+| Casualty | Bea critically wounded, 4:10 to bleed out | Bea stabilised after 1:20 |
+| Wounded | Ada wounded | Nobody wounded now |
+| Delta-v | Delta-v low: 900 m/s, home takes 1,100 | Delta-v enough for home again |
+| No power | Aft starboard gun without power | Aft starboard gun powered after 0:45 |
+| No power at all | No reactor running | Reactor running after 6:12 |
+| Stunned | Reactor stunned, 22 s | Reactor back after 0:22 |
+| Shield tripped | Shield emitter tripped | Shield emitter back after 0:30 |
+| Shields low | Shields under 25% | Shields over 25% again |
+| Fired upon | Raider firing on you | Raider firing on you: cleared after 2:40 |
+| Pirates | 2 pirate ships inbound | Pirates broke off after 8:00 |
+| Adrift | Cole adrift | Cole back on the hull after 1:30 |
+| Exhaust | Ada in the exhaust | Ada clear of the exhaust |
+| Helm | Helm empty with an order to fly; helm down | Helm manned again; helm back |
+| Burn missed | Burn 2 missed | Burn 2 replanned |
+| Collar strain | Collar strain 72% | Collar strain eased |
+| Clearance refused | Highport refused clearance | Highport cleared the ship after 2:10 |
+| Standing | Stations will refuse the ship: hostile act | Stations will deal with the ship again |
 
 ---
 
@@ -983,7 +1031,7 @@ The approach has taken over the Reference and Next event slots (8.2). The player
 |                     |            (Shields slot blank: no emitter) |                      |
 | [SNS] [WPN] [DEF]   |                                             | [DMG] [PWR] [ATM]    |
 +---------------------+---------------------------------------------+----------------------+
-| 1 HELM Bea  2 NAV Bea  3 TAC you (W)  4 ENG --  5 COMMS --  6 CMD         Day 3 15:02:44 |
+| 1 HELM Bea  2 NAV Bea  3 TAC you (W)  4 ENG --  5 COMMS --  6 CMD         Day 0 00:06:44 |
 +------------------------------------------------------------------------------------------+
 ```
 
@@ -1232,6 +1280,19 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 16 (Nasa-punk artist's questions from drawing the slate's Log and a gun panel)
+
+| Problem found | Change |
+|---|---|
+| The Log's content was one line ("every alert and callout") | One line per event: an alert raised (its callout's words, else its own text), its clearing record (hollow mark), advisories and crew lines answering orders; repeats count; an escalation adds a line (10.4) |
+| Whether responses are logged was unsaid | They are not; what an order changes that the player may want later is an advisory, and is logged (13.6) |
+| The Log's filters had no keys | Two filter rows, station and a severity threshold; ← → steps the focused row, ↑ ↓ scrolls (10.4) |
+| Only one alert had a record ("Fire in the bridge out after 1:42"), so every build would write its own | A text and a record for every alert (13.7) |
+| Which station tags today's notices in the ticker, and whose words they are, was unsaid | 13.4's station tags them, the speaker rule picks who speaks, and the notice's own text is the line where it fits; a notice with no station goes under CMD (13.5) |
+| E's clock read Day 3, but First Play's fight is on day 0 (`GameHudText` counts days from 0) | Day 0 00:06:44 (E) |
+| 7.7 put a full sentence with the keys in the log, while the log keeps the callout's words when one is spoken | The log keeps the callout, "SHIP: disabled, reactor down."; the keys are on the strip (7.7) |
+| The gun panel didn't say that a point-defense mount in hand hunts no missiles (`WeaponControlSystem`: a mount aimed by hand doesn't hunt), nor list its switch or its mode | The panel says so before the captain sits, and names a side the other point defense can't then cover; the switch is on [Enter]; the mode in the WEAPONS page's words (10.2) |
 
 ### Round 15 (Nasa-punk artist's questions from drawing the slate's Crew tab)
 
