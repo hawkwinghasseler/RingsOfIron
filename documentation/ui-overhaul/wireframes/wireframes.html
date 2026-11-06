@@ -469,13 +469,17 @@ const layouts = {
     box('', 'foot: the one-line feed and the close keys', 0, 774, W, 26, 'mode',
       ['Log: autosaved' + ' '.repeat(96) + '[M] close · [Esc]']);
     // At Fit, 780 km a unit: Earth at the left focus, the Moon 484 units out
-    circ(416, 390, 484, { 'stroke-dasharray': '2 6' });                                    // the Moon's orbit
-    el('ellipse', { cx: 653, cy: 390, rx: 247, ry: 64, fill: 'none', stroke: '#d8dbde', 'stroke-dasharray': '7 5' }); // after burn 1
-    circ(416, 390, 8, { fill: '#9aa0a6' }); wtext(372, 404, 'Earth');
-    circ(894, 316, 85, { 'stroke-dasharray': '5 4' }); circ(894, 316, 3, { fill: '#d8dbde' });   // 0.15 rad ahead
-    wtext(880, 324, 'Moon'); wtext(830, 212, 'Moon SOI');
-    wtext(400, 368, '▲ burn 1'); wtext(540, 300, 'planned path (the Moon catches it up)');
-    wtext(330, 640, 'the capture and the approach are drawn once the crossing plans them');
+    circ(416, 300, 484, { 'stroke-dasharray': '2 6' });                                    // the Moon's orbit
+    el('ellipse', { cx: 653, cy: 300, rx: 247, ry: 64, fill: 'none', stroke: '#d8dbde', 'stroke-dasharray': '7 5' }); // after burn 1
+    circ(416, 300, 8, { fill: '#9aa0a6' }); wtext(372, 314, 'Earth');
+    // The ghost: the Moon and its sphere where they will be at the leg's closest approach (T-4.1 d), 0.15 rad
+    // past the apoapsis; the path meets it. The Moon now is 54° back along its orbit (13.2° a day)
+    circ(894, 226, 85, { 'stroke-dasharray': '5 4', stroke: '#7d8288' }); circ(894, 226, 4, { 'stroke-dasharray': '2 2' });
+    wtext(540, 150, 'ghost: the Moon at closest approach, T-4.1 d');
+    circ(757, 643, 5, { fill: '#d8dbde' }); navMark(757, 643);
+    wtext(530, 636, 'the Moon now, the Nav on it', 'tag');
+    wtext(400, 278, '▲ burn 1'); wtext(540, 210, 'planned path, into the ghost\'s sphere');
+    wtext(330, 590, 'the capture and the approach are drawn once the crossing plans them');
   }],
   '10': ['Station (docked: a panel over the docked view)', () => {
     strip('HELM', 'Day 0 · 00:15     1x');

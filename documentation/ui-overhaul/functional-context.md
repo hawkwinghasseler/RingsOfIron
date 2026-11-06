@@ -10,7 +10,7 @@ Wireframes are grey boxes at the 1280 x 800 UI-unit layout the HUD already uses 
 [`wireframes/`](wireframes/). Positions and sizes are in UI units. `wireframes/wireframes.html` draws
 them and `node documentation/ui-overhaul/wireframes/render.js` renders them again.
 
-**Version 13.** The design is revised in rounds with the three art directions; the revision log is at
+**Version 14.** The design is revised in rounds with the three art directions; the revision log is at
 the end.
 
 ## Contents
@@ -1357,12 +1357,17 @@ already showing.
 ### 10.1 M1 Map
 
 Keeps everything the `ManeuverMap` does (zoom, pan, burn handles, transfers, traffic, patched conics).
+A body the plan meets is drawn twice, as the game draws it (`PlayerOrbitPath`): where it is now, with
+the Nav's mark on its station if the Nav orbits it, and as a ghost, its outline and sphere of
+influence, where it will be when the plan comes closest to it (`ghostTime`: the leg's periapsis, or
+its entry when it comes no closer). The path meets the ghost, so the ghost carries a label with that
+time ("ghost: the Moon at closest approach, T-4.1 d"), and Centre's encounter stop centres on it.
 Its panels are rebuilt:
 
 | Panel | Zone | Content |
 |---|---|---|
 | Plan | Left, 320 wide | Orbit now (body, Ap and Pe with times, leaving out an apsis past the next burn as H2 does, period); the burns as a list (number, T-, Δv, prograde and radial), then the leg still to come when the trip goes on into another sphere of influence (its capture, with the estimated Δv and time, planned at the crossing); the selected burn's result; totals (Δv need and have, arrival); actions: Helm flies burns, Autopilot, Warp to next burn, Delete burn (the selected one), Clear all |
-| Target and traffic | Right, 320 wide | The Nav card (name, kind, detail line, distance, closest approach); Next target; transfer: Plan, Accept, Discard; a contact list sortable by distance or kind; layer toggles: stations, haulers, pirates, derelicts, objectives, faction tension |
+| Target and traffic | Right, 320 wide | The Nav card (name, kind, distance; then as H2's NAV lines: for a Nav around the ship's body, closing and the closest approach, and for one around another body, that body and the plan's arrival); Next target; transfer: Plan, Accept, Discard; a contact list sortable by distance or kind; layer toggles: stations, haulers, pirates, derelicts, objectives, faction tension |
 | View | Top of the map, between the panels | Centre (cycles what the map centres on), Fit (the plan in view), All traffic (zooms out to every craft), as today's VIEW row |
 | Timeline | Bottom, full width between the panels, 90 tall | A time axis from now to the last event: burns, apsides, sphere-of-influence changes, a leg's capture, impact, arrival, contract deadlines. Click an event to centre the map on it; a warp-to on each future event |
 
@@ -1530,7 +1535,9 @@ can fix); P1. The flight instruments retire.
 ![Map](wireframes/09-map.png)
 
 The plan to Shackleton Ice at the moment of 11.1: one burn planned, and the capture at the Moon shown
-as an estimate until the crossing plans it. The view row sits between the panels, and the timeline
+as an estimate until the crossing plans it. The Moon is drawn where it is now, with the Nav's mark on
+it, and as the ghost the path meets, 54° further along its orbit, where it will be at the closest
+approach in 4.1 days. The Nav card names the Moon and gives the arrival, as H2 does. The view row sits between the panels, and the timeline
 runs to the contract's deadline. The map has no tabs, so the number keys keep the helm orders.
 
 ### 11.10 Station
@@ -1678,12 +1685,13 @@ The design needs these from the game, through ui-hud's provider pattern (interfa
 | `StationProvider` | New, gathering existing | Station name, faction, standing, services available with counts, infirmary |
 | Contact state | Change `HudMarkerComponent` | Allegiance and state as a value (from `HostileLabel`), not only tint and label text |
 | Inspect | New | What is under the pointer on deck: crew, system, tile, door, bay, with their fields |
-| `BoardingProvider` | Change | The boarding party's size and what it is doing (crossing, fighting, holding), for X2 |
+| `BoardingProvider` | Change | The boarding party's size and what it is doing (crossing, fighting or coming home), for X2 |
+| `OrbitPathProvider` | Change | A ghost mark carries the time it stands for (`PlayerOrbitPath.ghostTime`), for M1's label beside the ghost; today it has the body's name and sizes only |
 | `ThreatProvider` | Change | Time to impact with the missile's closing burn in it: t = (−v + √(v² + 2ad)) / a, with a the missile's `closingBurn` while it has fuel above its reserve. Today's time (`CombatThreats`) is closest approach at the present speed, an upper bound that runs long while the motor burns: a harpoon from 7.7 km reads 37 s five seconds after launch, when it lands in about 17 |
 
-The existing providers (`TradeProvider`, `YardProvider`, `MissionProvider`, `BoardingProvider`,
-`CrewProvider`, `ShipyardProvider`, `OrbitPathProvider`, `ManeuverPlannerProvider`,
-`TrafficMapProvider`, `ThreatProvider`, `TargetingProvider`) carry the full-screen modes as they are.
+The other existing providers (`TradeProvider`, `YardProvider`, `MissionProvider`, `CrewProvider`,
+`ShipyardProvider`, `ManeuverPlannerProvider`, `TrafficMapProvider`, `TargetingProvider`) carry the
+full-screen modes as they are.
 
 ---
 
@@ -1759,3 +1767,4 @@ largest scale, and the centre stays clear.
 | 11 | 4 (NASA-punk critique) | Samples the game can't produce, checked against its code. Wireframe 11's crew do what the game's crews would: Cole is a marine, who never seals, and mans the weapons console; Cole's light wound in the HOLD keeps the crew clear of the breach until the fight ends; Ada repairs the gun, whose repair never waits; Bea, with nothing else to take, flies. A cut conduit is yard work, not a crew job, so version 10's "Repair conduit ×2" is gone and the power panel gives the yard's price. The cut that strands a gun is one conduit under the FWD STBD autocannon, since the laser's tile is the only link from the aft systems to the reactor. The damaged autocannon is at 20%, under the 30% where a system stops working. The systems list shows two engines and eight RCS blocks, one stopped. P2 gains a fourth handling state, Held (‖), for the game's rule that crews keep clear of where crew were hit and stay inside at battle stations; the P2 sample and wireframe 07 use it, and Ada's bleed-out in 07 is under the two minutes that send the crew in anyway. The P2 sample says why nobody is free for the vacuum: the gunship's other two crew are marines, who never seal. X2's party is the ship's marines (Cole alone) and goes home once the craft is taken. Wireframe 10 has no salvage on day 0 and nothing on order, so the delivery's 40 Food fit the 40 m³ hold |
 | 12 | 4 (NASA-punk critique) | H5's cruise range is the smallest step that holds every contact inside 50 km, in the shape of the combat rule: at a fixed 50 km, the station the ship has just left sat under the own-ship mark, and leaving a station is the commonest cruise. Automatic ranges step out at once and back in only inside 80% of the smaller ring. Wireframes 01 and 12 show the scope at 5 km |
 | 13 | 4 (NASA-punk critique) | Wireframe 11's RCS row reads a dash for power, as for health: the game's RCS blocks draw no power (`RcsThruster`, `RcsThrust`: a block fires while its hull tile stands and there is propellant), and the systems list dashes any value the game doesn't have |
+| 14 | 4 (VFD critique) | M1 draws a body the plan meets twice, as the game does: where it is now, with the Nav's mark on its station, and as a ghost where it will be at the plan's closest approach, labelled with that time; wireframe 09 shows both, the ghost 54° further along the Moon's orbit. M1's Nav card follows H2's NAV rule, so for a Nav around another body it gives that body and the arrival, not a closest approach. Section 14 lists `OrbitPathProvider`'s ghost time and gives the boarding party's states as X2 has them |
