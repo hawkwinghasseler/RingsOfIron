@@ -21,6 +21,7 @@ import com.badlogic.gdx.utils.ObjectMap;
 import com.hawkwing.RingsOfIron.BuildInfo;
 import com.ringsofiron.uihud.UiScale;
 import com.ringsofiron.uihud.variants.HudVariants;
+import com.ringsofiron.uihud.widgets.OrbitMap;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -382,6 +383,20 @@ class ShellMenus {
         });
         t.add(new Label("HUD", skin, "dim")).left();
         t.add(hud).width(240f).left().colspan(2).row();
+        // Which way the map's orbits fade along the direction of travel
+        SelectBox<String> fade = new SelectBox<>(skin);
+        Array<String> fades = new Array<>();
+        for (OrbitMap.Fade f : OrbitMap.Fade.values()) fades.add(f.label);
+        fade.setItems(fades);
+        fade.setSelected(OrbitMap.Fade.of(s.orbitFade).label);
+        fade.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                s.orbitFade = OrbitMap.Fade.values()[fade.getSelectedIndex()].id;
+            }
+        });
+        t.add(new Label("Orbit lines", skin, "dim")).left();
+        t.add(fade).width(240f).left().colspan(2).row();
 
         t.add(new Label("Controls", skin, "title")).left().colspan(3).padTop(10f).row();
         CheckBox gamepad = new CheckBox(" Gamepad", skin);
@@ -543,6 +558,7 @@ class ShellMenus {
         c.windowHeight = s.windowHeight;
         c.uiScale = s.uiScale;
         c.hudVariant = s.hudVariant;
+        c.orbitFade = s.orbitFade;
         c.gamepad = s.gamepad;
         c.openingGuide = s.openingGuide;
         c.keys = new ObjectMap<>(s.keys);

@@ -14,6 +14,8 @@ import com.ringsofiron.orbital.events.OrbitalEvent;
 import com.ringsofiron.orbital.math.StateVector;
 import com.ringsofiron.orbital.rails.RailsUniverse;
 import com.ringsofiron.uihud.providers.OrbitPathProvider;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.DoubleSupplier;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.coreengine.GameEngine;
@@ -52,6 +54,8 @@ public class PlayerOrbitPath implements OrbitPathProvider {
     private final Array<Entity> children = new Array<>();
     private final StateVector s = new StateVector();
     private final MapTrajectory trajectory;
+    /** The burns not yet due, soonest first: those the map draws. */
+    private final List<ManeuverNodeComponent.Node> burns = new ArrayList<>();
     private final StringBuilder summary = new StringBuilder();
     private final double[] off = new double[2];
     /** Refines the curves where they cross the map's view, and measures them from its middle. */
@@ -91,36 +95,39 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         out.bodyRadius = body.radius;
         out.shipX = orbits.state().x;
         out.shipY = orbits.state().y;
-        sample(sampler, k, now, Double.NaN, body, 0, 0, out.current);
+        sample(sampler, k, now, Double.NaN, body, 0, 0, out.current, out.currentFade);
         addBodies(now, out);
 
         ManeuverNodeComponent m = planner.nodes();
         ManeuverNodeComponent.Node selected = planner.selected();
-        KeplerOrbit after = k;
-        double t = now;
-        int shown = 0;
-        long plan = 17;
-        if (m != null) {
-            for (ManeuverNodeComponent.Node n : m.nodes) {
-                if (n.time < now) continue;
-                after.stateAt(n.time, s);
-                sampler.add(s.x, s.y, out.nodes);
-                // The burn's axes: along the velocity there, and radially out as withBurn reads it
-                double speed = Math.hypot(s.vx, s.vy);
-                float ux = (float) (s.vx / speed), uy = (float) (s.vy / speed);
-                out.nodeAxes.add(ux, uy, uy * after.direction, -ux * after.direction);
-                if (n == selected) out.selectedNode = shown;
-                shown++;
-                out.nodeLabels.add(shown + ": " + Navigation.formatTime(n.time - now));
-                after = after.withBurn(n.time, n.prograde, n.radial);
-                t = n.time;
-                plan = plan * 1_000_003 + Double.hashCode(n.time) * 31L + Double.hashCode(n.prograde) * 7L + Double.hashCode(n.radial);
-            }
+        burns.clear();
+        if (m != null) for (ManeuverNodeComponent.Node n : m.nodes) if (n.time >= now) burns.add(n);
+        // The whole plan as patched conics: each burn flown around whatever the ship is around by then
+        List<MapTrajectory.Leg> legs = trajectory.plan(k, frame, now, burns);
+        for (int i = 0; i < burns.size(); i++) {
+            ManeuverNodeComponent.Node n = burns.get(i);
+            MapTrajectory.Leg at = trajectory.burnLeg(i);
+            at.conic.stateAt(n.time, s);
+            double x = s.x, y = s.y, vx = s.vx, vy = s.vy;
+            offset(at, frame, n.time, off);
+            sampler.add(x + off[0], y + off[1], out.nodes);
+            // The burn's axes: along the velocity there (around the body it is flown about), and radially
+            // out as withBurn reads it
+            double speed = Math.hypot(vx, vy);
+            float ux = (float) (vx / speed), uy = (float) (vy / speed);
+            out.nodeAxes.add(ux, uy, uy * at.conic.direction, -ux * at.conic.direction);
+            if (n == selected) out.selectedNode = i;
+            out.nodeLabels.add((i + 1) + ": " + Navigation.formatTime(n.time - now));
         }
-        // The path the ship will fly, past the plan's last burn (or on from now) and through any moon it meets
-        trajectory(shown > 0 ? after : k, t, frame, body, shown > 0, plan, now, out);
-        if (selected != null) caption(out.caption, selected, planner.selectedIndex(), m.nodes.size, now, after, body);
-        else out.caption.append("N plans a burn");
+        trajectory(legs, frame, body, burns.size(), now, out);
+        if (selected != null) {
+            int i = burns.indexOf(selected);
+            MapTrajectory.Leg after = i < 0 ? null : trajectory.afterBurn(i);
+            CelestialBodyComponent around = after == null ? null : around(after, frame, body);
+            if (around != null) caption(out.caption, selected, planner.selectedIndex(), m.nodes.size, now, after.conic, around);
+        } else {
+            out.caption.append("N plans a burn");
+        }
         if (summary.length() > 0) out.caption.append("\n").append(summary);
         if (nav != null) navigation(k, now, body, out);
         return true;
@@ -134,37 +141,62 @@ public class PlayerOrbitPath implements OrbitPathProvider {
         return summary.toString();
     }
 
+    /** The body a leg is flown around: the map's own for its frame. */
+    private CelestialBodyComponent around(MapTrajectory.Leg leg, Entity frame, CelestialBodyComponent body) {
+        return leg.frame == frame ? body : universe.celestial(leg.frame);
+    }
+
     /**
-     * The path from {@code from} on conic {@code k}, into the planned path (or the current one, with no
-     * burns), cut where it meets a moon, the surface or the edge of the body's sphere of influence, and
-     * on from there as legs; with its apsides and those changes marked.
+     * The planned path from {@link MapTrajectory#plan}: the orbit now (into {@code current}) until the
+     * first burn, each burn's orbit on to the next ({@code stretches}, dotted on the map), and past the
+     * last burn ({@code planned} and {@code legs}), each cut where it meets a moon, the surface or the
+     * edge of the body's sphere of influence and on from there; with the changes marked, and the apsides
+     * of the path past the last burn (or of the orbit now, with none).
      */
-    private void trajectory(KeplerOrbit k, double from, Entity frame, CelestialBodyComponent body, boolean planned,
-                            long plan, double now, OrbitPath out) {
+    private void trajectory(List<MapTrajectory.Leg> legs, Entity frame, CelestialBodyComponent body, int burnCount,
+                            double now, OrbitPath out) {
         summary.setLength(0);
-        FloatArray first = planned ? out.planned : out.current;
-        if (frame == null) {
-            if (planned) sample(sampler, k, from, Double.NaN, body, 0, 0, first);
-            return;
-        }
-        java.util.List<MapTrajectory.Leg> legs = trajectory.legs(k, frame, from, plan);
+        boolean reachable = true;
+        int firstOfStretch = 0;
         for (int i = 0; i < legs.size(); i++) {
             MapTrajectory.Leg leg = legs.get(i);
-            CelestialBodyComponent around = universe.celestial(leg.frame);
+            boolean last = leg.stretch == burnCount;
+            boolean planned = leg.stretch > 0;
+            if (i > 0 && leg.stretch != legs.get(i - 1).stretch) {
+                firstOfStretch = i;
+                // A burn the path never gets to (it hit the ground or left the body first) is not drawn on from
+                reachable &= legs.get(i - 1).toBurn;
+            }
+            if (!reachable) break;
+            CelestialBodyComponent around = around(leg, frame, body);
             if (around == null) break;
             String name = around.name == null ? "" : around.name;
-            FloatArray points = i == 0 ? first : out.addLeg(planned).points;
-            points.clear();
-            if (leg.frame == frame) {
-                sample(sampler, leg.conic, leg.from, leg.to, around, 0, 0, points);
-            } else if (Double.isNaN(leg.to)) {
-                // Caught by the moon: its orbit there, drawn about where the moon is at the periapsis
-                offset(leg, frame, ghostTime(leg), off);
-                sample(sampler, leg.conic, leg.from, leg.to, around, off[0], off[1], points);
+            FloatArray points, fade;
+            if (last && i == firstOfStretch) {
+                points = planned ? out.planned : out.current;
+                fade = planned ? out.plannedFade : out.currentFade;
+            } else if (i == 0) {
+                // The orbit now up to the first burn: drawn whole as the current orbit already
+                points = fade = null;
             } else {
-                // Through a moon's sphere: where the ship really is, the moon moving on under it, so the
-                // path runs on unbroken from the leg before into the one after
-                sampleMoving(leg, frame, points);
+                OrbitPathProvider.PathLeg l = last ? out.addLeg(planned) : out.addStretch(planned);
+                points = l.points;
+                fade = l.fade;
+            }
+            if (points != null) {
+                points.clear();
+                fade.clear();
+                if (leg.frame == frame) {
+                    sample(sampler, leg.conic, leg.from, leg.to, around, 0, 0, points, fade);
+                } else if (Double.isNaN(leg.to)) {
+                    // Caught by the moon: its orbit there, drawn about where the moon is at the periapsis
+                    offset(leg, frame, ghostTime(leg), off);
+                    sample(sampler, leg.conic, leg.from, leg.to, around, off[0], off[1], points, fade);
+                } else {
+                    // Through a moon's sphere: where the ship really is, the moon moving on under it, so the
+                    // path runs on unbroken from the leg before into the one after
+                    sampleMoving(leg, frame, points, fade);
+                }
             }
             if (leg.frame != frame) {
                 offset(leg, frame, ghostTime(leg), off);
@@ -173,7 +205,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 ghost.soiRadius = around.soiRadius;
                 ghost.planned = planned;
             }
-            apsides(leg, frame, around, i == 0 ? "" : name + " ", planned, now, out);
+            if (last) apsides(leg, frame, around, i == firstOfStretch ? "" : name + " ", planned, now, out);
             if (leg.end == null) continue;
             offset(leg, frame, leg.to, off);
             leg.conic.stateAt(leg.to, s);
@@ -222,7 +254,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
      * A leg through a moon's sphere as the map's frame sees it: its conic around the moon plus where the
      * moon is at each moment, sampled evenly in anomaly so the swing past periapsis stays smooth.
      */
-    private void sampleMoving(MapTrajectory.Leg leg, Entity frame, FloatArray out) {
+    private void sampleMoving(MapTrajectory.Leg leg, Entity frame, FloatArray out, FloatArray fade) {
         KeplerOrbit c = leg.conic;
         double a0 = c.anomalyAt(leg.from), a1 = c.anomalyAt(leg.to);
         if (c.isElliptic() && a1 <= a0) a1 += 2 * Math.PI;
@@ -234,7 +266,8 @@ public class PlayerOrbitPath implements OrbitPathProvider {
             universe.stateInFrame(leg.frame, frame, t, s);
             xy[0] = x + s.x;
             xy[1] = y + s.y;
-        }, a0, a1, SEGMENTS, out);
+        }, a0, a1, SEGMENTS, out, fade);
+        fade(c, a0, a1, fade);
     }
 
     /** Mean anomaly at an eccentric (or hyperbolic) anomaly, unwrapped. */
@@ -292,7 +325,7 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 after = after.withBurn(b[0], b[1], b[2]);
                 from = b[0];
             }
-            sample(sampler, after, from, Double.NaN, body, 0, 0, out.proposed);
+            sample(sampler, after, from, Double.NaN, body, 0, 0, out.proposed, out.proposedFade);
             out.caption.append("\nProposed: ").append(nav.transfer.describe(p)).append("\n")
                     .append(nav.key(Action.ACCEPT_PLAN)).append(" accepts  ").append(nav.key(Action.DISCARD_PLAN)).append(" discards");
         }
@@ -390,11 +423,21 @@ public class PlayerOrbitPath implements OrbitPathProvider {
     /** As above, refined where it crosses {@code sampler}'s view and measured from its origin. */
     static void sample(MapSampler sampler, KeplerOrbit k, double t, double to, CelestialBodyComponent body, double ox,
                        double oy, FloatArray out) {
+        sample(sampler, k, t, to, body, ox, oy, out, null);
+    }
+
+    /**
+     * As above, with how far along each point is into {@code fade} (when not null), as
+     * {@link OrbitPath#currentFade} reads it. A whole ellipse starts where the ship is at {@code t}, so
+     * the line runs the way it flies.
+     */
+    static void sample(MapSampler sampler, KeplerOrbit k, double t, double to, CelestialBodyComponent body, double ox,
+                       double oy, FloatArray out, FloatArray fade) {
         StateVector s = new StateVector();
         double from, end;
         if (k.isElliptic() && (Double.isNaN(to) || to - t >= k.period())) {
-            from = 0;
-            end = 2 * Math.PI;
+            from = k.anomalyAt(t);
+            end = from + 2 * Math.PI;
         } else if (k.isElliptic()) {
             from = k.anomalyAt(t);
             end = k.anomalyAt(to);
@@ -413,7 +456,22 @@ public class PlayerOrbitPath implements OrbitPathProvider {
             k.positionAtAnomaly(anomaly, s);
             xy[0] = s.x + ox;
             xy[1] = s.y + oy;
-        }, from, end, SEGMENTS, out);
+        }, from, end, SEGMENTS, out, fade);
+        if (fade != null) fade(k, from, end, fade);
+    }
+
+    /**
+     * Turns {@code fade}'s anomalies on {@code k} into how far along each is from {@code from}: the share
+     * of a period the ship takes to get there, or for an open orbit of the line from {@code from} to
+     * {@code end}; 0 to 1.
+     */
+    static void fade(KeplerOrbit k, double from, double end, FloatArray fade) {
+        double m0 = meanAnomaly(k, from);
+        double span = k.isElliptic() ? 2 * Math.PI : meanAnomaly(k, end) - m0;
+        for (int i = 0; i < fade.size; i++) {
+            double share = span > 0 ? (meanAnomaly(k, fade.get(i)) - m0) / span : 0;
+            fade.set(i, (float) Math.max(0, Math.min(1, share)));
+        }
     }
 
     private static void caption(StringBuilder out, ManeuverNodeComponent.Node n, int index, int count, double now,

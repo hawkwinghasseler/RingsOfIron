@@ -5,9 +5,10 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonWriter;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.uihud.variants.HudVariants;
+import com.ringsofiron.uihud.widgets.OrbitMap;
 
 /**
- * The player's settings: volumes, HRTF, the window, UI scale and HUD, the gamepad and the key bindings. One JSON file,
+ * The player's settings: volumes, HRTF, the window, UI scale and HUD, the map's orbit fade, the gamepad and the key bindings. One JSON file,
  * {@link #FILE} in the saves folder, read by the launcher before the window opens and written when
  * the settings window applies.
  */
@@ -29,6 +30,11 @@ public class GameSettings {
     public float uiScale = 0f;
     /** Which HUD draws the game: "classic" or a UI overhaul variant's id ({@code HudVariants}). */
     public String hudVariant = HudVariants.CLASSIC;
+    /**
+     * Which way the map's orbits fade to show the direction of travel: "forward" (full brightness at
+     * the ship, half an orbital period ahead) or "backward" (half at the ship, full a period ahead).
+     */
+    public String orbitFade = OrbitMap.Fade.FORWARD.id;
     public boolean gamepad = true;
     /** New games open with a short walkthrough of the board, undocking and the map. */
     public boolean openingGuide = true;
@@ -75,6 +81,7 @@ public class GameSettings {
         }
         if (Float.isNaN(uiScale) || uiScale < 0f || uiScale > 3f) uiScale = 0f;
         if (!HudVariants.known(hudVariant)) hudVariant = HudVariants.CLASSIC;
+        orbitFade = OrbitMap.Fade.of(orbitFade).id;
         if (keys == null) keys = new ObjectMap<>();
         return this;
     }
