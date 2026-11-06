@@ -121,6 +121,23 @@ four trade buttons as lit push buttons; SELL is barred where nothing is held, wi
 once at the foot. The rail has credits, standing, the hold with what is coming, tanks, the
 infirmary, and the delivery the cargo is for.
 
+![Ship, systems](c8-ship.png)
+
+**C8, M2 on its Systems tab (10.2), on deck in the corvette's fight, a quarter of an hour before
+C3.** P1 stays above with BATTLE STATIONS lit, then the title row with the four tabs on their keys,
+the plan, the systems list, the damage control board, the power circuit, and the foot row with the
+feed. A hit has holed the hold's port hull and cut the conduit under the forward starboard
+autocannon, and another has left the forward port autocannon at 40%. The plan is the corvette's
+real layout and network: every system by its state, the hold hatched for its breach, the cut
+marked where it broke, and the crew where they work. The list groups the systems by type, each
+with its health, circuit, switch and anything not normal. The board is the game's crew rules at
+work. Ada has the gun, since a repair to a gun never waits out a fight; the breach is where Cole
+was hit, so the Patrol's crews leave it till the fight ends; a light wound is not seen to at
+battle stations; and no crew mends a cut conduit, which a yard does. That is why Bea can hold the
+helm: crew man a console only when nothing else on the board suits them. Power has the circuit's
+reactor against its rating, the store, and the gun no reactor reaches. The feed has the game's own
+notice for a light wound.
+
 ## Round 5 critique
 
 Version 8 took both round 4 notes: F1's kiter now moves along the line of sight (closing 12, REL 12,

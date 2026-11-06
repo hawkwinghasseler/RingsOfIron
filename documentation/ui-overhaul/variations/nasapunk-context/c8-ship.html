@@ -1,0 +1,226 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Context: ship, systems</title>
+<link rel="stylesheet" href="../../nasapunk/mockups/fonts.css">
+<style>html,body{margin:0;background:#000}svg{display:block}</style>
+</head><body>
+<div id="out"></div>
+<script src="../../nasapunk/mockups/lib.js"></script>
+<script src="../../nasapunk/mockups/kit.js"></script>
+<script src="../../nasapunk/mockups/screens.js"></script>
+<script src="context.js"></script>
+<script>
+// M2, the ship mode (the context spec, 10.2), on its Systems tab: on deck in the corvette's fight
+// with the raider, at battle stations, a quarter of an hour before C3. A hit has holed the hold's
+// port hull and cut the conduit under the forward starboard autocannon, and another has left the
+// forward port autocannon at 40%. P1 stays above; the mode's frame has its title row with the tabs
+// on their keys, the plan, the systems list, the damage control board, the power circuits, and the
+// foot row with the feed.
+//
+// All of it is the game's crew rules (ShipTaskBoardComponent, TaskRules, CrewRole, CrewHealthSystem,
+// PowerRoutingSystem). Manning a console is what crew do when nothing else suits, so Bea holds the
+// helm only because every other job is taken or waits: Ada, the engineer, has the gun, and a repair
+// to a gun never waits out a fight; the breach is under fire (Cole was hit beside it), so the
+// Patrol's crews leave it till the fight ends; a light wound is not seen to at battle stations; and
+// no crew mends a cut conduit, which a yard does for 400 a point. Cole, a marine, takes the weapons
+// console. The circuit stores 2 s of the reactor's 3.0 MW, and a gun that is switched on but on no
+// reactor's network is down. The feed's line is the game's own notice for a light wound.
+let s = space({ px: 2200, py: 2400, pr: 1, seed: 12 });
+s += controlDefs();
+s += statusStrip({ seat: 'DECK', authority: 'HELM: BEA · HOLDING HEADING', battle: true, clock: 'DAY 0 · 00:58:20', warp: '1×' });
+s += consoleBody(0, 28, 1280, 772, {});
+s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M2  SHIP', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
+
+const rowsep = (gx, y, gw) => line(gx + 6, y, gx + gw - 6, y, C.graticule, 1);
+const head = (gx, gy, gw, t, right) => text(gx + 10, gy + 20, t, { size: V, bold: true, fill: C.white, track: 0.8 })
+  + (right ? text(gx + gw - 10, gy + 20, right, { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) : '') + rowsep(gx, gy + 28, gw);
+
+// ---- the title row: the ship, the tabs on their keys, the close keys ----
+s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 51, 'PATROL CORVETTE', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(180, 51, 'SHIP', { size: LB, bold: true, fill: C.dim, track: 0.8 });
+{
+  let x = 250;
+  [['1', 'SYSTEMS', true], ['2', 'CREW'], ['3', 'CARGO'], ['4', 'LOADOUT']].forEach(([k, t, on]) => {
+    s += capKey(x, 38, k);
+    x += capW(k) + 7;
+    s += text(x, 51, t, { size: LB, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+    if (on) s += line(x, 55, x + tw(t, LB, true, 0.8), 55, C.white, 1.5);
+    x += tw(t, LB, true, 0.8) + 26;
+  });
+}
+s += capKey(1106, 38, 'I') + text(1130, 51, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1154, 38, 'ESC') + text(1264, 51, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
+
+// ---- the plan: the corvette's real layout (chassis.toml), every system by its state ----
+s += du(8, 64, 700, 420, {
+  id: 'plan', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = head(gx, gy, gw, 'PLAN', 'EVERY SYSTEM BY ITS STATE, THE HAZARDS, THE CREW AT WORK');
+    const k = 32, x0 = gx + gw / 2 - 10.5 * k, y0 = gy + 113;
+    const X = tx => x0 + tx * k, Y = ty => y0 + (6 - ty) * k, P = (tx, ty) => [X(tx), Y(ty)];
+    const pat = `<defs><pattern id="hatchW" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="${C.red}" stroke-width="1.6" opacity="0.55"/></pattern></defs>`;
+    g += pat;
+    // the hull, the two rooms, the bulkhead with its door; the hold hatched red for its breach
+    g += `<polygon transform="translate(${X(13)} ${Y(3)}) scale(${k / 64})" points="${CORVETTE.hull}" fill="none" stroke="#5B636D" stroke-width="${1.2 * 64 / k}"/>`;
+    g += rect(X(3), Y(5), 5 * k, 4 * k, { fill: 'url(#hatchW)' }) + rect(X(3), Y(5), 5 * k, 4 * k, { stroke: C.red, sw: 1.5 });
+    g += rect(X(8), Y(5), 9 * k, 4 * k, { stroke: '#5B636D', sw: 1 });
+    g += line(X(8), Y(1), X(8), Y(3), '#5B636D', 2) + line(X(8), Y(4), X(8), Y(5), '#5B636D', 2);
+    // the conduits, live in green; the one under the FWD STBD gun is cut, so its stub is dark
+    CORVETTE.conduits.forEach(([[a, b], [d, e]]) => {
+      if (a === 14 && b === 1) { g += line(X(14.5), Y(2), X(14.5), Y(4.5), C.green, 2); return; }
+      g += line(X(a + 0.5), Y(b + 0.5), X(d + 0.5), Y(e + 0.5), C.green, 2);
+    });
+    g += line(X(8), Y(1.5), X(8), Y(4.5), C.green, 2);                       // the conduit in the bulkhead
+    g += line(X(3.5), Y(1.5), X(2.2), Y(1.5), C.green, 2) + line(X(3.5), Y(4.5), X(2.2), Y(4.5), C.green, 2); // the engines' feeds
+    g += line(X(14.5), Y(1.5), X(14.5), Y(2), '#3A434C', 2, { dash: '2 2' });
+    // the systems that need no power, as dim footprints: tanks, cargo bays, the escape pod
+    CORVETTE.parts.filter(p => ['cargo', 'n2', 'o2', 'prop', 'pod'].includes(p[0])).forEach(([n, tx, ty, w, h]) => {
+      g += rect(X(tx) + 3, Y(ty + h) + 3, w * k - 6, h * k - 6, { fill: C.glass, stroke: '#3A434C', sw: 1, dash: '3 2' });
+    });
+    // the systems that do: consoles, life support and the reactor as their footprints, guns as
+    // rings, the engines as nozzles, the port as a ring on the hull
+    const foot = (tx, ty, w, h, col, o = {}) => rect(X(tx) + 4, Y(ty + h) + 4, w * k - 8, h * k - 8, { fill: C.glass, stroke: col, sw: 1.5, dash: o.dash || '' });
+    g += foot(9, 4, 2, 1, C.white) + foot(9, 3, 2, 1, C.white) + foot(9, 1, 1, 2, C.white);
+    const [rx, ry] = P(16, 4);
+    g += foot(15, 3, 2, 2, C.white) + path(`M${rx - 11} ${ry} q5.5 -9 11 0 t11 0`, C.white, 1.6);
+    [[0, 4], [0, 1]].forEach(([tx, ty]) => { const cy = Y(ty + 0.5); g += path(`M${X(2.1)} ${cy - 5} L${X(0.9)} ${cy - 9} L${X(0.9)} ${cy + 9} L${X(2.1)} ${cy + 5} Z`, C.white, 1.5, { fill: C.glass }); });
+    g += `<circle cx="${X(8.5)}" cy="${Y(5.5)}" r="6" fill="${C.glass}" stroke="${C.white}" stroke-width="1.5"/><circle cx="${X(8.5)}" cy="${Y(5.5)}" r="2" fill="${C.white}"/>`;
+    const gun = (tx, ty, col, o = {}) => `<circle cx="${X(tx + 0.5)}" cy="${Y(ty + 0.5)}" r="9" fill="${C.glass}" stroke="${col}" stroke-width="1.6"${o.dash ? ` stroke-dasharray="${o.dash}"` : ''}/>`;
+    g += gun(16, 2, C.white) + gun(11, 4, C.white) + gun(11, 1, C.white);
+    // FWD PORT: damaged and being repaired, so cyan, with its health as an arc
+    const [fx, fy] = P(14.5, 4.5), a = 2 * Math.PI * 0.4;
+    g += gun(14, 4, C.cyan) + `<path d="M${fx} ${fy - 5} A5 5 0 ${a > Math.PI ? 1 : 0} 1 ${fx + 5 * Math.sin(a)} ${fy - 5 * Math.cos(a)}" fill="none" stroke="${C.cyan}" stroke-width="2"/>`;
+    // FWD STBD: switched on but cut off, so down: amber and dashed, no current through it; the cut
+    // conduit marked where it broke
+    const [sx, sy] = P(14.5, 1.5);
+    g += gun(14, 1, C.amber, { dash: '2.5 2' });
+    g += line(sx - 4, Y(2) - 4, sx + 4, Y(2) + 4, C.amber, 1.8) + line(sx - 4, Y(2) + 4, sx + 4, Y(2) - 4, C.amber, 1.8);
+    // the breach, on the hold's port hull
+    const [bx, by] = P(5.5, 5.5);
+    g += line(bx - 5, by - 5, bx + 5, by + 5, C.red, 2) + line(bx - 5, by + 5, bx + 5, by - 5, C.red, 2);
+    // the crew where they work, white (a light wound is not an alert), and the captain ringed
+    const dot = (tx, ty) => `<circle cx="${X(tx)}" cy="${Y(ty)}" r="3.2" fill="${C.white}"/>`;
+    g += dot(8.5, 4.4) + dot(10.5, 2.4) + dot(14.5, 3.4);
+    g += `<circle cx="${X(12.6)}" cy="${Y(3.4)}" r="6" fill="none" stroke="${C.cyan}" stroke-width="1.5"/>` + dot(12.6, 3.4);
+    // labels on leaders: the hazards and the crew above the hull, the down gun and Cole below it
+    const top = Y(7.1) - 10, bot = Y(-1.1) + 10;
+    // a leader runs up (or down) from its mark, offset by dx where the straight way would cross a symbol
+    const up = (fx2, fy2, lx, parts, dx = 0, gap = 6) => (dx ? line(fx2, fy2, fx2 + dx, fy2, C.dim, 1) : '') + line(fx2 + dx, fy2 - (dx ? 0 : gap), fx2 + dx, top + 6, C.dim, 1)
+      + line(fx2 + dx, top + 6, lx, top + 6, C.dim, 1) + partsAt(lx, top, parts);
+    const down = (fx2, fy2, lx, parts, gap = 6) => line(fx2, fy2 + gap, fx2, bot, C.dim, 1) + line(fx2, bot, lx, bot, C.dim, 1) + partsAt(lx, bot + 17, parts);
+    function partsAt(cx, y, list) {
+      const w = list.reduce((a, [t]) => a + tw(t, LB, true, 0.5), 0) + 8 * (list.length - 1);
+      let x = cx - w / 2, out = '';
+      list.forEach(([t, c]) => { out += text(x, y, t, { size: LB, bold: true, fill: c, track: 0.5 }); x += tw(t, LB, true, 0.5) + 8; });
+      return out;
+    }
+    g += up(bx, by, X(5.5), [['BREACH', C.red], ['HOLD 58 KPA', C.amber]]);
+    g += up(X(8.5), Y(4.4), X(9.6), [['BEA', C.white], ['HELM', C.dim]], -9);
+    g += up(X(14.5), Y(3.4), X(14.8), [['ADA', C.white], ['REPAIRING', C.cyan]], 13);
+    g += down(X(10.5), Y(2.4), X(10.0), [['COLE', C.white], ['WEAPONS', C.dim]]);
+    g += down(sx, sy, X(15.6), [['FWD STBD', C.amber], ['CUT OFF', C.amber]], 10);
+    // the key to the colours, once, at the foot
+    g += text(gx + 10, gy + gh - 12, 'WHITE WORKING · CYAN UNDER REPAIR · AMBER DOWN · GREEN LIVE · DASHED NEEDS NO POWER', { size: LB, bold: true, fill: C.dim, track: 0.3 });
+    return g;
+  },
+}).svg;
+
+// ---- the systems, by type: health, circuit, switch, and what is not normal ----
+s += du(714, 64, 558, 420, {
+  id: 'sys', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = head(gx, gy, gw, 'SYSTEMS', 'BY TYPE');
+    const L = gx + 10, N = L + 70, H = L + 292, CI = L + 358, SW = L + 372, ST = L + 428;
+    g += lab(N, gy + 48, 'SYSTEM') + lab(H, gy + 48, 'HEALTH', { anchor: 'end' }) + lab(CI, gy + 48, 'CIRCUIT', { anchor: 'end' }) + lab(SW - 4, gy + 48, 'SWITCH') + lab(ST, gy + 48, 'STATE');
+    // a toggle seen from the front: the bezel and its lever, up for on
+    const toggle = (x, y) => `<circle cx="${x + 5}" cy="${y - 4.5}" r="5" fill="#1F2226" stroke="#4A5058" stroke-width="1"/>` + line(x + 5, y - 4.5, x + 5, y - 12, '#D2D5CF', 2) + `<circle cx="${x + 5}" cy="${y - 12.5}" r="1.8" fill="#D2D5CF"/>` + text(x + 16, y, 'ON', { size: LB, bold: true, fill: C.white, track: 0.4 });
+    const groups = [
+      ['POWER', [['REACTOR M', '100%', '1', true, ['3.0 MW', C.white]]]],
+      ['FLIGHT', [['HELM', '100%', '1', true, ['BEA AT IT', C.white]], ['ENGINES, 2', '100%', '1', true]]],
+      ['WEAPONS', [['WEAPONS CONSOLE', '100%', '1', true, ['COLE AT IT', C.white]], ['NOSE COILGUN', '100%', '1', true],
+        ['FWD PORT AUTOCANNON', '40%', '1', true, ['REPAIRING', C.cyan]],
+        { cursor: true, r: ['FWD STBD AUTOCANNON', '100%', 'NONE', true, ['CUT OFF', C.amber]] },
+        ['AFT PORT LAUNCHER', '100%', '1', true], ['AFT STBD LASER', '100%', '1', true]]],
+      ['LIFE', [['LIFE SUPPORT', '100%', '1', true]]],
+      ['DOCK', [['DOCKING PORT', '100%', '1', true]]],
+      ['PASSIVE', [['TANKS, 3', '100%', '', false], ['CARGO BAYS, 4', '100%', '', false], ['ESCAPE POD, 4 SEATS', '100%', 'OWN', false]]],
+    ];
+    let y = gy + 72;
+    groups.forEach(([gname, rows], gi) => {
+      if (gi) { g += rowsep(gx, y - 14, gw); y += 3; }
+      g += lab(L, y, gname);
+      rows.forEach(r0 => {
+        const cur = !Array.isArray(r0), [name, hp, cct, sw, st] = cur ? r0.r : r0;
+        if (cur) g += rect(N - 6, y - 14, gw - (N - gx) - 2, 19, { stroke: C.cyan, sw: 1.5 });
+        g += text(N, y, name, { size: B, bold: true, fill: C.white, track: 0.3 });
+        g += text(H, y, hp, { size: B, bold: true, fill: C.white, anchor: 'end' });
+        if (cct) g += text(CI, y, cct, { size: B, bold: true, fill: cct === 'NONE' ? C.amber : C.white, anchor: 'end' });
+        if (sw) g += toggle(SW, y);
+        if (st) g += text(ST, y, st[0], { size: B, bold: true, fill: st[1], track: 0.3 });
+        y += 19;
+      });
+    });
+    // the foot: what the cursor's row offers
+    g += rowsep(gx, gy + gh - 34, gw);
+    g += text(L, gy + gh - 16, 'ENTER THROWS THE CURSOR\'S SWITCH · THE REACTOR AND LIFE SUPPORT ASK AGAIN', { size: LB, bold: true, fill: C.dim, track: 0.3 });
+    return g;
+  },
+}).svg;
+
+// ---- the damage control board: every hazard and repair, who has it, or why it waits ----
+s += du(8, 490, 700, 254, {
+  id: 'dc', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = head(gx, gy, gw, 'DAMAGE CONTROL', 'EVERY HAZARD AND REPAIR, AND WHO HAS IT');
+    const L = gx + 10, T = L + 20, W = L + 250, O = L + 330, PR = L + 410;
+    g += lab(T, gy + 48, 'JOB') + lab(W, gy + 48, 'WHERE') + lab(O, gy + 48, 'WHO') + lab(PR, gy + 48, 'PROGRESS, OR WHY IT WAITS');
+    const sev = (y, kind) => kind === 'warning' ? sym.diamond(L + 6, y - 4.7, 4.6, C.red, 1.2, C.red) : kind === 'caution' ? path(`M${L + 6} ${y - 10.5} L${L + 11.6} ${y} L${L + 0.4} ${y} Z`, C.amber, 1.2, { fill: C.amber }) : '';
+    const rows = [
+      [null, 'REPAIR THE FWD PORT GUN', 'BRIDGE', ['ADA', C.white], null, 'A GUN\'S REPAIR NEVER WAITS', 0.4],
+      ['warning', 'SEAL THE BREACH', 'HOLD', ['WAITS', C.dim], ['UNDER FIRE, TILL THE FIGHT ENDS', C.white], ['THE HOLD AT 58 KPA AND FALLING', C.amber]],
+      [null, 'SEE TO COLE\'S LIGHT WOUND', 'BRIDGE', ['WAITS', C.dim], ['TILL BATTLE STATIONS END', C.white], ['WORKING SLOWER TILL THEN', C.dim]],
+      ['caution', 'MEND THE FWD STBD CONDUIT', 'BRIDGE', ['A YARD', C.dim], ['NO CREW MENDS A CUT CONDUIT', C.white], ['A YARD DOES, FOR 400 CR', C.dim]],
+    ];
+    rows.forEach(([kind, job, where, who, why, sub, bar], i) => {
+      const y = gy + 74 + i * 40;
+      if (i) g += rowsep(gx, y - 20, gw);
+      g += sev(y, kind) + text(T, y, job, { size: B, bold: true, fill: C.white, track: 0.3 });
+      g += text(W, y, where, { size: B, fill: C.white, track: 0.3 }) + text(O, y, who[0], { size: B, bold: true, fill: who[1], track: 0.4 });
+      if (bar != null) {
+        g += rect(PR, y - 8, 150, 6, { fill: '#26303A' }) + rect(PR, y - 8, 150 * bar, 6, { fill: C.cyan });
+        g += text(PR + 160, y, '40%', { size: B, bold: true, fill: C.cyan });
+        g += text(PR, y + 17, sub, { size: LB, bold: true, fill: C.dim, track: 0.3 });
+      } else {
+        g += text(PR, y, why[0], { size: B, bold: true, fill: why[1], track: 0.3 });
+        g += text(PR, y + 17, sub[0], { size: LB, bold: true, fill: sub[1], track: 0.3 });
+      }
+    });
+    return g;
+  },
+}).svg;
+
+// ---- power: each circuit's reactor, its output and store, and what it can't reach ----
+s += du(714, 490, 558, 254, {
+  id: 'pwr', b: 8,
+  content: (gx, gy, gw, gh) => {
+    let g = head(gx, gy, gw, 'POWER', '1 CIRCUIT');
+    const L = gx + 10, V2 = L + 100, R = gx + gw - 10;
+    g += lab(L, gy + 54, 'CIRCUIT 1') + text(V2, gy + 54, 'REACTOR M, IN THE BRIDGE', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += lab(L, gy + 86, 'OUTPUT') + I.hbar(V2, gy + 82, 160, 1, { notch: 1 }) + text(V2 + 176, gy + 87, '3.0', { size: V, bold: true, fill: C.white }) + text(V2 + 176 + tw('3.0', V, true) + 6, gy + 87, 'OF 3.0 MW', { size: LB, bold: true, fill: C.dim, track: 0.3 });
+    g += lab(L, gy + 118, 'STORE') + I.hbar(V2, gy + 114, 160, 0.8, {}) + text(V2 + 176, gy + 119, '80%', { size: V, bold: true, fill: C.white }) + text(V2 + 176 + tw('80%', V, true) + 6, gy + 119, 'OF 6 MJ, 2 S OF OUTPUT', { size: LB, bold: true, fill: C.dim, track: 0.3 });
+    g += lab(L, gy + 148, 'FEEDS') + text(V2, gy + 148, '10 SYSTEMS', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += rowsep(gx, gy + 162, gw);
+    g += path(`M${L + 6} ${gy + 175.5} L${L + 11.6} ${gy + 186} L${L + 0.4} ${gy + 186} Z`, C.amber, 1.2, { fill: C.amber });
+    g += text(L + 20, gy + 186, 'CUT OFF', { size: LB, bold: true, fill: C.amber, track: 0.6 }) + text(V2, gy + 186, 'FWD STBD AUTOCANNON', { size: B, bold: true, fill: C.white, track: 0.3 });
+    g += text(V2, gy + 204, 'SWITCHED ON, BUT NO REACTOR REACHES IT:', { size: LB, bold: true, fill: C.dim, track: 0.3 });
+    g += text(V2, gy + 220, 'THE CONDUIT UNDER IT IS CUT', { size: LB, bold: true, fill: C.dim, track: 0.3 });
+    return g;
+  },
+}).svg;
+
+// ---- the foot row: the feed, and the keys ----
+s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
+s += text(18, 767, 'CREW', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(64, 767, 'Cole is lightly wounded and working slower.', { size: B, fill: C.white, track: 0.2 });
+s += text(1264, 767, '1 TO 4 CHANGE TAB · I OR ESC CLOSES THE SHIP', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+
+document.getElementById('out').innerHTML = svgPage(s);
+</script>
+</body></html>
