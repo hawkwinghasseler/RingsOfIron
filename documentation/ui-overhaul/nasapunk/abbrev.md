@@ -40,7 +40,7 @@ in step with the specs since.
 | % | percent, with no space | `88%`, `HEALTH 24%` |
 | ° | degrees | `COURSE 220°` |
 | S | seconds, for a duration | `SHOT 1.3 S`, `TOF 1.1 S` |
-| D, H | days and hours, for a time left over a day, with no space | `1D 10H LEFT` |
+| D, H | days and hours, for a time left or a countdown over a day, with no space | `5D 4H LEFT`, `T−4D 4H` |
 | CR | credits | `3 400 CR` |
 | M³ | cubic metres, for volume: a hold, a cargo lot, a crate (the game writes m3) | `HOLD 18 OF 40 M³` |
 | × | a multiple, with the sign | warp `1×`, a camera's `×40`, a repeat `×3` |
@@ -51,6 +51,7 @@ in step with the specs since.
 |---|---|---|
 | `DAY n · HH:MM:SS` | The game clock: days since the campaign began, then the time. It replaces the guide's first MET clock, which was the same datum in other dress | `DAY 0 · 01:12:40` |
 | `T−M:SS`, `T−H:MM:SS` | A countdown to an event, with a true minus (U+2212) | `T−12:04`, `T−1:10:00` |
+| `T−nD nH` | A countdown over a day, in days and hours, as a time left is: a trip's arrival, a capture | `T−4D 4H` |
 | `M:SS` | The same countdown where a label or column already says what it counts to | `IMPACT 0:03`, `BACK IN 0:37`, P2's `3:40` |
 | a bar | A window under 10 s that runs out (an armed guarded order) | X3's tow, armed |
 
@@ -72,6 +73,7 @@ new data; the game's own figure, a coasting estimate, runs fast).
 | NAV | navigation: the nav target, its page and its station | |
 | RCS | the reaction control thrusters (`MAIN` is the main engine) | THR |
 | CPA | closest approach | CLOSEST |
+| SOI | sphere of influence, where a label or a timeline's event is short: the crossing into a body's sphere, `MOON SOI`. Prose spells it whole, as the game does ("entering the Moon's sphere of influence") | SPHERE |
 | ATT | attitude, in `ATT HOLD` | |
 | ORBIT, TARGET, MANUAL | whole words | ORB, TGT, MAN |
 

@@ -8,10 +8,14 @@
 <script src="../../nasapunk/mockups/kit.js"></script>
 <script src="context.js"></script>
 <script>
-// Walkthroughs 11.1 and 11.12: at the helm of the starting corvette, cruising in Earth orbit with
-// nothing wrong, and the captain has pressed O. P2, P3 and P4 are empty and draw nothing (the dark
-// cockpit); H4 is three unlit lenses (no shield emitter aboard); H5 has folded to a key. No helm
-// order is running, so P1's authority field is empty and no helm key is down.
+// Walkthroughs 11.1 and 11.12 (version 12): at the helm of the starting corvette, just out of
+// Highport's port in Earth orbit with nothing wrong, and the captain has pressed O. P2, P3 and P4
+// are empty and draw nothing (the dark cockpit); H4 is three unlit lenses (no shield emitter aboard);
+// H5 takes the smallest step that holds every contact inside 50 km (version 12), here 5 km, with
+// Highport and the Hauler Kestrel 3 km astern. No helm
+// order is running, so P1's authority field is empty and no helm key is down. The trip to Shackleton
+// Ice, which orbits the Moon, is planned a leg at a time as the game plans it (PlayerTransfer): the
+// burn that leaves Earth now, and the capture once the ship has crossed into the Moon's sphere.
 let s = space({ px: 260, py: 1700, pr: 1250, seed: 5 }) + controlDefs();
 const SX = 640, SY = 318;
 s += hullArt('corvette', SX, SY, 0, 0.075);
@@ -26,9 +30,10 @@ s += text(1230, 249, 'SHACKLETON ICE', { size: LB, bold: true, fill: C.magenta, 
 s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:33:10', warp: '1×' });
 
 // L-MID: P5 objective (compact), then H2 navigation
-const p5 = objective(['DELIVER 40 FOOD', '→ SHACKLETON ICE · 1D 10H LEFT']);
+// 5.2 days left (the spec's sample), counted down as the word list counts a time over a day
+const p5 = objective(['DELIVER 40 FOOD', '→ SHACKLETON ICE · 5D 4H LEFT']);
 s += p5.svg;
-s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
+s += du(12, ZC.lmid.y + p5.h + 6, 308, 175, {
   id: 'h2', b: 6,
   content: (gx, gy, gw) => {
     let c = '';
@@ -38,24 +43,26 @@ s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
     // Version 8 (12.4): a number inside a line of text takes the line's size, so H2's numbers are
     // at the body's 13, not a value's 15; units stay dim at 12
     const right = (v, unit) => val(R, yy, v, unit, { anchor: 'end', size: B });
-    // ORBIT: the body and height, then each apsis with the time to it
+    // ORBIT: the body and height, then the time to each apsis due before the next burn. Version 10
+    // leaves out the rest: a 400 km orbit of Earth takes 92:24, so the apoapsis would come 46:12
+    // after the T−8:40 periapsis, past burn 1, which changes the orbit before it comes
     c += lab(L, yy, 'ORBIT') + text(M, yy, 'EARTH', { size: B, bold: true }) + lab(R - valW('400', 'KM', B) - 6, yy, 'ALT', { anchor: 'end' }) + right('400', 'KM'); yy += P;
-    c += lab(M, yy, 'AP') + val(M + 26, yy, '403', 'KM', { size: B }) + right('T−24:10'); yy += P;
-    // half an orbit after the apoapsis: a 400 km orbit of Earth takes 92:24 (it flies at 7 672 m/s),
-    // so the periapsis is 46:12 after the T−24:10 apoapsis (the spec rounds it to "1 h 10 m")
-    c += lab(M, yy, 'PE') + val(M + 26, yy, '397', 'KM', { size: B }) + right('T−1:10:22'); yy += P + 1;
+    c += lab(M, yy, 'PE') + val(M + 26, yy, '397', 'KM', { size: B }) + right('T−8:40'); yy += P + 1;
     rule();
-    // NAV: the Nav's name in the nav colour, its range, rate and closest approach
-    c += lab(L, yy, 'NAV') + `<circle cx="${M + 5}" cy="${yy - 4.5}" r="5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/>` + text(M + 16, yy, 'SHACKLETON ICE', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right(num(1240), 'KM'); yy += P;
-    c += lab(M, yy, 'OPENING') + right('220', 'M/S'); yy += P;
-    c += lab(M, yy, 'CPA') + val(M + 40, yy, '3.2', 'KM', { size: B }) + right('T−2:05:00'); yy += P + 1;
+    // NAV: the Nav's name in the nav colour and its range. It orbits another body, so the range
+    // rate swings with the ship's own orbit and a closest approach that leaves out the Moon's pull
+    // means nothing: the second line names the body and the third gives the plan's arrival
+    c += lab(L, yy, 'NAV') + `<circle cx="${M + 5}" cy="${yy - 4.5}" r="5" fill="none" stroke="${C.magenta}" stroke-width="1.5"/>` + text(M + 16, yy, 'SHACKLETON ICE', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right(num(384000), 'KM'); yy += P;
+    c += lab(M, yy, 'AT') + text(M + 22, yy, 'THE MOON', { size: B, bold: true, fill: C.white, track: 0.3 }); yy += P;
+    c += lab(M, yy, 'ARRIVAL') + right('T−4D 4H'); yy += P + 1;
     rule();
-    // NEXT: the next event of any kind, and who flies it
-    c += lab(L, yy, 'NEXT') + path(`M${M + 5} ${yy - 10} l5.5 5.5 l-5.5 5.5 l-5.5 -5.5 z`, C.magenta, 1.5) + text(M + 16, yy, 'BURN 1/2', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right('T−12:05'); yy += P;
-    c += val(M + 16, yy, '420', 'M/S', { size: B }) + text(R, yy, 'HELM FLIES IT', { size: B, fill: C.white, anchor: 'end', track: 0.3 }); yy += P + 1;
+    // NEXT: the next event of any kind, and who flies it. Before the crossing the plan holds the one
+    // burn that leaves Earth: the planner's Hohmann transfer, 3 084 m/s from 7 672
+    c += lab(L, yy, 'NEXT') + path(`M${M + 5} ${yy - 10} l5.5 5.5 l-5.5 5.5 l-5.5 -5.5 z`, C.magenta, 1.5) + text(M + 16, yy, 'BURN 1/1', { size: B, bold: true, fill: C.magenta, track: 0.3 }) + right('T−12:05'); yy += P;
+    c += val(M + 16, yy, num(3084), 'M/S', { size: B }) + text(R, yy, 'HELM FLIES IT', { size: B, fill: C.white, anchor: 'end', track: 0.3 }); yy += P + 1;
     rule();
-    // PLAN: what the planned burns need and what they leave (delta-v left is H1's)
-    c += lab(L, yy, 'PLAN') + lab(M, yy, 'ΔV') + val(M + 22, yy, '860', 'M/S', { size: B }) + lab(R - valW('380', 'M/S', B) - 6, yy, 'LEAVES', { anchor: 'end' }) + right('380', 'M/S');
+    // PLAN: the burn and the capture's estimate (about 793), and what they leave of H1's 5 606
+    c += lab(L, yy, 'PLAN') + lab(M, yy, 'ΔV') + val(M + 22, yy, num(3877), 'M/S', { size: B }) + lab(R - valW(num(1729), 'M/S', B) - 6, yy, 'LEAVES', { anchor: 'end' }) + right(num(1729), 'M/S');
     return c;
   },
 }).svg;
@@ -99,10 +106,18 @@ s += du(12, ZC.lmid.y + p5.h + 6, 308, 192, {
 }
 
 // H1 flight display under its hood (the master alert cue, dark: nothing new to acknowledge)
-s += flightDisplay(440, 688, { frame: 'ORBIT · AUTO', frameAuto: true, speed: num(7672), assist: true, dv: num(1240), prop: 0.72 });
-// H4: three quiet lenses (no shield emitter); H5 folded to a key with the count beyond 50 km
+// The corvette's 2 000 kg of propellant give about 8 750 m/s with the hold empty; with the
+// delivery's 20 t of food aboard and the tank at 72%, 5 606 m/s (version 10)
+s += flightDisplay(440, 688, { frame: 'ORBIT · AUTO', frameAuto: true, speed: num(7672), assist: true, dv: num(5606), prop: 0.72 });
+// H4: three quiet lenses (no shield emitter)
 s += condLights(12, 748, ['HULL', 'POWER', 'LIFE SUP']);
-s += scopeKey(3);
+// H5 on the 5 km step: Highport 3.0 km astern and the Hauler Kestrel, berthed there, 3.1 km, so at
+// 60% of the radius, clear of the own-ship mark (on the 50 km step they sat 5 units out, under it);
+// the ship heads east, prograde. A ship at a berth is at its station, so their glyphs all but touch
+s += contactScope([
+  { kind: 'station', x: -0.600, y: 0.004 },
+  { kind: 'neutral', x: -0.618, y: 0.022 },
+], { heading: 90, range: '5' });
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>

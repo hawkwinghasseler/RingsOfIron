@@ -34,7 +34,6 @@ const word = (x, y, t, c = C.white, o = {}) => text(x, y, t, { size: o.size || B
 // ---- the title row ----
 s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
 s += text(18, 51, 'RAIDER', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(18 + tw('RAIDER', V, true, 0.8) + 10, 51, 'BOARDING', { size: LB, bold: true, fill: C.dim, track: 0.8 });
-s += capKey(1106, 38, 'K') + text(1128, 51, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1152, 38, 'ESC') + text(1264, 51, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
 
 // ---- the plan of the other ship ----
 // The raider as the game builds it (the corvette's chassis), port side up, nose right; beyond the
@@ -152,10 +151,10 @@ s += du(816, 550, 456, 194, {
   },
 }).svg;
 
-// ---- the foot row: the one-line feed ----
+// ---- the foot row: the one-line feed, and the keys that close the mode (version 10 puts them here) ----
 s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
 s += text(18, 767, 'BOARDING', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(100, 767, 'The hold is swept: Cole is fighting in the bridge.', { size: B, fill: C.white, track: 0.2 });
-s += text(1264, 767, 'ESC CLOSES BOARDING', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+s += capKey(1106, 754, 'K') + text(1128, 767, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1152, 754, 'ESC') + text(1264, 767, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>

@@ -39,17 +39,41 @@ function statusStrip(o) {
   s += text(14, y, o.seat, { size: B, bold: true, fill: C.white, track: 0.6 });                 // 14 characters
   if (o.authority) s += text(158, y, o.authority, { size: B, fill: C.white, track: 0.3 });     // 36, to x 474
   if (o.battle) s += lens(486, 5, 142, 16, 'BATTLE STATIONS', C.amber);
+  if (o.chip) s += cwChip(640, o.chip);                                                         // 10, to x 740
   if (o.paused) s += lens(752, 5, 64, 16, 'PAUSED', 'advisory');
   s += text(966, y, o.clock, { size: B, bold: true, fill: C.white, anchor: 'end', track: 0.4 }); // 16, from x 830
   s += text(1266, y, o.warp, { size: B, bold: true, fill: C.white, anchor: 'end', track: 0.4 }); // 34, from x 979
   return s;
 }
 
+// P1's caution and warning chip, in full-screen modes only: P2 folded to its counts ("◆ 1 · ▲ 2",
+// warnings then cautions, a count left out at nought). It is the master alert cue while a mode is
+// open, and a click on it closes the mode, so it is a push lens 24 tall, standing proud of the
+// strip's glass: dark while its warnings are acknowledged, each count in its severity's colour;
+// lit red, the counts in black, while a new warning waits for Acknowledge. o: { warn, caut, lit }.
+function cwChip(x, o) {
+  const y = 1, h = 24, w = 100, cy = y + h / 2 + 4.7, ink = o.lit ? '#0A0A0A' : null;
+  let s = rect(x - 1, y - 1, w + 2, h + 2, { fill: '#151719', r: 2 }) + rect(x, y, w, h, { fill: o.lit ? C.red : '#0E1216', stroke: o.lit ? 'none' : '#3A434D', sw: 1, r: 1.5 });
+  if (o.lit) s += rect(x, y, w, h * 0.35, { fill: 'rgba(255,255,255,0.12)', r: 1.5 });
+  const parts = [];
+  if (o.warn) parts.push([ink || C.red, (px, c) => sym.diamond(px + 5, cy - 4.7, 4.6, c, 1.2, c), String(o.warn)]);
+  if (o.caut) parts.push([ink || C.amber, (px, c) => path(`M${px + 5} ${cy - 10.5} L${px + 10.6} ${cy} L${px - 0.6} ${cy} Z`, c, 1.2, { fill: c }), String(o.caut)]);
+  const sep = tw('·', B, true) + 12, pw = ([, , n]) => 14 + tw(n, B, true);
+  let px = x + w / 2 - (parts.reduce((a, p) => a + pw(p), 0) + (parts.length - 1) * sep) / 2;
+  parts.forEach((p, i) => {
+    if (i) { s += text(px + 6, cy, '·', { size: B, bold: true, fill: ink || C.dim }); px += sep; }
+    s += p[1](px, p[0]) + text(px + 14, cy, p[2], { size: B, bold: true, fill: p[0] });
+    px += pw(p);
+  });
+  return s;
+}
+
 // ---------- P2, the caution and warning panel ----------
 // An EICAS display of rows 24 tall, five fields at fixed places (the spec's row anatomy):
 // severity shape, code, detail, handling, timer. rows: [sev, code, detail, handling, timer] with
-// handling 'you' (a cyan YOU flag: it needs the captain), a number (a dot per crew member on it),
-// or 'back' (it clears by itself: BACK and the time until it does). o.more: the hidden codes' line.
+// handling 'you' (a cyan YOU flag: it needs the captain), 'held' (a white pause mark: the crew
+// leave it for now, version 11), a number (a dot per crew member on it), or 'back' (it clears by
+// itself: BACK and the time until it does). o.more: the hidden codes' line.
 function cwPanel(rows, o = {}) {
   const { x, y } = ZC.ltop, rh = 24, shown = rows.slice(0, o.more ? 5 : 6), n = shown.length + (o.more ? 1 : 0);
   return du(x, y, 308, 12 + n * rh, {
@@ -66,6 +90,9 @@ function cwPanel(rows, o = {}) {
         const hx = gx + 206;
         if (hand === 'you') c += rect(hx, top + 4, 38, 16, { stroke: C.cyan, sw: 1.2 }) + text(hx + 19, yy - 0.5, 'YOU', { size: LB, bold: true, fill: C.cyan, anchor: 'middle', track: 0.4 });
         else if (hand === 'back') c += text(hx, yy, 'BACK', { size: LB, bold: true, fill: C.dim, track: 0.6 });
+        // held: the crew keep clear of it for now (under fire, or outside at battle stations), a
+        // white pause mark, two bars as tall as the caps
+        else if (hand === 'held') c += rect(hx + 2.5, yy - 9.4, 3, 9.4, { fill: C.white }) + rect(hx + 9, yy - 9.4, 3, 9.4, { fill: C.white });
         else if (hand >= 4) c += `<circle cx="${hx + 6}" cy="${yy - 4.5}" r="3.8" fill="${C.white}"/>` + text(hx + 13, yy, String(hand), { size: B, bold: true, fill: C.white });
         else if (hand > 0) for (let k = 0; k < hand; k++) c += `<circle cx="${hx + 6 + k * 11}" cy="${yy - 4.5}" r="3.8" fill="${C.white}"/>`;
         // a harm timer counts down to harm, in white; a recovery timer is BACK's, in dim

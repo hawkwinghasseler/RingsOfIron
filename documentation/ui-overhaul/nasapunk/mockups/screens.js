@@ -341,12 +341,18 @@ function systemPlot(o) {
     let d = '';
     for (let i = 0; i <= 120; i++) { const [px, py] = P(Math.PI + (tSoi - Math.PI) * i / 120); d += (i ? ' L' : 'M') + px.toFixed(1) + ' ' + py.toFixed(1); }
     // inside the sphere of influence: round the Moon to the capture burn on its far side, then the
-    // orbit the plan leaves the ship in
+    // orbit the plan leaves the ship in. o.leg 'soi': the plan holds only the leg to the crossing,
+    // as the game plans a trip to another body a leg at a time (the capture is planned there), so
+    // the path stops at the sphere with a bar across its end
     const [sx, sy] = P(tSoi), q = [moonAt[0] + rc * Math.cos(A), moonAt[1] - rc * Math.sin(A)];
     const cpt = [moonAt[0] - 20 * v[0] + 22 * u[0], moonAt[1] + 20 * v[1] - 22 * u[1]];
-    d += ` Q${cpt[0].toFixed(1)} ${cpt[1].toFixed(1)} ${q[0].toFixed(1)} ${q[1].toFixed(1)}`;
+    if (o.leg !== 'soi') d += ` Q${cpt[0].toFixed(1)} ${cpt[1].toFixed(1)} ${q[0].toFixed(1)} ${q[1].toFixed(1)}`;
     s += (o.plan === 'mod' ? '' : path(d, C.halo, pw + 2)) + path(d, pc, pw, { dash: pdash });
-    s += ring(moonAt[0], moonAt[1], rc, pc, 1.5, { dash: pdash });
+    if (o.leg !== 'soi') s += ring(moonAt[0], moonAt[1], rc, pc, 1.5, { dash: pdash });
+    else {
+      const [qx, qy] = P(tSoi - 0.01), tl = Math.hypot(sx - qx, sy - qy), nx = -(sy - qy) / tl, ny = (sx - qx) / tl;
+      s += line(sx - 6 * nx, sy - 6 * ny, sx + 6 * nx, sy + 6 * ny, pc, 2.5);
+    }
   }
   // the burns: burn 1 at periapsis on the ship's orbit, burn 2 at the capture
   const b1 = P(Math.PI), b2 = [moonAt[0] + rc * Math.cos(A), moonAt[1] - rc * Math.sin(A)];
@@ -356,12 +362,13 @@ function systemPlot(o) {
     const [nx, ny] = P(Math.PI + 0.02), tl = Math.hypot(nx - b1[0], ny - b1[1]), tx = (nx - b1[0]) / tl, ty = (ny - b1[1]) / tl;
     const rx = (b1[0] - ex) / rOrb, ry = (b1[1] - ey) / rOrb;
     s += burnMark(b1[0], b1[1], o.b1label ?? 'BURN 1', st(0), { handles: [[tx * 34, ty * 34, o.prop], [rx * 26, ry * 26, o.rad]], lx: o.b1lx ?? -12, ly: o.b1ly ?? -12, anchor: 'end' });
-    s += burnMark(b2[0], b2[1], o.b2label ?? 'BURN 2', st(1), { lx: o.b2lx ?? 12, ly: o.b2ly ?? -10 });
+    if (o.leg !== 'soi') s += burnMark(b2[0], b2[1], o.b2label ?? 'BURN 2', st(1), { lx: o.b2lx ?? 12, ly: o.b2ly ?? -10 });
   }
-  // the ship now, a little past burn 1's point (burn 1 is most of an orbit away)
-  const sh = polar(rOrb, o.at + 180 + 14);
+  // the ship now, a little past burn 1's point (burn 1 is most of an orbit away); o.shipLead: the
+  // ship's angle from burn 1's point along the orbit, degrees (negative: the burn is still ahead)
+  const sh = polar(rOrb, o.at + 180 + (o.shipLead ?? 14));
   s += `<circle cx="${sh[0]}" cy="${sh[1]}" r="2.6" fill="${C.white}"/>`;
-  return { svg: s, earth: [ex, ey], moonNow, moonAt, burns: [b1, b2], pathAt, rSoi };
+  return { svg: s, earth: [ex, ey], moonNow, moonAt, burns: [b1, b2], pathAt, rSoi, soi: P(tSoi) };
 }
 
 // A plan timeline: now at x, then the plan's events to its end (o.end, hours) on a log scale (o.t0:

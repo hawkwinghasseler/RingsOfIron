@@ -12,7 +12,8 @@
 // to port; the party has taken it. Latched, the ship can't fly, so the screen is the docked one:
 // P1, P5 with the bounty's next step, H4's quiet lights, X2 where the station panel would be. The
 // raider is still the Lock, but there is no lock card: X2 names it, and its range says nothing at
-// 40 m. Nothing is lit, so no master cue stands at the bottom centre.
+// 40 m. Nothing is lit, so no master cue stands at the bottom centre. Two minutes after C6: Cole,
+// the party, is on the way back across the collar.
 let s = space({ px: 1180, py: -900, pr: 1100, seed: 21 });
 // The pair: the raider's dorsal port (5, 4) meets the corvette's port (7..9, 5). Docked ships lie
 // half a turn apart, so the raider sits over the corvette's port side upside down, nose aft.
@@ -46,7 +47,9 @@ s += du(960, ZC.rmid.y, 308, 150, {
     const words = (x, y, parts) => { let px = x; parts.forEach(([t, col]) => { c += text(px, y, t, { size: B, bold: true, fill: col || C.white, track: 0.3 }); px += tw(t, B, true, 0.3) + 4; }); };
     c += lab(L, yy, 'BOARD'); words(M, yy, [['RAIDER'], ['·', C.dim], ['LATCHED']]); yy += P;
     words(M, yy, [['TAKEN:', C.green], ['CREW SURRENDERED']]); yy += P;
-    c += lab(L, yy, 'PARTY'); words(M, yy, [['2 ABOARD'], ['·', C.dim], ['HOLDING']]); yy += P;
+    // version 11: the party is the ship's marines (Cole alone), and once the craft is taken it
+    // stands down and goes home
+    c += lab(L, yy, 'PARTY'); words(M, yy, [['1'], ['·', C.dim], ['COMING HOME']]); yy += P;
     c += lab(L, yy, 'SALV'); words(M, yy, [['3 PARTS MARKED'], ['·', C.dim], ['1 OFF']]); yy += P;
     c += lab(L, yy, 'CARGO'); words(M, yy, [['2 LOTS COMING ACROSS']]); yy += P;
     words(M, yy, [['PRISONERS TO BRING ABOARD']]);

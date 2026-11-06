@@ -8,45 +8,54 @@
 <script src="../../nasapunk/mockups/kit.js"></script>
 <script src="context.js"></script>
 <script>
-// Walkthrough 11.7 (v5) on the starting corvette: the ship is disabled, its reactor damaged (so no
-// power is due back by itself and X3 offers the ways out), and the hold has lost its air. Fire in the bridge with Bea on it; Ada down, Cole treating her; the
-// captain suited in the hold, who has pressed B once: the tow is armed for 3 s. While X3 shows,
-// everything but X3, P2, H4, D1, D3 and the master alert cue dims (here P1 and P5).
+// Walkthrough 11.7 (version 11) on the starting corvette, at battle stations: the ship is disabled,
+// its reactor damaged (so no power is due back by itself and X3 offers the ways out), and the hold has
+// lost its air. Bea fights the fire in the bridge alone; Ada was hit in the hold and lies there, with
+// Cole tending Ada. The crew keep clear of where Ada was hit until the fight ends, so the hold's air
+// waits, but not Ada, who has under two minutes. The captain, by the helm with a light wound and
+// suited in the bridge's thin air, has pressed B once: the tow is armed for 3 s. While X3 shows,
+// everything but X3, P2, H4, D1, D3 and the master alert cue dims (here P1). P5 has the delivery,
+// which is no fight, so in combat it doesn't show.
 let s = rect(0, 0, 1280, 800, { fill: '#050607' }) + controlDefs();
 const K = 42, OX = 640 - 10.5 * K, OY = 410 - 3 * K;
 const X = tx => OX + tx * K, Y = ty => OY + (6 - ty) * K;
 s += corvetteDeck(OX, OY, K, {
-  id: 'c3', unpowered: true, dark: 0.2, vacuum: ['hold'], door: 'shut', labels: true, labelAt: { hold: [4, 1.5], bridge: [13.3, 3.8] },
+  id: 'c3', unpowered: true, dark: 0.2, vacuum: ['hold'], thin: ['bridge'], door: 'shut', labels: true, labelAt: { hold: [4, 3], bridge: [13.3, 3.8] },
   fire: [[14.6, 2.5, 0.85], [15.1, 2.1, 0.6], [14.2, 2.9, 0.5]], fireRoom: 'bridge',
   smoke: [[14.4, 2.6, 1.7], [12.6, 3.2, 1.2]],
   alarm: [[8.4, 4.7, 0.5], [16.6, 1.3, -2.4]],
-  crew: [[13.5, 2.45], [11.9, 3.3]],           // Bea on the fire; Cole kneeling at Ada
-  down: [[12.0, 2.5, 0]],                      // Ada, critical
-  avatar: [4.2, 4.5],                          // the captain, suited, in the hold
+  crew: [[13.5, 2.45], [3.45, 1.5]],           // Bea on the fire; Cole, suited, kneeling at Ada's head
+  down: [[4.45, 1.5, 180]],                    // Ada, critical, where the hit landed in the hold
+  avatar: [11.5, 3.5],                         // the captain, suited, by the helm
 });
-// D3: a tag on each hazard in view, by P2's code or the casualty's name, a leader to the spot
-function tag(x, y, label, to) {
-  const col = C.red, w = tw(label, B, true, 0.4) + 32, h = 22;
-  let t = haloed((c, ww) => line(x + w / 2, y + h, to[0], to[1], c, ww), col, 1.5) + `<circle cx="${to[0]}" cy="${to[1]}" r="3" fill="${col}"/>`;
-  t += rect(x, y, w, h, { fill: 'rgba(5,7,10,0.92)', stroke: col, sw: 1.5, r: 1 }) + sym.diamond(x + 12, y + 11, 4.4, col, 1.2, col);
+// D3: a tag on each hazard in view, one per room and code, by P2's code or the casualty's name, a
+// leader to the spot; a caution's tag (the smoke) amber with its triangle
+function tag(x, y, label, to, caution) {
+  const col = caution ? C.amber : C.red, w = tw(label, B, true, 0.4) + 32, h = 22;
+  let t = haloed((c, ww) => line(x + w / 2, y + (to[1] > y ? h : 0), to[0], to[1], c, ww), col, 1.5) + `<circle cx="${to[0]}" cy="${to[1]}" r="3" fill="${col}"/>`;
+  t += rect(x, y, w, h, { fill: 'rgba(5,7,10,0.92)', stroke: col, sw: 1.5, r: 1 });
+  t += caution ? path(`M${x + 12} ${y + 5.5} L${x + 17.2} ${y + 15.5} L${x + 6.8} ${y + 15.5} Z`, col, 1.2, { fill: col }) : sym.diamond(x + 12, y + 11, 4.4, col, 1.2, col);
   return t + text(x + 23, y + 15.7, label, { size: B, bold: true, fill: col, track: 0.4 });
 }
 // Bea's extinguisher on the fire: crew at work show in the world, not on the tags
 s += path(`M${X(13.8)} ${Y(2.45)} L${X(14.45)} ${Y(2.85)} L${X(14.45)} ${Y(2.05)} Z`, 'none', 0, { fill: 'rgba(225,235,245,0.38)' });
 s += tag(X(14.6) - 30, Y(6) - 34, 'FIRE', [X(14.6), Y(2.9)]);
-s += tag(X(4.6) - 40, Y(6) - 34, 'VACUUM', [X(5.4), Y(4.6)]);
-s += tag(X(11.6) - 36, Y(0.2) + 4, 'ADA', [X(12.0), Y(2.2)]);
+s += tag(X(4.0) - 44, Y(6) - 34, 'VACUUM', [X(4.0), Y(4.5)]);
+s += tag(X(4.45) - 30, Y(0.2) + 4, 'ADA', [X(4.6), Y(1.35)]);
+s += tag(X(13.6) - 40, Y(0.2) + 4, 'SMOKE', [X(13.6), Y(1.5)], true);
 
-// P1 and P5, dimmed under the emergency
-s += `<g opacity="0.4">` + statusStrip({ seat: 'DECK', authority: 'HELM: NOBODY', clock: 'DAY 0 · 01:12:40', warp: '1×' }) + objective(['DELIVER 40 FOOD', '→ SHACKLETON ICE · 1D 10H LEFT']).svg + '</g>';
+// P1, dimmed under the emergency
+s += `<g opacity="0.4">` + statusStrip({ seat: 'DECK', authority: 'HELM: NOBODY', battle: true, clock: 'DAY 0 · 01:12:40', warp: '1×' }) + '</g>';
 
-// P2 in its order: what needs you (nobody is free: Ada is down, Cole tends her, Bea fights the
-// fire), then what the crew are on; SMOKE under "+1 more"
+// P2 in its order (version 11): what needs you, then what the crew hold back from, then what they
+// are on. Nobody is free for the oxygen or the reactor: Ada is down, Cole tends Ada and Bea fights
+// the fire alone. The hold's air waits (‖), since Ada was hit there; Ada doesn't, with 1:40 left.
+// SMOKE goes under "+1 more"
 s += cwPanel([
   ['warning', 'EMERG O2', '', 'you'],
-  ['warning', 'VACUUM', 'HOLD', 'you'],
   ['warning', 'NO POWER', 'DAMAGED', 'you'],
-  ['warning', 'CREW CRIT', 'ADA', 1, '3:40'],
+  ['warning', 'VACUUM', 'HOLD', 'held'],
+  ['warning', 'CREW CRIT', 'ADA', 1, '1:40'],
   ['warning', 'FIRE', 'BRIDGE', 1],
 ], { more: ['SMOKE'] });
 
@@ -97,13 +106,15 @@ s += du(12, 558, 308, 134, {
   s += text(x + 12, y + 14, 'SUIT', { size: LB, bold: true, fill: '#26282A', track: 1.4, legend: true }) + rect(x + w - 34, y + 6, 22, 8, { fill: C.orange, r: 1 });
   s += rect(x + 8, y + 19, w - 16, h - 25, { fill: C.glass });
   const L = x + 18, M = x + 78, R = x + w - 18;
-  s += lab(L, y + 38, 'YOU') + text(M, y + 38, 'OK', { size: V, bold: true, fill: C.white });
+  // a light wound is no alert, so it reads white; the bridge's air is too thin to breathe but not
+  // vacuum, a caution, so the suit's air counts down
+  s += lab(L, y + 38, 'YOU') + text(M, y + 38, 'LIGHT WOUND', { size: V, bold: true, fill: C.white, track: 0.3 });
   s += lab(L, y + 57, 'SUIT') + text(M, y + 57, 'ON', { size: V, bold: true, fill: C.white }) + lab(R - valW('9:40') - 6, y + 57, 'AIR', { anchor: 'end' }) + val(R, y + 57, '9:40', null, { anchor: 'end' });
-  s += lab(L, y + 76, 'HERE') + sym.diamond(M + 5, y + 71, 4.4, C.red, 1.2, C.red) + text(M + 16, y + 76, 'VACUUM', { size: V, bold: true, fill: C.red, track: 0.4 });
+  s += lab(L, y + 76, 'HERE') + path(`M${M + 5} ${y + 65.5} L${M + 10.6} ${y + 76} L${M - 0.6} ${y + 76} Z`, C.amber, 1.2, { fill: C.amber }) + text(M + 16, y + 76, 'THIN AIR', { size: V, bold: true, fill: C.amber, track: 0.4 });
 }
 
 // the master alert cue, standing alone at the centre of the bottom-centre zone: the newest warning
-s += masterCue(640, 676, { sev: 'warning', code: 'EMERG O2' });
+s += masterCue(640, 676, { sev: 'warning', code: 'VACUUM' });
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>

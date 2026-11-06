@@ -11,7 +11,7 @@ at 1280 x 800.
 | Variation | Folder | Spec version drawn | State |
 |---|---|---|---|
 | Nasa-punk × Ship Stations | [`nasapunk-stations/`](nasapunk-stations/README.md) | round 14 | Converged in round 5 |
-| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 9 | Converged in round 5 |
+| Nasa-punk × Context-driven | [`nasapunk-context/`](nasapunk-context/README.md) | version 12 | Converged in round 5; versions 10 to 12 drawn in round 7 |
 | Nasa-punk × Task-driven | [`nasapunk-task/`](nasapunk-task/README.md) | round 9 | Converged in round 5; round 9 drawn in round 6 |
 
 ## Round 1 (3 November 2026)
@@ -283,6 +283,8 @@ and the game's numbers.
 | The shell (shared by all three) | [SH1 to SH8](nasapunk-shell/README.md) | | |
 | The map | T4, a proposed transfer waiting for EXEC, late against the deadline | C5, the accepted plan with burn 1 selected | S4, the full-screen Plot with a cursor reading the path |
 | Boarding | T5, BRD once the ship is taken, with the salvage marked | C6, M4 with the party fighting aboard | S5, the slate's Boarding tab before the party goes |
+| The station's services | T6, the station terminal on Contracts | C7, M3 on its Market tab, a panel over the docked view | S6, the station link's Yard tab |
+| Ship and crew | T7, the ship's book on Crew | C8, M2 on Systems in the corvette's fight | |
 
 **New pieces in the kit.** A mark box for lists where Enter marks or leaves a row: filled cyan when
 marked (a command, so cyan), hollow and dim when not, and absent where the row can't be marked,
@@ -315,6 +317,28 @@ fixed.
 **Next.** The station's services, ship and crew, the record and log, the controls and the
 consoles, in each spec's own terms. Then all of it goes into the game on the shared screens hook,
 one pull request per spec.
+
+**The context spec's versions 10 to 12.** The cassette direction's round 3 made the context
+spec's samples true to the game's geography (version 10): the trip to Shackleton Ice is planned a
+leg at a time, since it orbits the Moon, the modes' tabs carry their number keys with the close
+keys at the foot, and M3 is a panel over the docked view. Checked against the game's code, four
+notes went back, and version 11 took all four, adding P2's Held state (the crews' rule of keeping
+clear of where crew were hit, and inside, at battle stations). Drawing C1 found a fifth, the cruise
+scope's fixed 50 km, which put the station just left under the own-ship mark; version 12 takes the
+smallest step that holds every contact inside 50 km. All eight context screens are redrawn to
+version 12: C1's scope on the 5 km step, C3's held vacuum at battle stations, C4's party coming
+home, C5's leg-at-a-time plan, C7's panel, C8's board and its caution chip. The context
+[README](nasapunk-context/README.md) has the round's critique.
+
+| Spec | Note sent this round |
+|---|---|
+| Context (wireframe 11) | The systems list gives the RCS blocks' power as "ok", but the game's blocks draw none: one works while the hull tile it is bolted to stands (`RcsThruster`), and fires unless out of propellant (`RcsThrust`) |
+
+**New pieces in the kit.** P2's held mark (two white bars) and P1's caution chip (`cwChip`: a push
+lens 24 tall with each count in its severity's colour, lit red while a new warning waits) in
+`context.js`. `systemPlot` can end a path at a sphere of influence (`leg: 'soi'`), marking the
+crossing with a bar, and draws the ship where its orbit puts it (`shipLead`). The word list adds
+SOI and the countdown over a day (`T−4D 4H`).
 
 ## Next
 

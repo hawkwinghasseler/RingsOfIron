@@ -1,8 +1,7 @@
 # Nasa-punk × Context-driven
 
-The context-driven functional spec (`functional-context.md`, version 9 when drawn, on branch
-`claude/project-thread-ukjzrp`; version 9 changed only H6's sample and wireframe 04, neither on
-these screens) skinned in the Nasa-punk style
+The context-driven functional spec (`functional-context.md`, version 12 when drawn, on branch
+`claude/project-thread-ukjzrp`) skinned in the Nasa-punk style
 (`../../nasapunk/style-nasapunk.md`), with its words from
 [`../../nasapunk/abbrev.md`](../../nasapunk/abbrev.md). Mockups are 1280 x 800 UI units drawn at 2x; sources are
 the HTML files here, using `context.js` and the shared kit in `../../nasapunk/mockups/`. From
@@ -16,8 +15,8 @@ Round history is in [`../nasapunk-round-log.md`](../nasapunk-round-log.md).
 
 | Spec element | Nasa-punk container |
 |---|---|
-| P1 status strip | One long glass across the top. Each field has a fixed place and its reserved width, so a field that empties leaves dark glass and nothing moves. BATTLE STATIONS is an amber lens set into it. |
-| P2 caution and warning | An EICAS list of rows 24 tall: severity shape (◆ warning, ▲ caution), code, detail, handling, timer. Handling is a cyan YOU flag (needs the captain), a white dot per crew member on it, or BACK with the recovery time. Harm timers are white, recovery timers dim. The sixth row is "+n MORE" with a chevron, since a click opens Ship › Systems. |
+| P1 status strip | One long glass across the top. Each field has a fixed place and its reserved width, so a field that empties leaves dark glass and nothing moves. BATTLE STATIONS is an amber lens set into it. In a full-screen mode P2 folds into the caution and warning chip: a push lens 24 tall, standing proud of the glass since a click on it closes the mode, with each count in its severity's colour (◆ 1 · ▲ 2), and lit red while a new warning waits to be acknowledged. |
+| P2 caution and warning | An EICAS list of rows 24 tall: severity shape (◆ warning, ▲ caution), code, detail, handling, timer. Handling is a cyan YOU flag (needs the captain), a white pause mark of two bars (held: the crew leave it for now), a white dot per crew member on it, or BACK with the recovery time. The three marks the crew make are shapes, not colours, so amber and red stay the code's. Harm timers are white, recovery timers dim. The sixth row is "+n MORE" with a chevron, since a click opens Ship › Systems. |
 | Master alert cue | MASTER WARN and MASTER CAUT lenses, 24 tall since a click acknowledges them, on a hood across the top of the seat's primary instrument. On deck, docked or latched the two lenses stand alone at the bottom centre, but only while one is lit. A lit lens shows the newest code. |
 | P3 threat alert | A red-framed glass with a lit lamp carrying the missile glyph, the count at 22, the decoy with its key cap and point defense on the second line. At fire control F4 has each missile's time, its shooter and point defense, so P3 keeps the count and the decoy. |
 | P4 message feed | Comm-loop slips: a source tag, then the message in sentence case (speech and events are prose; instruments are caps). |
@@ -25,13 +24,14 @@ Round history is in [`../nasapunk-round-log.md`](../nasapunk-round-log.md).
 | H1 flight display | A DU under the hood. The frame is an FMA box, green while picked automatically and white when pinned. The speed is in that frame, beside the assist box. Below them are the thruster pictogram, delta-v, and the propellant tape. |
 | H2 navigation | Label, value and time columns: ORBIT, NAV in magenta with its ring, NEXT with its diamond, PLAN. Its numbers sit inside lines, so they take the line's 13 (version 8's rule for values), with units dim at 12. |
 | H4 ship condition | Lenses in a bezel, dark when well: three on a ship with no shield emitter. Expanded on deck, each lens heads a row with its reading, its figure at 15 and a tape. POWER gives the store, then the output, with the rating beside it only while damage holds the output under it. |
-| H5 scope | A 200 x 200 DU with − and + at 24, the range in the corner, and off-scale contacts as rim ticks at their bearing. In cruise it folds to a 48 x 48 key with the count. |
+| H5 scope | A 200 x 200 DU with − and + at 24, the range in the corner, and off-scale contacts as rim ticks at their bearing. In cruise it takes the smallest step that holds every contact inside 50 km, and with none inside 50 km it folds to a 48 x 48 key with the count. |
 | C1 orders menu | A mode control panel, as on a flight deck, its groups in the spec's order read across and down: HELM, then AUTOPILOT and CREW, then SHIELDS and SHIP. The helm orders are interlocked lit keys under their number caps. Autopilot and crew orders are lit keys whose lower line is their state. The trim is a five-way selector: the hull in miniature with a mark on each side it can lean to and a dot for even, the chosen one lit. Abandon and the tow sit under hinged guards with striped rims, last and furthest from the helm keys. A barber-pole strip marks an order that can't be given now, and the panel's foot gives each reason once with the keys it blocks. |
 | F1 lock card | The name in the allegiance colour with the lock brackets. HOSTILE is a box, and FIRING ON YOU a lit red flag. Then RNG, REL, what it is doing and what is known. |
 | W5 lead reticle | A cyan ring with four ticks where the gun's solution puts the shot. In this game's fights it sits a few units off the target, so it rings the target inside its lock brackets. |
 | F2 weapons rack | One row per mount: mount, weapon, state, hit chance as cyan pips with the number and word, rounds left, who fires it (YOU in cyan, PD). Point defense engaging reads green, like an engaged autoflight mode. |
 | F3 shield control | A ring of eight sectors around the ship's outline, each as wide as the cloud there. The trim is a cyan arc outside the side leaned to, and the ring itself is the control. Beside it: cloud mass, RAISED, TRIM, the emitter and its heat against the trip. |
 | F4 threat list | Rows 24 tall (a click locks): the missile's impact time, the ship that fired it in red and PD ON, then the other hostiles. |
+| M1 to M4, the full-screen modes | A console body under P1: a title row of glass with the mode's name and its tabs on their number caps, the mode's DUs, and a foot row of glass with the one-line feed and the close keys as caps. M3, the station, is a panel over the docked view, as tall as its tab. |
 | X2 boarding panel | A DU of seven rows: the other ship and how it is held, its state on a row of its own, the party, salvage, cargo and prisoners, then K BOARDING and U CAST OFF as buttons 26 tall. |
 | X3 emergency card | A hazard-striped card: the cause at 22, then the ways out as the same guarded switches as C1, with the tow's costs. Armed, a switch's guard stands open, the switch lights amber, and the card's foot says what the second press does while a bar runs out its 3 s. |
 | D1 captain vitals | The suit's own chest display (the DCM): suit-grey bezel, orange tab. |
@@ -40,15 +40,24 @@ Round history is in [`../nasapunk-round-log.md`](../nasapunk-round-log.md).
 
 ## Screens
 
+Each screen is its walkthrough's moment, at its wireframe's clock with the seconds added. They are
+separate moments, as the spec's walkthroughs are, not one voyage; only C6 and C4 are two minutes
+apart in the same fight.
+
 ![Helm, cruising, orders open](c1-helm-cruise.png)
 
-**C1, helm, cruising in Earth orbit with the orders menu open (11.1 and 11.12).** Nothing is
-wrong, so P2, P3 and P4 draw nothing. H4 is three dark lenses and H5 has folded to a key. No helm
+**C1, helm, cruising in Earth orbit with the orders menu open (11.1 and 11.12).** The ship is
+just out of Highport with nothing wrong, so P2, P3 and P4 draw nothing and H4 is three dark lenses.
+H5 is on the 5 km step, the smallest that holds everything inside 50 km, with Highport and the
+Hauler Kestrel 3 km astern; the hauler is berthed there, so their glyphs all but touch. No helm
 order is running, so P1's helm field is empty and no helm key is down. Four helm orders need a Nav
 in the bubble, the shield orders need an emitter, and the tow is refused while the ship can fly
 home. Each carries the strip, and the foot says why once. P5 has the delivery: 40 food to
-Shackleton Ice. The burn arrow carries no countdown, which is H2's NEXT line (version 6), and the
-periapsis is half an orbit after the apoapsis.
+Shackleton Ice, with 5 days 4 hours left. H2 plans the trip a leg at a time, as the game does: the
+one burn that leaves Earth, 3 084 m/s in 12:05, and the arrival at the Moon in 4 days 4 hours. With
+the capture's estimate the plan needs 3 877 m/s, which leaves 1 729 of H1's 5 606. The orbit line
+gives only the periapsis, since the apoapsis would come after the burn has changed the orbit. The
+burn arrow carries no countdown, which is H2's NEXT line.
 
 ![Fire control](c2-fire-control.png)
 
@@ -65,20 +74,25 @@ marker at the same bearing.
 
 ![Deck emergency](c3-deck-emergency.png)
 
-**C3, on deck, the corvette disabled (11.7).** The reactor is damaged, so no power is due back by
-itself and X3 offers the ways out; the hold is at vacuum. Bea fights the fire in the bridge and
-Cole treats Ada, so nobody is free for the rest: P2 ranks EMERG O2, VACUUM and NO POWER as needing
-the captain, then CREW CRIT and FIRE with their one worker each, and folds SMOKE into "+1 MORE".
-The captain, suited in the hold, has pressed B once: the tow is armed, its guard up and its bar
-running out. P1 and P5 are dimmed under X3; the master cue stays lit at the bottom centre. D3 tags
-the fire, the vacuum and Ada. Bottom left is H4's deck face over the DCM: the hull at 81%, the
-store empty and the reactor giving 0 of its 3.0 MW, and 42 kg left of the 60 kg emergency oxygen.
+**C3, on deck, the corvette disabled at battle stations (11.7).** The reactor is damaged, so no
+power is due back by itself and X3 offers the ways out; the hold has lost its air. Ada was hit in
+the hold and lies there with Cole tending; Bea fights the fire in the bridge alone. P2 ranks EMERG
+O2 and NO POWER as needing the captain, since nobody is free for them. VACUUM comes next, held (the
+white bars): the crew keep clear of where Ada was hit until the fight ends. CREW CRIT and FIRE
+follow with their one worker each, and Ada's 1:40 is under the two minutes that send the crew in
+anyway. SMOKE folds into "+1 MORE". The captain, by the helm with a light wound and suited in the
+bridge's thin air, has pressed B once: the tow is armed, its guard up and its bar running out. P1
+dims under X3. P5 isn't drawn, since in combat it shows only a fight's contract. The master cue
+stays lit at the bottom centre with the newest warning, VACUUM. D3 tags the fire, the smoke, the
+vacuum and Ada. Bottom left is H4's deck face over the DCM: the hull at 81%, the store empty and
+the reactor giving 0 of its 3.0 MW, and 42 kg left of the 60 kg emergency oxygen.
 
 ![Boarding, latched](c4-boarding.png)
 
-**C4, latched to a taken raider (11.13).** Latched, the screen is the docked one. P5 has the
-bounty's next step, X2 sits where the station panel would be, with the raider's state on its own
-row, and H4 has its quiet lights. The raider lies the way the game docks two ships: half a turn
+**C4, latched to a taken raider (11.13), two minutes after C6.** Latched, the screen is the docked
+one. P5 has the bounty's next step, X2 sits where the station panel would be, with the raider's
+state on its own row, and H4 has its quiet lights. The party is Cole alone, the ship's one marine,
+coming home now that the raider is taken. The raider lies the way the game docks two ships: half a turn
 apart, port to port. That puts it over the corvette's port side, upside down and nose aft. Its lock
 brackets and name stay, but there is no lock card and no range.
 
@@ -89,13 +103,17 @@ full-screen modes, drawn after the first rounds.
 
 ![The map, burn 1 selected](c5-map.png)
 
-**C5, M1, the map as a full-screen mode (10.1).** P1 stays above; below it come the mode's frame,
-a title row, the Plan panel on the left and Target and traffic on the right, with the timeline
-between them under the map and the foot row with the one-line feed and the close keys. It shows the
-task variation's transfer, here accepted: the planned path solid magenta, and burn 1 selected in
-cyan with its handles and its result, an apoapsis at the Moon's distance. The arrival still misses
-the delivery's deadline, so the total carries LATE and the timeline shows the deadline before the
-arrival. The timeline's cursor is on burn 1, the next event, with its warp-to.
+**C5, M1, the map as a full-screen mode (10.1), at C1's moment.** P1 stays above; below it come
+the mode's frame and title row, the Plan panel on the left and the Nav with the traffic on the
+right, the view row and the map between them, the timeline under the map, and the foot row with the
+one-line feed and the close keys. The map has no tabs, so the number keys keep the helm orders, and
+the panels' feet carry them as soft keys. The plan to Shackleton Ice is the game's, a leg at a time:
+burn 1, selected in cyan with its handles and its result, an apoapsis at the Moon's distance, then
+the capture at the Moon as an estimate (the dashed diamond) until the crossing into the Moon's
+sphere plans it. The path stops at that crossing, marked with a bar, and the Moon is drawn dashed
+where it will be at the encounter. The timeline runs to the contract's deadline, past the arrival,
+with its cursor on burn 1 and the warp-to. The Nav panel names the body the station orbits and
+gives the arrival in place of a closest approach.
 
 ![Boarding, the party aboard](c6-boarding.png)
 
@@ -106,39 +124,100 @@ and in a pressure suit whose air stays full while the bridge holds pressure. The
 ships shows who is where, with the rooms swept and fighting. The state line is the game's own
 ("Boarding: 1 of ours aboard, 1 of theirs standing"). SEND PARTY and STORM are barred while the
 party is aboard, with the reason once on the strip under them, and RECALL is live. Salvage, cargo
-and prisoners wait, each saying what it will offer once the ship is taken.
+and prisoners wait, each saying what it will offer once the ship is taken. The close keys, K or
+Esc, are the foot's.
 
 ![Station, market](c7-station.png)
 
 **C7, M3 on its Market tab (10.3), docked at Highport on day 0, loading food for the delivery.**
-P1 stays above, then the title row with the tabs the station offers on their keys (Highport sells
-no ships, so there is no Shipyard tab), the tab's panel, the rail every tab shares, and the foot
-row with the feed. Highport is an agricultural dome, so it makes food and uses water and
-machinery, at today's prices. Bought cargo crosses the dock in the loaders' arms, so a buy is an
-order until it is in the hold: HELD and ON ORDER read the game's "12 (+10)". The order is under
-way with its progress, and the foot row carries the game's own line for it. Each row has today's
-four trade buttons as lit push buttons; SELL is barred where nothing is held, with the reason
-once at the foot. The rail has credits, standing, the hold with what is coming, tanks, the
-infirmary, and the delivery the cargo is for.
+M3 is a panel over the docked view, as tall as its tab. P1 stays above, then the panel's title row
+with the tabs the station offers on their keys (Highport sells no ships, so there is no Shipyard
+tab), the tab's panel, the rail every tab shares, and the foot row with the feed and the close
+keys, T or Esc. Highport is an agricultural dome, so it makes food and uses water and machinery, at
+today's prices. On day 0 nothing has been salvaged, so there is no salvage row. Bought cargo
+crosses the dock in the loaders' arms, so a buy is an order until it is in the hold: HELD and ON
+ORDER read the game's "12 (+10)". The order is under way with its progress, and the foot row
+carries the game's own line for it. Each row has today's four trade buttons as lit push buttons;
+SELL is barred where nothing is held, with the reason once at the foot. Under the table is the
+delivery this market can supply: 12 of 40 aboard, 10 coming, and 18 more fill the hold. The rail
+has credits (the starting 5 000, less 22 food at 50), standing, the hold with what is coming,
+tanks and the infirmary.
 
 ![Ship, systems](c8-ship.png)
 
-**C8, M2 on its Systems tab (10.2), on deck in the corvette's fight, a quarter of an hour before
-C3.** P1 stays above with BATTLE STATIONS lit, then the title row with the four tabs on their keys,
-the plan, the systems list, the damage control board, the power circuit, and the foot row with the
-feed. A hit has holed the hold's port hull and cut the conduit under the forward starboard
-autocannon, and another has left the forward port autocannon at 40%. The plan is the corvette's
-real layout and network: every system by its state, the hold hatched for its breach, the cut
-marked where it broke, and the crew where they work. The list groups the systems by type, each
-with its health, circuit, switch and anything not normal. The board is the game's crew rules at
-work. Ada has the gun, since a repair to a gun never waits out a fight; the breach is where Cole
-was hit, so the Patrol's crews leave it till the fight ends; a light wound is not seen to at
-battle stations; and no crew mends a cut conduit, which a yard does. That is why Bea can hold the
-helm: crew man a console only when nothing else on the board suits them. Power has the circuit's
-reactor against its rating, the store, and the gun no reactor reaches. The feed has the game's own
-notice for a light wound.
+**C8, M2 on its Systems tab (10.2 and 11.11), on deck in the corvette's fight.** P1 stays above
+with BATTLE STATIONS lit and P2 folded into its chip, ◆ 1 · ▲ 2: the breach, and the two guns out of
+action. Then come the title row with the four tabs on their keys, the plan, the systems list, the
+damage control board, the power circuit, and the foot row with the feed and the close keys. A hit
+has holed the hold's port hull, lightly wounding Cole there, and cut the conduit under the forward
+starboard autocannon. Another has left the forward port autocannon at 20%, under the 30% where a
+system stops working, and an earlier one holed the hull tile under the aft starboard RCS block,
+sealed since from inside. The plan is the corvette's real layout and network: every system by its
+state, the hold hatched for its breach, the cut marked where it broke, the eight RCS blocks on the
+hull with the stopped one amber, and the crew where they work. The list groups the systems by type,
+each with its health, circuit, switch and anything not normal; RCS blocks draw no power, so theirs
+have no circuit. The board is the game's crew rules at work. Ada has the gun, since a gun's repair
+never waits out a fight. The breach is where Cole was hit, so the crew leave it till the fight ends
+(and Cole, a marine, never seals one). The RCS block is outside, and EVA work waits for battle
+stations to end. That is why Bea can hold the helm: crew man a console only when nothing on the
+board suits them. No crew mends a cut conduit, so it is no job on the board: Power has it under the
+gun it strands, with the yard's 400 cr. The feed has the game's own notice for a light wound.
 
-## Round 5 critique
+## Round 7 critique (versions 10 to 12)
+
+Version 10 came from the cassette direction's round 3. It made the samples true to the game's
+geography (Shackleton Ice orbits the Moon, so the trip is planned a leg at a time and the deadline
+outlasts it), set the full-screen modes' frame (tabs on their number keys, the close keys at the
+foot), and made M3 a panel over the docked view. I checked it against the game's code and sent four
+notes; version 11 took all four and added P2's Held state. Drawing C1 to it found one more, which
+version 12 took. Every screen here is redrawn to version 12.
+
+Problems in the spec, sent and taken:
+
+- **Wireframe 11's crew did what the game's crews can't.** Cole, a marine, sealed the breach, but a
+  marine never seals (`CrewRole` gives that job 0). Bea, a crewman, couldn't stay at the helm while
+  a job that suits a crewman was open, since crew leave a console for any open task. And no crew
+  mends a cut conduit: only a yard does. Version 11 has Ada repair the gun, Cole man the weapons
+  console, the breach wait out the fight, and Bea fly with nothing else to take.
+- **Wireframe 11's power.** The laser can't be stranded alone, since its tile is the aft run's only
+  link to the reactor; one cut under the FWD STBD autocannon strands it alone. The damaged gun at
+  40% still fired, over the 30% where a system stops. Version 11 has the one cut and the gun at
+  20%, and lists the two engines and eight RCS blocks, one stopped.
+- **X2's party, "2 aboard · holding",** can't happen on the corvette: the party is the ship's
+  marines, Cole alone, and a party that takes a ship stands down. Version 11 has "1 · coming home".
+- **Wireframe 10's hold** could not take the delivery's 40 food with salvage and an order aboard,
+  and on day 0 nothing has been salvaged. Version 11 has neither.
+- **H5's fixed 50 km in cruise** put Highport and the hauler, 3 km off, 5 units from the centre,
+  under the own-ship mark, so the commonest cruise there is, leaving a station, drew one blob.
+  Version 12 takes the smallest step that holds every contact inside 50 km, and steps back in only
+  once everything is inside 80% of the smaller ring, so a contact on a ring doesn't flip the scope.
+
+Found in my own screens and fixed this round:
+
+- **C3 lacked BATTLE STATIONS**, which wireframe 07 has had since version 5, and so drew P5, which
+  in combat shows only for a fight's contract. P1 has the lens now, and P5 is gone.
+- **The full-screen modes had their close keys in the title row**, and C8's foot repeated them with
+  "1 TO 4 CHANGE TAB", which the tabs' caps already say. The close keys are the foot's now, as caps.
+- **C7's HELD and ON ORDER headings stood 6 units apart.** The columns are spread so each stands at
+  least 13 clear of the one before it.
+- **Comments in C3's source named Ada "her".** The crew are named, never gendered.
+
+One note is open, sent with this round: wireframe 11's systems list gives the RCS blocks' power as
+"ok", but the game's blocks draw none (`RcsThruster`: a block works while the hull tile it is
+bolted to stands, and `RcsThrust` checks only that and the propellant). C8 gives them no circuit.
+
+What works:
+
+- Held reads at a glance beside YOU and the dots: three marks, three shapes, and no colour taken
+  from the alerts.
+- The chip puts P2's state where the eye already goes in a full-screen mode, and as a push lens it
+  is plainly the thing to press.
+- The map and H2 tell the same trip in the same words: one burn, the crossing, the capture as an
+  estimate, the arrival, the deadline.
+
+**Converged** for versions 10 to 12, but for the open note, which changes only a sample.
+
+## Round 5 critique (version 9)
 
 Version 8 took both round 4 notes: F1's kiter now moves along the line of sight (closing 12, REL 12,
 course 235°, shot 2.2 s, as drawn), and H5's 5 km step says fights reach 5 km. W5 adds that the
@@ -186,12 +265,15 @@ four screens agree.
 
 - **Thousands take a thin space** ("1 240 KM", "7 672 M/S"), the style guide's rule, where the
   spec writes a comma.
-- **Countdowns are M:SS** (`T−0:03`, P2's `3:40`), where the spec writes seconds in places
-  ("T-3 s"). A time left over a day is days and hours (`1D 10H LEFT`), as the task spec writes it,
-  where this spec writes "1.4 d".
+- **Countdowns are M:SS** (`T−0:03`, P2's `1:40`), where the spec writes seconds in places
+  ("T-3 s"). A time left over a day is days and hours (`5D 4H LEFT`), as the task spec writes it,
+  where this spec writes "5.2 d", and a countdown over a day takes the same form after its minus
+  (`T−4D 4H`).
 - **The clock carries its seconds** (`DAY 0 · 01:12:40`), as the game's clock does.
 - **Instruments are in caps**, as the guide has it; P4's messages are prose and stay in sentence
   case.
+- **C7 has an order under way**, where wireframe 10 has none, so that the ON ORDER column and the
+  loaders crossing the dock have something to show. The hold still fits the delivery.
 - **H4's reserve reads EMERG O2**, where the spec writes EMERGENCY: the word list's instrument form,
   and the name P2 and the master cue give the same reserve.
 - **No bezel titles.** The floor applies to legends, and titles at 12 would crowd the bezels. The

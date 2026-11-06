@@ -9,74 +9,151 @@
 <script src="../../nasapunk/mockups/screens.js"></script>
 <script src="context.js"></script>
 <script>
-// M3, the station mode (the context spec, 10.3), on its Market tab: docked at Highport on day 0,
-// loading food for the delivery to Shackleton Ice. P1 stays above; the mode's frame has its title
-// row with the tabs the station offers (Highport repairs and refits but sells no ships, so there is
-// no Shipyard tab), the tab's panel, the rail every tab shares, and the foot row with the feed.
+// M3, the station mode (the context spec, 10.3 and 11.10, version 10), on its Market tab: docked at
+// Highport on day 0, loading food for the delivery to Shackleton Ice. M3 is the one mode that
+// doesn't take the whole screen: a panel 1 120 wide and as tall as its tab needs, over the docked
+// view, which stays in sight below it; the HUD hides as for any mode, and P1 stays above. The panel
+// has the mode's frame: the title row with the tabs the station offers, each on its number (Highport
+// repairs and refits but sells no ships, so there is no Shipyard tab), the tab, the rail every tab
+// shares, and the foot with the feed and the keys that close it (T, the Market's own key, and Esc).
 //
-// The market is the game's (TradeWindow, the economy data): Highport is an agricultural dome, so it
-// makes food and uses water and machinery, at today's prices. Bought cargo crosses the dock in the
-// loaders' arms, so a buy is an order until it is in the hold: HELD and ON ORDER are the game's
-// "12 (+10)". Each row has today's four trade buttons as lit push buttons; a button that can't be
-// pressed now carries the barber strip, and the panel's foot says why once (nothing held to sell).
+// The market is the game's (MarketTrade, the economy data): Highport is an agricultural dome, so it
+// makes food and uses water and machinery, at today's prices. It buys salvaged parts too, listed
+// under the commodities while the hold has one; on day 0 nothing has been salvaged, so there is no
+// such row. Bought cargo crosses the dock in the loaders' arms, so a buy is an order until it is in
+// the hold: HELD and ON ORDER read the game's "12 (+10)". Each row has today's four trade buttons as
+// lit push buttons; a button that can't be pressed now carries the barber strip, and the tab's foot
+// says why once. Under the table, the held delivery this market can supply (version 10), since what
+// to buy here depends on it: 40 food fill the corvette's 40 m³ hold, at 1 m³ each.
 let s = space({ px: 2200, py: 2400, pr: 1, seed: 11 });
 s += controlDefs();
+
+// ---- the docked view, under the panel: Highport's hub and the corvette at its port 2 ----
+// The hub chassis (station_hub) tile by tile at the corvette's scale (64 hull units a tile at
+// 0.075, 4.8 units), its Small ports at the ends of the two lower piers. The corvette lies along
+// the pier's end, port side up to it, so it is drawn half a turn round, nose left.
+{
+  const T = 4.8, X0 = 539.2, Y0 = 472;
+  const rows = [
+    '            ###            ###            ',
+    '            #.#            #.#            ',
+    '            #.#            #.#            ',
+    '            #.#            #.#            ',
+    '            #.#            #.#            ',
+    '     ########.##############.########     ',
+    '     #..............................#     ',
+    '     #..............................#     ',
+    '     #..............................#     ',
+    '     #..............................#     ',
+    '     #..............................#     ',
+    '     #..............................#     ',
+    '     #........IIIIII..IIIIII........#     ',
+    '     #........I............I........#     ',
+    '######........I............I........######',
+    '###...........I............I...........###',
+    '###...........I............I...........###',
+    '###...........I............I...........###',
+    '###...........I............I...........###',
+    '###...........I............I...........###',
+    '######........I............I........######',
+    '     #........I............I........#     ',
+    '     #........IIIIII..IIIIII........#     ',
+    '     #..............................#     ',
+    '     #..............................#     ',
+    '     #..............................#     ',
+    '     #..............................#     ',
+    '     #..............................#     ',
+    '     ######...##############...######     ',
+    '          #...#            #...#          ',
+    '          #...#            #...#          ',
+    '          #...#            #...#          ',
+    '          #####            #####          ',
+    '          #####            #####          ',
+  ];
+  rows.forEach((r, j) => {
+    let i = 0;
+    while (i < r.length) {
+      if (r[i] === ' ') { i++; continue; }
+      let k = i;
+      while (k < r.length && r[k] !== ' ') k++;
+      s += rect(X0 + i * T, Y0 + j * T, (k - i) * T, T + 0.4, { fill: '#5C626B' });
+      i = k;
+    }
+  });
+  // the roof's seams and the core in the middle, darker
+  s += rect(X0 + 14 * T, Y0 + 12 * T, 14 * T, 11 * T, { fill: '#4C5159', stroke: '#2A2D31', sw: 1 });
+  s += rect(X0 + 5 * T + 3, Y0 + 5 * T + 3, 32 * T - 6, 24 * T - 6, { stroke: 'rgba(255,255,255,0.08)', sw: 1.2 });
+  // the corvette, its dock collar against the left pier's end
+  s += hullArt('corvette', X0 + 12.5 * T - 14.4, Y0 + 34 * T + 14.4 + 1, 180, 0.075);
+}
+
 s += statusStrip({ seat: 'HELM', clock: 'DAY 0 · 00:15:40', warp: '1×' });
-s += consoleBody(0, 28, 1280, 772, {});
-s += rect(18, 783, 3, 10, { fill: C.kapton }) + text(27, 792, 'M3  STATION', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
+
+// ---- the panel: 1 120 wide, as tall as the Market ----
+const PX = 80, PY = 34, PW = 1120, PH = 420;
+s += consoleBody(PX, PY, PW, PH, {});
+s += rect(PX + 18, PY + PH - 17, 3, 10, { fill: C.kapton }) + text(PX + 27, PY + PH - 8, 'M3  STATION', { size: 9, bold: true, fill: C.stencil, track: 1.6, legend: true });
 
 const rowsep = (gx, y, gw) => line(gx + 6, y, gx + gw - 6, y, C.graticule, 1);
 
-// ---- the title row: where, the tabs on their keys, the close keys ----
-s += rect(8, 34, 1264, 24, { fill: C.glass, r: 1 });
-s += text(18, 51, 'HIGHPORT', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(112, 51, 'STATION', { size: LB, bold: true, fill: C.dim, track: 0.8 });
+// ---- the title row: where, and the tabs on their numbers ----
+s += rect(PX + 8, PY + 6, PW - 16, 24, { fill: C.glass, r: 1 });
+s += text(PX + 18, PY + 23, 'HIGHPORT', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(PX + 112, PY + 23, 'STATION', { size: LB, bold: true, fill: C.dim, track: 0.8 });
 {
-  let x = 220;
+  let x = PX + 220;
   [['1', 'MARKET', true], ['2', 'YARD'], ['3', 'MISSIONS'], ['4', 'HIRE']].forEach(([k, t, on]) => {
-    s += capKey(x, 38, k);
+    s += capKey(x, PY + 10, k);
     x += capW(k) + 7;
-    s += text(x, 51, t, { size: LB, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
-    if (on) s += line(x, 55, x + tw(t, LB, true, 0.8), 55, C.white, 1.5);
+    s += text(x, PY + 23, t, { size: LB, bold: true, fill: on ? C.white : C.dim, track: 0.8 });
+    if (on) s += line(x, PY + 27, x + tw(t, LB, true, 0.8), PY + 27, C.white, 1.5);
     x += tw(t, LB, true, 0.8) + 26;
   });
 }
-s += capKey(1106, 38, 'T') + text(1130, 51, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(1154, 38, 'ESC') + text(1264, 51, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
 
 // ---- the market ----
-s += du(8, 64, 940, 680, {
+s += du(PX + 8, PY + 36, 822, 346, {
   id: 'mkt', b: 8,
   content: (gx, gy, gw, gh) => {
     let g = text(gx + 10, gy + 20, 'MARKET', { size: V, bold: true, fill: C.white, track: 0.8 }) + text(gx + gw - 10, gy + 20, 'AGRICULTURAL DOME · MAKES FOOD, USES WATER AND MACHINERY', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 }) + rowsep(gx, gy + 28, gw);
-    const L = gx + 12;
+    const L = gx + 10;
     // the columns: name, the station's stock and prices, what you hold and have on order
-    const cols = [[0, 'COMMODITY', 'start'], [226, 'STOCK', 'end'], [300, 'BUY AT', 'end'], [374, 'SELL AT', 'end'], [434, 'HELD', 'end'], [520, 'ON ORDER', 'end']];
-    cols.forEach(([x, t, a]) => g += lab(L + x, gy + 52, t, { anchor: a }));
-    g += lab(L + 556, gy + 52, 'TRADE');
-    g += rowsep(gx, gy + 60, gw);
+    // (spread so that each label stands at least 13 units clear of the one before it)
+    const cols = [[0, 'COMMODITY', 'start'], [172, 'STOCK', 'end'], [244, 'BUY AT', 'end'], [316, 'SELL AT', 'end'], [366, 'HELD', 'end'], [452, 'ON ORDER', 'end']];
+    cols.forEach(([x, t, a]) => g += lab(L + x, gy + 50, t, { anchor: a }));
+    g += lab(L + 470, gy + 50, 'TRADE');
+    g += rowsep(gx, gy + 58, gw);
     const rows = [
       ['WATER', '936', '15.0', '13.6', '0', '', ['live', 'live', 'na', 'na']],
       ['FOOD', '1 549', '50.0', '45.2', '12', '+10', ['live', 'live', 'live', 'live']],
       ['MACHINERY', '39', '750', '678', '0', '', ['live', 'live', 'na', 'na']],
     ];
     rows.forEach(([name, stock, buy, sell, held, order, btn], i) => {
-      const yy = gy + 96 + i * 52, by = yy - 21;
+      const yy = gy + 88 + i * 44, by = yy - 20;
       g += text(L, yy, name, { size: V, bold: true, fill: C.white, track: 0.5 });
-      g += text(L + 226, yy, stock, { size: B, fill: C.white, anchor: 'end' }) + lab(L + 230, yy, 'U');
-      g += text(L + 300, yy, buy, { size: V, bold: true, fill: C.white, anchor: 'end' });
-      g += text(L + 374, yy, sell, { size: V, bold: true, fill: C.white, anchor: 'end' });
-      g += text(L + 434, yy, held, { size: V, bold: true, fill: C.white, anchor: 'end' });
-      if (order) g += text(L + 520, yy, order, { size: V, bold: true, fill: C.cyan, anchor: 'end' });
-      // the four trade buttons, 76 x 30 each
+      g += text(L + 172, yy, stock, { size: B, fill: C.white, anchor: 'end' }) + lab(L + 176, yy, 'U');
+      g += text(L + 244, yy, buy, { size: V, bold: true, fill: C.white, anchor: 'end' });
+      g += text(L + 316, yy, sell, { size: V, bold: true, fill: C.white, anchor: 'end' });
+      g += text(L + 366, yy, held, { size: V, bold: true, fill: C.white, anchor: 'end' });
+      if (order) g += text(L + 452, yy, order, { size: V, bold: true, fill: C.cyan, anchor: 'end' });
+      // the four trade buttons, 70 x 28 each
       ['BUY 1', 'BUY 10', 'SELL 1', 'SELL ALL'].forEach((t, j) => {
-        g += korry(L + 556 + j * 84, by, 76, 30, t, '', btn[j] === 'na' ? 'na' : 'idle');
+        g += korry(L + 470 + j * 76, by, 70, 28, t, '', btn[j] === 'na' ? 'na' : 'idle');
       });
-      if (i < rows.length - 1) g += rowsep(gx, yy + 21, gw);
+      if (i < rows.length - 1) g += rowsep(gx, yy + 18, gw);
     });
     // the food on order, as the loaders carry it across the dock
-    const py = gy + 96 + 3 * 52 + 6;
+    const py = gy + 88 + 2 * 44 + 36;
+    g += rowsep(gx, py - 18, gw);
     g += lab(L, py, 'ACROSS THE DOCK') + text(L + 150, py, '10 FOOD', { size: B, bold: true, fill: C.white, track: 0.3 }) + text(L + 222, py, 'THE LOADERS ARE CARRYING IT ABOARD', { size: B, fill: C.white, track: 0.2 });
     g += rect(L + 150, py + 10, 280, 5, { fill: '#26303A' }) + rect(L + 150, py + 10, 280 * 0.3, 5, { fill: C.cyan });
     g += text(L + 440, py + 16, '3 OF 10 IN', { size: LB, bold: true, fill: C.dim, track: 0.5 });
+    // what this market can supply for the contracts held (version 10), with the P5 tab's kapton
+    const cy = py + 44;
+    g += rowsep(gx, cy - 18, gw);
+    g += lab(L, cy, 'FOR YOUR CONTRACTS');
+    g += rect(L, cy + 9, 3, 30, { fill: C.kapton });
+    g += text(L + 12, cy + 22, 'DELIVER 40 FOOD → SHACKLETON ICE', { size: B, bold: true, fill: C.white, track: 0.3 }) + text(gx + gw - 10, cy + 22, '5D 5H LEFT', { size: B, bold: true, fill: C.white, anchor: 'end', track: 0.3 });
+    g += text(L + 12, cy + 39, '12 OF 40 ABOARD, 10 COMING · 18 MORE FILL THE HOLD', { size: LB, bold: true, fill: C.dim, track: 0.4 });
     // the foot: why the strips are there, once
     g += barber(L, gy + gh - 22, 14) + text(L + 22, gy + gh - 16, 'SELL: NOTHING HELD TO SELL', { size: LB, bold: true, fill: C.dim, track: 0.5 });
     g += text(gx + gw - 10, gy + gh - 16, 'PRICES IN CR A UNIT · MACHINERY TAKES 2 M³ A UNIT', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
@@ -85,7 +162,7 @@ s += du(8, 64, 940, 680, {
 }).svg;
 
 // ---- the rail, the same on every tab ----
-s += du(954, 64, 318, 680, {
+s += du(PX + 836, PY + 36, 276, 346, {
   id: 'rail', b: 8,
   content: (gx, gy, gw, gh) => {
     const L = gx + 10, R = gx + gw - 10;
@@ -93,7 +170,7 @@ s += du(954, 64, 318, 680, {
     g += lab(L, gy + 24, 'CREDITS') + val(R, gy + 24, '3 900', 'CR', { anchor: 'end' });
     g += rowsep(gx, gy + 36, gw);
     g += lab(L, gy + 58, 'STANDING') + text(R, gy + 58, '+0', { size: V, bold: true, fill: C.white, anchor: 'end' });
-    g += text(L, gy + 76, 'TERRAN PATROL AUTHORITY, YOUR SPONSOR', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    g += text(L, gy + 76, 'TERRAN PATROL AUTHORITY', { size: LB, bold: true, fill: C.dim, track: 0.4 });
     g += rowsep(gx, gy + 88, gw);
     // the hold: held, and on order coming aboard, against its 40 m³
     g += lab(L, gy + 110, 'HOLD') + val(R, gy + 110, '12 OF 40', 'M³', { anchor: 'end' });
@@ -103,23 +180,18 @@ s += du(954, 64, 318, 680, {
     g += rowsep(gx, gy + 158, gw);
     g += lab(L, gy + 180, 'TANKS');
     [['PROPELLANT', '100%'], ['OXYGEN', '100%'], ['NITROGEN', '100%']].forEach(([t, v], i) => {
-      g += text(L + 92, gy + 180 + i * 19, t, { size: B, fill: C.white, track: 0.3 }) + text(R, gy + 180 + i * 19, v, { size: B, bold: true, fill: C.white, anchor: 'end' });
+      g += text(L + 82, gy + 180 + i * 19, t, { size: B, fill: C.white, track: 0.3 }) + text(R, gy + 180 + i * 19, v, { size: B, bold: true, fill: C.white, anchor: 'end' });
     });
     g += rowsep(gx, gy + 230, gw);
-    g += lab(L, gy + 252, 'INFIRMARY') + text(L + 92, gy + 252, 'NOBODY BEING TREATED', { size: B, fill: C.white, track: 0.3 });
-    g += rowsep(gx, gy + 264, gw);
-    // the delivery this cargo is for, as P5 tracks it
-    g += lab(L, gy + 286, 'FOR') + text(L + 92, gy + 286, 'DELIVER 40 FOOD', { size: B, bold: true, fill: C.white, track: 0.3 });
-    g += text(L + 92, gy + 304, 'TO SHACKLETON ICE', { size: B, fill: C.white, track: 0.3 });
-    g += text(L + 92, gy + 322, '22 OF 40 ABOARD OR COMING', { size: LB, bold: true, fill: C.dim, track: 0.4 });
+    g += lab(L, gy + 252, 'INFIRMARY') + text(L + 82, gy + 252, 'NOBODY IN IT', { size: B, fill: C.white, track: 0.3 });
     return g;
   },
 }).svg;
 
-// ---- the foot row: the feed, and the close key ----
-s += rect(8, 750, 1264, 24, { fill: C.glass, r: 1 });
-s += text(18, 767, 'MARKET', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(84, 767, 'Ordered 10 Food: the loaders are carrying it aboard.', { size: B, fill: C.white, track: 0.2 });
-s += text(1264, 767, 'ESC CLOSES THE STATION', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.5 });
+// ---- the foot row: the feed, and the keys that close the panel ----
+s += rect(PX + 8, PY + 388, PW - 16, 24, { fill: C.glass, r: 1 });
+s += text(PX + 18, PY + 405, 'STATION', { size: LB, bold: true, fill: C.dim, track: 0.8 }) + text(PX + 86, PY + 405, 'Ordered 10 Food: the loaders are carrying it aboard.', { size: B, fill: C.white, track: 0.2 });
+s += capKey(PX + PW - 174, PY + 392, 'T') + text(PX + PW - 150, PY + 405, 'OR', { size: LB, bold: true, fill: C.dim, track: 0.4 }) + capKey(PX + PW - 126, PY + 392, 'ESC') + text(PX + PW - 16, PY + 405, 'CLOSE', { size: LB, bold: true, fill: C.dim, anchor: 'end', track: 0.6 });
 
 document.getElementById('out').innerHTML = svgPage(s);
 </script>
