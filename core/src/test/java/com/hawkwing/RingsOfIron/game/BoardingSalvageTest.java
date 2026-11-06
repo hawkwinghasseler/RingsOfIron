@@ -34,6 +34,7 @@ import com.ringsofiron.shipops.StationYard;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
 import com.ringsofiron.stationsdocking.ForceMethod;
+import com.ringsofiron.uihud.providers.BoardingProvider;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -296,6 +297,14 @@ class BoardingSalvageTest {
         MountFootprint f = gun.subsystem.getComponent(SubsystemComponent.class).footprint;
         // Open the way in, as forcing it would
         world.boarding.order(game.player);
+        // A gun the crew can walk to has no word on the board before it is marked
+        BoardingProvider.BoardingBoard board = new BoardingProvider.BoardingBoard();
+        new BoardingWork(world.context, world.docking, world.boarding, world.salvage).collect(board);
+        BoardingProvider.Part row = null;
+        for (BoardingProvider.Part p : board.parts) if (p.x == f.originX && p.y == f.originY) row = p;
+        assertNotNull(row, "the gun is on the board");
+        assertEquals("", row.reach);
+        assertTrue(world.salvage.reachable(game.player, game.raider, f.originX, f.originY));
 
         String said = world.salvage.mark(game.player, f.originX, f.originY);
         assertTrue(said.startsWith("Engineers ordered to strip"), said);

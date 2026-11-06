@@ -480,10 +480,27 @@ public class Salvage extends EntitySystem {
     }
 
     /**
+     * True if someone crossing from {@code ship} by the dock could walk to the system whose mount
+     * starts at ({@code x}, {@code y}) on {@code craft}, as the check its strip runs once it is
+     * ordered finds; the dock's own doors count as open, since taking the craft opens them. For a
+     * screen to say before a part is marked that it will wait for a crew on EVA. True with no
+     * system there, no dock between them, or no way to tell.
+     */
+    public boolean reachable(Entity ship, Entity craft, int x, int y) {
+        SubsystemComponent system = ship == null || craft == null ? null : systemAt(craft, x, y);
+        return system == null || reachable(ship, craft, system.footprint, true);
+    }
+
+    /**
      * True if someone crossing from {@code ship} onto {@code craft} by the dock could walk to a tile
      * beside mount {@code m}, through any shut door aboard.
      */
     private boolean reachable(Entity ship, Entity craft, MountFootprint m) {
+        return reachable(ship, craft, m, false);
+    }
+
+    /** As {@link #reachable(Entity, Entity, MountFootprint)}; with {@code portsOpen}, from a dock whose doors are shut too. */
+    private boolean reachable(Entity ship, Entity craft, MountFootprint m, boolean portsOpen) {
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class), there = craft.getComponent(ShipGridComponent.class);
         if (grid == null || there == null) return true;
         GridPathfinder pf = crew.pathfinder(there);
@@ -496,11 +513,13 @@ public class Salvage extends EntitySystem {
             return dx + dy <= 1;
         };
         Array<GridNode> path = new Array<>();
+        boolean linked = false;
         for (GridLink l : grid.links) {
-            if (l.otherShip != craft || !l.canCross()) continue;
+            if (l.otherShip != craft || !portsOpen && !l.canCross()) continue;
+            linked = true;
             if (pf.nearest(l.ox, l.oy, near, path, (ax, ay, bx, by) -> true)) return true;
         }
-        return false;
+        return portsOpen && !linked;
     }
 
     /** The part is off: its system is dead, and the crate waits by the mount. */
