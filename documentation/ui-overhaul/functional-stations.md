@@ -4,7 +4,7 @@ Functional design 3 of 3 for the UI overhaul. Approach: **the UI is the ship's o
 
 This document is style-agnostic. It says which widgets exist, what data each carries, where it sits and when it is visible. It says nothing about colour, typeface or shape beyond semantic roles; the artist threads decide those (see [Notes for the artists](#17-notes-for-the-artists)).
 
-**Revision: round 16.** What changed in each round is listed in [the changelog](#21-changelog).
+**Revision: round 17.** What changed in each round is listed in [the changelog](#21-changelog).
 
 Contents
 
@@ -216,7 +216,7 @@ Fallback rules, so no hull loses a function:
 | Symbology | Hostile brackets with class; lead reticle and intercept lines showing the hit chance (`FireArcOverlay`); fire arcs of guns in hand; threat tracks with impact cross (`ThreatOverlay`); point-defense kill marks; picture-in-picture optics on the target |
 | MFD pages | SENSORS (radar scope and contact list), WEAPONS (mounts: weapon, ammunition where limited, state, who works it and so how it fires; each gun's time of flight and hit chance on the target), DEFENSE (shield coverage around the hull, mass, trim, emitters, on a hull with an emitter; decoys; point defense) |
 | Console panel tab | **Tactical board**: SENSORS' contact table at full size, WEAPONS with the hold-fire switch, DEFENSE |
-| Manned by crew | Marines take the weapons console first and then the guns; crewmen take them after the helm (`CrewRole`). Gunners fire at will on hostiles in range (`GunCrews`); launchers wait for the captain's word, and point defense picks its own missiles whoever is aboard. Callouts: hostile in range, missile down, target struck, gun out of action |
+| Manned by crew | Marines take the weapons console first and then the guns; crewmen take them after the helm (`CrewRole`). Gunners fire at will on hostiles in range (`GunCrews`); launchers wait for the captain's word, and point defense picks its own missiles whoever is aboard. Callouts: hostile in range, missile down, gun out of action, and what hostiles do, in the game's words (13.4): "Raider cuts thrust and surrenders", "Raider is breaking off". A hit on the target is not called out; the game posts nothing for one, and it shows in the world |
 | Alerts owned | Missile inbound; fired upon; boarders latched (`PirateBoarding`); shield emitter tripped; shield cloud low; launcher empty; gun destroyed or stunned |
 | Data | `TargetingProvider` (`CombatTargetingProvider`), `ThreatProvider`, `RadarSystem`, `PlayerGunnery`, `GunCrews`, `ShieldModel` (new provider), `HostileTargeting`, `PirateBoarding` |
 
@@ -245,7 +245,7 @@ The DEFENSE page is the "HUD gauge and coverage overlay" that the combat design 
 | MFD pages | COMMS (clearance, ports and their state, beacon, standing with the nearest station's faction), CARGO (hold: volume used, each cargo and its value; the latched ship's hold when latched) |
 | Console panel tab | Comms: ports and clearance, beacon (with its fee and standing cost), messages (what stations have said: clearance, refusals, warnings such as venting at the berth); Cargo: the manifest |
 | Station link | Docked only, anywhere aboard: Market, Yard, Shipyard, Contract board, Hiring, Infirmary as tabs of one panel (10.3) |
-| Manned by crew | No comms role today; station messages come through the ticker as COMMS lines from the station's name |
+| Manned by crew | No comms role today. What a station says comes through the ticker as a COMMS line in the station's name; the ship's own Comms events are SHIP lines, or the crew member's at Comms (13.5) |
 | Alerts owned | Clearance refused; stations will refuse the ship after a hostile act; clearance granted, hold full (advisories) |
 | Data | `PlayerDocking`, `DistressBeacon`, `TradeProvider`, `YardProvider`, `ShipyardProvider`, `MissionProvider` (offers), `CrewProvider` (hires), `StationInfirmary` |
 
@@ -358,8 +358,8 @@ A condition that clears removes its tile with a short fade and leaves a line in 
 
 | Element | Content |
 |---|---|
-| Line | Station tag, speaker, text: "ENG  Ada: fire in the bridge, I'm on it." / "HELM  Bea: holding your heading, Captain." / "COMMS  SHIP: clearance granted, Highport port 2." (heard on deck; at the helm the Ports field already shows it, so it is only logged, 13.5) |
-| Speaker | The crew member at the owning station, or the one dealing with it; "SHIP" when nobody is. A SHIP line says only what the tile cannot (13.5) |
+| Line | Station tag, speaker, text: "ENG  Ada: fire in the bridge, I'm on it." / "HELM  Bea: holding your heading, Captain." / "COMMS  Highport: clearance granted, port 2." (heard on deck; at the helm the Ports field already shows it, so it is only logged, 13.5) |
+| Speaker | The crew member at the owning station, or the one dealing with it; "SHIP" when nobody is. A SHIP line says only what the tile cannot (13.5). A station's own message is in the station's name (13.5) |
 | Length | At most 50 characters after the station tag, the speaker's name included, so a line reads at a glance and fits every style's ticker. Lines are written to fit; one that runs over (a long station or contact name) is the style's to wrap or scroll, never to cut, since the end of a line often carries its point ("nobody on it") |
 | Stack | 3 lines, newest at the bottom. Each holds 6 s (advisory) or 10 s (caution, warning), scaled by a reading-speed setting, then fades. A repeat within its hold counts ("x3") instead of stacking, as `NoticeLog` does now |
 | Placement | Z2, under the annunciator. On deck, a crew member in view who says a line shows a speaking mark over them for its first 3 s (new): the words are in the ticker, and the mark shows who said them |
@@ -449,7 +449,7 @@ At this seat the player has every gun and launcher in hand except point defense,
 
 | Slot | Content |
 |---|---|
-| **Target** | The locked target: name, class, range, closing, and its state where known (struck, disabled, venting). Hit chance and time of flight are not here: each gun has its own (its chip; the WEAPONS page) |
+| **Target** | The locked target: name, class, range, closing, and its state where known: breaking off (`HostileComponent.brokeOff`); disabled, in the game's words (`DisabledComponent.Reason.label`: reactor down, crew down, hull broken, surrendered, abandoned, wreck); or venting. Hit chance and time of flight are not here: each gun has its own (its chip; the WEAPONS page) |
 | **Guns in hand** | A chip per gun the player fires, named by where it sits (13.2: NOSE, AFT STBD). Its state: ready; reloading, with seconds; charging, waiting for the circuit's store to hold a shot (a shot takes its whole energy at once); for a beam, burning, with the share of its draw the circuit gives it (a beam takes what power it can get and burns that much weaker); out of arc; out of reach (a beam past its range); no power; shorted, with the seconds until its breaker recloses (sooner if the crew reset it); stunned, with seconds; destroyed. Its own chance to hit the locked target (`HitChance`, as the fire arcs reckon it): each gun has its own, since a coilgun's round flies and a beam's does not. And the name of a crew member seated at that gun, whose skill it then shoots with; with nobody there it shoots at half the player's (`GunCrews.REMOTE_SKILL`) |
 | **Point defense** | One chip for every point-defense mount: PD AUTO, and "engaging" while they fire on missiles. While a mount is not working, how many are ("PD AUTO 1 of 2") and the mount's name and state |
 | **Launchers** | A chip per launcher, by position: missiles left of its magazine ("MSL 4 of 4"), ready or seconds, and how many one press throws ("salvo 4": up to four, `PlayerGunnery.SALVO`, which on the corvette is the whole magazine) |
@@ -598,7 +598,7 @@ The captain's own panel, anywhere aboard. Its title bar carries the captain's ra
 **The Log** holds one line for each event, newest first:
 
 - Each alert when it is raised: the words of its callout if one was spoken, else the alert's own text (13.7), with the alert's severity mark. An alert revised in place (13.3) rewrites its line; one that escalates adds a line at the new severity.
-- Each alert when it clears: its record (13.7), with the same mark, hollow.
+- Each alert when it clears: its record (13.7), with the same mark, hollow. A notice of the same event is that record, not a line of its own. So "Raider is breaking off" (`HostileTraffic`), heard in the fight, is its own advisory line, since PIRATES cleared when the Raider closed to 50 km (13.4); but when the last pirate inbound turns back before it closes, its notice is the PIRATES record, "Pirates broke off after 8:00".
 - Each advisory, and each crew line answering an order ("HELM  Bea: holding your heading, Captain."), with its station tag and speaker as in the ticker. A repeat within its hold counts ("x3") instead of adding a line.
 - Not responses (13.6).
 
@@ -693,7 +693,7 @@ T0 cues that need art or lighting work, listed so the artists can plan for them:
 | Condition | When | Effect on the UI |
 |---|---|---|
 | **Green** | No hostile contact within 50 km | Least: nav symbology, hostiles as icons, MFDs folded |
-| **Yellow** | A hostile contact within 50 km, or pirates intercepting | Hostile brackets and class labels; SENSORS unfolds |
+| **Yellow** | A hostile contact within 50 km, or pirates inbound from further out (13.4) | Hostile brackets and class labels; SENSORS unfolds |
 | **Red** | Fired upon, a missile inbound, a hostile inside its weapons' range, boarders latched, or **battle stations** called by the player | Fire arcs and hostile brackets at the helm too; MFDs SENSORS and DAMAGE; Tactical board reachable from the TAC tile |
 
 Three states layer over the condition:
@@ -805,7 +805,7 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 | Shield emitter tripped (`ShieldModel`) | None | Caution | SHIELD / TRIP | Tactical | DEFENSE |
 | Shield cloud under 25% | None | Caution | SHIELD / LOW | Tactical | DEFENSE |
 | Fired upon (hostile act at the ship) | Status line "FIRING ON YOU" | Caution | HOSTILE / FIRING | Tactical | SENSORS |
-| Pirates intercepting (`NoticeFeeds`) | Warning notice | Caution | PIRATES / INBOUND | Tactical | SENSORS |
+| Pirates inbound, beyond 50 km (`HostileTraffic`, `NoticeFeeds`) | Warning notice | Caution | PIRATES / INBOUND | Tactical | SENSORS |
 | Crew adrift or left behind (`Spacewalks`) | Notice, marker | Warning | ADRIFT / 1 | Command | CREW |
 | Crew in the exhaust (`Spacewalks`) | Orange status line | Caution | EXHAUST / EVA | Command | CREW |
 | Helm empty with an order, or helm down (`Bridge`) | Grey status line | Caution | HELM / EMPTY, HELM / DOWN | Helm | HELM |
@@ -813,15 +813,19 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 | Collar strain over 60%, torn loose (`PlayerDocking`) | Notice | Caution | COLLAR / STRAIN | Helm | DOCK |
 | Clearance refused | Notice | Caution | DOCKING / REFUSED | Comms | COMMS |
 | Stations will refuse the ship (hostile act) | Warning notice | Caution | STANDING / HOSTILE | Comms | COMMS |
+| A raider breaking off, running, fighting on alone or leaving the ship drifting (`HostileTraffic`); a base scrambling or launching raiders (`PirateBase`); another ship disabled, surrendering, breaking up, abandoned or back in action (`ShipDisablement`) | Notices | Advisory | | Tactical | |
 | Clearance granted, latched, undocked | Notices | Advisory | | Comms | |
 | Burn due in 60 s; SOI change; warp dropped | Notices | Advisory | | Navigation | |
 | Contract done, failed, called off | Important notice | Advisory | | Command | CONTRACTS |
 | Promotion, payday | Important notice | Advisory | | Command | Slate Career |
+| The pirates' news: a freighter robbed, an ace named, escaped or beaten, a base found, fallen or retaken, a raid on one lost (`HostileTraffic`, `PirateBase`) | Notices, important notices | Advisory | | Command | |
 | Yard work done, salvage, boarding progress | Notices | Advisory | | Comms, Command | |
 | Contract taken, door forcing progress, nav target picked, reload refused, warp step refused | Notices | Response | | | |
 | Career over, ship lost | Crash screen | Out of fiction | | | |
 
 **The tow.** While the ship is disabled, the status strip offers it (7.7). The beacon also answers while the ship still flies but is under 20% of its tanks (`DistressBeacon.stranded`). Then the prompt line keeps "[B][B] Call a tow" among its hints for as long as the offer stands (7.3), and COMMS shows the fee and the standing it costs. Today the game offers it only while disabled, so a player short of propellant never learns it is there.
+
+**Pirates.** PIRATES holds while a pirate hunting the ship (`HostileComponent.huntingPlayer`) is beyond 50 km; today's intercept notice is its callout. When the last one closes to 50 km it is a hostile contact on SENSORS and keeps the condition Yellow (12), so the tile clears ("Pirates closed to 50 km after 8:00"), as it does when the last one turns back first. The game keeps a pirate on the hunt through the fight; without the handover the tile would sit beside the fight's own picture saying the same thing. In the fight, what raiders do is TAC's advisories (above).
 
 ### 13.5 Crew callouts
 
@@ -833,7 +837,7 @@ Today's warnings and notices with their new level. Tags and values are suggestio
 - Every callout fits 50 characters after the station tag, the speaker's name included (7.2).
 - A callout carries no countdown. Spoken once, a number is stale a second later and would disagree with the tile or page beside it, where the countdown ticks.
 - Callouts are limited to one per station every 3 s; the rest go to the log only.
-- Today's notices reach the ticker as advisories under the station 13.4 gives them (COMMS for clearance, latching and undocking, yard work and salvage; NAV for burns due, SOI changes and warp dropped; CMD for contracts, promotion, payday and boarding progress). The speaker follows the first rule above, so with nobody at Comms clearance is "COMMS  SHIP: docked at Highport, port 2." The line is the notice's own text where it fits 50 characters, and a shorter one written when its system moves to the `AlertBus` where it doesn't. A notice still posted without a station (`NoticeLog.post`, 19) goes under CMD, the captain's own.
+- Today's notices reach the ticker as advisories under the station 13.4 gives them (COMMS for clearance, latching and undocking, yard work and salvage; NAV for burns due, SOI changes and warp dropped; TAC for what raiders do in a fight and other ships disabled or surrendering; CMD for contracts, promotion, payday, boarding progress and the pirates' news). The speaker follows the first rule above, so with nobody at Comms the latch is "COMMS  SHIP: docked at Highport, port 2." What a station says is in its own name, since it is the station speaking: "COMMS  Highport: clearance granted, port 2." The line is the notice's own text where it fits 50 characters, and a shorter one written when its system moves to the `AlertBus` where it doesn't. A notice still posted without a station (`NoticeLog.post`, 19) goes under CMD, the captain's own.
 
 ### 13.6 Responses
 
@@ -868,7 +872,7 @@ What the log says when an alert is raised with no callout spoken, and when it cl
 | Shield tripped | Shield emitter tripped | Shield emitter back after 0:30 |
 | Shields low | Shields under 25% | Shields over 25% again |
 | Fired upon | Raider firing on you | Raider firing on you: cleared after 2:40 |
-| Pirates | 2 pirate ships inbound | Pirates broke off after 8:00 |
+| Pirates | 2 pirate ships inbound | Pirates closed to 50 km after 8:00; Pirates broke off after 8:00 |
 | Adrift | Cole adrift | Cole back on the hull after 1:30 |
 | Exhaust | Ada in the exhaust | Ada clear of the exhaust |
 | Helm | Helm empty with an order to fly; helm down | Helm manned again; helm back |
@@ -1280,6 +1284,15 @@ For whoever builds this; nothing here is binding on the art.
 ---
 
 ## 21. Changelog
+
+### Round 17 (Nasa-punk artist's points from drawing the Log)
+
+| Problem found | Change |
+|---|---|
+| "Raider is breaking off", today's notice, read as the same event as the PIRATES alert's clearing, so the log might carry it twice. And PIRATES had no end: the game keeps a pirate on the hunt through the fight | PIRATES clears when the last pirate inbound closes to 50 km, where SENSORS and Yellow carry it, or turns back first. A notice of an alert's clearing is its record; a raider breaking off in the fight is its own advisory (10.4, 12, 13.4, 13.7) |
+| 5.6 had station messages spoken in the station's name, 7.2 and 13.5 by SHIP | A station speaks its own messages ("COMMS  Highport: clearance granted, port 2."); the ship's own Comms events are SHIP's or the crew member's at Comms (5.6, 7.2, 13.5) |
+| "Target struck" (5.4) and the target state "struck" (8.3) read as a hit or as a surrender | What hostiles do is called out in the game's words ("Raider cuts thrust and surrenders"); a hit isn't, as the game posts nothing for one. The target's states are breaking off and `DisabledComponent.Reason`'s labels (5.4, 8.3) |
+| Today's notices of what raiders do (breaking off, running, fighting on alone, leaving the ship drifting, a base's scramble), other ships' disablement, and the pirates' news (robberies, aces, bases) had no station or level | TAC advisories for the fight; CMD advisories for the news (13.4, 13.5) |
 
 ### Round 16 (Nasa-punk artist's questions from drawing the slate's Log and a gun panel)
 
