@@ -18,6 +18,8 @@ public class BoardedComponent implements Component {
     public double since;
     /** Prisoners held aboard once it was taken. */
     public int prisoners;
+    /** Taken with no one aboard to fight for it ({@link Boarding#takeUndefended}), not from its crew. */
+    public boolean undefended;
     /** The boarders force their way through every shut door rather than open them: a craft not yet beaten. */
     public boolean force;
     /** Boarded with no dock between: the party goes over on EVA and in by an airlock forced from outside. */

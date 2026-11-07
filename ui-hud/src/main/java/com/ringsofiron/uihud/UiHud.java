@@ -916,6 +916,7 @@ public class UiHud implements Disposable {
         // The map as the classic HUD has it, until the next variant gives it its own look and insets
         maneuverMap.setPainter(null);
         maneuverMap.setCanvasInsets(0f, 0f, 0f, 0f);
+        maneuverMap.getTraffic().showAll();
         variantId = entry.id;
         hidden.clear();
         HudVariant next = entry.create();

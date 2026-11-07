@@ -29,6 +29,7 @@ public class PlayerObjectives implements ObjectiveProvider {
         String nav = navTarget.uuid();
         for (Contract c : contracts.active()) {
             Objective o = out.add();
+            o.id = c.id;
             o.title = c.title();
             o.kind = kind(c.type);
             o.giver = c.giver == null ? "" : c.giver;
@@ -46,6 +47,7 @@ public class PlayerObjectives implements ObjectiveProvider {
             o.nextIsNav = to != null && to.equals(nav);
             progress(o, c);
             o.reward = c.reward;
+            o.standing = c.standing;
         }
         out.objectives.sort(SOONEST);
         ContractBoard.Operation op = contracts.operation();
@@ -54,6 +56,16 @@ public class PlayerObjectives implements ObjectiveProvider {
             out.operationStep = op.step;
             out.operationSteps = op.steps.length;
         }
+    }
+
+    @Override
+    public String navTo(long id) {
+        for (Contract c : contracts.active()) {
+            if (c.id != id) continue;
+            String to = c.waypointUuid();
+            return to == null ? "Nowhere to go for " + c.title() : navTarget.select(to);
+        }
+        return "No such contract";
     }
 
     /** Past its far end, on the way back: a patrol's return leg, a rescue or recovery carried home. */

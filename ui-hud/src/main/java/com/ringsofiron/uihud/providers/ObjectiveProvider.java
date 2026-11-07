@@ -10,6 +10,14 @@ public interface ObjectiveProvider {
     /** Fills {@code out}, already cleared. */
     void collect(ObjectiveFrame out);
 
+    /**
+     * Makes where contract {@code id} sends the ship next ({@link Objective#next}) the nav target;
+     * returns what the game says. Nothing by default.
+     */
+    default String navTo(long id) {
+        return "";
+    }
+
     enum State {
         /** Under way. */
         ACTIVE,
@@ -20,6 +28,8 @@ public interface ObjectiveProvider {
     }
 
     final class Objective {
+        /** The contract's id, as the mission board knows it. */
+        public long id = -1;
         /** "Food to Shackleton Ice". */
         public String title = "";
         /** The kind as a word ("Delivery", "Escort", "Patrol"), for a short line. */
@@ -36,10 +46,13 @@ public interface ObjectiveProvider {
         public boolean nextIsNav;
         /** Progress as the game counts it (units delivered, marks made), and of how many; both 0 when it does not count. */
         public double progress, of;
-        /** The pay, credits. */
+        /** The pay, credits, and the standing it brings with the giver. */
         public double reward;
+        public float standing;
 
         void reset() {
+            id = -1;
+            standing = 0f;
             title = "";
             kind = "";
             giver = "";

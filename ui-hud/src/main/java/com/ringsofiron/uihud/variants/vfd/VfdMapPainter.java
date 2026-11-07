@@ -74,6 +74,10 @@ public class VfdMapPainter extends MapPainter implements Disposable {
     /** The path being chained: its role, so its pieces keep one rhythm of dots. */
     private Role chaining;
     private final Filament.Painter frame = this::paintFrame;
+    /** A HUD's own frame round the map has the title and the keys: the plot draws neither. */
+    private boolean framed;
+    /** How much of the canvas's top the frame's labels take (M1's view row), kept dark. */
+    private float clearTop;
 
     /** Needs GL: the labels' font is the ROM on a texture. */
     public VfdMapPainter() {
@@ -85,6 +89,15 @@ public class VfdMapPainter extends MapPainter implements Disposable {
     /** The UI is drawn {@code uiScale} times its units now. */
     public void rescale(float uiScale) {
         if (uiScale > 0f) unitsPx = uiScale;
+    }
+
+    /**
+     * The map in a HUD's own frame, which has its title and its keys, or on its own with them over the
+     * plot; a frame's labels over the plot take its top {@code clearTop} units, which the plot keeps dark.
+     */
+    public void setFramed(boolean framed, float clearTop) {
+        this.framed = framed;
+        this.clearTop = framed ? Math.max(0f, clearTop) : 0f;
     }
 
     @Override
@@ -134,6 +147,7 @@ public class VfdMapPainter extends MapPainter implements Disposable {
 
     @Override
     public void title(Batch batch, String body, String counts, float x, float top, float alpha) {
+        if (framed) return;
         String t = "MAP  " + body.toUpperCase(Locale.ROOT) + (counts.isEmpty() ? "" : "   " + counts);
         float y = stageH - top + 12f;
         heading = strings.size;
@@ -143,6 +157,11 @@ public class VfdMapPainter extends MapPainter implements Disposable {
 
     @Override
     public void instructions(Batch batch, String text, float x, float top, float alpha) {
+        if (framed) {
+            clearTop();
+            flush(batch);
+            return;
+        }
         float y = stageH - top + 12f + LINE + 2f;
         ground(x + 16f, y, width(text.length()), 1);
         text(text, x + 16f, y, Plot.DIM);
@@ -398,6 +417,37 @@ public class VfdMapPainter extends MapPainter implements Disposable {
             at[3 * k + 1] = y;
             ground(x, y, w, 1);
         }
+    }
+
+    /**
+     * The frame's labels over the canvas's top: the plot's dots under them stay dark, and a label of the
+     * plot's there (a body off the map, pulled in to the top edge) moves down out of it, a line at a time
+     * until it runs into no other, its ground with it.
+     */
+    private void clearTop() {
+        if (clearTop <= 0f || !hasCanvas) return;
+        float bottom = canvasY + clearTop;
+        plot.ground(canvasX, canvasY, canvasW, clearTop);
+        float[] at = textAt.items;
+        for (int k = 0; k < strings.size; k++) {
+            if (at[3 * k + 1] >= bottom) continue;
+            float x = at[3 * k], w = measure(strings.get(k)), y = bottom;
+            while (crowds(k, x, y, w, bottom) && y + LINE < canvasY + canvasH) y += LINE;
+            at[3 * k + 1] = y;
+            ground(x, y, w, 1);
+        }
+    }
+
+    /** Whether text {@code k} at x, y, w would run into another already clear of the top (those still in it move after). */
+    private boolean crowds(int k, float x, float y, float w, float bottom) {
+        float[] at = textAt.items;
+        for (int j = 0; j < strings.size; j++) {
+            float ox = at[3 * j], oy = at[3 * j + 1];
+            if (j == k || oy < bottom) continue;
+            float ow = measure(strings.get(j));
+            if (x < ox + ow + 4f && ox < x + w + 4f && y < oy + LINE && oy < y + LINE) return true;
+        }
+        return false;
     }
 
     /** The stage's size, from the batch's projection: the map is drawn with the stage's own. */
