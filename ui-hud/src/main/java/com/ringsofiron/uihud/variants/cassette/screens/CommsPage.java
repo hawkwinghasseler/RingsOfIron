@@ -40,10 +40,11 @@ final class CommsPage extends FactsPage {
         begin();
         if (!own) return;
         StationInfo s = data.navReadout.docked.present ? data.navReadout.docked : data.navReadout.station;
-        right = s.present ? Fmt.upper(s.name) : null;
+        right = null;
         head(data.navReadout.docked.present ? "DOCKED AT" : "STATION", s.present ? Fmt.upper(s.name) : "NONE");
         if (s.present) {
-            if (!s.owner.isEmpty()) fact("HELD BY", Fmt.upper(s.owner) + (s.sponsor ? ", YOUR SPONSOR" : ""), AMBER);
+            if (!s.owner.isEmpty()) fact("HELD BY", Fmt.upper(s.owner), AMBER);
+            if (s.sponsor) fact("", "YOUR CAREER'S SPONSOR", DIM);
             if (!Float.isNaN(s.standing) || !s.standingName.isEmpty()) fact("STANDING", standing(s.standing, s.standingName), s.standing < 0f ? Yard.P_RED : AMBER);
             String services = services(s);
             fact("OFFERS", services.isEmpty() ? "NOTHING" : services, services.isEmpty() ? DIM : AMBER);
@@ -58,7 +59,7 @@ final class CommsPage extends FactsPage {
         head("TOW", "");
         if (!o.towRefusal.isEmpty()) text(Fmt.upper(o.towRefusal), DIM);
         else fact("A TUG", o.towFee > 0 ? "COMES FOR " + Fmt.credits(o.towFee).toUpperCase(Locale.ROOT) : "WILL COME", AMBER);
-        if (!Float.isNaN(o.towStanding) && o.towStanding != 0f) fact("COSTS", standing(-Math.abs(o.towStanding), "") + " STANDING", DIM);
+        if (o.towRefusal.isEmpty() && !Float.isNaN(o.towStanding) && o.towStanding != 0f) fact("COSTS", standing(-Math.abs(o.towStanding), "") + " STANDING", DIM);
 
         Array<MessageFeed.Message> all = data.messages.all();
         head("MESSAGES", all.size == 0 ? "NONE" : "");

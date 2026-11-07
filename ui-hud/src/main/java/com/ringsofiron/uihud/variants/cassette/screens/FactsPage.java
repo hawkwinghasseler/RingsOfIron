@@ -24,6 +24,8 @@ abstract class FactsPage extends ListPage {
     private final Array<Fact> pool = new Array<>();
     /** The column a fact's value starts at. */
     int valueCol = 11;
+    /** The tube's columns as last drawn, to break long values at refresh; a side panel's until then. */
+    int cols = 45;
 
     FactsPage(String label, String tag) {
         super(label, tag, ClassicWindow.CONSOLE);
@@ -50,8 +52,16 @@ abstract class FactsPage extends ListPage {
         return f;
     }
 
+    /** A fact; a value too long for its row runs on to the next, under itself, broken at a space. */
     final void fact(String name, String value, Color ink) {
-        add(FACT, name, value, ink);
+        int room = Math.max(8, cols - valueCol - 1);
+        String rest = value == null ? "" : value;
+        add(FACT, name, GunPage.wrapped(rest, room, 0), ink);
+        for (int n = 0; n < 2 && rest.length() > room; n++) {
+            int at = rest.lastIndexOf(' ', room);
+            rest = rest.substring(at <= 0 ? room : at).trim();
+            add(FACT, "", GunPage.wrapped(rest, room, 0), ink);
+        }
     }
 
     final void head(String name, String right) {
@@ -64,7 +74,12 @@ abstract class FactsPage extends ListPage {
 
     /** The value of the fact named {@code name}, or null: for the tests. */
     final String value(String name) {
-        for (int i = 0; i < facts.size; i++) if (facts.get(i).kind == FACT && facts.get(i).name.equals(name)) return facts.get(i).value;
+        for (int i = 0; i < facts.size; i++) {
+            if (facts.get(i).kind != FACT || !facts.get(i).name.equals(name)) continue;
+            StringBuilder v = new StringBuilder(facts.get(i).value);
+            for (int k = i + 1; k < facts.size && facts.get(k).kind == FACT && facts.get(k).name.isEmpty(); k++) v.append(' ').append(facts.get(k).value);
+            return v.toString();
+        }
         return null;
     }
 
@@ -115,6 +130,7 @@ abstract class FactsPage extends ListPage {
         BigConsole.bay(p, bx, by, bw, bh, null, false);
         int cols = Ledger.colsIn(bw - 36f), rows = Math.max(6, Ledger.rowsIn(bh - 44f));
         L.set(bx + 12f, by + 10f, cols, rows);
+        this.cols = cols;
         L.under(p, false);
         title(p, label, titleRight());
         drawList(p, hits, 1, rows - 3);
