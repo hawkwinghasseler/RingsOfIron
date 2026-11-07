@@ -111,6 +111,13 @@ tabs, a terminal that serves several. Four hooks on `HudVariant`, each doing not
 - `showing(window)`: whether it shows now. A terminal that serves several shows the one on its tab.
 - `close(window)`: close it (its key again, Esc, or the game: the ship undocked).
 
+And one for the console's screen alone: `consoleLetsWalk()`, true for a panel standing beside the
+console that the captain may walk away from (the Cassette Task HUD's, spec CON), rather than a window
+that holds them at it. The game's deck keys then walk while it shows (`UiHud.consoleHolds()`), and
+`console.reach` says how far the captain has gone. Whoever draws the console, V there sits at the seat it
+or the prompt names (`UiHud.consoleInReach()`), so midway between the helm and a gun V takes the one on
+offer.
+
 The game keeps everything else, so the screens behave as the classic windows do whoever draws them:
 
 - **When a window can open stays the game's word** (`UiHud.available`): the market only while
@@ -136,7 +143,7 @@ takes clicks only on its own actors: a click off them reaches the map or the wor
 | `ClassicWindow` | The classic window | What a screen reads and acts through |
 |---|---|---|
 | `MAP` | The map (M): its orbit canvas, and the side panel of orbit, burn, fly it, target and view | `orbitPath`, `planner`, `trafficMap`. The canvas stays the game's, with its zoom, panning, burn handles and contact picks, and fills the stage when the variant shows the panels: the classic side panel is hidden. Its look is `mapPainter()` (below) |
-| `CONSOLE` | The window E opens at a console | `console`: the console entity (its `SubsystemComponent` has the system, health and switch), what E found there, and the game's own actions at it ("Take fire control", with its key) |
+| `CONSOLE` | The window E opens at a console | `console`: the console entity (its `SubsystemComponent` has the system, health and switch), what E found there, the game's own actions at it ("Take fire control", "Take the helm", with their key), where it stands in the world (`worldX`, `worldY`, for a panel drawn beside it) and the corners of its ship's deck (`hullX`, `hullY`, for a panel that keeps off the ship), and how far the captain is from it in tiles (`reach`) |
 | `TRADE` | The station market (T, docked) | `trade` |
 | `YARD` | The yard (Y): repairs, tanks, refits, furnishings, Rebuild decks; away from a yard, the field refit | `yard` |
 | `SHIPYARD` | Ships for sale, the trade-in, a prize to hand over | `shipyard` |
@@ -259,10 +266,10 @@ their contents.
 | `record` | `ConditionLog`: the conditions the game raised, kept two ways for a log among the notices. `entries` has a line for each step and each clearing ("Low pressure: HOLD, cleared after 0:30"); `courses` has each condition once from its raising, with its latest words, the worst it reached and when it cleared. A room's air is one course, a salvo is one course until none is left inbound, and a system's fault is kept once it has held 2.5 s. The last 500 of each, read from `alerts` at each refresh whatever the HUD shows, and saved with the game |
 | `roomAt(x, y)`, `roomNames()` | the player's rooms' names (`RoomNames`) |
 | `key("FIRE")` | the key bound to an action, for a prompt |
-| `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
+| `promptAction`, `promptKey`, `promptConsole` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; the key; and the id of the console it is for ("helm"), or "" for none |
 | `dockHint` | the docked banner's text, or "" when not docked |
 | `guideTitle`, `guideText`, `guideDone` | the tutorial running now, for a guide card of a variant's own: its heading ("FIRST PLAY · 2 OF 9", "GETTING STARTED") and the objective with the player's keys, both "" with none; and whether that is a finished guide's last word. Set by the game screen (`GameSession`) |
-| `console` | the console E opened while the variant shows its console screen: the entity, what E found, the game's actions there (`UiHud.registerConsoleAction`); empty otherwise |
+| `console` | the console E opened while the variant shows its console screen: the entity, what E found, the game's actions there (`UiHud.registerConsoleAction`), where it and its ship's deck stand and how far the captain is (`track`, each frame); empty otherwise |
 | `gameOver` | ship lost or career over: shown, which, the title ("SHIP LOST"), what happened in one line, and the ways on, each with its key, what it does and the action a click runs (`GameOverChoices`) |
 | `insets` | the game's magnified bubbles this frame, at most three: the craft, what each is for (the player's ship, the lock, the nav target), the craft's label as the game has it, the bubble's middle and radius (UI units, y up), where the craft is, whether it is in view and whether the bubble sits right over it, how far the craft reaches as drawn, and its distance. Filled before `update`, and empty on deck (`PictureInPicture.report`) |
 

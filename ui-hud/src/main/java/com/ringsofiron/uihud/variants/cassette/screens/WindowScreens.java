@@ -1,9 +1,11 @@
 package com.ringsofiron.uihud.variants.cassette.screens;
 
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.uihud.providers.KeyHintProvider.HelpFrame;
 import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariantHost;
@@ -18,12 +20,24 @@ import com.ringsofiron.uihud.variants.cassette.YardPaint;
  * three used); boarding has its own, across the screen or down its right side ({@link #sideBoarding});
  * the record has the contracts held and the log; the controls are cards. The ship lost or the career
  * over is a telex. The map's panels are the console's bays round the game's map ({@link MapMode}),
- * which its look's painter draws. The console E opens at a deck console stays the classic one.
+ * which its look's painter draws. What E opens at a deck console is the HUD's choice ({@link #consoles}):
+ * the classic window, or the modes' answer, a seat or the ship's Systems on that system.
  *
  * <p>A HUD attaches it with its own, and hands it the screen hooks ({@code replaces}, {@code open},
  * {@code showing}, {@code close}, {@code keyDown}), {@code update} and {@code detach}.
  */
 public final class WindowScreens {
+    /** What E at a deck console opens ({@link #consoles}): each spec has its own answer. */
+    public enum Consoles {
+        /** The game's own console window. */
+        CLASSIC,
+        /**
+         * The Context spec's (4.3): E at the helm, the weapons console or a gun sits the captain there, as
+         * V does, and at the reactor or life support it opens the ship's Systems on that system.
+         */
+        MODES
+    }
+
     /** How wide the station's console is at most: it stands over the docked view (Context 10.3). */
     static final float STATION_W = 1280f;
 
@@ -45,6 +59,8 @@ public final class WindowScreens {
     private boolean panels;
     /** Whether the boarding console hangs beside the view under the modes ({@link #sideBoarding}). */
     private boolean sideBoarding;
+    /** What E at a deck console opens ({@link #consoles}). */
+    private Consoles consoleUse = Consoles.CLASSIC;
     /** Where a side panel starts, from the top in design units. */
     private float panelTop = SIDE_TOP;
     /** Where a side panel stops, from the top in design units: above the band when seated, else 16 from the foot; 0 for the foot. */
@@ -167,6 +183,15 @@ public final class WindowScreens {
         return this;
     }
 
+    /**
+     * What E at a deck console opens: the game's own window ({@link Consoles#CLASSIC}, as before), or the
+     * HUD's spec's answer. A HUD that draws its own console panel keeps the console to itself.
+     */
+    public WindowScreens consoles(Consoles use) {
+        consoleUse = use == null ? Consoles.CLASSIC : use;
+        return this;
+    }
+
     /** Where a side panel stops, from the top in design units: above the seated band, or 0 for 16 from the foot. */
     public void panelBottom(float y) {
         panelBottom = y;
@@ -255,9 +280,55 @@ public final class WindowScreens {
         host = null;
     }
 
-    /** The windows these screens show in place of the classic ones: all but a deck console's. */
+    /** The windows these screens show in place of the classic ones: all, a deck console's unless it stays the game's ({@link #consoles}). */
     public boolean replaces(ClassicWindow w) {
-        return w != ClassicWindow.CONSOLE;
+        return w != ClassicWindow.CONSOLE || consoleUse != Consoles.CLASSIC;
+    }
+
+    /**
+     * E at a deck console, as the HUD's spec has it ({@link #consoles}). Under the modes: at the helm, the
+     * weapons console or a gun the captain sits, and at the reactor or life support the ship's Systems
+     * comes up on that system. Neither leaves a console screen up, so the game has its prompts back at
+     * once. Whether a console screen is up after: never, so far.
+     */
+    private boolean openConsole() {
+        com.ringsofiron.uihud.data.HudData.ConsoleView v = host.data().console;
+        String id = v.data == null ? "" : v.data.consoleId;
+        if (consoleUse == Consoles.MODES) {
+            if (seated(id)) sit(v);
+            else systemsAt(v.console == null ? null : v.console.getComponent(SubsystemComponent.class));
+        }
+        return false;
+    }
+
+    /** Whether E at console {@code id} sits the captain there under the modes: the helm, the weapons console, a gun. */
+    static boolean seated(String id) {
+        return "helm".equals(id) || "weapons".equals(id) || "turret_mount".equals(id);
+    }
+
+    /**
+     * Sits the captain at the console in use: the game's own order there on V ("Take the gun", fire control
+     * at the weapons console), else V itself, which sits them at the console beside them.
+     */
+    private void sit(com.ringsofiron.uihud.data.HudData.ConsoleView v) {
+        for (int i = 0; i < v.actions.size; i++) {
+            com.ringsofiron.uihud.data.HudData.ConsoleAction a = v.actions.get(i);
+            if ("VIEW".equals(a.action) && a.run != null) {
+                a.run.run();
+                return;
+            }
+        }
+        host.hud().handleKey(Input.Keys.V);
+    }
+
+    /** The ship's console up on Systems, {@code s}'s row selected (its group opened); nothing where the ship has no systems tab. */
+    private void systemsAt(SubsystemComponent s) {
+        if (systems.console == null) return;
+        boards.refresh(host.data());
+        systems.refresh(boards);
+        if (!systems.offered()) return;
+        raise(systems, ClassicWindow.CREW);
+        systems.focus(s);
     }
 
     /** The console and tab for {@code w} as things stand: the yard's at a yard, the crew's own away from one. */
@@ -334,11 +405,18 @@ public final class WindowScreens {
             layout();
             return true;
         }
+        if (w == ClassicWindow.CONSOLE) return openConsole();
         boards.refresh(host.data());
         Page page = pageFor(w);
         if (page == null) return false;
         page.refresh(boards);
         if (!page.offered()) return false;
+        raise(page, w);
+        return true;
+    }
+
+    /** Raises {@code page}'s console on it, read just now, for window {@code w}'s key. */
+    private void raise(Page page, ClassicWindow w) {
         BigConsole c = page.console;
         if (controlsOver && c == controls) {
             // Over what is up: the map stays open under it, a console waits on its tab
@@ -355,7 +433,6 @@ public final class WindowScreens {
         c.closeKeys(keyOf(w));
         c.show(page, host.data());
         layout();
-        return true;
     }
 
     /** The key the game opens {@code w} with, for the console's foot. */

@@ -140,6 +140,22 @@ public class InteractPromptSystem extends EntitySystem {
         return nearest;
     }
 
+    /** The id of the console in reach ("helm", "reactor"), or "" for none. */
+    public String getNearestId() {
+        return nearest == null ? "" : MAPPER.get(nearest).consoleId;
+    }
+
+    /**
+     * Tiles from the avatar to the middle of console {@code c}'s tile, as reach is measured for the
+     * prompt; NaN while the avatar is not aboard that console's ship.
+     */
+    public float distanceTo(InteractableConsoleComponent c) {
+        if (interactor == null || c == null) return Float.NaN;
+        Entity ship = interactor.getAvatarShip();
+        if (ship == null || !c.isOn(ship) || !interactor.getAvatarTile(avatar)) return Float.NaN;
+        return avatar.dst(c.tileX + 0.5f, c.tileY + 0.5f);
+    }
+
     /** Opens the console in reach, or uses the {@link Interaction} whose prompt shows. Returns false if there is neither. */
     public boolean interact() {
         if (using != null && interaction != null && interaction.prompt() != null) {

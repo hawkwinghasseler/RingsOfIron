@@ -210,6 +210,25 @@ class WindowScreensTest {
     }
 
     @Test
+    void aDeckConsoleStaysTheGamesUnlessAHudAsksForTheModesAnswer() {
+        WindowScreens w = new WindowScreens();
+        assertFalse(w.replaces(ClassicWindow.CONSOLE), "the game's own console window by default");
+        assertTrue(w.replaces(ClassicWindow.CREW));
+        w.consoles(WindowScreens.Consoles.MODES);
+        assertTrue(w.replaces(ClassicWindow.CONSOLE), "the Context spec's: a seat, or Ship › Systems");
+        assertFalse(w.showing(ClassicWindow.CONSOLE), "it leaves no console screen up");
+        w.consoles(null);
+        assertFalse(w.replaces(ClassicWindow.CONSOLE), "none is the game's again");
+        // E sits the captain at the three seats (Context 4.3); the reactor and life support open Systems
+        assertTrue(WindowScreens.seated("helm"));
+        assertTrue(WindowScreens.seated("weapons"));
+        assertTrue(WindowScreens.seated("turret_mount"));
+        assertFalse(WindowScreens.seated("reactor"));
+        assertFalse(WindowScreens.seated("life_support"));
+        assertFalse(WindowScreens.seated(""));
+    }
+
+    @Test
     void aPartsStateGoesBesideItsValueAsFarAsTheSidePanelsWidthAllows() {
         assertEquals(BoardingPage.NARROW_STATE, BoardingPage.stateRoom(BigConsole.SIDE_W), "480 wide: 16 columns");
         assertEquals(14, BoardingPage.stateRoom(WindowScreens.BOARDING_SIDE_W), "450 wide: 14, so a longer one goes under it");

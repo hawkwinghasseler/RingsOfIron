@@ -17,21 +17,22 @@ import java.util.Set;
  * the ship has more than one of is a group: its row switches them all, and opening it lists each one
  * with its own switch. Each gun is its own row, named by its weapon and its mount. The RCS blocks are
  * hull parts rather than systems: one row with no switch, counting those that fire. Read from the
- * components, as the classic console window reads the one it shows and switches.
+ * components, as the classic console window reads the one it shows and switches. The Task HUD's
+ * console panel names a system and its state by the same rules ({@link #name}, {@link #state}).
  */
-final class ShipSystems {
+public final class ShipSystems {
     /** Why a system is or isn't working, mildest first. */
-    enum State {
+    public enum State {
         ON("ON"), OFF("OFF"), STUNNED("STUNNED"), SHORTED("SHORTED"), CUT_OFF("CUT OFF"), DAMAGED("DAMAGED"), WRECKED("WRECKED");
 
-        final String label;
+        public final String label;
 
         State(String label) {
             this.label = label;
         }
 
         /** Whether it stops the system and needs the crew or a yard: red on the tube and the board. */
-        boolean bad() {
+        public boolean bad() {
             return this == DAMAGED || this == WRECKED || this == CUT_OFF;
         }
     }
@@ -265,14 +266,14 @@ final class ShipSystems {
     }
 
     /** "32 S" under two minutes, "2:05" above. */
-    static String seconds(float s) {
+    public static String seconds(float s) {
         int t = Math.max(0, Math.round(s));
         if (t < 120) return t + " S";
         return String.format(Locale.ROOT, "%d:%02d", t / 60, t % 60);
     }
 
     /** Why {@code s} is or isn't working, as the power board reads it, worst first. */
-    static State state(SubsystemComponent s) {
+    public static State state(SubsystemComponent s) {
         if (s.isDestroyed()) return State.WRECKED;
         if (s.isDisabled()) return State.DAMAGED;
         if (s.shorted) return State.SHORTED;
@@ -282,14 +283,15 @@ final class ShipSystems {
         return State.ON;
     }
 
-    private static float timer(SubsystemComponent s, State state) {
+    /** Seconds until {@code s} comes back by itself in {@code state}: a short's reclose, a stun; NaN for none. */
+    public static float timer(SubsystemComponent s, State state) {
         if (state == State.SHORTED) return Math.max(0f, DamageStates.AUTO_RESET - s.shortedFor);
         if (state == State.STUNNED) return s.stunned;
         return Float.NaN;
     }
 
     /** The gun mounted on turret {@code s}: the mount whose system's tile it covers. */
-    static Mount mount(SubsystemComponent s, Array<Mount> mounts) {
+    public static Mount mount(SubsystemComponent s, Array<Mount> mounts) {
         if (mounts == null) return null;
         for (int i = 0; i < mounts.size; i++) {
             Mount m = mounts.get(i);
@@ -299,7 +301,7 @@ final class ShipSystems {
     }
 
     /** The system's name on the tube: its kind, a tank by what it holds, a gun by its weapon. */
-    static String name(SubsystemComponent s, Mount gun) {
+    public static String name(SubsystemComponent s, Mount gun) {
         switch (s.type) {
             case REACTOR:
                 return "REACTOR";

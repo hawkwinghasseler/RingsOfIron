@@ -100,6 +100,31 @@ final class SystemsPage extends ListPage {
     }
 
     /**
+     * Selects {@code s}'s row, opening its group so it has one of its own: E at the system's console
+     * opens the tab on it (Context 4.3). Nothing when it isn't listed.
+     */
+    void focus(SubsystemComponent s) {
+        int i = s == null ? -1 : systems.rowOf(s);
+        if (i < 0) return;
+        ShipSystems.Row r = systems.rows.get(i);
+        if (r.kind == ShipSystems.Row.GROUP) {
+            systems.open.add(r.systems.first().name);
+            if (b != null) refresh(b);
+            i = systems.rowOf(s);
+        }
+        select(i);
+    }
+
+    /** The selected row's systems, for tests: empty with none selected. */
+    Array<SubsystemComponent> selected() {
+        Array<SubsystemComponent> out = new Array<>();
+        if (sel < 0 || sel >= systems.rows.size) return out;
+        ShipSystems.Row r = systems.rows.get(sel);
+        for (int k = 0; k < r.systems.size; k++) out.add(r.systems.get(k).s);
+        return out;
+    }
+
+    /**
      * The damage control board's jobs: what the game raises about the hull, the air, fire, systems,
      * power and the crew, warnings first. Combat, flight and the captain's own state are other widgets'.
      * An advisory is no one's job (a system switched off, crew outside), and a room's air is one job,
