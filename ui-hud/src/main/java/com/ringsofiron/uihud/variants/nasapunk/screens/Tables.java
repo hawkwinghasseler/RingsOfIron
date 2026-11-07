@@ -44,8 +44,9 @@ public final class Tables {
          */
         public boolean drop;
         /**
-         * A last column that takes the rest runs its words onto further lines, up to {@link #wrapMax},
-         * rather than cutting them: for a narrow list with no terms beside it to show them whole.
+         * Long words run onto further lines rather than being cut, for a narrow list: a part's notes,
+         * and a last column that takes the rest, up to {@link #wrapMax} lines, which takes the room
+         * the fixed columns have past their own words.
          */
         public boolean wrap;
         public int wrapMax = 3;
@@ -265,7 +266,7 @@ public final class Tables {
         }
         if (sect.rows.size == 0 && !sect.empty.isEmpty()) h += st.rowH;
         h += linesH(cv, sect.lines, w, st);
-        h += sect.notes.size * st.noteH;
+        h += notesH(cv, sect, w - 2f * st.pad, st);
         if (st.reasons) h += reasons(sect) * st.noteH;
         return h + 6f;
     }
@@ -311,7 +312,7 @@ public final class Tables {
             y += st.titleH + (below ? SUB_H : 0f);
         }
         // what goes under the rows, so the rows know their room
-        float tail = linesH(cv, sect.lines, w, st) + sect.notes.size * st.noteH;
+        float tail = linesH(cv, sect.lines, w, st) + notesH(cv, sect, inner, st);
         int nReasons = st.reasons ? reasons(sect) : 0;
         tail += nReasons * st.noteH;
 
@@ -357,8 +358,17 @@ public final class Tables {
         if (sect.rows.size > 0 && n > 0 && !filters) y += 4f;
         y += lines(cv, sect.lines, x, y, w, st);
         for (int i = 0; i < sect.notes.size; i++) {
-            Ui.lab(cv, lx, y + 13f, Ui.fit(cv, sect.notes.get(i), inner, Ui.LB, true, 0.6f));
-            y += st.noteH;
+            String note = sect.notes.get(i);
+            if (!st.wrap) {
+                WRAPPED.clear();
+                WRAPPED.add(note);
+            } else {
+                breaks(note, inner, st.wrapMax, t -> Ui.labW(cv, t), WRAPPED);
+            }
+            for (int j = 0; j < WRAPPED.size; j++) {
+                Ui.lab(cv, lx, y + 13f, Ui.fit(cv, WRAPPED.get(j), inner, Ui.LB, true, 0.6f));
+                y += st.noteH;
+            }
         }
         if (nReasons > 0) y += drawReasons(cv, cam, sect, lx, y, inner, st);
         return y - y0;
@@ -574,6 +584,14 @@ public final class Tables {
 
     // ---- helpers --------------------------------------------------------------------------------
 
+    /** The height of a part's notes across {@code inner}: a line each, or as many as each runs onto when the style wraps. */
+    private static float notesH(NpCanvas cv, Sect sect, float inner, Style st) {
+        if (!st.wrap) return sect.notes.size * st.noteH;
+        int lines = 0;
+        for (int i = 0; i < sect.notes.size; i++) lines += Math.max(1, breaks(sect.notes.get(i), inner, st.wrapMax, t -> Ui.labW(cv, t), null));
+        return lines * st.noteH;
+    }
+
     /** A row's height: its line, its wrapped cell's further lines, its dim line and the divider over it. */
     private static float rowH(NpCanvas cv, Row r, Sect s, int nCols, Style st) {
         return st.rowH + wrapExtra(cv, r, s, nCols, st) + (st.subs && !r.sub.isEmpty() ? st.subH : 0f)
@@ -747,6 +765,7 @@ public final class Tables {
             COLW[c] = cw <= 0f ? restW : cw;
         }
         fit(COLW, s.need, GROWS, n, w - gaps);
+        if (st.wrap) give(COLW, s.need, GROWS, n);
         float cx = x;
         for (int c = 0; c < n; c++) {
             COLX[c] = cx;
@@ -764,6 +783,22 @@ public final class Tables {
      * whose words won't fit, down to two. One that takes the rest counts at 60 at most, and stops the
      * dropping when it is the last.
      */
+    /**
+     * Gives a last column that takes the rest ({@code grows} false) the room the fixed columns before
+     * it have past their words, as much as it is short of its own, each giving in proportion to what
+     * it has spare: for a list that runs that column onto further lines, so it takes as few as it can.
+     */
+    static void give(float[] w, float[] need, boolean[] grows, int n) {
+        if (n < 2 || grows[n - 1]) return;
+        float shortBy = need[n - 1] - w[n - 1], slack = 0f;
+        if (shortBy <= 0f) return;
+        for (int c = 0; c < n - 1; c++) if (grows[c]) slack += Math.max(0f, w[c] - need[c]);
+        float take = Math.min(shortBy, slack);
+        if (take <= 0f) return;
+        for (int c = 0; c < n - 1; c++) if (grows[c]) w[c] -= Math.max(0f, w[c] - need[c]) * take / slack;
+        w[n - 1] += take;
+    }
+
     /** Which of the first {@code n} columns, {@code w} wide, hold their {@code need} whole: a bit each, the first lowest. */
     static long whole(float[] w, float[] need, int n) {
         long bits = 0L;

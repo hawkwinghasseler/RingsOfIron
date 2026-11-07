@@ -587,6 +587,26 @@ class NasaPunkWindowsTest {
     }
 
     @Test
+    void aWrappingColumnTakesTheRoomTheFixedOnesDontUse() {
+        // the log on the slate: TIME and SOURCE need 62 and 60 of their 92 and 132, the message 900 of its 172
+        float[] log = {92f, 132f, 172f};
+        Tables.give(log, new float[] {62f, 60f, 900f}, new boolean[] {true, true, false}, 3);
+        assertEquals(62f, log[0], 1e-3);
+        assertEquals(60f, log[1], 1e-3);
+        assertEquals(274f, log[2], 1e-3);
+        // only as much as the message is short of: the rest of the slack stays where it was
+        float[] some = {92f, 132f, 172f};
+        Tables.give(some, new float[] {62f, 60f, 222f}, new boolean[] {true, true, false}, 3);
+        assertEquals(222f, some[2], 1e-3);
+        assertEquals(396f, some[0] + some[1] + some[2], 1e-3);
+        assertTrue(some[0] > 62f && some[1] > 60f, "each gives in proportion to its spare");
+        // a last column of fixed width takes nothing
+        float[] fixed = {92f, 132f, 172f};
+        Tables.give(fixed, new float[] {62f, 60f, 900f}, new boolean[] {true, true, true}, 3);
+        assertEquals(172f, fixed[2], 1e-3);
+    }
+
+    @Test
     void aPartKnowsWhichColumnsItsTableLastDrewWhole() {
         // the crew on the slate: the name and the role whole, the skills cut
         long bits = Tables.whole(new float[] {130f, 96f, 150f}, new float[] {60f, 96f, 190f}, 3);
