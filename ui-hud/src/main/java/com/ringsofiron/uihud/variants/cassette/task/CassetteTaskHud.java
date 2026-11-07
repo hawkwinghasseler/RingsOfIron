@@ -73,8 +73,9 @@ public class CassetteTaskHud implements HudVariant {
     /** The open console's ship's deck on the canvas, design units. */
     private final TaskLayout.Rect hull = new TaskLayout.Rect();
     /** The menus, the map and the windows in the Yard Standard. */
-    // Esc closes the controls card before the screen under it (spec round 11)
-    private final YardScreens screens = new YardScreens().controlsOver(true);
+    // Esc closes the controls card before the screen under it (spec round 11); the log has each alert
+    // on one line, stamped when it clears, under the spec's filters (LOG)
+    private final YardScreens screens = new YardScreens().controlsOver(true).onceLog(true);
 
     @Override
     public void attach(HudVariantHost host) {
