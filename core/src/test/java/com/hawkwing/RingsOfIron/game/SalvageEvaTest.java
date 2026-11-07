@@ -123,7 +123,7 @@ class SalvageEvaTest {
 
     private BoardingProvider.BoardingBoard board() {
         BoardingProvider.BoardingBoard board = new BoardingProvider.BoardingBoard();
-        new BoardingWork(world.context, world.docking, world.boarding, world.salvage).collect(board);
+        new BoardingWork(world.context, world.docking, world.boarding, world.salvage, world.crewHiring).collect(board);
         return board;
     }
 
@@ -187,6 +187,9 @@ class SalvageEvaTest {
         String said = world.salvage.mark(game.player, f.originX, f.originY);
         assertTrue(said.startsWith("Engineers ordered across on EVA"), said);
         assertTrue(world.boarding.takenBy(game.raider, game.player), "no one defends it: taken on the spot");
+        BoardingProvider.BoardingBoard taken = board();
+        assertTrue(taken.taken && taken.undefended, "taken with no one aboard to fight for it");
+        assertEquals(CrewHiring.berths(game.player) - world.crewHiring.aboard(game.player), taken.berthsFree, "the berths free");
 
         boolean crossed = false, carried = false;
         for (int i = 0; i < 1500 / FRAME && hold.amount(part) < before + 1 - 1e-6; i++) {
@@ -224,5 +227,16 @@ class SalvageEvaTest {
         assertNotNull(row);
         assertFalse(row.toggleable);
         assertTrue(row.status.contains("latch on"), row.status);
+    }
+
+    @Test
+    void aPartThatSellsForNothingIsLeftOffTheBoard() {
+        standOff(40f);
+        run(1f);
+        for (Salvage.Part p : world.salvage.parts(game.raider)) {
+            boolean worth = p.price * Salvage.SALE_SHARE >= 0.5;
+            assertEquals(worth, row(p.system.footprint) != null, p.name + " at " + p.price);
+        }
+        for (BoardingProvider.Part row : board().parts) assertTrue(row.value >= 0.5, row.name + " at " + row.value);
     }
 }

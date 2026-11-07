@@ -25,13 +25,44 @@ final class StationServices {
     private final FactionStanding standing;
     private final DockingSystem docking;
     private final Shipyard shipyard;
+    /** A station type's name ("Ice Mine") by its id, or null; none by default. */
+    private final java.util.function.Function<String, String> typeNames;
+    private final java.util.Map<String, String> typeNameCache = new java.util.HashMap<>();
+    /** The infirmary's record of the docking; none by default. */
+    private StationInfirmary infirmary;
 
     StationServices(MacroSimulation macroSim, RailsUniverse universe, FactionStanding standing, DockingSystem docking, Shipyard shipyard) {
+        this(macroSim, universe, standing, docking, shipyard, id -> null);
+    }
+
+    StationServices(MacroSimulation macroSim, RailsUniverse universe, FactionStanding standing, DockingSystem docking, Shipyard shipyard,
+                    java.util.function.Function<String, String> typeNames) {
         this.macroSim = macroSim;
         this.universe = universe;
         this.standing = standing;
         this.docking = docking;
         this.shipyard = shipyard;
+        this.typeNames = typeNames;
+    }
+
+    /**
+     * The {@code station_type} defs' names, from the content loaded into {@code world}: null before it
+     * loads, "" for a type it has no name for.
+     */
+    static java.util.function.Function<String, String> typeNames(GameWorld world) {
+        return id -> {
+            com.ringsofiron.moddingdata.ModContext content = world.getContent();
+            if (content == null || content.defs == null) return null;
+            com.ringsofiron.moddingdata.defs.StationTypeDef def = id == null || !content.defs.has("station_type", id) ? null
+                    : content.defs.get("station_type", id, com.ringsofiron.moddingdata.defs.StationTypeDef.class);
+            return def == null || def.name == null ? "" : def.name;
+        };
+    }
+
+    /** With {@code infirmary}, whose record of the docking the docked station's info carries. */
+    StationServices infirmary(StationInfirmary infirmary) {
+        this.infirmary = infirmary;
+        return this;
     }
 
     /** {@code station} as the player's {@code ship} would find it, into {@code out}. */
@@ -42,6 +73,7 @@ final class StationServices {
         int faction = standing.factionOf(station);
         FactionDef owner = factions.def(faction);
         out.owner = owner == null || owner.name == null ? "" : owner.name;
+        out.type = type(station);
         out.sponsor = owner != null && faction == standing.sponsor();
         if (owner != null) {
             out.standing = standing.standing(faction);
@@ -57,7 +89,29 @@ final class StationServices {
         out.hiring = open && trades;
         out.yard = open;
         out.infirmary = open;
+        out.treating.clear();
+        out.treated = 0;
+        out.treatedCost = 0;
+        if (open && infirmary != null && infirmary.recordAt() == station) {
+            out.treating.addAll(infirmary.treating());
+            out.treated = infirmary.treated();
+            out.treatedCost = infirmary.billed();
+        }
         out.shipyard = open && shipyard.sellsShips(station);
+    }
+
+    /** What kind of station it is, by its type's name ("Ice Mine"); "" when its type has none. */
+    private String type(Entity station) {
+        com.ringsofiron.stationsdocking.StationComponent sc = station.getComponent(com.ringsofiron.stationsdocking.StationComponent.class);
+        if (sc == null || sc.typeId == null) return "";
+        String name = typeNameCache.get(sc.typeId);
+        if (name == null) {
+            String found = typeNames.apply(sc.typeId);
+            name = found == null ? "" : found;
+            // Kept once there is content to ask; before it loads, asked again next time
+            if (found != null) typeNameCache.put(sc.typeId, name);
+        }
+        return name;
     }
 
     /** The player's standing as a word: "Hostile", "Unwelcome", "Neutral", "Friendly", "Trusted". */

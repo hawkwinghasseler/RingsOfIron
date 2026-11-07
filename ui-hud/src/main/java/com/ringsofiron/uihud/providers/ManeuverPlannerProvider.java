@@ -33,6 +33,13 @@ public interface ManeuverPlannerProvider {
     /** Rails warp to just before the next burn. */
     void warpToBurn();
 
+    /**
+     * Rails warp on to just before something {@code in} seconds from now that the map shows (an apsis,
+     * a crossing, a deadline), named {@code what} in what the game says. Does nothing by default.
+     */
+    default void warpTo(double in, String what) {
+    }
+
     /** Orders the helmsman to fly the planned burns with the engines. */
     void helmFlyBurns();
 

@@ -53,7 +53,9 @@ told which box was hit. Its `Filament` holds GL resources: dispose the actor on 
 "7.67" ('.' joins the cell before), a value too big for its cells shows nines, NaN shows blank.
 Ranges are metres under a kilometre and kilometres above; times are m:ss, then h:mm:ss, then days.
 `name("Pirate raider 6", 8)` is "RAIDER 6": a name drops its leading words before it cuts one, so the
-words that tell two ships apart stay.
+words that tell two ships apart stay. `place("FWD PORT PD")` is "FWD PORT": a gun's mount by where it
+sits, less the kind the weapon's name already says ("GUN (FWD PORT)", "AUTOCANNON MK1 (FWD STBD)"); a
+mount the game could not place gives "", and keeps its whole name.
 
 `Kit` holds the helpers the three variants share: the sector scope, brackets and nameplates for the
 projected HUD, velocity markers, the lead reticle, missile glyphs and the impact cross, edge
@@ -64,3 +66,91 @@ and the pips.
 something wrong in it, fire as a dense checker, smoke as a dither, a breach as an X, a room without
 air in red, and the last hull hit flashing. Context's H4 face and Task's schematic both use it; call
 `update` each frame and `paint` into a box, and it fits whole tiles to its dot pitch.
+
+## The menus and the map
+
+The three HUDs give the game's menus and map one look between them (style guide, section 18.5),
+through the shared screens hook (`Variants.md`): `VfdScreens` holds what each hands on, and frees it
+on `detach`.
+
+**The menus** (`VfdShellLook`) are the ship's computer in setup mode. Before a game starts the racks
+are dark, the annunciators and the clock ghosts, and the top rack shows SETUP in fourteen segments,
+over the stars and the planet's limb; a menu too tall for the window between the racks comes up in
+front of the windows it covers. Over a paused game the world goes under a scrim. Each menu keeps the
+classic one's rows, buttons, keys and order: it is built from `SetupSkin`, whose styles carry the
+classic names and the ROM's metrics (`RomFont`, the ROM on a texture) but draw nothing, and
+`SetupPaint` reads the widgets each frame and paints them through the kit:
+
+| Widget | Shown as |
+|---|---|
+| Button | A field of cells at pitch 2, a cursor column first; focus lights ▶ and inverts the field, disabled is dim |
+| One of a group (a sponsor) | Its word in a lit frame when picked |
+| Choice | ◀ value ▶, the value inverse with the focus |
+| Check box | A lit block, or a ghost frame |
+| Text field | Its cells with their ghosts, a rule under them, a blinking block cursor |
+| Slider | A bar of 20 segments |
+| List | Its rows in view, and its place as a column of segments; it never slides sideways, so a row too long is cut short |
+| Heading, title | Fourteen segments; a section's name a legend in the glass |
+
+The game's focus (`FocusNav`) tints the focused control; the painter reads that tint
+(`SetupPaint.FOCUS`, kept equal to it by a test) and shows the inverse field instead. The legend of
+keys sits in the bottom rack, split round a menu that comes down over it, or on a slab under the menu
+over the game. The mod scripts dialog has its title in a red strip. If the painter ever fails, the
+fonts' own glyphs show so the menu can still be read and left, and the next backdrop hands the menus
+back to the classic look.
+
+**The map** (`VfdMapPainter`) is a graphic dot panel at pitch 3 (`Plot`): every piece lights the
+panel's own dots and the brightest call on a dot wins. The ship's orbit is every second dot at L2,
+the plan solid at L3, a proposal every third at L3, the target's orbit and spheres of influence
+every second at L1, a moon's orbit every third at L1. A body is a solid limb over a dither; one
+drawn past 60 units is the ground under the orbits, a quarter of its dots at L1. Labels are ROM text
+at pitch 1.5 on a ground that keeps the dots under them dark, and one under the map's heading moves
+down clear of it. The map's side panel stays its HUD's own. Everything is drawn in one pass of the
+kit when the map gives its last piece of the frame.
+
+`tools/playtest/shell-vfd.sh <spec>` drives the menus, a game paused, the map and the mod scripts
+dialog in a real window and screenshots each.
+
+## The terminals
+
+The game's windows under a FILAMENT HUD are terminals (style guide, section 18.2): panes of glass on
+the character grid, pages rather than scrolling, and soft keys. Each HUD lays its windows out as its
+spec has them, from parts in `vfd.screens` that the three share:
+
+| Part | What it is |
+|---|---|
+| `Glass` | The grid, 9 units a cell at pitch 1.5 (`cells(w)` fit in a width): panes with their names, section heads with a ghost rule, text, rows with the focus inverse and its cursor in column 0, severity pips, key caps with their words, the pager, seven-segment figures with their units, and ◀ choices ▶ |
+| `Pages` | A list's focus and the page that shows it: ↑ and ↓ move the focus, Page Up, Page Down and the wheel turn the page, Home and End go to the ends |
+| `SoftKeys` | The rubber keys under the glass, each action in the glass over its key. A key with a key of its own prints it on its cap; the rest are walked with ← and →, and Enter presses the one walked to. A key that can't be taken now stays in its place, dim, and the walk never moves on from it to a key that can't be undone |
+| `Slate` | The captain's slate (section 18.4): a graphic LCD in a rubber housing, the grid in dark dots on the grey-green |
+| `LostCard` | The ship lost or the career over: the tubes dark, and a printed card with what happened and the ways on, each with the game's key for it; a click runs a way as its key would |
+| `Boards` | What every page of a terminal reads at once, a few times a second and straight after an order: the windows' providers, and the station docked at, its owner, the standing, its services, the tanks, the infirmary's record and the held deliveries this market can supply |
+| `ShipSystems` | The ship's systems by kind, as a terminal lists them: health, power, state and switch; a kind the ship has more than one of is a group that switches them together; each gun by its weapon and mount |
+
+**FILAMENT × Context** shows the windows as its spec's full-screen modes (functional-context, section
+10), each the whole screen under the top rack with its tabs on the digits: M1 the map's panels round
+the game's orbit canvas, M2 the ship (systems on its plan, crew, cargo, loadout), M3 the station
+terminal (market, yard, shipyard, missions, hire, with the station's rail), M4 boarding, M5 the
+captain's record on the slate (log, career, standing, contracts), and M6 the controls card. P3 and X3
+still interrupt over a mode. `tools/playtest/windows-vfd.sh context` drives every mode in the game
+and screenshots each.
+
+**FILAMENT × Task** shows them as its spec's screens and panels (functional-task, section 7), one at
+a time, each standing for the window of its tab so the game's keys, Esc and the game's own checks
+work on it. A screen is a terminal across the screen under the band (`Terminal`: the tab keys along
+its top edge, a blank key in its fixed home for a tab the place doesn't offer, the header row with
+the place in fourteen segments and its figures in seven, the response line, the action keys along
+its foot) or the ship's book on its LCD (`BookFrame`: the tab keys down its left edge, CLOSE on Esc).
+Tab steps a screen's tabs, and the arrows, Enter and the page keys are the tab's:
+
+| Screen | Tabs | Opens on |
+|---|---|---|
+| The station terminal (`StationTerminal`) | Contracts, Market, Yard, Shipyard, Crew for hire, each only where the station offers it; the header row is the berth (the station, its owner and how they stand to the player, the standing, the credits, the hold, the contracts held). Away from a station, the crew's field refit on the Yard tab, or a prize in tow's terms on the Shipyard tab, alone | J, T, Y while docked; I at the Crew while it shows at a station that hires; Y away |
+| The ship's book (`ShipsBook`) | Ship, Crew, Contracts held, Career, the Log: every notice and alert since the game started, an alert once and stamped as it clears (`Logbook`; like the game's feed, not saved) | I at the Crew, L at the Log; J at the Contracts where there is no board |
+| The map (`MapScreen`) | The game's orbit canvas through a window in a plate, the body in fourteen segments over it with the view's keys; the Destination and Plan panes at its right (the target and the transfer, the contacts and the layers; the orbit, the burns, the delta-v left and the arrival, the orders that fly it), the plan's timeline along its foot | M |
+| The boarding panel (`BoardingPanel`) | Down the right under the band, the world beside it: the ship latched to, the party and its orders, then its parts, cargo and prisoners and a prize's terms; only the right column's widgets give way | K |
+| A console's panel (`ConsolePanel`) | A small terminal beside the console in the deck view, a dotted leader to a bracket on it, on the side away from the captain, headed by the system and its room, or a gun's weapon and where it sits: the system's health, power and state, who works it, its switch on a soft key (a click alone; the reactor asks twice before going off), the system's own rows (the reactor's circuit and its draw over the last second; life support's air, the rooms it reaches, those cut off and why, the tanks and the reserve; a gun's weapon and who has it) and the game's orders at it with their keys. The helm and the weapons console open none: E sits there, as V does | E at a console; E, Esc or a walking key closes it, and it closes as the captain walks away, sits or leaves the ship |
+| The controls card (`ControlsCard`) | A printed card under the band, its Keyboard and Gamepad sides on index tabs; the keys for where the captain is first, then those that work anywhere, then the screens' own; the game's window keys say what they open here | F1, over any screen and closing back to it, so Esc takes the card before the screen |
+
+The ship lost lays `LostCard` over the HUD with every tube dark and the world's marks gone. `tools/playtest/windows-vfd-task.sh` drives every
+screen and panel in the game and screenshots each.

@@ -64,6 +64,21 @@ public class PlayerNavigation implements NavigationProvider {
         burns(out, ship, now);
         out.planDeltaV = nav.deltaVNeeded();
         out.proposal = nav.transfer.proposal() != null;
+        onward(out, now);
+    }
+
+    /** The leg still to come past the plan's last burn, and when the trip (or the proposal) arrives. */
+    private void onward(NavReadout out, double now) {
+        TransferLegComponent leg = nav.transfer.leg();
+        if (leg != null) {
+            Entity body = universe.entity(leg.continueIn);
+            com.ringsofiron.orbital.components.CelestialBodyComponent c = body == null ? null : universe.celestial(body);
+            out.onwardBody = c == null || c.name == null ? "" : c.name;
+            if (leg.restDeltaV > 0) out.onwardDeltaV = (float) leg.restDeltaV;
+            if (leg.arrival > now) out.arrivalIn = (float) (leg.arrival - now);
+        }
+        double proposed = nav.transfer.proposalArrival();
+        if (out.proposal && !Double.isNaN(proposed) && proposed > now) out.arrivalIn = (float) (proposed - now);
     }
 
     private void target(NavReadout out, Entity ship, double now) {
@@ -78,6 +93,10 @@ public class PlayerNavigation implements NavigationProvider {
         // Distance and closing in the frame of the body the ship orbits, as the readout has them
         KeplerOrbit k = orbits.currentConic();
         Entity frame = k == null ? null : orbits.parent();
+        // Where it is, when that isn't round the body the ship orbits: "at the Moon"
+        Entity around = universe.parentOf(e);
+        com.ringsofiron.orbital.components.CelestialBodyComponent body0 = around == null || around == frame ? null : universe.celestial(around);
+        if (body0 != null && body0.name != null) out.around = body0.name;
         if (frame != null && nav.target.stateAt(frame, now, target)) {
             StateVector s = orbits.state();
             double dx = s.x - target.x, dy = s.y - target.y;

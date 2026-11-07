@@ -58,6 +58,13 @@ final class Geo {
     // CRS: centre top, under the band
     static final float CRS_X = 390f, CRS_W = 500f, CRS_Y = 124f;
 
+    // The screens and panels (functional-task 7): a screen across the stage under the band, which
+    // stays over it with CHR; the boarding panel down the right over the key strip; a console's panel
+    // beside its console, at least CON_GAP from its middle, over the helm's line
+    static final float SCREEN_X = 16f, SCREEN_Y = BAND_B + 10f, SCREEN_FOOT = 12f;
+    static final float BRD_W = 364f, BRD_FOOT = 48f;
+    static final float CON_W = 380f, CON_GAP = 40f;
+
     /** Every zone but Z9 ends above this. */
     static final float ZONE_B = 760f;
 

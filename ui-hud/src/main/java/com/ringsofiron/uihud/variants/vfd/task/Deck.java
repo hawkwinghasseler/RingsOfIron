@@ -106,7 +106,8 @@ final class Deck {
         InteractableConsoleComponent c = console == null ? null : console.getComponent(InteractableConsoleComponent.class);
         if (lower.startsWith("for the ") && c != null) {
             name = c.title.toUpperCase(Locale.ROOT);
-            verb(key, "OPEN");
+            // The helm and the weapons console open no panel: E sits there, as V does (CON)
+            if (!ConsolePanel.sits(c.consoleId) || extraKey.isEmpty()) verb(key, "OPEN");
         } else if (lower.startsWith("for the ")) {
             String s = act.substring(8);
             if (s.toLowerCase(Locale.ROOT).endsWith(" panel")) s = s.substring(0, s.length() - 6);

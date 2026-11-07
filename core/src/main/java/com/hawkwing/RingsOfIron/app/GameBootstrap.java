@@ -34,6 +34,8 @@ import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.modding.ModTrustDialog;
 import com.ringsofiron.uihud.text.HudText;
+import com.ringsofiron.uihud.variants.ClassicWindow;
+import com.ringsofiron.uihud.variants.Screens;
 
 /**
  * Creates the game for {@link GameOptions}: the viewports and HUD, the world and its scenario, the
@@ -87,9 +89,10 @@ public final class GameBootstrap {
 
         GameWorld.Modules modules = new GameWorld.Modules();
         // Content loads on this thread, so the dialog cannot block: scripts wait, and run once the
-        // player allows them. "Remember" answers are kept between launches.
+        // player allows them. "Remember" answers are kept between launches. It takes the look of the
+        // shell's menus for the HUD variant picked.
         modules.modTrust = new ModTrustDialog(hud.getStage(), hud.getSkin(),
-                Gdx.app.getPreferences("RingsOfIron"))
+                Gdx.app.getPreferences("RingsOfIron"), () -> options.menuLook == null ? null : options.menuLook.get())
                 .onDecision(allowed -> {
                     if (allowed && world != null && world.getContent() != null) world.getContent().runDeferredScripts();
                 });
@@ -161,6 +164,7 @@ public final class GameBootstrap {
         world.combatEvents.detonations.add((signal, boom) -> pipeline.explode(boom.worldPoint.x, boom.worldPoint.y));
 
         listenToTheWorld(hud);
+        registerPanels(hud);
 
         world.hints.registerKey(HintRegistry.Context.ANY, "Esc", options.hosted ? "menu" : "quit", 90);
         dev = new DevTools(session, pipeline, scenario, refit::isOpen);
@@ -170,6 +174,87 @@ public final class GameBootstrap {
                 dev.clicks, dev.scenarioClicks, input.exteriorClicks, input.wheel));
         start(scenario);
         return this;
+    }
+
+    /**
+     * The game's own full-screen panels, the notice log (L), the controls (F1) and the ship-lost
+     * screen, as windows of the HUD's: their keys and Esc go through it, so a HUD variant can show its
+     * own screens for them ({@code ClassicWindow}).
+     */
+    private void registerPanels(UiHud hud) {
+        hud.registerWindow(ClassicWindow.LOG, new Screens.Classic() {
+            @Override
+            public boolean available() {
+                return true;
+            }
+
+            @Override
+            public boolean isOpen() {
+                return session.logOpen;
+            }
+
+            @Override
+            public boolean setOpen(boolean open) {
+                session.logOpen = open;
+                if (open) {
+                    session.logScroll = 0;
+                    session.helpOpen = false;
+                }
+                return open;
+            }
+        });
+        hud.registerWindow(ClassicWindow.HELP, new Screens.Classic() {
+            @Override
+            public boolean available() {
+                return true;
+            }
+
+            @Override
+            public boolean isOpen() {
+                return session.helpOpen;
+            }
+
+            @Override
+            public boolean setOpen(boolean open) {
+                session.helpOpen = open;
+                if (open) session.logOpen = false;
+                return open;
+            }
+        });
+        // It shows while the career is over, and goes when a save is loaded: nothing opens or closes it
+        hud.registerWindow(ClassicWindow.GAME_OVER, new Screens.Classic() {
+            @Override
+            public boolean available() {
+                return world.getCrash() != null || world.getCareerOver() != null;
+            }
+
+            @Override
+            public boolean isOpen() {
+                return available();
+            }
+
+            @Override
+            public boolean setOpen(boolean open) {
+                return isOpen();
+            }
+        });
+        hud.getData().ending = new GameOverChoices(session, saves);
+    }
+
+    /**
+     * Whether gun console {@code c} works a point-defense mount: in hand it shoots where the captain aims
+     * and leaves the missiles alone until it is let go ({@code PlayerGunnery.inHand}), so its prompt says so.
+     */
+    static boolean pointDefense(com.ringsofiron.uihud.components.InteractableConsoleComponent c) {
+        com.ringsofiron.combatsys.components.WeaponsComponent w = c.ship == null ? null
+                : c.ship.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class);
+        if (w == null) return false;
+        for (com.ringsofiron.combatsys.components.WeaponMountComponent m : w.mounts) {
+            if (m.subsystem != null && m.subsystem.getComponent(com.ringsofiron.uihud.components.InteractableConsoleComponent.class) == c) {
+                return m.def != null && m.def.pointDefense;
+            }
+        }
+        return false;
     }
 
     /** The seats, the view, and what the world tells the player: rescues, tows, ships bought and disabled. */
@@ -182,12 +267,17 @@ public final class GameBootstrap {
             // E opens a console's power panel; the helm, weapons console and guns are worked from their seat
             hud.getInteractPromptSystem().setPromptExtra(c -> "helm".equals(c.consoleId) ? "   [" + session.key(Action.VIEW) + "] sit and fly"
                     : "weapons".equals(c.consoleId) ? "   [" + session.key(Action.VIEW) + "] sit and fight"
-                    : "turret_mount".equals(c.consoleId) ? "   [" + session.key(Action.VIEW) + "] take the gun" : null);
+                    : "turret_mount".equals(c.consoleId) ? "   [" + session.key(Action.VIEW) + "] take the gun"
+                    + (pointDefense(c) ? " (point defense pauses)" : "") : null);
             // ... and their windows offer the same seat
             hud.registerConsoleExtra("weapons", (body, skin, console, data) ->
                     input.takeControlButton(body, skin, "Take fire control: every gun", SubsystemType.WEAPONS));
             hud.registerConsoleExtra("turret_mount", (body, skin, console, data) ->
                     input.takeControlButton(body, skin, "Take the gun", SubsystemType.TURRET_MOUNT));
+            // ... and so do a HUD variant's own console screens
+            hud.registerConsoleAction("weapons", "Take fire control: every gun", Action.VIEW.name(),
+                    () -> input.takeControl(SubsystemType.WEAPONS));
+            hud.registerConsoleAction("turret_mount", "Take the gun", Action.VIEW.name(), () -> input.takeControl(SubsystemType.TURRET_MOUNT));
             // Pushed off, knocked out or the console shot away: back on deck
             world.bridge.unseated.add((signal, why) -> {
                 session.show(why);
@@ -236,7 +326,7 @@ public final class GameBootstrap {
         else if (options.firstPlay) session.firstPlay = FirstPlay.start(world, game);
         else game.beginCareer();
         if (scenario == null && !options.firstPlay && options.openingWanted) {
-            session.opening = new OpeningGuide(world.contracts, world.guides, () -> session.hud.getMissionWindow().isOpen(),
+            session.opening = new OpeningGuide(world.contracts, world.guides, () -> session.hud.isOpen(ClassicWindow.MISSIONS),
                     OpeningGuide.Step.OPEN_BOARD);
         }
         if (scenario == null) session.matchViewToSeat();
