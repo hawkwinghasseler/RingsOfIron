@@ -93,3 +93,46 @@ card. The map and the console stay the game's. What the three share is in `varia
 docked at Highport, the station's market with a buy and each of its tabs, then each window's own key;
 the crew's refit away from the station; boarding a raider that has surrendered, before and after the
 party goes across; and the career over.
+
+### Under the stations HUD
+
+The stations HUD's windows are its spec's displays (`stations/StationScreen`; the mockups are
+`documentation/ui-overhaul/variations/nasapunk-stations`, S5 to S8). Both are MFDs. Their tabs are
+soft keys along the top of the glass, with their keys on the bezel over them, and the orders are soft
+keys along the foot, with ENT on the key of the order Enter gives and ESC on CLOSE's. A line under
+the tabs says where you are. A status line over the foot keys carries the last order's words, or else
+what Enter gives.
+
+- **The station link (DU-6)** takes the screen under the strip and the master lamps (S6). Its list
+  and the terms of the row under the cursor sit side by side. Every order is a foot key: each part's
+  and the cursor's row's in the parts' order, then the page's.
+- **The slate (SLATE-1)** runs down the right side, so the deck stays in sight (S5, S7, S8). It
+  stops above the band at a seat, and the top column recentres left of it. Its list leaves out the
+  columns whose words won't fit, and the terms under it say what the list doesn't, as S7's do. A log
+  line too long for the slate runs onto the next lines (S8). A part's orders stay on its title row.
+  The slate leaves the number keys to the seat's own orders, so its tabs turn on the windows' own keys
+  or a click.
+
+| The game's window, and its key | The display, on its tab | Its other tabs |
+|---|---|---|
+| Market (T) | DU-6, MARKET | YARD, CONTRACT BOARD, HIRING, SHIPYARD where ships are sold |
+| Yard (Y) at a berth | DU-6, YARD | as above |
+| Yard (Y) away from one | SLATE-1, LOADOUT: the crew's field refit | CREW, CONTRACTS while any are held, LOG |
+| Contracts (J) docked | DU-6, CONTRACT BOARD | as the market's |
+| Contracts (J) undocked | SLATE-1, CONTRACTS: those held | as the field refit's |
+| Boarding (K), latched | SLATE-1, BOARDING: its state and orders over the salvage and the cargo aboard | CREW, CONTRACTS, LOG |
+| Crew (I) | SLATE-1, CREW: the roster over the person under the cursor | LOADOUT away from a yard, BOARDING while latched, CONTRACTS, LOG |
+| Notice log (L) | SLATE-1, LOG: its filters over the list | as the crew's |
+| Controls (F1) | DU-6's frame: every key by where it works in three columns | |
+
+A tab the game won't open now is left out, and leaving the station closes the station link whatever
+its tab. The slate shows the credits docked, since they are the market's, and the berths away from
+a station. From the playtest at 1280x800:
+
+| | |
+|---|---|
+| ![DU-6 on its market tab, just after a buy](nasapunk/stations/market.png) | ![DU-6's yard](nasapunk/stations/yard.png) |
+| ![DU-6's contract board](nasapunk/stations/contracts.png) | ![DU-6's hiring hall](nasapunk/stations/hiring.png) |
+| ![The slate's crew, seated at the helm](nasapunk/stations/crew.png) | ![The slate's field refit away from the station](nasapunk/stations/field-refit.png) |
+| ![The slate's boarding, a raider taken](nasapunk/stations/boarding.png) | ![The slate's log](nasapunk/stations/log.png) |
+| ![The controls on DU-6's frame](nasapunk/stations/controls.png) | ![The career over](nasapunk/stations/career-over.png) |
