@@ -185,6 +185,30 @@ class WindowScreensTest {
     }
 
     @Test
+    void boardingAloneCanHangBesideTheViewUnderTheModes() {
+        WindowScreens w = new WindowScreens();
+        assertFalse(w.consoleFor(ClassicWindow.BOARDING).isSide(), "across the screen by default");
+        w.sideBoarding(true);
+        BigConsole brd = w.consoleFor(ClassicWindow.BOARDING);
+        assertTrue(brd.isSide(), "the Task spec's BRD, down the right side");
+        assertEquals(WindowScreens.BOARDING_SIDE_W, brd.sideW(), 0.01f);
+        assertTrue(brd.sideW() <= 360f * 1.25f, "the wireframe's 360 by no more than the quarter an artist may add");
+        assertFalse(w.consoleFor(ClassicWindow.TRADE).isSide(), "the other windows stay across the screen");
+        assertFalse(w.consoleFor(ClassicWindow.CREW).isSide());
+        assertFalse(w.consoleFor(ClassicWindow.LOG).isSide());
+        assertTrue(brd != w.consoleFor(ClassicWindow.CREW), "boarding keeps a console of its own");
+        assertEquals(BigConsole.SIDE_W, new BigConsole(BigConsole.Livery.SHIP, "SLATE", new Boards()).side().sideW(), 0.01f,
+                "the Stations spec's panels keep their 480");
+    }
+
+    @Test
+    void aPartsStateGoesBesideItsValueAsFarAsTheSidePanelsWidthAllows() {
+        assertEquals(BoardingPage.NARROW_STATE, BoardingPage.stateRoom(BigConsole.SIDE_W), "480 wide: 16 columns");
+        assertEquals(14, BoardingPage.stateRoom(WindowScreens.BOARDING_SIDE_W), "450 wide: 14, so a longer one goes under it");
+        assertEquals(BoardingPage.NARROW_STATE, BoardingPage.stateRoom(1280f), "across the screen it has its own column");
+    }
+
+    @Test
     void theFootGivesEachTabTheKeyThatOpensItThere() {
         Boards boards = new Boards();
         CrewPage crew = new CrewPage(false), hire = new CrewPage(true);

@@ -28,7 +28,7 @@ import com.ringsofiron.uihud.variants.cassette.YardPart;
  */
 final class BigConsole extends YardPart implements Hits.Target {
     static final float HEAD_H = 30f, FOOT_H = 27f, RAIL_W = 316f;
-    /** The side panel's width, its title bar, a row of its tabs, and its foot (Stations, 10.1 and 6.2). */
+    /** A side panel's width as the Stations spec has it, its title bar, a row of its tabs, and its foot (10.1, 6.2). */
     static final float SIDE_W = 480f, SIDE_TITLE_H = 42f, SIDE_TAB_ROW = 28f, SIDE_FOOT_H = 52f;
     /** Seconds the console takes to rise into place. */
     static final float RISE = 0.45f;
@@ -73,6 +73,8 @@ final class BigConsole extends YardPart implements Hits.Target {
     private final FeedTube feed = new FeedTube();
     /** Hangs as a side panel at the right while its page can (the Stations spec's panels), else across the screen. */
     private boolean side;
+    /** How wide it hangs as a side panel. */
+    private float sideW = SIDE_W;
     /** The tab rows the side panel's keys took as last drawn: two when one row won't hold their legends. */
     private int tabRows = 1;
     private String creditsText = "", holdText = "";
@@ -97,8 +99,19 @@ final class BigConsole extends YardPart implements Hits.Target {
      * panels). Its tabs turn on the windows' own keys, Tab and a click: the number keys stay the seat's.
      */
     BigConsole side() {
+        return side(SIDE_W);
+    }
+
+    /** As {@link #side()}, {@code w} wide. */
+    BigConsole side(float w) {
         side = true;
+        sideW = w;
         return this;
+    }
+
+    /** How wide it hangs as a side panel. */
+    float sideW() {
+        return sideW;
     }
 
     /** Whether it is a side panel ({@link #side()}). */
@@ -261,7 +274,7 @@ final class BigConsole extends YardPart implements Hits.Target {
         float t = MathUtils.clamp(riseT / RISE, 0f, 1f);
         if (t >= 1f) return 0f;
         float e = 1f - (1f - t) * (1f - t) * (1f - t);
-        return (1f - e) * (SIDE_W + 24f) - MathUtils.sin(t * MathUtils.PI) * 2f;
+        return (1f - e) * (sideW + 24f) - MathUtils.sin(t * MathUtils.PI) * 2f;
     }
 
     @Override
