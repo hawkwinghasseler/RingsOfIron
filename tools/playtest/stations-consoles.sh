@@ -4,7 +4,7 @@
 # reactor selected; Tab steps the tabs; walking off shuts it. Life support opens it on Atmos; E shuts it.
 # A gun opens the gun panel; Enter works its switch; its second key takes the gun in hand. The helm
 # opens the helm panel, the weapons console the tactical board, where Enter holds fire.
-# Run from the repository root: stations-console-check.sh <out-dir> [size]
+# Run from the repository root: tools/playtest/stations-consoles.sh <out-dir> [size]
 set -u
 OUT=${1:?out dir}
 SIZE=${2:-1920x1080}
