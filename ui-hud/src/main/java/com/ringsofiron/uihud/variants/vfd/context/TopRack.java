@@ -62,14 +62,16 @@ final class TopRack {
         }
     }
 
-    /** HELM, FIRE CONTROL, GUN NOSE, DECK; aboard another craft its name. */
+    /** HELM, FIRE CONTROL, GUN with its mount ("GUN (FWD PORT)"), DECK; aboard another craft its name. */
     static String seat(HudData d, Situations s) {
         switch (s.seat) {
             case HELM: return "HELM";
             case FIRE_CONTROL: return "FIRE CONTROL";
             case GUN:
                 for (Mount m : d.weaponFrame.mounts) {
-                    if (m.controller == Controller.PLAYER && !m.name.isEmpty()) return Fmt.cut("GUN " + m.name, SEAT);
+                    String at = m.controller == Controller.PLAYER ? Fmt.place(m.name) : "";
+                    // Without the brackets where they won't fit: "GUN FWD STBD 2"
+                    if (!at.isEmpty()) return at.length() + 6 <= SEAT ? "GUN (" + at + ")" : Fmt.cut("GUN " + at, SEAT);
                 }
                 return "GUN";
             case DECK: return s.aboard.isEmpty() ? "DECK" : "DECK " + Fmt.name(s.aboard, SEAT - 5);

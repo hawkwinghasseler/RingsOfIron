@@ -14,10 +14,13 @@ import java.util.Locale;
 
 /**
  * The situation panels in the right column's middle (functional-context 8). X1, docked: the station,
- * its port, its owner and the captain's standing with it, and its services each behind its key cap,
- * the ones it does not offer left out; then the undock key. X2, boarding: the other ship with LATCHED
- * or EVA, its state on a row of its own, the party, the salvage, the cargo coming across, and the
- * prisoners or else why no party can go, in six rows of glass with the two keys printed with their
+ * its port, its owner and the captain's standing with it as the game's signed number (+0 on day 0),
+ * and its services each behind its key cap, the ones it does not offer left out, the infirmary only
+ * while it treats one of the crew or has billed for one since docking; then the undock key. X2,
+ * boarding: the other ship with LATCHED or EVA, its state on a row of its own ("TAKEN: CREW
+ * SURRENDERED", "TAKEN: UNDEFENDED"), the party, the salvage (the parts worth taking and what they
+ * sell for, until one is marked), the cargo when it has any, and the prisoners held against the
+ * berths free, or else why no party can go, in six rows of glass with the two keys printed with their
  * actions under it. X2 is for a beaten ship or one of ours: a fit one in reach is still a fight.
  */
 final class Panels {
@@ -27,7 +30,7 @@ final class Panels {
 
     // X1
     boolean station;
-    String name = "", port = "", owner = "", standing = "", standingValue = "";
+    String name = "", port = "", owner = "", standing = "";
     final String[] keys = new String[X1_ROWS], words = new String[X1_ROWS];
     int lines;
     /** The undock key printed with its action. */
@@ -35,8 +38,18 @@ final class Panels {
 
     // X2
     boolean boarding, latched;
-    String craft = "", state = "", party = "", partyState = "", marked = "", off = "", lots = "", boardKey = "K", castOffKey = "U";
+    String craft = "", state = "", party = "", partyState = "", boardKey = "K", castOffKey = "U";
+    /** Its rows under the state, each only when it has something to say: PARTY (none for a craft nobody defended). */
+    boolean partyRow;
+    /** SALV: until a part is marked, how many are worth taking and what a station pays; then how many are marked and off. */
+    boolean salvRow, anyMarked;
+    String worth = "", worthCr = "", marked = "", off = "";
+    /** CARGO, when it has any aboard: the lots, and how many are coming across. */
+    boolean cargoRow;
+    String lots = "", coming = "";
+    /** HELD: the prisoners held aboard it, and the berths free for them, since only as many come across. */
     boolean prisoners;
+    String held = "", berths = "";
     /** Why no boarding party can go now, and the refusal it was cut from. */
     String refusal = "";
     private String refusalOf = "";
@@ -54,8 +67,7 @@ final class Panels {
         name = Fmt.name(st.name.isEmpty() ? d.ctx.stationName : st.name, 18);
         port = d.docking.present && d.docking.ports > 1 ? "PORT " + (d.docking.port + 1) : "";
         owner = Fmt.cut(st.owner, 33);
-        standing = st.standingName.isEmpty() ? "" : Fmt.cut(st.standingName, 12);
-        standingValue = Float.isNaN(st.standing) ? "" : (st.standing > 0 ? "+" : "") + Math.round(st.standing);
+        standing = standing(st.standing);
         lines = 0;
         if (st.market) line(key(d, "TRADE", "T"), "MARKET");
         if (st.yard) line(key(d, "YARD", "Y"), "YARD");
@@ -63,9 +75,27 @@ final class Panels {
         // Shipyard and hire have no keys of their own: they are tabs in the terminal
         if (st.shipyard) line("", "SHIPYARD: SHIPS FOR SALE");
         if (st.hiring) line("", "HIRE: CREW LOOKING FOR A BERTH");
-        if (st.infirmary) line("", "INFIRMARY: TREATS THE WOUNDED");
+        String sick = infirmary(st);
+        if (!sick.isEmpty()) line("", sick);
         if (!st.refusal.isEmpty()) line("", Rows.words(st.refusal, 33));
         undockKey = key(d, "UNDOCK", "U") + "  UNDOCK";
+    }
+
+    /** The game's number, signed as the game signs it ("+0", "-12"): it names no levels. */
+    static String standing(float value) {
+        return Float.isNaN(value) ? "" : String.format(Locale.ROOT, "%+d", Math.round(value));
+    }
+
+    /**
+     * The infirmary's line, only while it has one of the crew to treat ("INFIRMARY: TREATING ADA") or
+     * has billed for one since docking ("INFIRMARY: 1 TREATED · 150 CR"); else none.
+     */
+    static String infirmary(StationInfo st) {
+        if (!st.infirmary) return "";
+        if (st.treating.size == 1) return Fmt.cut("INFIRMARY: TREATING " + st.treating.first().toUpperCase(Locale.ROOT), 33);
+        if (st.treating.size > 1) return "INFIRMARY: TREATING " + st.treating.size;
+        if (st.treated > 0) return Fmt.cut("INFIRMARY: " + st.treated + " TREATED · " + Cautions.group(st.treatedCost) + " CR", 33);
+        return "";
     }
 
     private void line(String k, String w) {
@@ -78,7 +108,8 @@ final class Panels {
     private void boarding(HudData d, Situations s, BoardingBoard b) {
         latched = s.latched;
         craft = Fmt.name(b.craftName, 16);
-        state = Fmt.cut(b.state.isEmpty() ? (b.taken ? "TAKEN" : "") : b.state, 25);
+        state = Fmt.cut(stateWords(b), 25);
+        partyRow = !b.undefended;
         party = Integer.toString(Math.min(9, b.aboard));
         partyState = b.aboard <= 0 ? "" : b.taken ? "HOLDING" : b.defenders > 0 ? "FIGHTING" : "SEARCHING";
         // Why no party can go, in whole words on the last row, while it has no prisoners to name
@@ -87,19 +118,38 @@ final class Panels {
             refusalOf = why;
             refusal = Rows.words(why, 33);
         }
-        int m = 0, o = 0;
+        int m = 0, o = 0, n = 0;
+        double cr = 0;
         for (Part p : b.parts) {
             if (p.marked) m++;
             if (p.off) o++;
+            if (!p.off) {
+                n++;
+                cr += p.value;
+            }
         }
-        marked = b.parts.size > 0 ? Integer.toString(Math.min(9, m)) : "";
-        off = b.parts.size > 0 ? Integer.toString(Math.min(9, o)) : "";
-        int coming = 0;
-        for (Cargo c : b.cargo) if (c.onOrder > 0) coming++;
-        lots = Integer.toString(Math.min(9, coming));
+        salvRow = b.parts.size > 0;
+        anyMarked = m > 0;
+        worth = Integer.toString(Math.min(99, n));
+        worthCr = Cautions.group(cr) + " CR";
+        marked = Integer.toString(Math.min(9, m));
+        off = Integer.toString(Math.min(9, o));
+        int across = 0;
+        for (Cargo c : b.cargo) if (c.onOrder > 0) across++;
+        cargoRow = b.cargo.size > 0;
+        lots = Integer.toString(Math.min(9, b.cargo.size));
+        coming = Integer.toString(Math.min(9, across));
         prisoners = b.prisoners > 0;
+        held = Integer.toString(Math.min(9, b.prisoners));
+        berths = Integer.toString(Math.min(9, b.berthsFree));
         boardKey = key(d, "BOARD", "K") + "  BOARDING";
         castOffKey = key(d, "UNDOCK", "U") + "  CAST OFF";
+    }
+
+    /** Its state on its own row: how it was taken, else the game's words ("Disabled: reactor down", "being boarded"). */
+    static String stateWords(BoardingBoard b) {
+        if (b.taken) return b.undefended ? "TAKEN: UNDEFENDED" : b.prisoners > 0 ? "TAKEN: CREW SURRENDERED" : "TAKEN";
+        return b.state.toUpperCase(Locale.ROOT);
     }
 
     private static String key(HudData d, String action, String fallback) {
@@ -128,9 +178,9 @@ final class Panels {
         f.dm(x + 6f, Geo.dmTop(Geo.base(ry)), owner, f.o().pitch(Geo.P).cells(33).dim());
         ry += Geo.ROW;
         b = Geo.base(ry);
+        // Dot matrix, not digits: the seven-segment ROM has no plus sign
         float cx = Rows.lab(f, x + 6f, b, "STANDING");
-        cx = Rows.txt(f, cx, b, standing, 12);
-        Kit.fits(f.seg7(cx, b - 12f, 12f, standingValue, f.o().cells(4).right().norm()) + cx, x + Geo.CW - 4f, "X1 standing");
+        Kit.fits(Rows.txt(f, cx, b, standing, 5) - 6f, x + Geo.CW - 4f, "X1 standing");
         ry += Geo.ROW + 4f;
         for (int i = 0; i < lines; i++) {
             b = Geo.base(ry);
@@ -157,27 +207,51 @@ final class Panels {
         Kit.fits(Kit.states(f, vx + 16 * Geo.CELL + 6f, b, BY, lit2, 13f, 6f) - 6f, x + Geo.CW - 4f, "X2 board");
         ry += Geo.ROW;
         f.dm(vx, Geo.dmTop(Geo.base(ry)), state, f.o().pitch(Geo.P).cells(25).norm());
-        ry += Geo.ROW;
-        b = Geo.base(ry);
-        f.legend(x + 6f, b, "PARTY", f.o().dim());
-        float cx = Rows.num(f, vx, b, party, 1);
-        cx = Rows.lab(f, cx, b, "ABOARD") + 4f;
-        f.dm(cx, Geo.dmTop(b), partyState, f.o().pitch(Geo.P).cells(8).norm());
-        ry += Geo.ROW;
-        b = Geo.base(ry);
-        f.legend(x + 6f, b, "SALV", f.o().dim());
-        cx = Rows.num(f, vx, b, marked, 1);
-        cx = Rows.lab(f, cx, b, "PARTS MARKED") + 6f;
-        cx = Rows.num(f, cx, b, off, 1);
-        Rows.lab(f, cx, b, "OFF");
-        ry += Geo.ROW;
-        b = Geo.base(ry);
-        f.legend(x + 6f, b, "CARGO", f.o().dim());
-        cx = Rows.num(f, vx, b, lots, 1);
-        Rows.lab(f, cx, b, "LOTS COMING ACROSS");
-        ry += Geo.ROW;
-        if (prisoners) f.dm(vx, Geo.dmTop(Geo.base(ry)), "PRISONERS TO BRING ABOARD", f.o().pitch(Geo.P).cells(25).norm());
-        else f.dm(x + 6f, Geo.dmTop(Geo.base(ry)), refusal, f.o().pitch(Geo.P).cells(33).dim());
+        float last = y + 3f + 5 * Geo.ROW, cx;
+        // The rows that have something to say, in order, closing up
+        if (partyRow) {
+            ry += Geo.ROW;
+            b = Geo.base(ry);
+            f.legend(x + 6f, b, "PARTY", f.o().dim());
+            cx = Rows.num(f, vx, b, party, 1);
+            cx = Rows.lab(f, cx, b, "ABOARD") + 4f;
+            f.dm(cx, Geo.dmTop(b), partyState, f.o().pitch(Geo.P).cells(8).norm());
+        }
+        if (salvRow) {
+            ry += Geo.ROW;
+            b = Geo.base(ry);
+            f.legend(x + 6f, b, "SALV", f.o().dim());
+            if (anyMarked) {
+                cx = Rows.num(f, vx, b, marked, 1);
+                cx = Rows.lab(f, cx, b, "PARTS MARKED") + 6f;
+                cx = Rows.num(f, cx, b, off, 1);
+                Rows.lab(f, cx, b, "OFF");
+            } else {
+                cx = Rows.num(f, vx, b, worth, 2);
+                cx = Rows.lab(f, cx, b, "PARTS") + 6f;
+                Rows.txt(f, cx, b, worthCr, 12);
+            }
+        }
+        if (cargoRow && ry < last) {
+            ry += Geo.ROW;
+            b = Geo.base(ry);
+            f.legend(x + 6f, b, "CARGO", f.o().dim());
+            cx = Rows.num(f, vx, b, lots, 1);
+            cx = Rows.lab(f, cx, b, "LOTS") + 6f;
+            cx = Rows.num(f, cx, b, coming, 1);
+            Rows.lab(f, cx, b, "COMING ACROSS");
+        }
+        if (prisoners && ry < last) {
+            ry += Geo.ROW;
+            b = Geo.base(ry);
+            f.legend(x + 6f, b, "HELD", f.o().dim());
+            cx = Rows.num(f, vx, b, held, 1);
+            cx = Rows.lab(f, cx, b, "·") + 2f;
+            cx = Rows.num(f, cx, b, berths, 1);
+            Rows.lab(f, cx, b, "BERTHS FREE");
+        } else if (!refusal.isEmpty()) {
+            f.dm(x + 6f, Geo.dmTop(Geo.base(last)), refusal, f.o().pitch(Geo.P).cells(33).dim());
+        }
         float ky = y + gh + 5f, kw = (Geo.CW - 6f) / 2f;
         f.key(x, ky, kw, 24f, boardKey, f.o());
         if (latched) f.key(x + kw + 6f, ky, kw, 24f, castOffKey, f.o());

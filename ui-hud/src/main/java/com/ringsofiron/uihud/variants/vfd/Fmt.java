@@ -149,6 +149,23 @@ public final class Fmt {
         return t;
     }
 
+    /**
+     * A gun's mount by where it sits, less the kind the game names it with (functional-context, version
+     * 19), since the weapon says what it is: "FWD PORT PD" is FWD PORT, "PORT PD 2" PORT 2. None for a
+     * mount the game could not place ("PD", "GUN 2"), which keeps its whole name.
+     */
+    public static String place(String mount) {
+        StringBuilder sb = new StringBuilder();
+        boolean placed = false;
+        for (String w : (mount == null ? "" : mount).toUpperCase(Locale.ROOT).split(" ")) {
+            if (w.isEmpty() || w.equals("PD") || w.equals("MSL") || w.equals("BEAM") || w.equals("GUN")) continue;
+            if (!w.chars().allMatch(Character::isDigit)) placed = true;
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(w);
+        }
+        return placed ? sb.toString() : "";
+    }
+
     private static boolean isNumber(String s) {
         for (int i = 0; i < s.length(); i++) if (!Character.isDigit(s.charAt(i))) return false;
         return !s.isEmpty();

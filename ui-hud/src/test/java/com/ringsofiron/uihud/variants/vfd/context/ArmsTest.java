@@ -14,7 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** F2's rows: whole mount names, and a launcher's missiles left in the column a gun's hit chance takes. */
+/**
+ * F2's rows: mounts by where they sit, whole or keeping their number; a launcher's missiles left in the
+ * column a gun's hit chance takes; and point defense in hand at its own gun seat.
+ */
 class ArmsTest {
 
     @Test
@@ -38,18 +41,20 @@ class ArmsTest {
         Mount gun = d.weaponFrame.add();
         gun.name = "NOSE GUN";
         gun.weapon = "Heavy cannon";
-        gun.controller = Controller.CONSOLE;
+        gun.controller = Controller.PLAYER;
         gun.inArc = true;
         gun.hitChance = 0.62f;
         Mount pd = d.weaponFrame.add();
         pd.name = "FWD PORT PD";
         pd.weapon = "Autocannon MK1";
         pd.kind = Kind.POINT_DEFENSE;
+        pd.controller = Controller.AUTO;
+        pd.hitChance = 0.4f;
         Mount msl = d.weaponFrame.add();
         msl.name = "AFT PORT MSL";
         msl.weapon = "Harpoon launcher";
         msl.kind = Kind.LAUNCHER;
-        msl.controller = Controller.CONSOLE;
+        msl.controller = Controller.PLAYER;
         msl.state = State.RELOADING;
         msl.cooldown = 10.5f;
         msl.ammo = 3;
@@ -62,17 +67,56 @@ class ArmsTest {
         assertTrue(arms.rack);
         assertEquals(3, arms.rows);
 
-        assertEquals("NOSE GUN", arms.name[0]);
+        assertEquals("NOSE", arms.name[0], "by where it sits: the weapon says what it is");
         assertEquals("62", arms.hit[0]);
         assertFalse(arms.left[0]);
-        assertEquals("FWD PORT PD", arms.name[1]);
-        assertEquals("", arms.hit[1]);
+        assertTrue(arms.inHand[0]);
+        assertEquals("YOU", arms.by[0]);
+        assertEquals("FWD PORT", arms.name[1]);
+        assertEquals("", arms.hit[1], "point defense left to itself has no hit chance on the Lock");
         assertFalse(arms.left[1]);
-        assertEquals("AFT PORT MSL", arms.name[2]);
+        assertFalse(arms.inHand[1], "at the console point defense keeps hunting missiles");
+        assertEquals("PD", arms.by[1]);
+        assertEquals("AFT PORT", arms.name[2]);
         assertEquals("RELOAD 10.5 S", arms.state[2]);
         assertTrue(arms.state[2].length() <= Arms.STATE);
         assertTrue(arms.left[2]);
         assertEquals("3", arms.hit[2]);
         assertEquals("", arms.word[2]);
+    }
+
+    @Test
+    void atItsOwnGunPointDefenseIsInHandAGunLikeAnyOther() {
+        HudData d = new HudData();
+        Entity ship = new Entity();
+        ship.add(new TransformComponent());
+        d.ctx.ship = ship;
+        d.ctx.presence = Presence.GUN;
+        d.targetStatus.present = true;
+        Mount nose = d.weaponFrame.add();
+        nose.name = "NOSE GUN";
+        nose.weapon = "Heavy Cannon";
+        nose.controller = Controller.CREW;
+        Mount pd = d.weaponFrame.add();
+        pd.name = "FWD PORT PD";
+        pd.weapon = "Autocannon Mk1";
+        pd.kind = Kind.POINT_DEFENSE;
+        pd.controller = Controller.PLAYER;
+        pd.inArc = true;
+        pd.hitChance = 0.4f;
+        pd.engaging = true;
+
+        Situations s = new Situations();
+        s.update(d, false, false, false, 0.016f);
+        assertEquals(Situations.Seat.GUN, s.seat);
+        Arms arms = new Arms();
+        arms.update(d, s);
+        assertEquals(1, arms.rows, "the rack shrinks to the gun in hand");
+        assertEquals("FWD PORT", arms.name[0]);
+        assertTrue(arms.inHand[0]);
+        assertEquals("YOU", arms.by[0]);
+        assertEquals("READY", arms.state[0], "it hunts no missile while in hand");
+        assertEquals("40", arms.hit[0]);
+        assertEquals("GUN (FWD PORT)", TopRack.seat(d, s));
     }
 }

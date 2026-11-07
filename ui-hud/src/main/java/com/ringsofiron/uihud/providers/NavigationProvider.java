@@ -33,6 +33,13 @@ public interface NavigationProvider {
         public String refusal = "";
         /** What it offers: a market, a yard (repairs and refits), ships for sale, contracts, crew for hire, an infirmary. */
         public boolean market, yard, shipyard, contracts, hiring, infirmary;
+        /**
+         * The infirmary, where the ship is docked: the crew it is treating now, by name, and how many it
+         * has treated since the ship docked and what it billed for them, credits.
+         */
+        public final com.badlogic.gdx.utils.Array<String> treating = new com.badlogic.gdx.utils.Array<>();
+        public int treated;
+        public double treatedCost;
 
         public void clear() {
             present = false;
@@ -44,6 +51,9 @@ public interface NavigationProvider {
             standingName = "";
             refusal = "";
             market = yard = shipyard = contracts = hiring = infirmary = false;
+            treating.clear();
+            treated = 0;
+            treatedCost = 0;
         }
     }
 

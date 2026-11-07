@@ -28,6 +28,8 @@ final class StationServices {
     /** A station type's name ("Ice Mine") by its id, or null; none by default. */
     private final java.util.function.Function<String, String> typeNames;
     private final java.util.Map<String, String> typeNameCache = new java.util.HashMap<>();
+    /** The infirmary's record of the docking; none by default. */
+    private StationInfirmary infirmary;
 
     StationServices(MacroSimulation macroSim, RailsUniverse universe, FactionStanding standing, DockingSystem docking, Shipyard shipyard) {
         this(macroSim, universe, standing, docking, shipyard, id -> null);
@@ -57,6 +59,12 @@ final class StationServices {
         };
     }
 
+    /** With {@code infirmary}, whose record of the docking the docked station's info carries. */
+    StationServices infirmary(StationInfirmary infirmary) {
+        this.infirmary = infirmary;
+        return this;
+    }
+
     /** {@code station} as the player's {@code ship} would find it, into {@code out}. */
     void fill(StationInfo out, Entity station, Entity ship) {
         out.present = true;
@@ -81,6 +89,14 @@ final class StationServices {
         out.hiring = open && trades;
         out.yard = open;
         out.infirmary = open;
+        out.treating.clear();
+        out.treated = 0;
+        out.treatedCost = 0;
+        if (open && infirmary != null && infirmary.recordAt() == station) {
+            out.treating.addAll(infirmary.treating());
+            out.treated = infirmary.treated();
+            out.treatedCost = infirmary.billed();
+        }
         out.shipyard = open && shipyard.sellsShips(station);
     }
 

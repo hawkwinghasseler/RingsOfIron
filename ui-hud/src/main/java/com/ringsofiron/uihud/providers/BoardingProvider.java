@@ -76,6 +76,10 @@ public interface BoardingProvider {
         public boolean disabled;
         /** Our boarding party aboard it, its crew still standing, and the prisoners held once it is taken. */
         public int aboard, defenders, prisoners;
+        /** Taken with no one aboard to fight for it, rather than from its crew. */
+        public boolean undefended;
+        /** Berths free aboard the player's ship: only as many of its prisoners come across. */
+        public int berthsFree;
         /** Why it can't be stripped yet, while it can't. */
         public String salvageRefusal = "";
         public final Array<Part> parts = new Array<>();
@@ -96,8 +100,8 @@ public interface BoardingProvider {
         public void clear() {
             craftName = state = boardRefusal = stormRefusal = salvageRefusal = "";
             craft = null;
-            boarding = salvage = byEva = taken = disabled = false;
-            aboard = defenders = prisoners = 0;
+            boarding = salvage = byEva = taken = disabled = undefended = false;
+            aboard = defenders = prisoners = berthsFree = 0;
             parts.clear();
             cargo.clear();
         }
