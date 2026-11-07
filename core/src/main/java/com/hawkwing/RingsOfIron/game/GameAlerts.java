@@ -10,9 +10,11 @@ import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.StabiliseTask;
 import com.ringsofiron.aicrew.TreatTask;
 import com.ringsofiron.aicrew.Wound;
+import com.ringsofiron.aicrew.btree.CrewTasks;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.RoomNames;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.CrewTask;
 import com.ringsofiron.interiorgrid.crew.RepairTask;
@@ -26,6 +28,7 @@ import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.AlertRegistry.TimerKind;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.data.MessageFeed;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.minimap.ShipAlerts;
 import com.ringsofiron.uihud.minimap.TileShade;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
@@ -52,7 +55,9 @@ import java.util.Locale;
  *
  * <p>Each alert crew can work says how many are on it ({@link AlertRegistry.Alert#handling}), from
  * the tasks claimed on the ship's task board: putting out a fire in the room, sealing its breaches,
- * repairing or resetting the system, treating the casualty, repairing the hull.
+ * repairing or resetting the system, treating the casualty, repairing the hull. It names one of them
+ * ({@link AlertRegistry.Alert#who}): one at the work before one on the way, then the soonest done,
+ * with the seconds of work they have left at their pace where the work has a set time.
  */
 public class GameAlerts {
     /** Suit air below this share of full is a caution, below {@link #SUIT_WARNING} a warning. */
@@ -61,6 +66,11 @@ public class GameAlerts {
     static final float HULL_WARNING = 0.4f;
     /** Oxygen tanks below this share are a caution. */
     static final float OXYGEN_CAUTION = 0.2f;
+    /**
+     * The alerts here that carry a warning notice ({@link NoticeLog.Notice#alert}), by the id they
+     * are raised under: the salvo's notice, low propellant's and the ship disabled's.
+     */
+    public static final String MISSILE = NoticeAlerts.MISSILE, PROPELLANT = NoticeAlerts.PROPELLANT, DISABLED = NoticeAlerts.DISABLED;
 
     private final GameContext ctx;
     private final FlightWarnings warnings;
@@ -74,6 +84,8 @@ public class GameAlerts {
     /** This frame's claimed tasks on the ship's board, and the crew counted so far by {@link #working}. */
     private final Array<CrewTask> claimed = new Array<>();
     private final Array<Entity> counted = new Array<>();
+    /** The task each of {@link #counted} was counted for, by index; null for a medic treating without one. */
+    private final Array<CrewTask> countedTasks = new Array<>();
     /** A system's repairers work from beside its footprint: within this many tiles of its origin. */
     static final int REPAIR_REACH = 3;
 
@@ -109,13 +121,13 @@ public class GameAlerts {
         if (warnings.propellantLow()) {
             ShipStatus s = data.shipStatus;
             double home = warnings.homePropellantKg();
-            alerts.raise("propellant", Double.isFinite(home) && s.propellantKg < home ? Level.WARNING : Level.CAUTION, Category.FLIGHT)
+            alerts.raise(PROPELLANT, Double.isFinite(home) && s.propellantKg < home ? Level.WARNING : Level.CAUTION, Category.FLIGHT)
                     .set("FUEL", String.format(Locale.ROOT, "Propellant low: %,.0f kg left", s.propellantKg)
                             + (Double.isFinite(home) ? String.format(Locale.ROOT, ", %,.0f kg takes you home", home) : ""));
         }
 
         DisabledComponent.Reason disabled = ShipDisablement.reason(ship);
-        if (disabled != null) alerts.raise("disabled", Level.WARNING, Category.SHIP).set("DISABLED", "Ship disabled: " + disabled.label);
+        if (disabled != null) alerts.raise(DISABLED, Level.WARNING, Category.SHIP).set("DISABLED", "Ship disabled: " + disabled.label);
         if (AbandonShip.abandoning(ship)) alerts.raise("abandon", Level.WARNING, Category.SHIP).set("ABANDON", "Abandon ship: crew to the pods");
 
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
@@ -155,7 +167,7 @@ public class GameAlerts {
         int n = frame.incoming();
         if (n == 0) return;
         float soonest = frame.soonestImpact();
-        alerts.raise("missile", Level.WARNING, Category.TACTICAL)
+        alerts.raise(MISSILE, Level.WARNING, Category.TACTICAL)
                 .set("MISSILE", n == 1 ? "Missile inbound" : n + " missiles inbound")
                 .count(n)
                 .timer(soonest, Float.isNaN(soonest) ? TimerKind.NONE : TimerKind.HARM);
@@ -183,24 +195,24 @@ public class GameAlerts {
                 }
             }
             if (burning > 0) {
-                alerts.raise("fire:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("FIRE", "Fire in " + name)
-                        .room(name).tile(fx, fy).count(burning).handling(working(grid, c, CrewTask.Kind.EXTINGUISH, null));
+                working(grid, c, CrewTask.Kind.EXTINGUISH, null);
+                onIt(alerts.raise("fire:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("FIRE", "Fire in " + name)
+                        .room(name).tile(fx, fy).count(burning));
             }
-            int sealing = working(grid, c, CrewTask.Kind.SEAL_BREACH, CrewTask.Kind.PATCH_LEAK);
+            // The breach and the room's air share the crew sealing it
+            working(grid, c, CrewTask.Kind.SEAL_BREACH, CrewTask.Kind.PATCH_LEAK);
             if (breaches > 0) {
-                alerts.raise("breach:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("BREACH", "Hull breach in " + name)
-                        .room(name).tile(bx, by).count(breaches).handling(sealing);
+                onIt(alerts.raise("breach:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("BREACH", "Hull breach in " + name)
+                        .room(name).tile(bx, by).count(breaches));
             }
             // An airlock pumped down for a spacewalk is empty on purpose
             if (name.startsWith("AIRLOCK")) continue;
             float p = c.pressureRatio();
             if (p < ShipAlerts.VACUUM_PRESSURE) {
-                alerts.raise("air:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("VACUUM", name + " is in vacuum").room(name)
-                        .handling(sealing);
+                onIt(alerts.raise("air:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("VACUUM", name + " is in vacuum").room(name));
             } else if (p < ShipAlerts.LOW_PRESSURE) {
-                alerts.raise("air:" + name, Level.CAUTION, Category.LIFE_SUPPORT)
-                        .set("PRESSURE", String.format(Locale.ROOT, "%s at %.0f%% pressure", name, p * 100f)).room(name)
-                        .handling(sealing);
+                onIt(alerts.raise("air:" + name, Level.CAUTION, Category.LIFE_SUPPORT)
+                        .set("PRESSURE", String.format(Locale.ROOT, "%s at %.0f%% pressure", name, p * 100f)).room(name));
             }
             if (c.smokeDensity() > TileShade.THICK_SMOKE * 0.3f) {
                 alerts.raise("smoke:" + name, Level.CAUTION, Category.LIFE_SUPPORT).set("SMOKE", "Smoke in " + name).room(name);
@@ -211,8 +223,9 @@ public class GameAlerts {
     private void hull(ShipGridComponent grid, AlertRegistry alerts) {
         float hull = scan.scan(grid).hullIntegrity;
         if (hull < ShipAlerts.HULL_DAMAGED) {
-            alerts.raise("hull", hull < HULL_WARNING ? Level.WARNING : Level.CAUTION, Category.ENGINEERING)
-                    .set("HULL", String.format(Locale.ROOT, "Hull at %.0f%%", hull * 100f)).handling(hullCrew());
+            hullCrew();
+            onIt(alerts.raise("hull", hull < HULL_WARNING ? Level.WARNING : Level.CAUTION, Category.ENGINEERING)
+                    .set("HULL", String.format(Locale.ROOT, "Hull at %.0f%%", hull * 100f)));
         }
     }
 
@@ -237,7 +250,10 @@ public class GameAlerts {
             // Crew repair what is wrecked and reset what is shorted; a stun wears off and power comes from elsewhere
             boolean crewWork = r.fault == PowerStatusProvider.Fault.DESTROYED || r.fault == PowerStatusProvider.Fault.DISABLED
                     || r.fault == PowerStatusProvider.Fault.SHORTED;
-            if (crewWork) a.handling(repairing(r.tileX, r.tileY));
+            if (crewWork) {
+                repairing(r.tileX, r.tileY);
+                onIt(a);
+            }
         }
     }
 
@@ -267,12 +283,16 @@ public class GameAlerts {
             if (e.getComponent(PlayerAvatarComponent.class) != null) {
                 // The captain's own wound: a medic on it, or nobody
                 AlertRegistry.Alert bleeding = alerts.get("captain:bleeding");
-                if (bleeding != null && c != null) bleeding.handling(treating(e, c));
+                if (bleeding != null && c != null) {
+                    treating(e, c);
+                    onIt(bleeding);
+                }
                 continue;
             }
             if (c == null || c.wound != Wound.CRITICAL || c.stabilised) continue;
-            alerts.raise("casualty:" + c.name, Level.WARNING, Category.CREW).set("CASUALTY", c.name + " is bleeding out")
-                    .timer(c.bleedOut, TimerKind.HARM).handling(treating(e, c));
+            treating(e, c);
+            onIt(alerts.raise("casualty:" + c.name, Level.WARNING, Category.CREW).set("CASUALTY", c.name + " is bleeding out")
+                    .timer(c.bleedOut, TimerKind.HARM));
         }
     }
 
@@ -287,53 +307,120 @@ public class GameAlerts {
     }
 
     /** Crew working a task of kind {@code a} or {@code b} (null for one kind) on a tile of {@code room}: one each. */
-    private int working(ShipGridComponent grid, Compartment room, CrewTask.Kind a, CrewTask.Kind b) {
-        counted.clear();
+    private void working(ShipGridComponent grid, Compartment room, CrewTask.Kind a, CrewTask.Kind b) {
+        startCount();
         for (CrewTask t : claimed) {
             if (t.kind != a && t.kind != b) continue;
             if (t.x < 0 || t.y < 0 || t.x >= grid.width || t.y >= grid.height) continue;
-            if (room.tiles.contains(t.y * grid.width + t.x)) count(t.claimedBy);
+            if (room.tiles.contains(t.y * grid.width + t.x)) count(t.claimedBy, t);
         }
-        return counted.size;
     }
 
     /** Crew repairing or resetting the system whose mount starts at {@code x, y}. */
-    private int repairing(int x, int y) {
-        counted.clear();
-        if (x < 0 || y < 0) return 0;
+    private void repairing(int x, int y) {
+        startCount();
+        if (x < 0 || y < 0) return;
         for (CrewTask t : claimed) {
             if (t.kind != CrewTask.Kind.REPAIR && t.kind != CrewTask.Kind.RESET_SHORT) continue;
-            if (Math.abs(t.x - x) <= REPAIR_REACH && Math.abs(t.y - y) <= REPAIR_REACH) count(t.claimedBy);
+            if (Math.abs(t.x - x) <= REPAIR_REACH && Math.abs(t.y - y) <= REPAIR_REACH) count(t.claimedBy, t);
         }
-        return counted.size;
     }
 
     /** Crew mending the hull: framing wrecked tiles back up from inside or patching them from outside. */
-    private int hullCrew() {
-        counted.clear();
+    private void hullCrew() {
+        startCount();
         for (CrewTask t : claimed) {
             boolean hullWork = t.kind == CrewTask.Kind.PATCH_HULL || t.kind == CrewTask.Kind.REPAIR_RCS
                     || t instanceof RepairTask && ((RepairTask) t).subsystem == null;
-            if (hullWork) count(t.claimedBy);
+            if (hullWork) count(t.claimedBy, t);
         }
-        return counted.size;
     }
 
     /** Crew tending {@code patient}: the medic treating them, and whoever is stabilising or carrying them. */
-    private int treating(Entity patient, CrewMemberComponent c) {
-        counted.clear();
-        if (c.treatedBy != null) count(c.treatedBy);
+    private void treating(Entity patient, CrewMemberComponent c) {
+        startCount();
+        if (c.treatedBy != null) count(c.treatedBy, null);
         for (CrewTask t : claimed) {
             Entity of = t instanceof TreatTask ? ((TreatTask) t).patient
                     : t instanceof StabiliseTask ? ((StabiliseTask) t).patient
                     : t instanceof RescueTask ? ((RescueTask) t).casualty : null;
-            if (of == patient) count(t.claimedBy);
+            if (of == patient) count(t.claimedBy, t);
         }
-        return counted.size;
     }
 
-    private void count(Entity crewMember) {
-        if (!counted.contains(crewMember, true)) counted.add(crewMember);
+    private void startCount() {
+        counted.clear();
+        countedTasks.clear();
+    }
+
+    private void count(Entity crewMember, CrewTask t) {
+        if (counted.contains(crewMember, true)) return;
+        counted.add(crewMember);
+        countedTasks.add(t);
+    }
+
+    /**
+     * Says on {@code a} who of the crew just counted are on it: how many, and the one to name, one at
+     * the work before one on the way to it, then the soonest done.
+     */
+    private AlertRegistry.Alert onIt(AlertRegistry.Alert a) {
+        a.handling(counted.size);
+        CrewMemberComponent lead = null;
+        boolean leadAt = false;
+        float leadLeft = Float.NaN;
+        for (int i = 0; i < counted.size; i++) {
+            CrewMemberComponent c = counted.get(i).getComponent(CrewMemberComponent.class);
+            if (c == null) continue;
+            CrewTask t = countedTasks.get(i);
+            boolean at = atWork(c, t);
+            float left = workLeft(c, t, at);
+            boolean better;
+            if (lead == null) better = true;
+            else if (at != leadAt) better = at;
+            else better = !Float.isNaN(left) && (Float.isNaN(leadLeft) || left < leadLeft);
+            if (!better) continue;
+            lead = c;
+            leadAt = at;
+            leadLeft = left;
+        }
+        if (lead != null) a.crew(lead.name, leadAt, leadLeft);
+        return a;
+    }
+
+    /**
+     * Whether {@code c} is at {@code t} now, working it as their activity says, rather than on the way
+     * ("going to ..."); a medic treating with no task is at the patient.
+     */
+    static boolean atWork(CrewMemberComponent c, CrewTask t) {
+        if (t == null) return true;
+        return c.task == t && CrewTasks.describe(t).equals(c.activity);
+    }
+
+    /**
+     * Seconds of work {@code c} has left on {@code t} at their pace (a light wound and a suit slow it):
+     * what is left once at it, where the game shows the share done, and the whole job while on the
+     * way. NaN for work with no set time (a fire, a patient) or when the game can't say.
+     */
+    static float workLeft(CrewMemberComponent c, CrewTask t, boolean at) {
+        if (t == null || c.def == null) return Float.NaN;
+        float pace = Math.max(0.05f, c.workPace());
+        float time;
+        switch (t.kind) {
+            case RESET_SHORT: time = c.def.resetTime; break;
+            case SEAL_BREACH: time = c.def.sealTime; break;
+            case PATCH_LEAK: time = c.def.patchTime; break;
+            case ISOLATE_TANK: time = c.def.isolateTime; break;
+            case REPAIR: {
+                // A repair runs at a rate on the system's health, which is its progress either way
+                Entity of = t instanceof RepairTask ? ((RepairTask) t).subsystem : null;
+                SubsystemComponent s = of == null ? null : of.getComponent(SubsystemComponent.class);
+                if (s == null || c.def.repairRate <= 0f) return Float.NaN;
+                return Math.max(0f, 1f - s.health) / (c.def.repairRate * pace);
+            }
+            default: return Float.NaN;
+        }
+        if (!at) return time / pace;
+        return c.progress < 0f ? Float.NaN : (1f - c.progress) * time / pace;
     }
 
     private static void shield(ShieldStatus s, UiContext ctx, AlertRegistry alerts) {
@@ -362,12 +449,14 @@ public class GameAlerts {
         feed.clear();
         List<NoticeLog.Notice> showing = ctx.notices.showing();
         int kept = 0;
-        for (NoticeLog.Notice n : ctx.notices.history()) {
+        for (NoticeLog.Notice n : ctx.notices.log()) {
             if (kept++ >= MessageFeed.KEEP) break;
             MessageFeed.Message m = feed.add(n.text, n.kind == NoticeLog.Kind.WARNING ? Level.WARNING : Level.ADVISORY, n.time);
             m.important = n.kind == NoticeLog.Kind.IMPORTANT;
             m.count = n.count;
             m.secondsLeft = showing.contains(n) ? n.secondsLeft() : 0f;
+            m.alert = n.alert;
+            m.minor = n.minor;
         }
     }
 }

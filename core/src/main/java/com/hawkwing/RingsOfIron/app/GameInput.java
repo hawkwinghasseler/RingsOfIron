@@ -43,6 +43,7 @@ import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 
 import java.util.Locale;
 
@@ -176,7 +177,8 @@ public final class GameInput {
             walker.moveY = 0f;
         }
         NoticeFeeds.collect(world);
-        if (consoleOpen || hud.isOpen(ClassicWindow.LOG)) return;
+        // A console's window holds the captain at it; a HUD's panel beside the console lets them walk off
+        if (hud.consoleHolds() || hud.isOpen(ClassicWindow.LOG)) return;
 
         if (session.deckView()) {
             if (walker == null) return;
@@ -309,7 +311,22 @@ public final class GameInput {
             else session.show("You leave the helm; nobody has it now");
             return;
         }
-        sitAt(null);
+        // The seat the open console or the prompt names: midway between the helm and a gun, V takes the one offered
+        sitAt(seatNamed(hud.consoleInReach()));
+    }
+
+    /** The seat a console's id names ("helm", "weapons", "turret_mount"), or null (the nearest seat) for any other. */
+    static SubsystemType seatNamed(String consoleId) {
+        switch (consoleId) {
+            case "helm":
+                return SubsystemType.HELM;
+            case "weapons":
+                return SubsystemType.WEAPONS;
+            case "turret_mount":
+                return SubsystemType.TURRET_MOUNT;
+            default:
+                return null;
+        }
     }
 
     /** Sits at the console of {@code type} beside the avatar (null: the nearest) and looks outside. */
@@ -423,7 +440,7 @@ public final class GameInput {
         if (towAsked <= 0f) {
             towAsked = ABANDON_CONFIRM;
             session.show(String.format(Locale.ROOT, "Call the sponsor's tug? %s again: %,.0f cr and %.0f standing, and days pass",
-                    session.key(Action.CUT), world.beacon.fee(), DistressBeacon.STANDING_COST), NoticeLog.Kind.WARNING);
+                    session.key(Action.CUT), world.beacon.fee(), DistressBeacon.STANDING_COST), NoticeLog.Kind.WARNING, NoticeAlerts.ASKED);
             return;
         }
         towAsked = 0f;
@@ -442,7 +459,8 @@ public final class GameInput {
         }
         if (abandonAsked <= 0f) {
             abandonAsked = ABANDON_CONFIRM;
-            session.show("Abandon ship? " + session.key(Action.ABANDON) + " again to send the crew to the escape pods", NoticeLog.Kind.WARNING);
+            session.show("Abandon ship? " + session.key(Action.ABANDON) + " again to send the crew to the escape pods", NoticeLog.Kind.WARNING,
+                    NoticeAlerts.ASKED);
             return;
         }
         abandonAsked = 0f;

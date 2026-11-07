@@ -214,7 +214,9 @@ public class FurnishingStore extends EntitySystem {
         ShipGridComponent grid = player == null ? null : player.getComponent(ShipGridComponent.class);
         if (grid != null) {
             for (Furnishing f : grid.burntFurnishings) {
-                ctx.notices.post(capitalized(f.type.the()) + " burned", NoticeLog.Kind.WARNING);
+                // News of a loss, nothing to decide (the Task spec's 9.2: info)
+                NoticeLog.Notice n = ctx.notices.post(capitalized(f.type.the()) + " burned", NoticeLog.Kind.WARNING);
+                if (n != null) n.minor = true;
             }
             grid.burntFurnishings.clear();
         }

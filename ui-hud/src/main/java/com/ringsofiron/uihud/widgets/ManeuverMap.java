@@ -215,6 +215,21 @@ public class ManeuverMap extends Table {
         pickListener = listener;
     }
 
+    /**
+     * Makes the contact with {@code id} the navigation target, as a click on it does: for a HUD
+     * variant's list of the traffic. Nothing when the game takes no picks or the id is empty.
+     */
+    public void pick(String id) {
+        if (pickListener == null || id == null || id.isEmpty()) return;
+        pickListener.accept(id);
+        refresh();
+    }
+
+    /** Whether a contact can be made the navigation target ({@link #pick}): the game takes picks. */
+    public boolean takesPicks() {
+        return pickListener != null;
+    }
+
     /** Whether the traffic is drawn: there is some, around the body the orbits are drawn around. */
     boolean showsTraffic() {
         return traffic.matches(map.getPath().bodyName);

@@ -282,8 +282,9 @@ public class GameWorld implements Disposable {
         SaveTypes.register(engine.getSerializationService());
         players = engine.getEcsEngine().getEntitiesFor(PLAYER);
         notices = new NoticeLog(engine::getSimSeconds);
-        // The old game's notices are not this one's (the log is not saved)
-        addResettable(notices::clear);
+        // The log is saved with the game; a save without one doesn't keep the old game's
+        engine.getSerializationService().addParticipant(notices);
+        addResettable(notices);
         context = new GameContext(engine, this::getPlayer, this::getContent, notices, hints);
         warnings = new FlightWarnings(context);
         physics = new PhysicsManager();

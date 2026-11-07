@@ -68,6 +68,37 @@ class LifeSupportSystemTest {
     }
 
     @Test
+    void saysWhichRoomsItPutsAirIntoAndWhichVent() {
+        ShipGridComponent g = grid();
+        com.badlogic.gdx.utils.Array<SubsystemComponent> systems = new com.badlogic.gdx.utils.Array<>();
+        for (MountFootprint m : g.mounts) systems.add(m.installed.getComponent(SubsystemComponent.class));
+        com.badlogic.gdx.utils.Array<Compartment> fed = new com.badlogic.gdx.utils.Array<>(), venting = new com.badlogic.gdx.utils.Array<>();
+        // The door open: both rooms
+        LifeSupportSystem.reach(g, systems, fed, venting);
+        assertEquals(2, fed.size);
+        assertTrue(fed.contains(left(g), true) && fed.contains(right(g), true));
+        assertEquals(0, venting.size);
+        // Shut, the far room is out of reach
+        door(g).bulkheadSealed = true;
+        run(g, 1);
+        LifeSupportSystem.reach(g, systems, fed, venting);
+        assertEquals(1, fed.size);
+        assertSame(left(g), fed.first());
+        assertEquals(0, venting.size);
+        // Its own room holed, it gets nothing: it vents
+        g.getTile(0, 3).setIntegrity(0f);
+        run(g, 1);
+        LifeSupportSystem.reach(g, systems, fed, venting);
+        assertEquals(0, fed.size);
+        assertEquals(1, venting.size);
+        assertSame(left(g), venting.first());
+        // A unit that doesn't work feeds nothing
+        system(g, SubsystemComponent.SubsystemType.LIFE_SUPPORT).isOperational = false;
+        LifeSupportSystem.reach(g, systems, fed, venting);
+        assertEquals(0, fed.size + venting.size);
+    }
+
+    @Test
     void keepsOxygenNearTheStandardShareWhileRefilling() {
         ShipGridComponent g = grid();
         for (Compartment c : g.compartments) c.scaleContents(0.5);

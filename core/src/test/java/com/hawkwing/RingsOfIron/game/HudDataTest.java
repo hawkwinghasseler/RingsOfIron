@@ -7,19 +7,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
+import com.ringsofiron.aicrew.btree.CrewTasks;
 import com.ringsofiron.career.NewGame;
 import com.ringsofiron.combatsys.components.SensorComponent;
+import com.ringsofiron.combatsys.shields.EmitterSpec;
+import com.ringsofiron.combatsys.shields.ShieldCloudComponent;
+import com.ringsofiron.combatsys.shields.ShieldModel;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.interiorgrid.crew.ExtinguishTask;
+import com.ringsofiron.interiorgrid.crew.ResetShortTask;
 import com.ringsofiron.uihud.data.AlertRegistry;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.ContactProvider;
 import com.ringsofiron.uihud.providers.PowerStatusProvider;
+import com.ringsofiron.uihud.providers.ShieldStatusProvider;
 import com.ringsofiron.uihud.providers.UiContextProvider;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider;
 import java.nio.file.Path;
@@ -116,6 +123,42 @@ class HudDataTest {
     }
 
     @Test
+    void eachShieldEmitterSaysItsHeatAndWhenATrippedOneStartsAgain() {
+        // Two emitters on the player's hull, as the shield model keeps them: one warm, one tripped
+        ShieldCloudComponent cloud = new ShieldCloudComponent();
+        Entity warm = new Entity(), tripped = new Entity();
+        ShieldCloudComponent.Emitter a = new ShieldCloudComponent.Emitter(), b = new ShieldCloudComponent.Emitter();
+        a.spec = b.spec = EmitterSpec.S;
+        a.heat = EmitterSpec.S.heatTrip * 0.5f;
+        a.working = true;
+        b.heat = EmitterSpec.S.heatTrip * 0.8f;
+        b.tripped = true;
+        cloud.emitters.put(warm, a);
+        cloud.emitters.put(tripped, b);
+        game.player.add(cloud);
+        data.refresh();
+        ShieldStatusProvider.ShieldStatus st = data.shieldStatus;
+        assertTrue(st.present);
+        assertEquals(2, st.each.size);
+        assertEquals(1, st.emittersTripped);
+        for (ShieldStatusProvider.Emitter e : st.each) {
+            if (e.system == warm) {
+                assertEquals(0.5f, e.heat, 1e-4f);
+                assertTrue(e.working);
+                assertTrue(Float.isNaN(e.restartIn), "only a tripped one waits to start");
+            } else {
+                assertTrue(e.system == tripped);
+                assertTrue(e.tripped);
+                // It sheds heat at its radiators' rate until it is down to the restart share
+                float wait = (b.heat - ShieldModel.RESTART_AT * EmitterSpec.S.heatTrip) / EmitterSpec.S.cooling;
+                assertEquals(wait, e.restartIn, 1e-3f);
+                assertTrue(e.restartIn > 0f);
+            }
+        }
+        assertEquals(0.8f, st.hottest, 1e-4f);
+    }
+
+    @Test
     void aFireRaisesAWarningInItsRoomAndClearsWithIt() {
         data.refresh();
         assertEquals(0, data.alerts.size());
@@ -146,9 +189,33 @@ class HudDataTest {
         ShipTaskBoardComponent board = game.player.getComponent(ShipTaskBoardComponent.class);
         ExtinguishTask task = new ExtinguishTask(at[0], at[1]);
         assertTrue(board.post(task));
-        assertTrue(board.claim(task, hand()));
+        Entity hand = hand();
+        assertTrue(board.claim(task, hand));
         data.refresh();
-        assertEquals(1, alert("FIRE").handling, "one hand on the extinguisher");
+        AlertRegistry.Alert fire = alert("FIRE");
+        assertEquals(1, fire.handling, "one hand on the extinguisher");
+        // Named, on the way there, and a fire has no set time
+        assertEquals(hand.getComponent(CrewMemberComponent.class).name, fire.who);
+        assertFalse(fire.atWork);
+        assertTrue(Float.isNaN(fire.workLeft));
+    }
+
+    @Test
+    void aResetSaysItsWorkTimeOnTheWayAndWhatIsLeftOnceAtIt() {
+        CrewMemberComponent ada = new CrewMemberComponent("Ada", com.ringsofiron.aicrew.CrewRole.ENGINEER, 0);
+        ResetShortTask reset = new ResetShortTask(4, 2);
+        // Going to it: the work's own time at their pace, the walk not known
+        ada.activity = "going to " + CrewTasks.describe(reset);
+        assertFalse(GameAlerts.atWork(ada, reset));
+        assertEquals(ada.def.resetTime, GameAlerts.workLeft(ada, reset, false), 1e-4f);
+        // At it, 40% done: 60% of it left
+        ada.task = reset;
+        ada.activity = CrewTasks.describe(reset);
+        ada.progress = 0.4f;
+        assertTrue(GameAlerts.atWork(ada, reset));
+        assertEquals(0.6f * ada.def.resetTime, GameAlerts.workLeft(ada, reset, true), 1e-4f);
+        // A fire has no set time
+        assertTrue(Float.isNaN(GameAlerts.workLeft(ada, new ExtinguishTask(1, 1), false)));
     }
 
     @Test

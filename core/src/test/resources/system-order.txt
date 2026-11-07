@@ -84,6 +84,7 @@ BeamSystem
 
 [save participants]
 EntityIds
+NoticeLog
 OrbitalEventSystem
 MacroSaveParticipant
 InteriorGridSaveParticipant

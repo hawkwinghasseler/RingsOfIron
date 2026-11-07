@@ -12,6 +12,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.shipops.CollarWear;
 import com.ringsofiron.stationsdocking.DockingPort;
 import com.ringsofiron.stationsdocking.DockingPortsComponent;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.providers.CrewProvider;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -80,6 +81,8 @@ class JammedCollarsTest {
         assertEquals("the collar is jammed", world.docking.arm(game.player, index));
         run(2);
         assertTrue(said("Port " + (index + 1) + "'s docking collar is jammed: it won't arm till the crew free it on EVA"));
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith("Port " + (index + 1) + "'s docking collar is jammed")
+                && n.alert.equals(NoticeAlerts.COLLAR)), "COLLAR carries it (the Task spec's 9.2)");
         boolean out = false;
         for (int i = 0; i < 60 * 10 && port.jammed; i++) {
             run(60);

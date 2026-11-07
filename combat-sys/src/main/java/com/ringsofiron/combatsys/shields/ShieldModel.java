@@ -48,8 +48,8 @@ public final class ShieldModel {
     static final float BEAM_WEIGHT = 1e7f;
     /** Steel, for rounds whose data gives no caliber: a slug three calibers long. */
     static final float STEEL = 7_850f;
-    /** An emitter trips at its heat limit and comes back once it has shed half. */
-    static final float RESTART_AT = 0.5f;
+    /** An emitter trips at its heat limit and comes back once it has shed half: its heat's share of the limit then. */
+    public static final float RESTART_AT = 0.5f;
     /** How often the curve is refitted to the hull, seconds. */
     static final float REFIT_EVERY = 2f;
     /** Seconds (e-folding) for the resting layer to settle where the emitters want it. */

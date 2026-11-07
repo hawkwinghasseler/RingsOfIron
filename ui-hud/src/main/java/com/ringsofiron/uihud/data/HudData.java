@@ -1,7 +1,9 @@
 package com.ringsofiron.uihud.data;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.RoomNames;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -125,6 +127,12 @@ public final class HudData {
     public final AlertRegistry alerts = new AlertRegistry();
     /** What the game has told the player lately. */
     public final MessageFeed messages = new MessageFeed();
+    /**
+     * The record of the conditions the game raised, as they were raised and as they cleared, for a
+     * log among the notices: read from {@link #alerts} at the end of each {@link #refresh}, whatever
+     * the HUD shows, so a change of HUD keeps it, and saved with the game.
+     */
+    public final ConditionLog record = new ConditionLog();
     /** The last hit on the player's hull, for a schematic to flash ({@link #hullHit(int, int)}). */
     public final HullHit lastHullHit = new HullHit();
     /** The game's magnified insets this frame (picture-in-picture), set as it lays them, before the HUD updates. */
@@ -142,6 +150,22 @@ public final class HudData {
         public InteractableConsoleComponent data;
         /** The game's own actions at this console, in order ({@code UiHud#registerConsoleAction}). */
         public final Array<ConsoleAction> actions = new Array<>();
+        /**
+         * Tiles from the player's avatar to the console's tile, NaN while the avatar is not aboard its
+         * ship: for a panel that closes as the captain walks off. Kept by {@code UiHud} each frame.
+         */
+        public float reach = Float.NaN;
+        /** Where the console stands, world (bubble) meters, for a panel drawn beside it; NaN when its ship has no pose. */
+        public float worldX = Float.NaN, worldY = Float.NaN;
+        /**
+         * The corners of its ship's deck, world meters, in turn round it from the grid's first tile: for a
+         * panel that keeps off the ship. NaN when its ship has no pose.
+         */
+        public final float[] hullX = new float[4], hullY = new float[4];
+
+        {
+            unplaced();
+        }
 
         public boolean isOpen() {
             return console != null;
@@ -152,17 +176,59 @@ public final class HudData {
             this.data = data;
             this.actions.clear();
             if (actions != null) this.actions.addAll(actions);
+            reach = worldX = worldY = Float.NaN;
+            unplaced();
         }
 
         public void clear() {
             console = null;
             data = null;
             actions.clear();
+            reach = worldX = worldY = Float.NaN;
+            unplaced();
+        }
+
+        private void unplaced() {
+            java.util.Arrays.fill(hullX, Float.NaN);
+            java.util.Arrays.fill(hullY, Float.NaN);
+        }
+
+        /**
+         * Takes {@code reach}, and works out where the console stands from its ship's pose: the middle
+         * of its tile, turned and moved as the ship is; and the corners of the ship's deck likewise.
+         */
+        public void track(float reach) {
+            this.reach = reach;
+            Entity ship = data == null ? null : data.ship;
+            TransformComponent t = ship == null ? null : ship.getComponent(TransformComponent.class);
+            ShipGridComponent g = ship == null ? null : ship.getComponent(ShipGridComponent.class);
+            if (t == null || g == null) {
+                worldX = worldY = Float.NaN;
+                unplaced();
+                return;
+            }
+            double a = Math.toRadians(t.rotation);
+            float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
+            Vector2 local = g.tileToLocal(data.tileX, data.tileY);
+            worldX = t.x + cos * local.x - sin * local.y;
+            worldY = t.y + sin * local.x + cos * local.y;
+            Vector2 first = g.tileToLocal(0, 0), last = g.tileToLocal(g.width - 1, g.height - 1);
+            float half = g.tileSize / 2f, x0 = first.x - half, y0 = first.y - half, x1 = last.x + half, y1 = last.y + half;
+            for (int i = 0; i < 4; i++) {
+                float lx = i == 1 || i == 2 ? x1 : x0, ly = i >= 2 ? y1 : y0;
+                hullX[i] = t.x + cos * lx - sin * ly;
+                hullY[i] = t.y + sin * lx + cos * ly;
+            }
         }
     }
 
     /** An action the game offers at a console, as the classic window's button: what it says, its key, and what it does. */
     public static final class ConsoleAction {
+        /**
+         * The {@link #action} of the weapons console's hold-fire switch: run, it holds the gunners' fire, or
+         * lifts the hold. It has no key of its own.
+         */
+        public static final String HOLD_FIRE = "HOLD_FIRE";
         /** "Take fire control: every gun". */
         public final String label;
         /** The {@code Action} name of its key ("VIEW"), for {@link HudData#key}; "" for none. */
@@ -216,6 +282,8 @@ public final class HudData {
      * pressure suit", "for the Helm panel"), or "" with nothing in reach; and that key's name.
      */
     public String promptAction = "", promptKey = "E";
+    /** The id of the console that prompt is for ("helm", "reactor"), or "" when it is for none. */
+    public String promptConsole = "";
     /** The docked banner's text ("Docked at Highport   [T] Trade   [Y] Yard"), or "" when not docked. */
     public String dockHint = "";
 
@@ -234,7 +302,10 @@ public final class HudData {
         if (!Float.isNaN(lastHullHit.age)) lastHullHit.age += delta;
     }
 
-    /** Reads every provider into its snapshot. Called by {@code UiHud} once a frame while a variant is up. */
+    /**
+     * Reads every provider into its snapshot, then the {@link #record} the alerts the game raised from
+     * them. Called by {@code UiHud} once a frame while a variant is up.
+     */
     public void refresh() {
         ctx.clear();
         if (context != null) context.read(ctx);
@@ -273,6 +344,7 @@ public final class HudData {
         gameOver.clear();
         if (ending != null) ending.read(gameOver);
         if (afterRefresh != null) afterRefresh.run();
+        record.update(alerts, weaponFrame.mounts, ctx.simSeconds);
     }
 
     /** The name of the room at tile ({@code x}, {@code y}) of the player's ship, or "" ({@link RoomNames}). */

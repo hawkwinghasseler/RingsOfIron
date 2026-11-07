@@ -7,7 +7,7 @@ import com.badlogic.gdx.graphics.Color;
  * each drawn in its own coordinates, (0, 0) its top left, {@code w} by {@code h} units, as
  * {@link YardDrawable} asks. {@code focus} is the keyboard's focus, shown by the orange pointer tab.
  */
-final class YardShellParts {
+public final class YardShellParts {
     private YardShellParts() {}
 
     static final Color LIP_TOP = Yard.hex("F4EEDD"), LIP_FOOT = Yard.hex("B3A88E");
@@ -21,7 +21,7 @@ final class YardShellParts {
     static final Color DOOR_GROOVE = Yard.hex("6F6553");
 
     /** The orange pointer tab: its tip at ({@code x}, {@code cy}), pointing right at the control. */
-    static void focusTab(YardPaint p, float x, float cy) {
+    public static void focusTab(YardPaint p, float x, float cy) {
         p.fillConvex(new float[]{x - 10.5f, cy - 7.5f, x + 0.8f, cy, x - 10.5f, cy + 7.5f}, Yard.hex("7A3514"), 1f);
         p.fillConvex(new float[]{x - 9.5f, cy - 6.5f, x, cy, x - 9.5f, cy + 6.5f}, Yard.ORANGE, 1f);
     }
@@ -63,7 +63,7 @@ final class YardShellParts {
     }
 
     /** A recessed well in the faceplate, for a list. */
-    static void well(YardPaint p, float w, float h, boolean focus) {
+    public static void well(YardPaint p, float w, float h, boolean focus) {
         p.rrect(0f, 0f, w, h, 3f, WELL);
         p.rect(2f, 0f, w - 4f, 3f, Color.BLACK, 0.16f);
         p.rect(0f, 2f, 2f, h - 4f, Color.BLACK, 0.1f);
@@ -103,7 +103,7 @@ final class YardShellParts {
     }
 
     /** A bay of the maintenance panel: a plate let into the faceplate, a screw at each corner. */
-    static void bay(YardPaint p, float w, float h, boolean focus) {
+    public static void bay(YardPaint p, float w, float h, boolean focus) {
         p.rrect(0f, 0f, w, h, 3f, Yard.hex("A79C84"));
         p.shade(1.5f, 1.5f, w - 3f, h - 3f, 2.5f, Yard.hex("DDD3B9"), Yard.hex("CBC0A4"));
         p.rect(3f, 2f, w - 6f, 1f, Yard.ENAMEL_HI, 0.8f);
@@ -133,7 +133,7 @@ final class YardShellParts {
     }
 
     /** An engraved rule across the faceplate, or the painted red line before the quits. */
-    static void rule(YardPaint p, float w, float h, boolean red) {
+    public static void rule(YardPaint p, float w, float h, boolean red) {
         float y = h / 2f;
         if (red) {
             p.rect(-8f, y - 1.5f, w + 16f, 3f, Yard.RED);
@@ -166,7 +166,7 @@ final class YardShellParts {
     }
 
     /** A riveted plate: the answers at the foot of the caution tag. */
-    static void rivetedPlate(YardPaint p, float w, float h, boolean focus) {
+    public static void rivetedPlate(YardPaint p, float w, float h, boolean focus) {
         p.rrect(2f, 4f, w, h, 3f, Yard.SHADOW, 0.7f);
         p.shade(0f, 0f, w, h, 3f, Yard.hex("E6E4DE"), Yard.hex("A7A49C"));
         p.rect(3f, 1f, w - 6f, 1f, Color.WHITE, 0.6f);
@@ -183,7 +183,7 @@ final class YardShellParts {
     }
 
     /** A typed card under two clips. */
-    static void card(YardPaint p, float w, float h, boolean focus) {
+    public static void card(YardPaint p, float w, float h, boolean focus) {
         p.paper(0f, 0f, w, h);
         p.shade(16f, -4f, 18f, 9f, 1.5f, CAST_TOP, CAST_FOOT);
         p.shade(w - 34f, -4f, 18f, 9f, 1.5f, CAST_TOP, CAST_FOOT);
@@ -202,20 +202,20 @@ final class YardShellParts {
     }
 
     /** Dymo tape: black, a faint shine along its top. */
-    static void dymoTape(YardPaint p, float w, float h, boolean focus) {
+    public static void dymoTape(YardPaint p, float w, float h, boolean focus) {
         p.rrect(0f, 0f, w, h, 1.5f, Yard.hex("1C1B1A"));
         p.rect(0f, 0.6f, w, 1f, Color.WHITE, 0.12f);
         p.rect(0f, h - 2f, w, 2f, Color.BLACK, 0.35f);
     }
 
     /** A rubber stamp's frame in blue ink. */
-    static void stamp(YardPaint p, float w, float h, boolean focus) {
+    public static void stamp(YardPaint p, float w, float h, boolean focus) {
         p.rrect(0f, 0f, w, h, 3f, YardSkin.STAMP, 0.08f);
         p.frame(0f, 0f, w, h, 1.4f, YardSkin.STAMP, 0.8f);
     }
 
     /** A cream lens, lit: the PAUSED lamp. */
-    static void creamLens(YardPaint p, float w, float h, boolean focus) {
+    public static void creamLens(YardPaint p, float w, float h, boolean focus) {
         p.rrect(-2f, -2f, w + 4f, h + 4f, 2f, Yard.ALU);
         p.glowRect(0f, 0f, w, h, 7f, Yard.WHITE_LAMP.on, 0.4f);
         p.rrect(0f, 0f, w, h, 1.2f, Yard.hex("FFF6DC"));
@@ -223,7 +223,7 @@ final class YardShellParts {
     }
 
     /** A split flap's window, for a word that changes. */
-    static void flapWindow(YardPaint p, float w, float h, boolean focus) {
+    public static void flapWindow(YardPaint p, float w, float h, boolean focus) {
         p.rrect(0f, 0f, w, h, 1.5f, Yard.FLAP_FRAME);
         p.rect(2f, 2f, w - 4f, h - 4f, Yard.FLAP_CELL);
         p.rect(2f, 2f, w - 4f, (h - 4f) / 2f, Color.WHITE, 0.025f);
@@ -231,7 +231,7 @@ final class YardShellParts {
     }
 
     /** A drum counter's window, for an exact figure. */
-    static void drumWindow(YardPaint p, float w, float h, boolean focus) {
+    public static void drumWindow(YardPaint p, float w, float h, boolean focus) {
         p.rrect(-2f, -2f, w + 4f, h + 4f, 2.5f, Yard.BAKELITE);
         p.vgrad(0f, 0f, w, h / 2f, Yard.hex("050505"), Yard.hex("34302D"));
         p.vgrad(0f, h / 2f, w, h / 2f, Yard.hex("34302D"), Yard.hex("050505"));
@@ -244,7 +244,7 @@ final class YardShellParts {
      * A large momentary push button: an aluminium bezel, a dark gap and the cap with its lip. Pressed,
      * the cap sinks; barred (it can't be pressed now), the barber strip runs along its foot.
      */
-    static void push(YardPaint p, float w, float h, YardSkin.Cap cap, boolean down, boolean over, boolean barred, boolean focus) {
+    public static void push(YardPaint p, float w, float h, YardSkin.Cap cap, boolean down, boolean over, boolean barred, boolean focus) {
         p.rrect(0f, 0f, w, h, 4.5f, Yard.ALU);
         p.glass(0f, 0f, w, h);
         p.rrect(2.2f, 2.2f, w - 4.4f, h - 4.4f, 3f, GAP);
@@ -265,7 +265,7 @@ final class YardShellParts {
      * A push button under a red flip guard (style guide 9.7): shut, the order's name on the guard; lifted
      * ({@code open}), the cream cap under it and the lamp beside it lit, and the next press gives it.
      */
-    static void guarded(YardPaint p, float w, float h, boolean over, boolean open, boolean focus) {
+    public static void guarded(YardPaint p, float w, float h, boolean over, boolean open, boolean focus) {
         push(p, w, h, YardSkin.Cap.CREAM, false, over && open, false, false);
         float lx = -14f;
         p.lamp(lx, h / 2f, 4f, Yard.RED_LAMP, open);
@@ -282,7 +282,7 @@ final class YardShellParts {
     }
 
     /** Interlocked keys: one key, raised, or pressed in with its foot safety orange. */
-    static void pianoKey(YardPaint p, float w, float h, boolean down, boolean over, boolean focus) {
+    public static void pianoKey(YardPaint p, float w, float h, boolean down, boolean over, boolean focus) {
         p.rrect(0f, 0f, w, h, 2.5f, Yard.BAKELITE);
         float x = 3f, y = 3f + (down ? 2f : 0f), kw = w - 6f, kh = h - 8f;
         if (!down) p.rrect(x + 0.5f, y + 1.5f, kw, kh, 2f, Color.BLACK, 0.4f);
@@ -293,7 +293,7 @@ final class YardShellParts {
     }
 
     /** A keycap on the patch panel: rubber, a lighter top. */
-    static void keycap(YardPaint p, float w, float h, boolean over, boolean focus) {
+    public static void keycap(YardPaint p, float w, float h, boolean over, boolean focus) {
         p.rrect(0.5f, 1.5f, w, h, 2.5f, Color.BLACK, 0.35f);
         p.rrect(0f, 0f, w, h, 2.5f, Yard.RUBBER);
         p.rrect(1.2f, 0.8f, w - 2.4f, h - 4f, 2f, over ? Yard.hex("5A5550") : Yard.hex("4D4945"));
@@ -312,7 +312,7 @@ final class YardShellParts {
     // --- Switches and fields -----------------------------------------------------------------
 
     /** A bat toggle, up for on, with ON and OFF engraved beside it. */
-    static void bat(YardPaint p, float w, float h, boolean on) {
+    public static void bat(YardPaint p, float w, float h, boolean on) {
         float cx = 12f, cy = h / 2f;
         p.toggle(cx, cy, on, false, false);
         p.legend("ON", 27f, cy - 5f, on ? Yard.INK : YardSkin.INK_DIM);

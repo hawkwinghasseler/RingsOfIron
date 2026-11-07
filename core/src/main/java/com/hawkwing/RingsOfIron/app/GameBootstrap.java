@@ -9,6 +9,7 @@ import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.debug.DebugScenario;
 import com.hawkwing.RingsOfIron.render.FireArcOverlay;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
+import com.hawkwing.RingsOfIron.game.GameAlerts;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -32,6 +33,7 @@ import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.modding.ModTrustDialog;
 import com.ringsofiron.uihud.text.HudText;
 import com.ringsofiron.uihud.variants.ClassicWindow;
@@ -257,7 +259,8 @@ public final class GameBootstrap {
                     input.takeControlButton(body, skin, "Take fire control: every gun", SubsystemType.WEAPONS));
             hud.registerConsoleExtra("turret_mount", (body, skin, console, data) ->
                     input.takeControlButton(body, skin, "Take the gun", SubsystemType.TURRET_MOUNT));
-            // ... and so do a HUD variant's own console screens
+            // ... and so do a HUD variant's own console screens, which may seat the captain at the helm at once
+            hud.registerConsoleAction("helm", "Take the helm", Action.VIEW.name(), () -> input.takeControl(SubsystemType.HELM));
             hud.registerConsoleAction("weapons", "Take fire control: every gun", Action.VIEW.name(),
                     () -> input.takeControl(SubsystemType.WEAPONS));
             hud.registerConsoleAction("turret_mount", "Take the gun", Action.VIEW.name(), () -> input.takeControl(SubsystemType.TURRET_MOUNT));
@@ -267,6 +270,9 @@ public final class GameBootstrap {
                 hud.getViewMode().setMode(ViewMode.INTERIOR);
             });
         }
+        // The weapons console's hold-fire switch, which a variant's console screen offers: the gunners hold fire
+        hud.registerConsoleAction("weapons", "Hold fire", HudData.ConsoleAction.HOLD_FIRE,
+                () -> world.gunCrews.holdFire = !world.gunCrews.holdFire);
         input.easeViewChanges();
         world.rescue.rescues.add((signal, rescue) -> {
             session.rearm();
@@ -292,7 +298,9 @@ public final class GameBootstrap {
             // The player's own ship: the newest state replaces the last, so "back in action" doesn't
             // sit above a "disabled" it has just undone
             if (change.ship == game.player) {
-                world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
+                NoticeLog.Notice n = world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
+                // Disabled, the DISABLED alert carries it; wrecked or abandoned, it is news (the Task spec's 9.2)
+                if (n != null && disabledOnly(change.now)) n.alert = GameAlerts.DISABLED;
             } else {
                 session.show(news);
             }
@@ -331,6 +339,19 @@ public final class GameBootstrap {
     }
 
     /** What to tell the player about a ship disabled, surrendering, breaking up or recovering; null for nothing. */
+    /** Whether a ship's new state is disabled, as the DISABLED alert says, rather than surrendered, wrecked or abandoned. */
+    static boolean disabledOnly(DisabledComponent.Reason now) {
+        if (now == null) return false;
+        switch (now) {
+            case SURRENDERED:
+            case WRECKED:
+            case ABANDONED:
+                return false;
+            default:
+                return true;
+        }
+    }
+
     private String disabledNotice(ShipDisablement.Change change) {
         boolean mine = change.ship == game.player;
         DisabledComponent d = change.ship.getComponent(DisabledComponent.class);

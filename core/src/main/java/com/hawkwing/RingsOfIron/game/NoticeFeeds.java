@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.ringsofiron.career.FactionStanding;
 import com.ringsofiron.shipops.ShipNames;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import java.util.List;
 import java.util.Locale;
 
@@ -43,7 +44,8 @@ public final class NoticeFeeds {
         postLast(log, world.salvage.notices);
         // Pirates moving to intercept, robbing freighters, breaking off
         for (String news : world.hostiles.notices) {
-            log.post(news, news.endsWith("intercept you") ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
+            boolean intercept = news.endsWith("intercept you");
+            log.post(news, intercept ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO, intercept ? NoticeAlerts.INTERCEPT : "");
         }
         world.hostiles.notices.clear();
     }

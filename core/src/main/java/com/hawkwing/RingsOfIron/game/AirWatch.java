@@ -12,6 +12,7 @@ import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TankSupply;
 import java.util.Locale;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 
 /**
  * Warns before the player's people run out of air (round 8 part 5). A burst oxygen tank left a
@@ -70,7 +71,7 @@ public final class AirWatch {
         boolean dry = anyTank && tanks <= CrewDef.SUIT_OXYGEN_KG;
         if (dry && !dryWarned && reserve > 0) {
             ctx.notices.post(String.format(Locale.ROOT, "%s (%.0f kg). A station's yard refills both", TANKS_DRY, reserve),
-                    NoticeLog.Kind.WARNING);
+                    NoticeLog.Kind.WARNING, NoticeAlerts.AIR);
         }
         dryWarned = dry;
         boolean fillable = !anyTank || tanks + reserve > CrewDef.SUIT_OXYGEN_KG;
@@ -104,5 +105,7 @@ public final class AirWatch {
                 RUNNING_OUT, who, s / 60, s % 60);
         // One line kept up to date, not a new one every few seconds
         warning = warning == null ? ctx.notices.post(text, NoticeLog.Kind.WARNING) : ctx.notices.revise(warning, text);
+        // The captain's own suit is the captain's alerts' to tell; anyone else's is SUIT AIR
+        if (warning != null) warning.alert = "your".equals(who) ? NoticeAlerts.CAPTAIN : NoticeAlerts.SUIT_AIR;
     }
 }

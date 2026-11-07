@@ -194,11 +194,40 @@ public class LifeSupportSystem extends FixedLogicSystem {
 
     /** True if air leaves the compartment for space faster than a trickle. */
     boolean isVenting(ShipGridComponent grid, Compartment c) {
+        return venting(grid, c, catchingUp);
+    }
+
+    /** True if air leaves {@code c} for space faster than a trickle; once the airflow has {@code settled}, at all. */
+    private static boolean venting(ShipGridComponent grid, Compartment c, boolean settled) {
         for (int i = 0; i < grid.airflow.size; i++) {
             AirflowEdge e = grid.airflow.get(i);
-            if (e.room == c && e.other == null && (catchingUp || e.flow > ShipGridComponent.VENTING_HAZARD_FLOW)) return true;
+            if (e.room == c && e.other == null && (settled || e.flow > ShipGridComponent.VENTING_HAZARD_FLOW)) return true;
         }
         return false;
+    }
+
+    /**
+     * The rooms the working units among {@code systems} put air into ({@code fed}), and those they
+     * reach that are venting to space and so get none ({@code venting}); each cleared first. A room
+     * behind a shut door is in neither, nor is any room when no unit works. For a screen to say
+     * which rooms get air, and why not the rest.
+     */
+    public static void reach(ShipGridComponent grid, Iterable<SubsystemComponent> systems, Array<Compartment> fed,
+                             Array<Compartment> venting) {
+        fed.clear();
+        venting.clear();
+        if (grid == null || systems == null) return;
+        Array<Compartment> served = new Array<>();
+        for (SubsystemComponent sub : systems) {
+            if (sub == null || sub.type != SubsystemComponent.SubsystemType.LIFE_SUPPORT || !sub.isOperational) continue;
+            Compartment home = homeCompartment(grid, sub.footprint);
+            if (home == null) continue;
+            collectServed(grid, home, served);
+            for (Compartment c : served) {
+                Array<Compartment> into = venting(grid, c, false) ? venting : fed;
+                if (!into.contains(c, true)) into.add(c);
+            }
+        }
     }
 
     /** Moles of gas needed to bring the compartment to standard pressure. */

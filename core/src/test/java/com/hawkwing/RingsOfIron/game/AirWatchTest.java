@@ -11,6 +11,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -65,7 +66,8 @@ class AirWatchTest {
     void dryTanksAreToldOf() {
         dry(false);
         run(10);
-        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith(AirWatch.TANKS_DRY)));
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith(AirWatch.TANKS_DRY)
+                && n.alert.equals(NoticeAlerts.AIR)), "the ship's AIR carries it (the Task spec's 9.2)");
     }
 
     @Test
@@ -97,6 +99,8 @@ class AirWatchTest {
         }
         assertNotNull(warned, "warned");
         assertTrue(warned.text.matches(".*has [0-3]:\\d\\d of air left.*"), warned.text);
+        assertEquals(warned.text.contains(": your suit") ? NoticeAlerts.CAPTAIN : NoticeAlerts.SUIT_AIR, warned.alert,
+                "the captain's own suit is the captain's alerts', anyone else's SUIT AIR");
         long lines = world.notices.history().stream().filter(n -> n.text.startsWith(AirWatch.RUNNING_OUT)).count();
         run(60 * 60);
         assertEquals(lines, world.notices.history().stream().filter(n -> n.text.startsWith(AirWatch.RUNNING_OUT)).count(),

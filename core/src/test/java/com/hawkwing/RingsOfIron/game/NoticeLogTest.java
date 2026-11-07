@@ -1,6 +1,7 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.gdx.utils.GdxNativesLoader;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -56,14 +57,64 @@ class NoticeLogTest {
     }
 
     @Test
-    void theStackKeepsTheNewestFewAndTheLogTheLastFifty() {
+    void theStackKeepsTheNewestFewAndTheLogTheLastFiveHundred() {
         NoticeLog log = new NoticeLog(() -> now);
-        for (int i = 0; i < 60; i++) log.post("n" + i);
+        int last = NoticeLog.KEEP + 9;
+        for (int i = 0; i <= last; i++) log.post("n" + i);
+        assertEquals(500, NoticeLog.KEEP, "the books of the Task and Stations specs keep 500");
         assertEquals(NoticeLog.STACK, log.showing().size());
-        assertEquals("n59", log.showing().get(0).text);
+        assertEquals("n" + last, log.showing().get(0).text);
         assertEquals(NoticeLog.KEEP, log.history().size());
-        assertEquals("n59", log.history().get(0).text);
+        assertEquals("n" + last, log.history().get(0).text);
         assertEquals("n10", log.history().get(NoticeLog.KEEP - 1).text);
+        assertEquals(NoticeLog.KEEP, log.log().size(), "read in place, the same");
+    }
+
+    @Test
+    void theLogIsSavedWithTheGameAndNothingOnScreenComesBack() {
+        NoticeLog log = new NoticeLog(() -> now);
+        now = 60;
+        log.post("Docked at Highport");
+        now = 120;
+        log.post("Promoted to Lieutenant", NoticeLog.Kind.IMPORTANT);
+        log.post("Promoted to Lieutenant", NoticeLog.Kind.IMPORTANT);
+        now = 180;
+        log.post("Raider moves to intercept you", NoticeLog.Kind.WARNING);
+        now = 190;
+        log.post("The couch burned", NoticeLog.Kind.WARNING).minor = true;
+        now = 200;
+        NoticeLog.Notice salvo = log.post("MISSILE WARNING: 1 inbound", NoticeLog.Kind.WARNING);
+        salvo.alert = GameAlerts.MISSILE;
+        salvo = log.revise(salvo, "MISSILE WARNING: 2 inbound");
+        assertEquals(GameAlerts.MISSILE, salvo.alert, "a revision is still the alert's");
+        com.badlogic.gdx.utils.Json json = new com.badlogic.gdx.utils.Json();
+        java.io.StringWriter out = new java.io.StringWriter();
+        json.setWriter(out);
+        json.writeObjectStart();
+        log.write(json);
+        json.writeObjectEnd();
+        assertEquals("notices", log.saveKey());
+
+        NoticeLog loaded = new NoticeLog(() -> now);
+        loaded.post("from before the load");
+        loaded.read(json, new com.badlogic.gdx.utils.JsonReader().parse(out.toString()));
+        assertEquals(5, loaded.history().size(), "the save's log, and only it");
+        assertEquals("MISSILE WARNING: 2 inbound", loaded.history().get(0).text, "newest first");
+        assertEquals(GameAlerts.MISSILE, loaded.history().get(0).alert, "with the alert that carries it");
+        assertEquals("The couch burned", loaded.history().get(1).text);
+        assertTrue(loaded.history().get(1).minor, "news of a loss and nothing more");
+        assertFalse(loaded.history().get(0).minor);
+        assertEquals("Raider moves to intercept you", loaded.history().get(2).text);
+        assertEquals("", loaded.history().get(2).alert);
+        assertEquals(NoticeLog.Kind.WARNING, loaded.history().get(2).kind);
+        assertEquals(180, loaded.history().get(2).time, 1e-9);
+        assertEquals(2, loaded.history().get(3).count, "the repeat counted");
+        assertEquals("Promoted to Lieutenant (x2)", loaded.history().get(3).label());
+        assertEquals(NoticeLog.Kind.IMPORTANT, loaded.history().get(3).kind);
+        assertEquals("Docked at Highport", loaded.history().get(4).text);
+        assertTrue(loaded.showing().isEmpty(), "the log comes back, not the screen");
+        loaded.reset();
+        assertTrue(loaded.history().isEmpty(), "a save without a log leaves none of the last game's");
     }
 
     @Test
@@ -131,6 +182,29 @@ class NoticeLogTest {
     }
 
     @Test
+    void aWarningPostedWithWhatCarriesItKeepsItThroughRepeatsAndRevisions() {
+        NoticeLog log = new NoticeLog(() -> now);
+        NoticeLog.Notice n = log.post("Hull leaking", NoticeLog.Kind.WARNING, NoticeAlerts.VENTING);
+        assertEquals(NoticeAlerts.VENTING, n.alert);
+        assertSame(n, log.post("Hull leaking", NoticeLog.Kind.WARNING), "a repeat");
+        assertEquals(NoticeAlerts.VENTING, n.alert, "a plain repeat keeps it");
+        n.minor = true;
+        NoticeLog.Notice r = log.revise(n, "Hull leaking and no patches left");
+        assertEquals(NoticeAlerts.VENTING, r.alert);
+        assertTrue(r.minor);
+        assertEquals("", log.post("Docked at Highport").alert, "news");
+    }
+
+    @Test
+    void theHelmsWarningsNameWhatCarriesThem() {
+        assertEquals(NoticeAlerts.BURN_MISSED, Navigation.helmAlert("Burn missed: nobody flew the planned 120 m/s burn in time"));
+        assertEquals(NoticeAlerts.BURN_MISSED, Navigation.helmAlert("Burn cut short: nobody at the helm, 40 m/s to go"));
+        assertEquals(NoticeAlerts.BURN_MISSED, Navigation.helmAlert("Out of propellant: burn cut short, 40 m/s to go"));
+        assertEquals(NoticeAlerts.HELM, Navigation.helmAlert("Helm order dropped: shot at"));
+        assertEquals("", Navigation.helmAlert("Docking refused"));
+    }
+
+    @Test
     void theFeedsBringEverySystemsNoticesIn() {
         Path assets = Paths.get(System.getProperty("user.dir")).getParent().resolve("assets");
         GameWorld world = new GameWorld();
@@ -139,15 +213,19 @@ class NoticeLogTest {
             world.contracts.notices.add("Contract done: x. Paid 1 cr");
             world.standing.notices.add("Promoted to Lieutenant of the Terran Patrol Authority");
             world.hostiles.notices.add("Raider is moving to intercept you");
+            world.hostiles.notices.add("Raider robs a freighter");
             world.yard.notices.add("first");
             world.yard.notices.add("last");
             NoticeFeeds.collect(world);
             List<NoticeLog.Notice> log = world.notices.history();
-            assertEquals(4, log.size(), "the yard says only how its work last went: " + log);
-            assertEquals(NoticeLog.Kind.WARNING, log.get(0).kind);
-            assertEquals("last", log.get(1).text);
-            assertEquals(NoticeLog.Kind.IMPORTANT, log.get(2).kind);
+            assertEquals(5, log.size(), "the yard says only how its work last went: " + log);
+            assertEquals("Raider robs a freighter", log.get(0).text);
+            assertEquals("", log.get(0).alert);
+            assertEquals(NoticeLog.Kind.WARNING, log.get(1).kind);
+            assertEquals(NoticeAlerts.INTERCEPT, log.get(1).alert, "INTERCEPT carries it (the Task spec's 9.2)");
+            assertEquals("last", log.get(2).text);
             assertEquals(NoticeLog.Kind.IMPORTANT, log.get(3).kind);
+            assertEquals(NoticeLog.Kind.IMPORTANT, log.get(4).kind);
             assertTrue(world.contracts.notices.isEmpty() && world.standing.notices.isEmpty()
                     && world.hostiles.notices.isEmpty() && world.yard.notices.isEmpty());
         } finally {

@@ -70,6 +70,16 @@ world overlays the game draws under the HUD (burn arrows, fire arcs) stay until 
 them in its own PR. The magnified bubbles stay too, but a variant can steer them and draw their rims
 itself (below).
 
+### The view's middle
+
+The camera keeps the ship, or the avatar on deck, in the middle of the screen. A variant whose units
+cover part of the world can move that point to the middle of what is left:
+`host.viewports().easeViewShift(x, y)` puts it `x`, `y` UI units off the screen's middle (x right, y
+up), eased over the zoom's time from wherever it is, and asking again for the same place changes
+nothing. The Stations HUD moves it up by half its band while seated and left by half a side panel
+while one is open. `setViewShift(0f, 0f)` puts it back at once: do that in `detach`, since the next
+variant expects the middle. A variant that never asks leaves it there.
+
 ### The magnified bubbles
 
 The game's picture-in-picture bubbles magnify the player's ship, the lock and the nav target while
@@ -101,6 +111,13 @@ tabs, a terminal that serves several. Four hooks on `HudVariant`, each doing not
 - `showing(window)`: whether it shows now. A terminal that serves several shows the one on its tab.
 - `close(window)`: close it (its key again, Esc, or the game: the ship undocked).
 
+And one for the console's screen alone: `consoleLetsWalk()`, true for a panel standing beside the
+console that the captain may walk away from (the Cassette Task HUD's, spec CON), rather than a window
+that holds them at it. The game's deck keys then walk while it shows (`UiHud.consoleHolds()`), and
+`console.reach` says how far the captain has gone. Whoever draws the console, V there sits at the seat it
+or the prompt names (`UiHud.consoleInReach()`), so midway between the helm and a gun V takes the one on
+offer.
+
 The game keeps everything else, so the screens behave as the classic windows do whoever draws them:
 
 - **When a window can open stays the game's word** (`UiHud.available`): the market only while
@@ -126,14 +143,14 @@ takes clicks only on its own actors: a click off them reaches the map or the wor
 | `ClassicWindow` | The classic window | What a screen reads and acts through |
 |---|---|---|
 | `MAP` | The map (M): its orbit canvas, and the side panel of orbit, burn, fly it, target and view | `orbitPath`, `planner`, `trafficMap`. The canvas stays the game's, with its zoom, panning, burn handles and contact picks, and fills the stage when the variant shows the panels: the classic side panel is hidden. Its look is `mapPainter()` (below) |
-| `CONSOLE` | The window E opens at a console | `console`: the console entity (its `SubsystemComponent` has the system, health and switch), what E found there, and the game's own actions at it ("Take fire control", with its key) |
+| `CONSOLE` | The window E opens at a console | `console`: the console entity (its `SubsystemComponent` has the system, health and switch), what E found there, the game's own actions at it ("Take fire control", "Take the helm", with their key), where it stands in the world (`worldX`, `worldY`, for a panel drawn beside it) and the corners of its ship's deck (`hullX`, `hullY`, for a panel that keeps off the ship), and how far the captain is from it in tiles (`reach`) |
 | `TRADE` | The station market (T, docked) | `trade` |
 | `YARD` | The yard (Y): repairs, tanks, refits, furnishings, Rebuild decks; away from a yard, the field refit | `yard` |
 | `SHIPYARD` | Ships for sale, the trade-in, a prize to hand over | `shipyard` |
 | `MISSIONS` | The mission board (J) | `missions` |
 | `BOARDING` | Boarding and salvage (K, latched) | `boarding` |
 | `CREW` | The crew roster (I) | `crew` |
-| `LOG` | The notice log (L) | `messages`, the last fifty notices with their time |
+| `LOG` | The notice log (L) | `messages`, the last 500 notices with their time, and `record`, the conditions raised |
 | `HELP` | The controls panel (F1) | `hints.collectAll(frame)`: every hint by where it applies, with the player's keys |
 | `GAME_OVER` | Ship lost or career over | `gameOver`: what happened, and the ways on with their keys. It opens and closes by itself; the game keeps its keys there (Enter, the quick load, Esc), so show them but don't take them |
 
@@ -231,7 +248,7 @@ their contents.
 | `shipStatus` | propellant, structure, power, oxygen, emergency oxygen, worst cabin pressure |
 | `captainStatus` | health, state, wound, bleed-out, suit and its air, the room's name, pressure, oxygen and smoke, what is carried |
 | `weaponFrame` | one row per mount: name by place ("FWD GUN", "PORT PD 2"), weapon, kind, state (destroyed, refit, shorted, stunned, no power, empty, reloading, charging, ready), controller (player, crew, console, auto, nobody), cooldown and reload, ammunition and magazine, engaging, defending, weapons free, in arc, hit chance on the lock, range, hardpoint and arc, health, tile; plus missiles left, the decoy's countdown, point defense active, hold fire, the target's label |
-| `shieldStatus` | raised, lowered for dock, stock, capacity, cloud, scattered, adrift, stowed, trim, the four sectors' density against the mean, emitters fitted, holding and tripped, the hottest one, power stunned |
+| `shieldStatus` | raised, lowered for dock, stock, capacity, cloud, scattered, adrift, stowed, trim, the four sectors' density against the mean, emitters fitted, holding and tripped, the hottest one, power stunned; and each emitter (`each`): its system, its heat against its trip, holding, tripped or starved, and the seconds until a tripped one starts again |
 | `powerFrame` | per circuit: reactors, rated and actual output, store and capacity, systems fed; plus every system that needs power and is not working, with its fault, timer (a short's reclose, a stun), health, room and tile |
 | `targetStatus` | the locked target: label, relation, state, range, closing, relative speed, closest approach and its time, bearing, aspect, firing on us, hull, track age |
 | `threatFrame` | missiles in flight: side, who launched it, position, path, **time to impact with the missile's closing burn in it**, closest approach, range, closing speed, burning |
@@ -245,12 +262,13 @@ their contents.
 | `orderState` | the orders that stand and why any can't be given now: the helm's order, who it flies relative to, an approach's distance and the helm's own line, and for each of keys 0 to 5 why the helm would refuse it, in its words; the autopilot (off, on, held), where to and why it holds, and why it can't be engaged; whether the player is at a seat, where those are taken; the crew's battle stations, suits for them and the EVA hold; abandoning ship, with the seconds until the pods go anyway, the crew aboard and in a pod, the pods and their free seats, and the captain's straight-line distance to the nearest pod with a seat free and its tile; why the crew can't be sent to the pods; the seconds left on a first press of abandon ship and of the tow; the tow's fee, standing cost and refusal; paused. Set by the game screen (`PlayerOrders`) |
 | `lastHullHit` | the last hit on the player's hull: the deck tile it struck, and seconds since (NaN before any), from `UiHud.flashHullHit` |
 | `alerts` | `AlertRegistry`: everything wrong now, as rows |
-| `messages` | `MessageFeed`: what the game has told the player lately |
+| `messages` | `MessageFeed`: what the game has told the player lately, the last 500 notices, newest first; the game's log is saved with the game. A warning names what carries it in place of the news (`alert`, one of `NoticeAlerts`: the alert it becomes by the Task spec's 9.2, such as the salvo's `missile`, a leak's `venting` or a wound's `critical`, or the line that asks or tells it, the crisis panel's question and the autopilot's hold), and is news when it names nothing; `minor` marks a warning that is news of a loss and nothing more (a furnishing burned). A HUD that sorts warnings shows one as news unless it shows what it names, and a log that keeps each alert once can leave the notice out for the alert's line |
+| `record` | `ConditionLog`: the conditions the game raised, kept two ways for a log among the notices. `entries` has a line for each step and each clearing ("Low pressure: HOLD, cleared after 0:30"); `courses` has each condition once from its raising, with its latest words, the worst it reached and when it cleared. A room's air is one course, a salvo is one course until none is left inbound, and a system's fault is kept once it has held 2.5 s. The last 500 of each, read from `alerts` at each refresh whatever the HUD shows, and saved with the game |
 | `roomAt(x, y)`, `roomNames()` | the player's rooms' names (`RoomNames`) |
 | `key("FIRE")` | the key bound to an action, for a prompt |
-| `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
+| `promptAction`, `promptKey`, `promptConsole` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; the key; and the id of the console it is for ("helm"), or "" for none |
 | `dockHint` | the docked banner's text, or "" when not docked |
-| `console` | the console E opened while the variant shows its console screen: the entity, what E found, the game's actions there (`UiHud.registerConsoleAction`); empty otherwise |
+| `console` | the console E opened while the variant shows its console screen: the entity, what E found, the game's actions there (`UiHud.registerConsoleAction`: V's seat at the helm, the weapons console and a gun, and the weapons console's hold-fire switch, `ConsoleAction.HOLD_FIRE`), where it and its ship's deck stand and how far the captain is (`track`, each frame); empty otherwise |
 | `gameOver` | ship lost or career over: shown, which, the title ("SHIP LOST"), what happened in one line, and the ways on, each with its key, what it does and the action a click runs (`GameOverChoices`) |
 | `insets` | the game's magnified bubbles this frame, at most three: the craft, what each is for (the player's ship, the lock, the nav target), the craft's label as the game has it, the bubble's middle and radius (UI units, y up), where the craft is, whether it is in view and whether the bubble sits right over it, how far the craft reaches as drawn, and its distance. Filled before `update`, and empty on deck (`PictureInPicture.report`) |
 
