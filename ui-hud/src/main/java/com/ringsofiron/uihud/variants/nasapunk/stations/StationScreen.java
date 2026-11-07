@@ -13,8 +13,10 @@ import com.ringsofiron.uihud.variants.nasapunk.NpColors;
 import com.ringsofiron.uihud.variants.nasapunk.NpHardware;
 import com.ringsofiron.uihud.variants.nasapunk.NpKit;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Act;
+import com.ringsofiron.uihud.variants.nasapunk.screens.Cell;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Fmt;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Hits;
+import com.ringsofiron.uihud.variants.nasapunk.screens.Line;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Page;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Row;
 import com.ringsofiron.uihud.variants.nasapunk.screens.ScreenModes;
@@ -39,9 +41,9 @@ import java.util.Locale;
  * the foot keys carries the last order's words, else what Enter gives. On the station link the list
  * and the terms of the row under the cursor sit side by side, and every order is a foot key, the
  * parts' and the cursor's row's in the parts' order and then the page's (S6); on the slate the terms
- * go under the list, and a part's orders stay on its title row so the foot keeps room for the row's
- * (S5, S7). The slate leaves the number keys to the seat's own orders; its tabs turn on the windows'
- * own keys or a click.
+ * go under the list and say what the narrow list doesn't, a long line runs onto the next, and a
+ * part's orders stay on its title row so the foot keeps room for the row's (S5, S7, S8). The slate
+ * leaves the number keys to the seat's own orders; its tabs turn on the windows' own keys or a click.
  */
 final class StationScreen extends ScreenModes<StationScreen.Mode> {
     /** The spec's displays that stand in for the game's windows, with the name on the bezel and the plate. */
@@ -67,8 +69,10 @@ final class StationScreen extends ScreenModes<StationScreen.Mode> {
     private static final float SIDE = 14f, HEAD = 30f, FOOT = 40f;
     /** Inside the glass: the tab legends, the line under them, the status line and the foot legends. */
     private static final float TABS_H = 26f, INFO_H = 34f, STATUS_H = 24f, KEYS_H = 28f;
-    /** The list's share of the station link's width beside the terms, and of the slate's height over them. */
-    private static final float LIST_SHARE = 0.6f, SLATE_LIST = 0.55f;
+    /** The list's share of the station link's width beside the terms, and the least of the slate's height over them. */
+    private static final float LIST_SHARE = 0.6f, SLATE_LIST = 0.4f;
+    /** The terms' first line under their name. */
+    private static final float TERMS_TOP = 38f;
     /** The fewest slots the foot keys share: the station link's six (S6), the slate's four (S5, S7). */
     private static final int LINK_SLOTS = 6, SLATE_SLOTS = 4;
     /** A dark order's legend: dimmer than one that can be given. */
@@ -79,20 +83,26 @@ final class StationScreen extends ScreenModes<StationScreen.Mode> {
 
     /** The station link's list: no buttons on its rows or its parts' titles, whose orders are foot keys. */
     private final Tables.Style list = new Tables.Style();
-    /** The slate's list: its parts' orders on their title rows. */
+    /** The slate's pages with no terms (the log, the contracts held, boarding): their parts' orders on their title rows, a long last cell run onto the next lines (S8). */
     private final Tables.Style slate = new Tables.Style();
+    /** The slate's list over the terms: what it can't show whole, and each row's dim line, left to them (S7). */
+    private final Tables.Style slateList = new Tables.Style();
     private final Tables.Style terms = new Tables.Style();
     /** The controls: keys on their caps, tight rows, no cursor. */
     private final Tables.Style keys = new Tables.Style();
 
     private final IntArray all = new IntArray();
     private final Terms termsOf = new Terms();
+    /** The terms of the cursor's row as drawn. */
+    private final Array<Line> shown = new Array<>();
+    /** A row's dim line among its terms on the slate. */
+    private final Line subLine = Line.text("", Cell.Tone.LABEL);
     /** The foot keys as drawn: orders, then CLOSE. */
     private final Array<Object> foot = new Array<>();
 
     StationScreen(Game game, Group layer, NpKit kit) {
         super(game, layer, kit);
-        for (Tables.Style s : new Tables.Style[] {list, slate}) {
+        for (Tables.Style s : new Tables.Style[] {list, slate, slateList}) {
             s.acts = false;
             s.rowH = 27f;
             s.titleH = 32f;
@@ -100,11 +110,22 @@ final class StationScreen extends ScreenModes<StationScreen.Mode> {
             s.nameSize = 14f;
         }
         list.sectActs = false;
-        slate.actW = 64f;
+        // the slate is narrow and its rows close (S7, S8): a column whose words won't fit is left out,
+        // not cut to its first letters, and the terms under the list say it
+        for (Tables.Style s : new Tables.Style[] {slate, slateList}) {
+            s.actW = 64f;
+            s.rowH = 24f;
+            s.titleH = 28f;
+            s.drop = true;
+        }
+        // long words run onto the next lines: the log's messages (S8), and every part's notes
+        slate.wrap = true;
+        slateList.wrap = true;
+        slateList.subs = false;
         terms.pairCol = 140f;
         terms.lineH = 24f;
         keys.rowH = 18f;
-        keys.titleH = 26f;
+        keys.titleH = 24f;
         keys.rules = false;
         keys.cursor = false;
         keys.gap = 8f;
@@ -231,12 +252,14 @@ final class StationScreen extends ScreenModes<StationScreen.Mode> {
         info(cv, gx, top, gw);
         top += INFO_H;
         Ui.rule(cv, gx + 8f, top, gw - 16f);
-        float sy = gy + gh - KEYS_H - STATUS_H, by = top + 6f, bh = sy - by - 4f;
+        // the controls give no orders, so they take the status line's room too
+        float sy = gy + gh - KEYS_H - (mode == Mode.CONTROLS ? 0f : STATUS_H), by = top + 6f, bh = sy - by - 4f;
         if (page == help) controls(cv, cam, gx, by, gw, bh, hits);
         else if (!hasTerms(page)) whole(cv, cam, gx, by, gw, bh, hits);
         else if (mode == Mode.SLATE) listOverTerms(cv, cam, gx, by, gw, bh, hits);
         else listBesideTerms(cv, cam, gx, by, gw, bh, hits);
-        status(cv, gx, sy, gw);
+        if (mode == Mode.CONTROLS) Ui.rule(cv, gx + 8f, sy, gw - 16f);
+        else status(cv, gx, sy, gw);
         footKeys(cv, gx, gy + gh - KEYS_H, gw, hits);
     }
 
@@ -336,15 +359,67 @@ final class StationScreen extends ScreenModes<StationScreen.Mode> {
         termsOfRow(cv, cam, x + lw + 1f, y, w - lw - 1f, h);
     }
 
-    /** The slate: the list over the terms of the row under the cursor, the list as tall as it needs up to its share (S7). */
+    /**
+     * The slate: the list over the terms of the row under the cursor (S7). The terms take what the
+     * tallest row's need, so the split stays put as the cursor moves, and the list the rest, down to
+     * its least share; a list that needs less gives the terms the difference.
+     */
     private void listOverTerms(NpCanvas cv, Camera cam, float x, float y, float w, float h, Hits hits) {
         allSects();
         float want = 0f;
-        for (int i = 0; i < all.size; i++) want += Tables.want(cv, page, all.get(i), w, slate);
-        float lh = Math.min(want, Math.round(h * SLATE_LIST));
-        stackAll(cv, cam, x, y, w, lh, slate, hits);
+        // measured first: it sets out the columns, so the terms know which the list shows whole
+        for (int i = 0; i < all.size; i++) want += Tables.want(cv, page, all.get(i), w, slateList);
+        float termsWant = TERMS_TOP + tallestTerms(cv, w) + 6f;
+        float lh = Math.min(want, Math.max(Math.round(h * SLATE_LIST), h - 8f - termsWant));
+        stackAll(cv, cam, x, y, w, lh, slateList, hits);
         Ui.rule(cv, x + 8f, y + lh + 4f, w - 16f);
         termsOfRow(cv, cam, x, y + lh + 8f, w, h - lh - 8f);
+    }
+
+    /** The height of the tallest terms of any row on the page, as the slate shows them. */
+    private float tallestTerms(NpCanvas cv, float w) {
+        float most = 0f;
+        for (int i = 0; i < page.sects.size; i++) {
+            Sect s = page.sects.get(i);
+            for (int j = 0; j < s.rows.size; j++) {
+                Row r = s.rows.get(j);
+                if (r.filter == null) most = Math.max(most, Tables.linesH(cv, termsShown(r, s), w, terms));
+            }
+        }
+        return most;
+    }
+
+    /**
+     * The terms of {@code r} as its frame shows them, in {@link #shown}: on the station link all of
+     * them; on the slate those its list doesn't show whole, and the row's dim line, which the slate's
+     * list leaves to them.
+     */
+    private Array<Line> termsShown(Row r, Sect s) {
+        Array<Line> made = termsOf.of(r, s);
+        shown.clear();
+        boolean slate = mode == Mode.SLATE;
+        for (int i = 0; i < made.size; i++) {
+            Line l = made.get(i);
+            if (slate && l.kind == Line.Kind.PAIR && inList(s, l.label)) continue;
+            shown.add(l);
+        }
+        if (slate && !r.sub.isEmpty() && !says(shown, r.sub)) {
+            subLine.value = r.sub;
+            shown.add(subLine);
+        }
+        return shown;
+    }
+
+    /** Whether the slate's list shows the column headed {@code label} with every row's words whole. */
+    private static boolean inList(Sect s, String label) {
+        if (s == null || label.isEmpty()) return false;
+        for (int c = 0; c < s.cols.size; c++) if (label.equals(s.cols.get(c).head)) return s.drawnWhole(c);
+        return false;
+    }
+
+    private static boolean says(Array<Line> lines, String words) {
+        for (int i = 0; i < lines.size; i++) if (words.equals(lines.get(i).value)) return true;
+        return false;
     }
 
     /** A page with no terms of its rows: the log, the contracts held, boarding (S5, S8). */
@@ -382,12 +457,16 @@ final class StationScreen extends ScreenModes<StationScreen.Mode> {
         }
         Sect s = page.sectOf(r);
         float l = x + 14f, right = x + w - 14f;
-        float sw = s == null || s.title.isEmpty() ? 0f : Ui.labEnd(cv, right, y + 22f, Ui.fit(cv, s.title, 140f, Ui.LB, true, 0.6f));
         String name = r.cells.size > 0 ? r.cells.first().text : "";
+        // the part's name at the right, in the room the row's name leaves it
+        float nameW = Math.min(cv.width(name, Ui.V + 1f, true, 0.6f), (right - l) * 0.6f);
+        float partRoom = Math.max(140f, right - l - nameW - 20f);
+        float sw = s == null || s.title.isEmpty() ? 0f : Ui.labEnd(cv, right, y + 22f, Ui.fit(cv, s.title, partRoom, Ui.LB, true, 0.6f));
         cv.text(l, y + 22f, Ui.fit(cv, name, right - sw - 20f - l, Ui.V + 1f, true, 0.6f), Ui.V + 1f, true, NpColors.WHITE, 0.6f, NpCanvas.START);
-        boolean clipped = cam != null && cv.clip(cam, x, y + 32f, w, h - 32f);
-        Tables.lines(cv, termsOf.of(r, s), x, y + 38f, w, terms);
-        if (clipped) cv.unclip();
+        // whole lines only: those past the foot are left out rather than cut through
+        Array<Line> lines = termsShown(r, s);
+        while (lines.size > 0 && Tables.linesH(cv, lines, w, terms) > h - TERMS_TOP) lines.pop();
+        Tables.lines(cv, lines, x, y + TERMS_TOP, w, terms);
     }
 
     // ---- the foot --------------------------------------------------------------------------------
@@ -451,8 +530,10 @@ final class StationScreen extends ScreenModes<StationScreen.Mode> {
                 ink = a.state == Act.State.ON ? NpColors.GREEN : a.state == Act.State.ARMED ? NpColors.AMBER
                         : a == enter && a.live ? NpColors.WHITE : a.live ? NpColors.DIM : BARRED;
             }
-            label = Ui.fit(cv, label, slot - 14f, Ui.LB + 1f, true, 0.5f);
-            float tw = cv.text(cx, base, label, Ui.LB + 1f, true, ink, 0.5f, NpCanvas.MIDDLE);
+            // a long legend is engraved smaller before it is cut
+            float room = slot - 10f, size = cv.width(label, Ui.LB + 1f, true, 0.5f) <= room ? Ui.LB + 1f : Ui.LB - 0.5f;
+            label = Ui.fit(cv, label, room, size, true, 0.5f);
+            float tw = cv.text(cx, base, label, size, true, ink, 0.5f, NpCanvas.MIDDLE);
             if (box) cv.stroke(cx - tw / 2f - 5f, base - 13f, tw + 10f, 17f, 1.5f, ink);
             // the key under the glass, with Enter's and Esc's legends on it
             NpHardware.softKey(cv, cx - 15f, keyY, 30f, 9f, box);
