@@ -50,6 +50,7 @@ public final class Tables {
     /** A filter's position with nothing at it: darker than a dim one. */
     private static final Color EMPTY = NpColors.GRATICULE.cpy().lerp(NpColors.DIM, 0.45f);
     private static final float[] COLX = new float[16], COLW = new float[16];
+    private static final boolean[] GROWS = new boolean[16];
     /**
      * The row buttons' places in the part being drawn, set by {@link #sect}: each place as wide as the
      * longest word any row has there, rows with fewer buttons taking the places at the right; and the
@@ -555,8 +556,9 @@ public final class Tables {
     /** Places the columns from {@code x} across {@code w}: fixed widths, the rest to a 0-width one, all squeezed to fit. */
     /**
      * Lays the part's columns out from {@code x} across {@code w}: each at its own width, a 0-width one
-     * taking what is left (60 at least). Too wide for the room, the columns first give up what their
-     * words don't use (the head and the widest cell), then all shrink alike, to 55 per cent at most.
+     * taking what is left (60 at least), and a column of set width too narrow for its words (its head
+     * and its widest cell) widened to them. Too wide for the room then, the columns first give up what
+     * their words don't use, then all shrink alike, to 55 per cent at most.
      */
     private static void columns(NpCanvas cv, Sect s, float x, float w, Style st) {
         int n = Math.min(s.cols.size, COLX.length);
@@ -567,19 +569,16 @@ public final class Tables {
             float cw = s.cols.get(c).width;
             if (cw <= 0f) rest++;
             else fixed += cw;
+            GROWS[c] = cw > 0f;
         }
         float gaps = gap * (n - 1);
-        float free = w - fixed - gaps;
-        float restW = rest == 0 ? 0f : Math.max(60f, free / rest);
-        float over = fixed + gaps + restW * rest - w;
+        float restW = rest == 0 ? 0f : Math.max(60f, (w - fixed - gaps) / rest);
         for (int c = 0; c < n; c++) {
             float cw = s.cols.get(c).width;
             COLW[c] = cw <= 0f ? restW : cw;
         }
-        if (over > 0f) {
-            if (s.need == null) s.need = needs(cv, s, n, st);
-            squeeze(COLW, s.need, n, over);
-        }
+        if (s.need == null) s.need = needs(cv, s, n, st);
+        fit(COLW, s.need, GROWS, n, w - gaps);
         float cx = x;
         for (int c = 0; c < n; c++) {
             COLX[c] = cx;
@@ -587,6 +586,19 @@ public final class Tables {
         }
         // the last 0-width column takes to the end
         if (rest > 0 && s.cols.get(n - 1).width <= 0f) COLW[n - 1] = Math.max(COLW[n - 1], x + w - COLX[n - 1]);
+    }
+
+    /**
+     * Fits the first {@code n} widths to {@code room}: each that {@code grows} widened to its
+     * {@code need} first, then whatever is too wide taken back ({@link #squeeze}).
+     */
+    static void fit(float[] w, float[] need, boolean[] grows, int n, float room) {
+        float sum = 0f;
+        for (int c = 0; c < n; c++) {
+            if (grows[c]) w[c] = Math.max(w[c], need[c]);
+            sum += w[c];
+        }
+        if (sum > room) squeeze(w, need, n, sum - room);
     }
 
     /**
