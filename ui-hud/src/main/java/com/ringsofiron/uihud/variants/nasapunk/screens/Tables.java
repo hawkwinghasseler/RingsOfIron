@@ -3,6 +3,7 @@ package com.ringsofiron.uihud.variants.nasapunk.screens;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.IntArray;
 import com.ringsofiron.uihud.variants.nasapunk.NpCanvas;
 import com.ringsofiron.uihud.variants.nasapunk.NpColors;
 
@@ -91,6 +92,96 @@ public final class Tables {
     private static Row owner(Page p, Act a) {
         for (int i = 0, n = p.rowCount(); i < n; i++) if (p.row(i).acts.contains(a, true)) return p.row(i);
         return null;
+    }
+
+    // ---- parts in a box -------------------------------------------------------------------------
+
+    private static final float[] HEIGHTS = new float[32], SORTED = new float[32], COL_Y = new float[8];
+
+    /**
+     * Parts {@code sects} of {@code p} one under another in the box, each as tall as it wants; when
+     * they want more than the box has, the tallest give way first, down to what leaves the rest
+     * theirs, and the rows past that scroll.
+     */
+    public static void stack(NpCanvas cv, Camera cam, Page p, IntArray sects, float x, float y, float w, float h, Style st, Hits hits) {
+        int n = Math.min(sects.size, HEIGHTS.length);
+        float total = 0f;
+        for (int i = 0; i < n; i++) total += HEIGHTS[i] = want(cv, p, sects.get(i), w, st);
+        if (total > h) cap(HEIGHTS, n, h);
+        float yy = y;
+        for (int i = 0; i < n; i++) {
+            float sh = Math.min(HEIGHTS[i], y + h - yy);
+            if (sh < 24f) break;
+            sect(cv, cam, p, sects.get(i), x, yy, w, sh, st, hits);
+            yy += sh;
+        }
+    }
+
+    /** Caps {@code hs} at the level that makes the first {@code n} sum to {@code room}: the short keep theirs, the tall share what is left. */
+    static void cap(float[] hs, int n, float room) {
+        System.arraycopy(hs, 0, SORTED, 0, n);
+        java.util.Arrays.sort(SORTED, 0, n);
+        float used = 0f;
+        for (int i = 0; i < n; i++) {
+            float level = (room - used) / (n - i);
+            if (SORTED[i] >= level) {
+                for (int j = 0; j < n; j++) hs[j] = Math.min(hs[j], Math.max(level, 0f));
+                return;
+            }
+            used += SORTED[i];
+        }
+    }
+
+    /**
+     * Parts {@code sects} of {@code p} flowed into {@code columns} columns across the box, each whole
+     * in the first column with room for it and else in the emptiest, where its rows past the foot
+     * scroll; the columns' tops keep the parts' order.
+     */
+    public static void flow(NpCanvas cv, Camera cam, Page p, IntArray sects, int columns, float x, float y, float w, float h, float gap, Style st, Hits hits) {
+        int cols = Math.max(1, Math.min(columns, COL_Y.length));
+        float cw = (w - (cols - 1) * gap) / cols;
+        for (int c = 0; c < cols; c++) COL_Y[c] = y;
+        for (int i = 0; i < sects.size; i++) {
+            int s = sects.get(i);
+            float want = want(cv, p, s, cw, st);
+            int at = -1;
+            for (int c = 0; c < cols && at < 0; c++) if (COL_Y[c] + want <= y + h) at = c;
+            if (at < 0) {
+                at = 0;
+                for (int c = 1; c < cols; c++) if (COL_Y[c] < COL_Y[at]) at = c;
+            }
+            float sh = Math.min(want, y + h - COL_Y[at]);
+            if (sh < 30f) continue;
+            sect(cv, cam, p, s, x + at * (cw + gap), COL_Y[at], cw, sh, st, hits);
+            COL_Y[at] += sh;
+        }
+    }
+
+    /**
+     * The page's own orders as lit buttons {@code bw} wide along a strip at the box's foot, right to
+     * left, with the page's status line (or the first barred order's reason) before them.
+     */
+    public static void pageActs(NpCanvas cv, Camera cam, Page p, float x, float y, float w, float h, float bw, Hits hits) {
+        Ui.rule(cv, x + 6f, y, w - 12f);
+        float bh = 22f, by = y + (h - bh) / 2f + 1f, right = x + w - 14f;
+        float bx = right - p.acts.size * (bw + 6f) + 6f;
+        for (int i = 0; i < p.acts.size; i++) {
+            Act a = p.acts.get(i);
+            float ax = bx + i * (bw + 6f);
+            Ui.korry(cv, cam, ax, by, bw, bh, a.label, a.state, a.live, false);
+            hits.add(ax - 2f, by - 2f, bw + 4f, bh + 4f, a, 0);
+        }
+        String line = p.status;
+        for (int i = 0; i < p.acts.size && line.isEmpty(); i++) {
+            Act a = p.acts.get(i);
+            if (!a.live && !a.why.isEmpty()) line = a.label + ": " + a.why;
+        }
+        if (!line.isEmpty()) Ui.lab(cv, x + 14f, y + h / 2f + 5f, Ui.fit(cv, line, bx - x - 30f, Ui.LB, true, 0.6f));
+    }
+
+    /** Whether the page has orders or a status line of its own, for {@link #pageActs}. */
+    public static boolean hasPageActs(Page p) {
+        return p.acts.size > 0 || !p.status.isEmpty();
     }
 
     // ---- a part ---------------------------------------------------------------------------------
