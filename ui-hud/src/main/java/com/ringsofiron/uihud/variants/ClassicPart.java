@@ -1,9 +1,13 @@
 package com.ringsofiron.uihud.variants;
 
 /**
- * The pieces of the classic HUD a variant can keep or hide ({@link HudVariant#keeps}). Windows
- * (market, yard, missions, crew, boarding, the console window and the map) and the world overlays the game draws under the HUD (burn arrows, fire arcs, picture-in-picture) are not
- * here: they stay under every variant until a variant replaces them in its own PR.
+ * The pieces of the classic HUD a variant can keep or hide ({@link HudVariant#keeps}). The windows
+ * (market, yard, shipyard, missions, crew, boarding, the console window, the map's panels, the log,
+ * the controls and the ship-lost screen) are not here: a variant shows its own screen for one in
+ * place of the classic window with {@link HudVariant#replaces} ({@link ClassicWindow}). Nor are the
+ * world overlays the game draws under the HUD (burn arrows, fire arcs, picture-in-picture), which
+ * stay under every variant. The picture-in-picture bubbles keep off a variant's panels
+ * ({@link HudVariant#panels}), and a variant can draw their rims itself ({@link HudVariant#drawsInsets}).
  */
 public enum ClassicPart {
     /** The flight readout, top left. */
