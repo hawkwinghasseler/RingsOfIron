@@ -16,6 +16,7 @@ import com.ringsofiron.uihud.variants.cassette.YardCanvas;
 import com.ringsofiron.uihud.variants.cassette.YardPaint;
 import com.ringsofiron.uihud.variants.cassette.YardPart;
 import com.ringsofiron.uihud.variants.cassette.YardScreens;
+import com.ringsofiron.uihud.variants.cassette.screens.WindowScreens;
 import com.ringsofiron.uihud.widgets.BoardingWindow;
 import com.ringsofiron.uihud.widgets.MapPainter;
 
@@ -86,8 +87,11 @@ public class CassetteContextHud implements HudVariant {
     private Coaming coaming;
     private Veil veil;
     private YardPart[] all = new YardPart[0];
-    /** The menus, the map and the windows in the Yard Standard: the modes, under the rail. */
-    private final YardScreens screens = new YardScreens();
+    /**
+     * The menus, the map and the windows in the Yard Standard: the modes, under the rail. E at a deck
+     * console sits the captain at a seat and opens Ship › Systems on any other's system (section 4.3).
+     */
+    private final YardScreens screens = new YardScreens().consoles(WindowScreens.Consoles.MODES);
     /** What the instruments show while a mode is up: nothing, so P2 counts every condition. */
     private final Conditions.Shown none = new Conditions.Shown();
 

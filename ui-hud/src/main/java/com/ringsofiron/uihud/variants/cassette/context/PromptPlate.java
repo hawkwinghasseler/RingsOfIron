@@ -95,10 +95,11 @@ final class PromptPlate extends YardPart {
     private static final Pattern PANEL = Pattern.compile("for the (.+?) panel(?:\\s+\\[([^\\]]+)\\] (.+))?");
 
     /**
-     * A console's prompt as P6 words it: the object's name, then its verbs with their keys, the seat's
-     * first ("Helm · [V] sit and fly · [E] panel"). A gun is its weapon and mount, and at a point-defense
-     * gun the prompt says what taking it costs: "Autocannon Mk1 (FWD PORT) · [V] take the gun (point
-     * defense pauses) · [E] panel" (v19). Anything else is the game's words after its key.
+     * A console's prompt as P6 words it: the object's name, then what E does there, its main action. At a
+     * seat E sits, as V does ("Helm · [E] sit and fly"), and at a system's console it opens Ship › Systems
+     * on that system ("Reactor · [E] systems", section 4.3). A gun is its weapon and mount, and at a
+     * point-defense gun the prompt says what taking it costs: "Autocannon Mk1 (FWD PORT) · [E] take the
+     * gun (point defense pauses)" (v19). Anything else is the game's words after its key.
      */
     static String prompt(String key, String action, Mount gun) {
         String a = action.trim();
@@ -109,9 +110,7 @@ final class PromptPlate extends YardPart {
             object = Kit.gun(gun);
             if (gun.kind == Kind.POINT_DEFENSE) verb = verb + " (point defense pauses)";
         }
-        StringBuilder b = new StringBuilder(object);
-        if (verb != null) b.append(" · [").append(m.group(2)).append("] ").append(verb);
-        return b.append(" · [").append(key).append("] panel").toString();
+        return object + " · [" + key + "] " + (verb != null ? verb : "systems");
     }
 
     /** The gun whose console the captain stands at: the mount nearest them, or null. */

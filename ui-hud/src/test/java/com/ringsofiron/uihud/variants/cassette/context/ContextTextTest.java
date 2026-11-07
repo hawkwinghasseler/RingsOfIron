@@ -348,20 +348,24 @@ class ContextTextTest {
     }
 
     @Test
-    void aConsolesPromptNamesItThenItsVerbs() {
-        assertEquals("Helm · [V] sit and fly · [E] panel", PromptPlate.prompt("E", "for the Helm panel   [V] sit and fly", null));
-        assertEquals("Reactor · [E] panel", PromptPlate.prompt("E", "for the Reactor panel", null));
+    void aConsolesPromptNamesItThenWhatEDoesThere() {
+        // E is the object's main action (P6): at a seat it sits, at a system's console it opens Ship › Systems
+        assertEquals("Helm · [E] sit and fly", PromptPlate.prompt("E", "for the Helm panel   [V] sit and fly", null));
+        assertEquals("Weapons · [E] sit and fight", PromptPlate.prompt("E", "for the Weapons panel   [V] sit and fight", null));
+        assertEquals("Reactor · [E] systems", PromptPlate.prompt("E", "for the Reactor panel", null));
+        assertEquals("Life support · [E] systems", PromptPlate.prompt("E", "for the Life support panel", null));
         assertEquals("[E] put on a pressure suit", PromptPlate.prompt("E", "to put on a pressure suit", null));
         Mount gun = new Mount();
         gun.name = "FWD GUN";
         gun.weapon = "Coilgun Mk1";
-        assertEquals("Coilgun Mk1 (FWD) · [V] take the gun · [E] panel", PromptPlate.prompt("E", "for the Gun panel   [V] take the gun", gun));
+        assertEquals("Coilgun Mk1 (FWD) · [E] take the gun", PromptPlate.prompt("E", "for the Gun panel   [V] take the gun", gun));
         gun.name = "FWD PORT PD";
         gun.weapon = "Autocannon Mk1";
         gun.kind = Kind.POINT_DEFENSE;
-        assertEquals("Autocannon Mk1 (FWD PORT) · [V] take the gun (point defense pauses) · [E] panel",
+        assertEquals("Autocannon Mk1 (FWD PORT) · [E] take the gun (point defense pauses)",
                 PromptPlate.prompt("E", "for the Gun panel   [V] take the gun", gun));
-        // Not knowing which gun, the console's own title
-        assertEquals("Gun · [V] take the gun · [E] panel", PromptPlate.prompt("E", "for the Gun panel   [V] take the gun", null));
+        // Not knowing which gun, the console's own title; the interact key as the player has bound it
+        assertEquals("Gun · [E] take the gun", PromptPlate.prompt("E", "for the Gun panel   [V] take the gun", null));
+        assertEquals("Helm · [F] sit and fly", PromptPlate.prompt("F", "for the Helm panel   [V] sit and fly", null));
     }
 }
