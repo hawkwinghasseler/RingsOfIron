@@ -32,6 +32,10 @@ class FeedTest {
         assertEquals("LOG", Feed.source("Welcome aboard, Ensign. Terran Patrol Authority."));
         assertEquals("STATION", Feed.source("Docked at your home station. J opens its mission board"));
         assertEquals("BOARDING", Feed.source("3 prisoners brought aboard"));
+        // Salvage names the craft and its guns, but it is a boarding's
+        assertEquals("BOARDING", Feed.source("No one can get to the engine on Raider from inside: stand off alongside to strip it on EVA"));
+        assertEquals("BOARDING", Feed.source("The harpoon launcher is off Raider; it's being carried home"));
+        assertEquals("BOARDING", Feed.source("The harpoon launcher is in the hold (sells for 1,500 cr)"));
         post("Helm: burn 2 of 3 flown", 2);
         post("Docked at Highport", 1);
         p4.update(feed, false, 2, 0.1f);

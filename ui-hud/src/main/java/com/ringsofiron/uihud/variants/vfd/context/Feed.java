@@ -120,6 +120,8 @@ final class Feed {
         if (s.startsWith("budget") || s.startsWith("promoted")) return "SPONSOR";
         if (s.startsWith("helm") || has(s, "autopilot", "helmsman", "burn", "course", "arriv", "orbit", "navigation", "nav target")) return "HELM";
         if (has(s, "shield")) return "SHIELDS";
+        // Salvage names the craft and the part ("the harpoon launcher is off Raider"): a boarding's, not a fight's
+        if (has(s, "strip", "salvag", "carried home", "sells for")) return "BOARDING";
         if (has(s, "missile", "target", "decoy", "hostile", "raider", "pirate", "point defense", "hit", "struck", "gun",
                 "harpoon", "salvo", "disabled", "destroyed", "surrender")) return "GUNNERY";
         // The job board is the station's; boarding a ship, the prisoners and the salvage are a boarding's
