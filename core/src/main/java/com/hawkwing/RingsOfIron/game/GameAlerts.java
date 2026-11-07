@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.utils.ImmutableArray;
+import com.badlogic.gdx.utils.IntArray;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.PlayerAvatarComponent;
@@ -9,6 +10,7 @@ import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.RoomNames;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.shipops.AbandonShip;
 import com.ringsofiron.shipops.DisabledComponent;
@@ -56,7 +58,9 @@ public class GameAlerts {
     private final Spacewalks spacewalks;
     private final CrewService crew;
     private final HudData data;
+    private static final Side[] SIDES = Side.values();
     private final RoomNames rooms = new RoomNames();
+    private final IntArray breached = new IntArray();
     private Entity roomsFor;
     private final ShipAlerts scan = new ShipAlerts();
     private final PowerStatusProvider.PowerFrame power = new PowerStatusProvider.PowerFrame();
@@ -148,7 +152,7 @@ public class GameAlerts {
     private void rooms(ShipGridComponent grid, AlertRegistry alerts) {
         for (Compartment c : rooms.rooms(grid)) {
             String name = rooms.of(grid, c);
-            int burning = 0, breaches = 0, fx = -1, fy = -1, bx = -1, by = -1;
+            int burning = 0, fx = -1, fy = -1;
             for (int i = 0; i < c.tiles.size; i++) {
                 int packed = c.tiles.get(i);
                 int x = packed % grid.width, y = packed / grid.width;
@@ -159,19 +163,16 @@ public class GameAlerts {
                     fx = x;
                     fy = y;
                 }
-                if (t.isHullBreach()) {
-                    breaches++;
-                    bx = x;
-                    by = y;
-                }
             }
             if (burning > 0) {
                 alerts.raise("fire:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("FIRE", "Fire in " + name)
                         .room(name).tile(fx, fy).count(burning);
             }
+            int breaches = breaches(grid, c, breached);
             if (breaches > 0) {
+                int at = breached.first();
                 alerts.raise("breach:" + name, Level.WARNING, Category.LIFE_SUPPORT).set("BREACH", "Hull breach in " + name)
-                        .room(name).tile(bx, by).count(breaches);
+                        .room(name).tile(at % grid.width, at / grid.width).count(breaches);
             }
             // An airlock pumped down for a spacewalk is empty on purpose
             if (name.startsWith("AIRLOCK")) continue;
@@ -186,6 +187,28 @@ public class GameAlerts {
                 alerts.raise("smoke:" + name, Level.CAUTION, Category.LIFE_SUPPORT).set("SMOKE", "Smoke in " + name).room(name);
             }
         }
+    }
+
+    /**
+     * The hull breaches that open onto the room: the breached hull tiles 4-adjacent to its tiles,
+     * with no closed edge wall between, each counted once. A breach is space-exposed, so it is never
+     * one of the room's own tiles. Fills {@code into} with their packed indices, lowest first.
+     */
+    static int breaches(ShipGridComponent grid, Compartment c, IntArray into) {
+        into.clear();
+        for (int i = 0; i < c.tiles.size; i++) {
+            int packed = c.tiles.get(i);
+            int x = packed % grid.width, y = packed / grid.width;
+            for (Side s : SIDES) {
+                int nx = x + s.dx, ny = y + s.dy;
+                Tile nb = grid.getTile(nx, ny);
+                if (nb == null || !nb.isHullBreach() || grid.isEdgeBlocked(x, y, nx, ny)) continue;
+                int n = ny * grid.width + nx;
+                if (!into.contains(n)) into.add(n);
+            }
+        }
+        into.sort();
+        return into.size;
     }
 
     private void hull(ShipGridComponent grid, AlertRegistry alerts) {
