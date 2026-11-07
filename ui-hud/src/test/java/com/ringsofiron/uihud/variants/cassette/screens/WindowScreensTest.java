@@ -341,7 +341,7 @@ class WindowScreensTest {
         Boards b = new Boards();
         b.data = d;
         fill(d, "Third", "Second", "First");
-        LogPage log = new LogPage(new ConditionLog());
+        LogPage log = new LogPage();
         log.refresh(b);
         assertEquals("Third", log.line(0), "the newest first");
         // The game refills the feed each frame: its pooled entries now carry other notices

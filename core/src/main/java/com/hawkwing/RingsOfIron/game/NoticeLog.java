@@ -1,9 +1,14 @@
 package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.signals.Signal;
+import com.badlogic.gdx.utils.Json;
+import com.badlogic.gdx.utils.JsonValue;
+import com.ringsofiron.coreengine.Resettable;
+import com.ringsofiron.coreengine.SaveParticipant;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -11,13 +16,13 @@ import java.util.function.DoubleSupplier;
 
 /**
  * Everything the game tells the player: a short stack of notices on screen, newest on top, each
- * held for its own time, and a log of the last {@link #KEEP} for the log window (L). Systems post
- * here, or keep their own notice lists for {@link NoticeFeeds} to bring in.
+ * held for its own time, and a log of the last {@link #KEEP} for the log window (L), saved with the
+ * game. Systems post here, or keep their own notice lists for {@link NoticeFeeds} to bring in.
  *
  * <p>The same text posted again while it is still on screen is not stacked twice: it is held
  * again and counted ("Launcher reloading (x3)").
  */
-public final class NoticeLog {
+public final class NoticeLog implements SaveParticipant, Resettable {
     /** How much a notice matters: important ones get their own colour, a sound and a longer hold. */
     public enum Kind {
         INFO(5f),
@@ -66,8 +71,11 @@ public final class NoticeLog {
     /** The missile key pressed while the launcher reloads, told once per reload ({@link #postOnce}). */
     public static final String RELOADING = "Launcher reloading";
 
-    /** Notices kept for the log. */
-    public static final int KEEP = 50;
+    /**
+     * Notices kept for the log: about 20 a day of play, so a career's last weeks (the Task spec's
+     * book and the Stations spec's slate both keep 500).
+     */
+    public static final int KEEP = 500;
     /** Notices on screen at once; the oldest goes when another comes. */
     public static final int STACK = 4;
 
@@ -198,6 +206,11 @@ public final class NoticeLog {
         return new ArrayList<>(history);
     }
 
+    /** As {@link #history()}, read in place rather than copied, for a reader each frame. Do not hold it past the frame. */
+    public Collection<Notice> log() {
+        return Collections.unmodifiableCollection(history);
+    }
+
     /** The newest notice, or null. */
     public Notice latest() {
         return history.peekFirst();
@@ -213,5 +226,47 @@ public final class NoticeLog {
     /** Takes everything off the screen; the log keeps it. */
     public void clearScreen() {
         showing.clear();
+    }
+
+    /** Before a load is read over it: the last game's log goes, and a save without one leaves it empty. */
+    @Override
+    public void reset() {
+        clear();
+    }
+
+    @Override
+    public String saveKey() {
+        return "notices";
+    }
+
+    /** The log, newest first: what it said, how much it mattered, when it came and how often. Nothing on screen. */
+    @Override
+    public void write(Json json) {
+        json.writeArrayStart("log");
+        for (Notice n : history) {
+            json.writeObjectStart();
+            json.writeValue("text", n.text);
+            json.writeValue("kind", n.kind.name());
+            json.writeValue("time", n.time);
+            if (n.count > 1) json.writeValue("count", n.count);
+            json.writeObjectEnd();
+        }
+        json.writeArrayEnd();
+    }
+
+    @Override
+    public void read(Json json, JsonValue data) {
+        clear();
+        JsonValue log = data.get("log");
+        for (JsonValue v = log == null ? null : log.child; v != null && history.size() < KEEP; v = v.next) {
+            String text = v.getString("text", "");
+            if (text.isEmpty()) continue;
+            Kind kind = Kind.INFO;
+            for (Kind k : Kind.values()) if (k.name().equals(v.getString("kind", ""))) kind = k;
+            Notice n = new Notice(text, kind, v.getDouble("time", 0));
+            n.count = Math.max(1, v.getInt("count", 1));
+            n.left = 0f;
+            history.addLast(n);
+        }
     }
 }
