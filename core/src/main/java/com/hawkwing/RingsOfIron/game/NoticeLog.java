@@ -49,11 +49,18 @@ public final class NoticeLog implements SaveParticipant, Resettable {
         /** Times posted while still on screen; 1 for once. */
         public int count = 1;
         /**
-         * The id of the alert that carries this notice's condition ({@link GameAlerts#MISSILE}), or
-         * empty when none does: a HUD whose log keeps each alert once leaves the notice out (the Task
-         * spec's 9.2, an alert is logged as an alert, not as a notice). Set by whoever posts it.
+         * For a warning, what carries it in place of the news: the alert it becomes, or the line that
+         * asks or tells it ({@link com.ringsofiron.uihud.data.NoticeAlerts}, the Task spec's 9.2 table);
+         * empty for news. A HUD that sorts warnings into alerts and news shows it as news unless it
+         * shows that alert, and its log, keeping each alert once, leaves the notice out for the
+         * alert's line (an alert is logged as an alert, not as a notice). Set by whoever posts it.
          */
         public String alert = "";
+        /**
+         * A warning that is news of a loss and nothing more (a furnishing burned): to a HUD that sorts
+         * warnings, info rather than important news (9.2).
+         */
+        public boolean minor;
         /** Seconds it stays on screen. */
         float left;
 
@@ -107,6 +114,11 @@ public final class NoticeLog implements SaveParticipant, Resettable {
 
     /** Posts {@code text}; null or empty text is ignored. Returns the notice it went into, or null. */
     public Notice post(String text, Kind kind) {
+        return post(text, kind, "");
+    }
+
+    /** {@link #post(String, Kind)} for a warning that {@code alert} carries ({@link Notice#alert}). */
+    public Notice post(String text, Kind kind, String alert) {
         if (text == null || text.isEmpty()) return null;
         Notice n;
         Notice same = find(text);
@@ -120,6 +132,7 @@ public final class NoticeLog implements SaveParticipant, Resettable {
             history.addFirst(n);
             while (history.size() > KEEP) history.removeLast();
         }
+        if (alert != null && !alert.isEmpty()) n.alert = alert;
         showing.add(0, n);
         while (showing.size() > STACK) showing.remove(showing.size() - 1);
         posted.dispatch(n);
@@ -157,10 +170,16 @@ public final class NoticeLog implements SaveParticipant, Resettable {
      */
     public Notice revise(Notice old, String text, Kind kind) {
         if (text == null || text.isEmpty()) return old;
-        if (old == null || !history.contains(old)) return post(text, kind);
+        if (old == null) return post(text, kind);
+        if (!history.contains(old)) {
+            Notice n = post(text, kind, old.alert);
+            if (n != null) n.minor = old.minor;
+            return n;
+        }
         Notice n = new Notice(text, kind, old.time);
         n.left = Math.max(old.left, kind.seconds);
         n.alert = old.alert;
+        n.minor = old.minor;
         List<Notice> kept = new ArrayList<>(history);
         kept.set(kept.indexOf(old), n);
         history.clear();
@@ -257,6 +276,7 @@ public final class NoticeLog implements SaveParticipant, Resettable {
             json.writeValue("time", n.time);
             if (n.count > 1) json.writeValue("count", n.count);
             if (!n.alert.isEmpty()) json.writeValue("alert", n.alert);
+            if (n.minor) json.writeValue("minor", true);
             json.writeObjectEnd();
         }
         json.writeArrayEnd();
@@ -274,6 +294,7 @@ public final class NoticeLog implements SaveParticipant, Resettable {
             Notice n = new Notice(text, kind, v.getDouble("time", 0));
             n.count = Math.max(1, v.getInt("count", 1));
             n.alert = v.getString("alert", "");
+            n.minor = v.getBoolean("minor", false);
             n.left = 0f;
             history.addLast(n);
         }

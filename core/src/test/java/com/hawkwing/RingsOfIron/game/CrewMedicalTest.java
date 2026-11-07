@@ -15,6 +15,7 @@ import com.ringsofiron.interiorgrid.FloorTiles;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.crew.CrewDamageSink.DamageCause;
 import com.ringsofiron.shipops.DisabledComponent;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.providers.CrewProvider;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -147,6 +148,9 @@ class CrewMedicalTest {
         assertTrue(noticed("Bea is critically wounded: treat within 5:00 or they die"), notices());
         assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith("Bea is critically")
                 && n.kind == NoticeLog.Kind.WARNING), "a critical wound is a warning, not a promotion's green");
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith("Bea is critically") && n.alert.equals(NoticeAlerts.CRITICAL)),
+                "CRITICAL carries it (the Task spec's 9.2)");
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith("Ada is lightly") && n.alert.isEmpty()), "a light wound is news");
         assertTrue(noticed("Ada is lightly wounded and working slower"), notices());
         assertEquals("Light wound 100%", CrewCareer.condition(world.crew.crew(ada)));
         assertTrue(CrewCareer.condition(world.crew.crew(bea)).startsWith("Critical wound"),
@@ -164,7 +168,21 @@ class CrewMedicalTest {
         assertTrue(noticed("Bea has died of wounds"), notices());
         assertEquals(NoticeLog.Kind.WARNING, world.notices.history().stream()
                 .filter(n -> n.text.equals("Bea has died of wounds")).findFirst().orElseThrow().kind);
+        assertEquals("", world.notices.history().stream().filter(n -> n.text.equals("Bea has died of wounds")).findFirst().orElseThrow().alert,
+                "a death is news: nothing in the band could undo it");
         assertEquals("You are lightly wounded and working slower", CrewMedical.describe("You", world.crew.crew(ada)));
+    }
+
+    @Test
+    void aWoundsWarningNamesWhatCarriesIt() {
+        CrewMemberComponent c = new CrewMemberComponent();
+        c.wound = Wound.CRITICAL;
+        assertEquals(NoticeAlerts.CRITICAL, CrewMedical.woundAlert(c, false));
+        assertEquals(NoticeAlerts.CAPTAIN, CrewMedical.woundAlert(c, true), "the captain's own: CAPTAIN HURT");
+        c.wound = Wound.SERIOUS;
+        assertEquals(NoticeAlerts.WOUNDED, CrewMedical.woundAlert(c, false));
+        c.wound = Wound.LIGHT;
+        assertEquals("", CrewMedical.woundAlert(c, false), "news");
     }
 
     @Test

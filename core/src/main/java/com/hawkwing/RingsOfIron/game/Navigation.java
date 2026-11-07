@@ -15,6 +15,7 @@ import com.ringsofiron.orbital.warp.DropOutSource;
 
 import com.ringsofiron.shipsystems.PropellantFeed;
 import com.ringsofiron.uihud.HintRegistry;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -117,9 +118,23 @@ public class Navigation extends EntitySystem implements DropOutSource {
         for (String news : transfer.notices) world.notices.post(news);
         transfer.notices.clear();
         // A dropped order or a burn cut short wants the player's attention
-        for (String news : helm.notices) world.notices.post(news, news.startsWith("Helm:") ? NoticeLog.Kind.INFO : NoticeLog.Kind.WARNING);
+        for (String news : helm.notices) {
+            boolean helmSays = news.startsWith("Helm:");
+            world.notices.post(news, helmSays ? NoticeLog.Kind.INFO : NoticeLog.Kind.WARNING, helmSays ? "" : helmAlert(news));
+        }
         helm.notices.clear();
         sinceApproach += deltaTime;
+    }
+
+    /**
+     * What carries a warning from the helm ({@link NoticeLog.Notice#alert}): a burn missed or cut
+     * short is BURN MISSED, a dropped order HELM (the Task spec's 9.2).
+     */
+    static String helmAlert(String news) {
+        if (news.startsWith("Burn missed") || news.contains("burn cut short") || news.startsWith("Burn cut short")) {
+            return NoticeAlerts.BURN_MISSED;
+        }
+        return news.startsWith("Helm order dropped") ? NoticeAlerts.HELM : "";
     }
 
     // ------------------------------------------------------------------ warp to burn
