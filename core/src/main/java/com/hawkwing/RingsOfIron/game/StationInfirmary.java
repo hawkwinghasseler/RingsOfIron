@@ -38,7 +38,9 @@ import com.ringsofiron.stationsdocking.DockingSystem;
  *       far as the player's credits go.</li>
  * </ul>
  * Not at a station whose crew are the player's enemies, and not while the ship is at battle
- * stations. Nothing here is saved: the care given is kept on the crew.
+ * stations. It keeps a record of the docking for the HUD: who it is treating, and how many of the
+ * crew it has treated and billed since the ship docked. Nothing here is saved: the care given is
+ * kept on the crew, and the record starts again with a load.
  */
 public final class StationInfirmary {
     /** Credits for bringing a critical, serious or light wound down a level. */
@@ -49,6 +51,11 @@ public final class StationInfirmary {
     private final DockingSystem docking;
     private final StationYard yard;
     private double last = Double.NaN;
+    /** The record since the ship docked at {@link #at}: who it is treating now, who it has billed for, and what. */
+    private Entity at;
+    private final com.badlogic.gdx.utils.Array<String> treating = new com.badlogic.gdx.utils.Array<>();
+    private final com.badlogic.gdx.utils.ObjectSet<Entity> treated = new com.badlogic.gdx.utils.ObjectSet<>();
+    private double billed;
 
     public StationInfirmary(GameContext ctx, CrewService crew, DockingSystem docking, StationYard yard) {
         this.ctx = ctx;
@@ -64,6 +71,12 @@ public final class StationInfirmary {
         last = now;
         Entity ship = ctx.player();
         Entity station = ship == null ? null : docking.dockedTo(ship);
+        treating.clear();
+        if (station != at) {
+            at = station;
+            treated.clear();
+            billed = 0;
+        }
         if (station == null || station.getComponent(StationComponent.class) == null) return;
         if (!crew.friendlyTo(FactionStanding.PLAYER, station)) return;
         ShipTaskBoardComponent board = ship.getComponent(ShipTaskBoardComponent.class);
@@ -72,6 +85,7 @@ public final class StationInfirmary {
             CrewMemberComponent c = crew.crew(e);
             GridPositionComponent p = crew.position(e);
             if (!patient(c, p, ship, station) || crew.homeOf(e) != ship) continue;
+            treating.add(c.name);
             treat(e, c, station, dt);
         }
     }
@@ -97,7 +111,7 @@ public final class StationInfirmary {
             left -= need;
             Wound was = c.wound;
             crew.easeWound(e);
-            bill(station, c, was);
+            bill(station, e, c, was);
         }
         // Brought round where they can breathe; one down in bad air is the crew's to carry out first
         GridPositionComponent p = crew.position(e);
@@ -108,12 +122,34 @@ public final class StationInfirmary {
         }
     }
 
-    private void bill(Entity station, CrewMemberComponent c, Wound was) {
+    private void bill(Entity station, Entity e, CrewMemberComponent c, Wound was) {
         TraderComponent trader = ctx.player().getComponent(TraderComponent.class);
         double price = price(was) * yard.priceFactor.applyAsDouble(station);
         if (trader != null) trader.credits = Math.max(0, trader.credits - price);
+        treated.add(e);
+        billed += price;
         ctx.notices.post(String.format(Locale.ROOT, "%s's infirmary treated %s's %s wound: %.0f cr",
                 ShipNames.name(station), c.name, was.name().toLowerCase(Locale.ROOT), price), NoticeLog.Kind.INFO);
+    }
+
+    /** The station the record is for: where the ship is docked, as of the last tick; null when it isn't. */
+    public Entity recordAt() {
+        return at;
+    }
+
+    /** The crew it is treating now, by name. */
+    public com.badlogic.gdx.utils.Array<String> treating() {
+        return treating;
+    }
+
+    /** How many of the crew it has treated since the ship docked, each once however many wounds. */
+    public int treated() {
+        return treated.size;
+    }
+
+    /** What it has billed since the ship docked, credits. */
+    public double billed() {
+        return billed;
     }
 
     /** Credits for bringing {@code wound} down a level. */

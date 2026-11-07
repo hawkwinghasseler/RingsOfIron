@@ -9,12 +9,16 @@ import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.providers.PowerStatusProvider.PowerFrame;
 import com.ringsofiron.uihud.providers.UiContextProvider.Presence;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
+import com.ringsofiron.uihud.variants.ShellLook;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.FilamentActor;
 import com.ringsofiron.uihud.variants.vfd.Optic;
+import com.ringsofiron.uihud.variants.vfd.VfdScreens;
 import com.ringsofiron.uihud.variants.vfd.stations.Mfds.Mfd;
+import com.ringsofiron.uihud.widgets.MapPainter;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -41,7 +45,12 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
     final TopColumn top = new TopColumn();
     final World world = new World();
     final Deck deck = new Deck();
-    private float topX, bandY, height = Geo.H;
+    /** The menus in setup mode and the map's plot, the same under all three FILAMENT HUDs. */
+    private final VfdScreens screens = new VfdScreens();
+    /** The panels in place of the game's windows (10). */
+    final Panels panels = new Panels(this);
+    /** The grid's offset for the band; the top column's, left of a side panel while one shows (6.3 rule 2). */
+    private float topX, colX, bandY, height = Geo.H;
     private boolean blackout;
     private final Rectangle column = new Rectangle(), base = new Rectangle();
 
@@ -50,6 +59,7 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
         this.host = host;
         actor = new FilamentActor(this, this);
         host.layer().addActor(actor);
+        panels.attach(host);
     }
 
     @Override
@@ -58,6 +68,8 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
         float w = host.width(), h = host.height();
         actor.setBounds(0f, 0f, w, h);
         actor.setUnitsPx(host.uiScale());
+        // The panel first: the top column and the world make room for it
+        panels.update(delta);
         layout(d, w, h, delta);
         boxes(actor);
     }
@@ -65,14 +77,15 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
     /** The boxes that take clicks this frame: the lamps and tiles, the soft keys and the board. */
     void boxes(FilamentActor a) {
         a.clearBoxes();
-        top.boxes(a, topX);
-        band.boxes(a, topX, bandY);
+        top.boxes(a, colX);
+        if (!panels.fullScreen()) band.boxes(a, topX, bandY);
     }
 
     /** Reads this frame's data into every part, on a {@code w} x {@code h} stage. */
     void layout(HudData d, float w, float h, float delta) {
         height = h;
         topX = Geo.topX(w);
+        colX = panels.beside() ? Geo.columnLeftOf(Geo.panelX(w)) : topX;
         bandY = Geo.bandY(h);
         blackout = blackout(d);
         Presence seat = d.ctx.presence;
@@ -87,6 +100,10 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
                 : seat == Presence.GUN ? h - 16f - 56f - 6f : h;
         // The prompt line sits over the world just above the band or the gun's plate: marks stay clear of it
         if (deck.prompt) floor = Math.min(floor, bandY + deck.promptY - 6f);
+        // Beside a side panel the world ends at its plate, and its labels go to their edge markers (11.2)
+        world.column = colX;
+        world.panelLeft = panels.beside() ? Geo.panelX(w) - Terminal.PAD : Float.POSITIVE_INFINITY;
+        world.hidden = panels.fullScreen() || panels.lost;
         world.update(d, host == null ? null : host.viewports(), w, h, topX, floor, blackout);
     }
 
@@ -98,15 +115,26 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
 
     @Override
     public void paint(Filament f) {
+        // The ship lost: every tube off, every ghost showing, under the lost card
+        f.dark = panels.lost;
         world.paint(f);
-        f.origin(topX, bandY);
-        band.paint(f);
-        deck.paintPrompt(f);
-        f.origin(0f, bandY);
-        deck.paintSuit(f);
+        if (!panels.fullScreen()) {
+            f.origin(topX, bandY);
+            band.paint(f);
+            f.origin(colX, bandY);
+            deck.paintPrompt(f);
+            f.origin(0f, bandY);
+            deck.paintSuit(f);
+        }
         // The top column last: nothing but the out-of-fiction layer covers it (rule 1 of 6.3)
-        f.origin(topX, 0f);
+        paintTop(f);
+    }
+
+    /** The top column, left of a side panel while one shows; the Plot puts it over the map again. */
+    void paintTop(Filament f) {
+        f.origin(colX, 0f);
         top.paint(f);
+        f.origin(0f, 0f);
     }
 
     @Override
@@ -137,6 +165,8 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
 
     @Override
     public boolean keyDown(int keycode) {
+        // A panel's keys first: its pages, its lists and its soft keys
+        if (panels.keyDown(keycode)) return true;
         HudData d = host.data();
         if (keycode == Keys.O && (top.ann.warnUnacked || top.ann.cautUnacked)) {
             d.alerts.acknowledgeAll();
@@ -168,8 +198,10 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
 
     @Override
     public void detach() {
+        panels.detach();
         if (actor != null) actor.dispose();
         actor = null;
+        screens.dispose();
     }
 
     @Override
@@ -209,5 +241,45 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
         // banner and status column in the top column, markers and threats in the projected world,
         // key hints, the docked banner and the E prompt in the prompt line and the status strip
         return EnumSet.noneOf(ClassicPart.class);
+    }
+
+    @Override
+    public boolean replaces(ClassicWindow window) {
+        return panels.replaces(window);
+    }
+
+    @Override
+    public boolean open(ClassicWindow window) {
+        return panels.open(window);
+    }
+
+    @Override
+    public boolean showing(ClassicWindow window) {
+        return panels.showing(window);
+    }
+
+    @Override
+    public void close(ClassicWindow window) {
+        panels.close(window);
+    }
+
+    @Override
+    public ShellLook shellLook() {
+        return screens.shellLook();
+    }
+
+    @Override
+    public MapPainter mapPainter() {
+        return screens.mapPainter();
+    }
+
+    /** The map in the Plot's terminal, which has its title and its help, or on its own with them over the plot. */
+    void mapFramed(boolean on) {
+        screens.framed(on, 0f);
+    }
+
+    @Override
+    public void resize(int width, int height, float uiScale) {
+        screens.resize(uiScale);
     }
 }

@@ -35,6 +35,22 @@ final class Geo {
     /** The prompt line's top: on deck, and seated, where it clears the band's rack (its top 10 above the glass) by 3. */
     static final float PROMPT_DECK_Y = 760f, PROMPT_SEATED_Y = 576f;
 
+    // The panels (10.1): one at a time, 480 wide and 16 in from the right; seated it stops 8 above the
+    // band. The Yard and the Shipyard take the screen's width under the top column, the Plot its height.
+    static final float PANEL_W = 480f, PANEL_MARGIN = 16f, PANEL_GAP = 8f;
+    /** A wide panel's top: under the ticker, so the top column stands over it as it stands over the world. */
+    static final float WIDE_Y = TICKER_Y + 60f + 8f;
+
+    /** A side panel's left on a stage {@code width} wide. */
+    static float panelX(float width) {
+        return width - PANEL_MARGIN - PANEL_W;
+    }
+
+    /** The top column's offset (as {@link #topX}) that centres it in the world left of a panel at {@code panelX}. */
+    static float columnLeftOf(float panelX) {
+        return Math.round((panelX - TOP_W) / 2f) - TOP_X;
+    }
+
     /** Where the grid's left edge sits on a stage {@code width} wide: the grid is centred. */
     static float topX(float width) {
         return Math.round((width - W) / 2f);

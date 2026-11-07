@@ -204,6 +204,14 @@ public class RingsOfIronGame extends ApplicationAdapter {
         options.slots = slots;
     }
 
+    /**
+     * The look of the shell's menus for the HUD variant picked, which the mod scripts dialog takes
+     * too; it gives null for the classic look. Before {@link #create}.
+     */
+    public void setMenuLook(java.util.function.Supplier<com.ringsofiron.uihud.variants.ShellLook> look) {
+        options.menuLook = look;
+    }
+
     /** Whether a new game gets the opening walkthrough; off also stops one under way. */
     public void setOpeningGuide(boolean wanted) {
         options.openingWanted = wanted;

@@ -12,4 +12,8 @@ public class TransferLegComponent implements Component {
     public String continueIn;
     /** The target the leg goes on to. */
     public String continueTo;
+    /** When the leg meets its target, sim seconds, the planner's estimate as it was accepted; 0 unknown. */
+    public double arrival;
+    /** The delta-v the rest of the leg needs (the capture, then on to the target), m/s, an estimate; 0 unknown. */
+    public double restDeltaV;
 }

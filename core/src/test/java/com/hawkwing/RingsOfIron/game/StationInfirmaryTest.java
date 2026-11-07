@@ -71,6 +71,10 @@ class StationInfirmaryTest {
         double before = credits();
         run(2);
         assertTrue(world.crew.crew(crew.get(0)).stabilised, "the critical wound stabilised at once");
+        // The record the HUD shows: every one of them under treatment, at this station
+        assertSame(world.docking.dockedTo(game.player), world.infirmary.recordAt());
+        assertEquals(crew.size(), world.infirmary.treating().size, "treating " + world.infirmary.treating());
+        assertTrue(world.infirmary.treating().contains(world.crew.crew(crew.get(0)).name, false));
         // Critical to light at a medbay's pace, (60 + 120) s / 1.5; a light wound is the crew's own
         run(60 * 150);
         for (Entity e : crew) {
@@ -83,6 +87,11 @@ class StationInfirmaryTest {
         // A level the first of them back on their feet finished first isn't the infirmary's to bill
         assertTrue(before - credits() > expected - StationInfirmary.CRITICAL_PRICE && before - credits() <= expected,
                 "billed a level at a time: " + (before - credits()) + " of " + expected);
+        // Nobody left to treat, and the record says what was done since docking
+        assertEquals(0, world.infirmary.treating().size, "treating " + world.infirmary.treating());
+        assertTrue(world.infirmary.treated() >= crew.size() - 1 && world.infirmary.treated() <= crew.size(),
+                world.infirmary.treated() + " treated of " + crew.size());
+        assertEquals(before - credits(), world.infirmary.billed(), 1e-6, "the record is what was billed");
     }
 
     @Test

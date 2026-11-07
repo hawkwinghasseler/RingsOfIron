@@ -6,6 +6,7 @@ import com.ringsofiron.uihud.providers.KeyHintProvider;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -58,5 +59,20 @@ public class PlayerKeyHints implements KeyHintProvider {
         help.key = keys.apply(Action.HELP);
         help.label = "controls";
         help.action = Action.HELP.name();
+    }
+
+    /** The controls panel's sections, as the classic F1 panel lists them: every hint by where it applies, with the player's keys. */
+    @Override
+    public void collectAll(HelpFrame out) {
+        Set<HintRegistry.Context> now = contexts.get();
+        for (Map.Entry<HintRegistry.Context, List<HintRegistry.Hint>> e : hints.byContext().entrySet()) {
+            HelpSection section = out.add(e.getKey().title);
+            HintRegistry.Context c = e.getKey();
+            section.here = c != HintRegistry.Context.ANY && now != null && now.contains(c);
+            section.gamepad = c == HintRegistry.Context.GAMEPAD;
+            for (HintRegistry.Hint h : e.getValue()) {
+                section.add(h.key(keys), h.label, h.actions.length == 0 ? "" : h.actions[0].name());
+            }
+        }
     }
 }

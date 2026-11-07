@@ -55,6 +55,8 @@ public class Navigation extends EntitySystem implements DropOutSource {
     private final GameWorld world;
     private final PlayerOrbitInfo orbits;
     private boolean warpToBurn;
+    /** Where a warp on to something the map shows stops, sim seconds; NaN with none asked. */
+    private double warpUntil = Double.NaN;
     private final ClosestApproach.Result approach = new ClosestApproach.Result();
     private float sinceApproach = APPROACH_REFRESH;
     private String approachFor;
@@ -85,7 +87,10 @@ public class Navigation extends EntitySystem implements DropOutSource {
         world.timeWarp.addDropOutSource(nav.autopilot);
         world.engine.addRailsWarpGuard(nav.helm::railsWarpBlockedReason);
         world.timeWarp.changes.add((signal, change) -> {
-            if (!change.rails) nav.warpToBurn = false;
+            if (!change.rails) {
+                nav.warpToBurn = false;
+                nav.warpUntil = Double.NaN;
+            }
         });
         registerHints(world.hints, () -> nav.transfer.proposal() != null);
         // The low-propellant warning keeps quiet while there is enough to get home
@@ -139,12 +144,37 @@ public class Navigation extends EntitySystem implements DropOutSource {
         return String.format(Locale.ROOT, "Warping to the next burn; stopping %s before it", formatTime(leadFor(n)));
     }
 
+    /**
+     * Rails warp on towards {@code time} (sim seconds), something the map shows, named {@code what},
+     * stopping {@link #WARP_LEAD} before it; a planned burn before then still stops it first. Returns
+     * what to tell the player.
+     */
+    public String warpTo(double time, String what) {
+        double wait = time - WARP_LEAD - world.universe.now();
+        if (wait <= 5) return "Too close to warp to " + what;
+        int level = wait > 2 * 86400 ? 100_000 : wait > 3 * 3600 ? 10_000 : wait > 600 ? 1_000 : 100;
+        if (!world.timeWarp.setWarp(level)) {
+            String reason = world.engine.getRailsWarpBlockedReason();
+            return "Time warp refused" + (reason == null ? "" : ": " + reason);
+        }
+        warpUntil = time - WARP_LEAD;
+        return String.format(Locale.ROOT, "Warping to %s; stopping %s before it", what, formatTime(WARP_LEAD));
+    }
+
     @Override
     public double nextDropOutTime() {
+        double until = warpUntil, now = world.universe.now();
+        if (!Double.isNaN(until) && until < now) warpUntil = until = Double.NaN;
+        double burn = nextBurnDropOut(now);
+        if (Double.isNaN(until)) return burn;
+        return Double.isNaN(burn) ? until : Math.min(burn, until);
+    }
+
+    /** Where warp stops for the next burn, or NaN with none to stop for. */
+    private double nextBurnDropOut(double now) {
         ManeuverNodeComponent.Node n = nextBurn();
         // Every planned burn is flown in the bubble: warp always stops in time to turn onto it
         if (n == null) return Double.NaN;
-        double now = world.universe.now();
         double t = n.time - leadFor(n);
         // Past the minute's lead: at the latest where the helm is to turn onto it (rails warp is refused after)
         if (t < now) t = n.time - helm.burnLead(n);

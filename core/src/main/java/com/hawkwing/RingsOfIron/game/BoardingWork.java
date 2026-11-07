@@ -19,19 +19,29 @@ import com.ringsofiron.stationsdocking.DockingSystem;
 
 /**
  * ui-hud's boarding window from {@link Boarding} and {@link Salvage}: the ship the player's is
- * latched to, its boarding, and once taken, its parts and cargo.
+ * latched to, its boarding, and once taken, its parts worth taking (a part that sells for nothing,
+ * today the escape pod, is left out, so the crew never carry one home), its cargo, and the berths
+ * free for its prisoners.
  */
 public class BoardingWork implements BoardingProvider {
     private final GameContext ctx;
     private final DockingSystem docking;
     private final Boarding boarding;
     private final Salvage salvage;
+    /** Counts the berths free for the craft's prisoners; null leaves them at none. */
+    private final CrewHiring hiring;
 
     public BoardingWork(GameContext ctx, DockingSystem docking, Boarding boarding, Salvage salvage) {
+        this(ctx, docking, boarding, salvage, null);
+    }
+
+    /** With {@code hiring}, which counts the berths free for the craft's prisoners. */
+    public BoardingWork(GameContext ctx, DockingSystem docking, Boarding boarding, Salvage salvage, CrewHiring hiring) {
         this.ctx = ctx;
         this.docking = docking;
         this.boarding = boarding;
         this.salvage = salvage;
+        this.hiring = hiring;
     }
 
     @Override
@@ -42,12 +52,15 @@ public class BoardingWork implements BoardingProvider {
         boolean alongside = !docked && boarding.alongside(ship, craft);
         out.byEva = !docked;
         out.craftName = Boarding.name(craft);
+        out.craft = craft;
         BoardedComponent b = Boarding.of(craft);
         boolean ours = b != null && b.by != null && b.by.get(ctx.engine.getUuidRegistry()) == ship;
         out.boarding = ours && !b.taken;
         out.taken = ours && b.taken;
         out.disabled = ShipDisablement.isDisabled(craft);
         out.prisoners = out.taken ? b.prisoners : 0;
+        out.undefended = out.taken && b.undefended;
+        out.berthsFree = hiring == null ? 0 : Math.max(0, CrewHiring.berths(ship) - hiring.aboard(ship));
         out.aboard = ours ? boarding.boardersAboard(ship, craft) : 0;
         out.defenders = out.taken ? 0 : boarding.defenders(craft);
         out.state = state(ship, craft, b, ours);
@@ -70,12 +83,15 @@ public class BoardingWork implements BoardingProvider {
         }
         if (out.byEva && !alongside) out.salvageRefusal = "Stand off alongside it to strip its hull on EVA";
         for (Salvage.Part p : salvage.parts(craft)) {
+            int px = p.system.footprint.originX, py = p.system.footprint.originY;
+            SalvageOrdersComponent.Strip s = salvage.strip(ship, craft, px, py);
+            // A part worth nothing (the escape pod) isn't worth the crew's trip, unless already marked
+            if (s == null && p.price * Salvage.SALE_SHARE < 0.5) continue;
             Part row = out.addPart();
-            row.x = p.system.footprint.originX;
-            row.y = p.system.footprint.originY;
+            row.x = px;
+            row.y = py;
             row.name = p.name;
             row.value = p.price * Salvage.SALE_SHARE;
-            SalvageOrdersComponent.Strip s = salvage.strip(ship, craft, row.x, row.y);
             row.marked = s != null;
             if (s != null) {
                 row.status = salvage.status(ship, craft, s);

@@ -24,6 +24,7 @@ import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
 import com.ringsofiron.uihud.text.HudText;
 
@@ -185,19 +186,21 @@ final class GameHudText {
         font.draw(batch, placing.isPlacing() ? placing.hint() : world.hints.line(hintContexts(), session::key), hintX, 24f);
     }
 
-    /** The panel over the game, if one is up: the crash screen, else the notice log, else the controls. */
+    /**
+     * The panel over the game, if one is up: the crash screen, else the notice log, else the controls.
+     * A HUD variant that shows its own screen for one ({@code ClassicWindow}) draws it instead.
+     */
     void drawPanels() {
-        if (world.getCrash() != null || world.getCareerOver() != null) drawCrash();
-        else if (session.logOpen) drawLog();
+        if (world.getCrash() != null || world.getCareerOver() != null) {
+            if (!session.hud.replaces(ClassicWindow.GAME_OVER)) drawCrash();
+        } else if (session.logOpen) drawLog();
         else if (session.helpOpen) drawHelp();
     }
 
     private void drawCrash() {
         GameWorld.Crash crash = world.getCrash();
         String over = world.getCareerOver();
-        text.drawCrash(crash != null ? "SHIP LOST" : "CAREER OVER",
-                crash != null ? "You crashed into " + crash.bodyName + " on day " + (long) (crash.time / 86400) + "."
-                        : "You were killed, and " + over + ".",
+        text.drawCrash(GameOverChoices.title(crash != null), GameOverChoices.line(crash, over),
                 session.key(Action.QUICK_LOAD) + " loads the quick save   " + (saves.haveAutosave() ? "Enter loads the latest autosave   " : "")
                         + "Esc " + (session.options.hosted ? "menu" : "quits"));
     }

@@ -112,7 +112,13 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 if (n == selected) out.selectedNode = shown;
                 shown++;
                 out.nodeLabels.add(shown + ": " + Navigation.formatTime(n.time - now));
+                out.nodeIn.add((float) (n.time - now));
+                out.nodeDv.add((float) n.prograde, (float) n.radial);
                 after = after.withBurn(n.time, n.prograde, n.radial);
+                if (n == selected) {
+                    out.selectedPe = after.periapsis() - body.radius;
+                    out.selectedAp = after.isElliptic() ? after.apoapsis() - body.radius : Double.NaN;
+                }
                 t = n.time;
                 plan = plan * 1_000_003 + Double.hashCode(n.time) * 31L + Double.hashCode(n.prograde) * 7L + Double.hashCode(n.radial);
             }
@@ -172,6 +178,8 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 ghost.radius = around.radius;
                 ghost.soiRadius = around.soiRadius;
                 ghost.planned = planned;
+                ghost.in = (float) (ghostTime(leg) - now);
+                ghost.body = name;
             }
             apsides(leg, frame, around, i == 0 ? "" : name + " ", planned, now, out);
             if (leg.end == null) continue;
@@ -183,16 +191,25 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 case SOI_ENTRY: {
                     CelestialBodyComponent moon = universe.celestial(leg.entered);
                     String moonName = moon.name == null ? "" : moon.name;
-                    out.addMark(OrbitPathProvider.MarkKind.SOI_ENTRY, ex, ey, "Enters " + moonName + " in " + in).planned = planned;
+                    OrbitPathProvider.PathMark entry = out.addMark(OrbitPathProvider.MarkKind.SOI_ENTRY, ex, ey, "Enters " + moonName + " in " + in);
+                    entry.planned = planned;
+                    entry.in = (float) (leg.to - now);
+                    entry.body = moonName;
                     if (summary.length() == 0) summary.append("Meets ").append(moonName).append(" in ").append(in);
                     break;
                 }
                 case SOI_EXIT:
-                    out.addMark(OrbitPathProvider.MarkKind.SOI_EXIT, ex, ey, "Leaves " + name + " in " + in).planned = planned;
+                    OrbitPathProvider.PathMark exit = out.addMark(OrbitPathProvider.MarkKind.SOI_EXIT, ex, ey, "Leaves " + name + " in " + in);
+                    exit.planned = planned;
+                    exit.in = (float) (leg.to - now);
+                    exit.body = name;
                     if (summary.length() == 0) summary.append("Leaves ").append(name).append("'s sphere of influence in ").append(in);
                     break;
                 default:
-                    out.addMark(OrbitPathProvider.MarkKind.IMPACT, ex, ey, "Impact: " + name + " in " + in).planned = planned;
+                    OrbitPathProvider.PathMark impact = out.addMark(OrbitPathProvider.MarkKind.IMPACT, ex, ey, "Impact: " + name + " in " + in);
+                    impact.planned = planned;
+                    impact.in = (float) (leg.to - now);
+                    impact.body = i == 0 ? "" : name;
                     if (summary.length() == 0 || i > 0) {
                         summary.append(summary.length() == 0 ? "" : "; then ").append("IMPACT on ").append(name).append(" in ").append(in);
                     }
@@ -257,13 +274,19 @@ public class PlayerOrbitPath implements OrbitPathProvider {
                 text += " in " + Navigation.formatTime(pe - now);
                 if (leg.end != OrbitalEvent.Type.IMPACT) summary.append(", ").append(prefix).append("Pe ").append(km(c.periapsis() - around.radius));
             }
-            out.addMark(OrbitPathProvider.MarkKind.PERIAPSIS, s.x + off[0], s.y + off[1], text).planned = planned;
+            OrbitPathProvider.PathMark m = out.addMark(OrbitPathProvider.MarkKind.PERIAPSIS, s.x + off[0], s.y + off[1], text);
+            m.planned = planned;
+            m.in = (float) (pe - now);
+            m.body = prefix.trim();
         }
         double ap = MapTrajectory.nextApoapsis(c, leg.from);
         if (!Double.isNaN(ap) && (!ends || ap <= leg.to)) {
             offset(leg, frame, moving ? ap : ghostTime(leg), off);
             c.positionAtAnomaly(Math.PI, s);
-            out.addMark(OrbitPathProvider.MarkKind.APOAPSIS, s.x + off[0], s.y + off[1], prefix + "Ap " + km(c.apoapsis() - around.radius)).planned = planned;
+            OrbitPathProvider.PathMark m = out.addMark(OrbitPathProvider.MarkKind.APOAPSIS, s.x + off[0], s.y + off[1], prefix + "Ap " + km(c.apoapsis() - around.radius));
+            m.planned = planned;
+            m.in = (float) (ap - now);
+            m.body = prefix.trim();
         }
     }
 

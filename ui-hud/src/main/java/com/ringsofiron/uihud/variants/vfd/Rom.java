@@ -99,6 +99,7 @@ public final class Rom {
         def('\u25c0', "....# ...## ..### .#### ..### ...## ....#");
         def('\u2588', "##### ##### ##### ##### ##### ##### #####");
         def('\u00b7', "..... ..... ..... ..#.. ..... ..... .....");
+        def('\u00bb', "..... #.#.. .#.#. ..#.# .#.#. #.#.. .....");
         def('\u00d7', "..... #...# .#.#. ..#.. .#.#. #...# .....");
         def('\u00b1', "..#.. ..#.. ##### ..#.. ..#.. ..... #####");
         def('\u00b3', ".##.. ...#. ..#.. ...#. .##.. ..... .....");
@@ -106,6 +107,9 @@ public final class Rom {
         def('\u00a2', "..#.. .###. #.#.. #.#.. #.#.. .###. ..#..");
         def('\u2666', "..... ..#.. .###. ##### .###. ..#.. .....");
         def('\u25cf', "..... .###. ##### ##### ##### .###. .....");
+        // Held: a job that waits (the damage control board's "‖ WAITS: UNDER FIRE")
+        def('\u2016', ".#.#. .#.#. .#.#. .#.#. .#.#. .#.#. .#.#.");
+        def('\u25a1', "..... ##### #...# #...# #...# ##### .....");
 
         seg7('0', "abcdef");
         seg7('1', "bc");
@@ -219,6 +223,11 @@ public final class Rom {
     private static int extra(char ch) {
         for (int i = 0; i < EXTRA_CHARS.length(); i++) if (EXTRA_CHARS.charAt(i) == ch) return i;
         return -1;
+    }
+
+    /** The glyphs past ASCII that the ROM holds, in the order they were defined. */
+    static String extras() {
+        return EXTRA_CHARS.toString();
     }
 
     /** Whether the dot at {@code row}, {@code col} of {@code glyph} is lit. */

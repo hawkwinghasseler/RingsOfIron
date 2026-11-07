@@ -1,5 +1,6 @@
 package com.ringsofiron.uihud.providers;
 
+import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
 
 /**
@@ -55,6 +56,8 @@ public interface BoardingProvider {
     final class BoardingBoard {
         /** The ship latched to; empty when none. */
         public String craftName = "";
+        /** That ship, for a plan of it; null when none. */
+        public Entity craft;
         /** How it stands: disabled and why, being boarded, taken. */
         public String state = "";
         /** Why no boarding party can go now, or empty if one can. */
@@ -73,6 +76,10 @@ public interface BoardingProvider {
         public boolean disabled;
         /** Our boarding party aboard it, its crew still standing, and the prisoners held once it is taken. */
         public int aboard, defenders, prisoners;
+        /** Taken with no one aboard to fight for it, rather than from its crew. */
+        public boolean undefended;
+        /** Berths free aboard the player's ship: only as many of its prisoners come across. */
+        public int berthsFree;
         /** Why it can't be stripped yet, while it can't. */
         public String salvageRefusal = "";
         public final Array<Part> parts = new Array<>();
@@ -92,8 +99,9 @@ public interface BoardingProvider {
 
         public void clear() {
             craftName = state = boardRefusal = stormRefusal = salvageRefusal = "";
-            boarding = salvage = byEva = taken = disabled = false;
-            aboard = defenders = prisoners = 0;
+            craft = null;
+            boarding = salvage = byEva = taken = disabled = undefended = false;
+            aboard = defenders = prisoners = berthsFree = 0;
             parts.clear();
             cargo.clear();
         }
