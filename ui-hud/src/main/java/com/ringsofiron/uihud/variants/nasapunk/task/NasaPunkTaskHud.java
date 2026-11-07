@@ -1,6 +1,7 @@
 package com.ringsofiron.uihud.variants.nasapunk.task;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.ringsofiron.uihud.data.AlertRegistry;
@@ -25,6 +26,7 @@ import com.ringsofiron.uihud.providers.UiContextProvider.UiContext;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.ShellLook;
@@ -35,6 +37,7 @@ import com.ringsofiron.uihud.variants.nasapunk.NpInstruments;
 import com.ringsofiron.uihud.variants.nasapunk.NpKit;
 import com.ringsofiron.uihud.variants.nasapunk.NpScreens;
 import com.ringsofiron.uihud.variants.nasapunk.NpSymbols;
+import com.ringsofiron.uihud.variants.nasapunk.screens.ScreenModes;
 import com.ringsofiron.uihud.widgets.MapPainter;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -68,6 +71,9 @@ public class NasaPunkTaskHud implements HudVariant {
     private WeaponsDisplay weapons;
     private ScopeDisplay scope;
     private HintStrip hints;
+    /** The terminal, the ship's book, boarding and the controls in place of the game's windows, and the ship-lost card. */
+    private TaskScreen screen;
+    private final List<Rectangle> panelPool = new ArrayList<>();
     private Presence lastPresence = Presence.NONE;
     /** FLT shows BURN from this long before the engine lights (the helm's 120 s turn lead and a minute), s. */
     private static final float BURN_LEAD = 180f;
@@ -105,6 +111,7 @@ public class NasaPunkTaskHud implements HudVariant {
         weapons = add(new WeaponsDisplay(kit));
         scope = add(new ScopeDisplay(kit));
         hints = add(new HintStrip(kit));
+        screen = new TaskScreen(ScreenModes.of(host), host.screenLayer(), kit);
     }
 
     private <T extends Actor> T add(T a) {
@@ -168,6 +175,32 @@ public class NasaPunkTaskHud implements HudVariant {
 
         hints(d.keyHints, delta);
         layout();
+        screen.update(delta);
+        if (screen.lostShows()) lostPanels();
+        if (screen.covering()) covered(screen.mode() == TaskScreen.Mode.BOARDING);
+    }
+
+    /**
+     * What a panel in place of a window leaves of the HUD: the terminal, the book and the controls
+     * keep CHR and ALR above them (T6); boarding's panel down the right side takes that side's
+     * widgets' place and leaves the rest of the deck's (T5).
+     */
+    private void covered(boolean sidePanel) {
+        for (Actor x : root.getChildren()) {
+            boolean hide = sidePanel ? x == objectives || x == target || x == scope || x == weapons : x != clock && x != band;
+            if (hide) x.setVisible(false);
+        }
+    }
+
+    /** The displays the ship-lost card strikes through: every widget showing but the clock and the hint line, y up. */
+    private void lostPanels() {
+        screen.panels.clear();
+        int n = 0;
+        for (Actor x : root.getChildren()) {
+            if (x == clock || x == hints || !x.isVisible() || x.getWidth() <= 0f || x.getHeight() <= 0f) continue;
+            if (panelPool.size() <= n) panelPool.add(new Rectangle());
+            screen.panels.add(panelPool.get(n++).set(x.getX(), x.getY(), x.getWidth(), x.getHeight()));
+        }
     }
 
     // ---- zones ----------------------------------------------------------------------------------
@@ -784,7 +817,49 @@ public class NasaPunkTaskHud implements HudVariant {
     public void detach() {
         if (kit != null) kit.dispose();
         kit = null;
+        screen = null;
         screens.dispose();
+    }
+
+    // ---- the game's windows as the spec's panels ---------------------------------------------------
+
+    @Override
+    public boolean keyDown(int keycode) {
+        // a panel's tabs and page have the keys first
+        return screen != null && screen.covering() && screen.keyDown(keycode);
+    }
+
+    @Override
+    public boolean replaces(ClassicWindow window) {
+        switch (window) {
+            case TRADE:
+            case YARD:
+            case SHIPYARD:
+            case MISSIONS:
+            case BOARDING:
+            case CREW:
+            case LOG:
+            case HELP:
+            case GAME_OVER:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
+    public boolean open(ClassicWindow window) {
+        return screen != null && screen.show(window);
+    }
+
+    @Override
+    public boolean showing(ClassicWindow window) {
+        return screen != null && screen.showing(window);
+    }
+
+    @Override
+    public void close(ClassicWindow window) {
+        if (screen != null) screen.close(window);
     }
 
     @Override
