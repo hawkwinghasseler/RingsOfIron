@@ -70,6 +70,16 @@ world overlays the game draws under the HUD (burn arrows, fire arcs) stay until 
 them in its own PR. The magnified bubbles stay too, but a variant can steer them and draw their rims
 itself (below).
 
+### The view's middle
+
+The camera keeps the ship, or the avatar on deck, in the middle of the screen. A variant whose units
+cover part of the world can move that point to the middle of what is left:
+`host.viewports().easeViewShift(x, y)` puts it `x`, `y` UI units off the screen's middle (x right, y
+up), eased over the zoom's time from wherever it is, and asking again for the same place changes
+nothing. The Stations HUD moves it up by half its band while seated and left by half a side panel
+while one is open. `setViewShift(0f, 0f)` puts it back at once: do that in `detach`, since the next
+variant expects the middle. A variant that never asks leaves it there.
+
 ### The magnified bubbles
 
 The game's picture-in-picture bubbles magnify the player's ship, the lock and the nav target while

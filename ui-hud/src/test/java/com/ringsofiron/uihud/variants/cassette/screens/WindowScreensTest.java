@@ -185,6 +185,45 @@ class WindowScreensTest {
     }
 
     @Test
+    void boardingAloneCanHangBesideTheViewUnderTheModes() {
+        WindowScreens w = new WindowScreens();
+        assertFalse(w.consoleFor(ClassicWindow.BOARDING).isSide(), "across the screen by default");
+        w.sideBoarding(true);
+        BigConsole brd = w.consoleFor(ClassicWindow.BOARDING);
+        assertTrue(brd.isSide(), "the Task spec's BRD, down the right side");
+        assertEquals(WindowScreens.BOARDING_SIDE_W, brd.sideW(), 0.01f);
+        assertTrue(brd.sideW() <= 360f * 1.25f, "the wireframe's 360 by no more than the quarter an artist may add");
+        assertFalse(w.consoleFor(ClassicWindow.TRADE).isSide(), "the other windows stay across the screen");
+        assertFalse(w.consoleFor(ClassicWindow.CREW).isSide());
+        assertFalse(w.consoleFor(ClassicWindow.LOG).isSide());
+        assertTrue(brd != w.consoleFor(ClassicWindow.CREW), "boarding keeps a console of its own");
+        assertEquals(BigConsole.SIDE_W, new BigConsole(BigConsole.Livery.SHIP, "SLATE", new Boards()).side().sideW(), 0.01f,
+                "the Stations spec's panels keep their 480");
+        // A HUD whose units leave it less room hangs it narrower, never wider than its own
+        w.boardingWidth(386f);
+        assertEquals(386f, brd.sideW(), 0.01f);
+        w.boardingWidth(600f);
+        assertEquals(WindowScreens.BOARDING_SIDE_W, brd.sideW(), 0.01f);
+        WindowScreens across = new WindowScreens();
+        across.boardingWidth(386f);
+        assertFalse(across.consoleFor(ClassicWindow.BOARDING).isSide(), "across the screen it takes no width");
+    }
+
+    @Test
+    void aPartsStateGoesBesideItsValueAsFarAsTheSidePanelsWidthAllows() {
+        assertEquals(BoardingPage.NARROW_STATE, BoardingPage.stateRoom(BigConsole.SIDE_W), "480 wide: 16 columns");
+        assertEquals(14, BoardingPage.stateRoom(WindowScreens.BOARDING_SIDE_W), "450 wide: 14, so a longer one goes under it");
+        assertEquals(7, BoardingPage.stateRoom(386f), "386, as the Task HUD hangs it at 1280: 7, its tube's room past the value");
+        // A page too short for the other ship's plate has the list alone: the Task HUD's panel under a crisis
+        // placard at 1280 x 800 is 362 tall, its title bar, a row of tabs and its foot taking 130 of it
+        float chrome = BigConsole.SIDE_TITLE_H + 6f + BigConsole.SIDE_TAB_ROW + 2f + BigConsole.SIDE_FOOT_H;
+        assertTrue(BoardingPage.listOnly(362f - chrome));
+        assertFalse(BoardingPage.listOnly(642f - chrome), "the whole height under the visor's slot has the plate");
+        assertFalse(BoardingPage.listOnly(592f - chrome), "and the Stations slate over its band, the shortest it hangs at 800 tall");
+        assertEquals(BoardingPage.NARROW_STATE, BoardingPage.stateRoom(1280f), "across the screen it has its own column");
+    }
+
+    @Test
     void theFootGivesEachTabTheKeyThatOpensItThere() {
         Boards boards = new Boards();
         CrewPage crew = new CrewPage(false), hire = new CrewPage(true);

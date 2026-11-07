@@ -15,10 +15,10 @@ import com.ringsofiron.uihud.variants.cassette.YardPaint;
  * each classic window is a tab of a big console, laid out as the Context spec arranges its modes
  * (section 10). The station's console has the market, yard, shipyard, missions and hire; the ship's
  * its systems, the crew, the hold, its loadout and a prize in tow (I opens the last of the first
- * three used); boarding has its own; the record has the contracts held
- * and the log; the controls are cards. The ship lost or the career over is a telex. The map's panels
- * are the console's bays round the game's map ({@link MapMode}), which its look's painter draws. The
- * console E opens at a deck console stays the classic one.
+ * three used); boarding has its own, across the screen or down its right side ({@link #sideBoarding});
+ * the record has the contracts held and the log; the controls are cards. The ship lost or the career
+ * over is a telex. The map's panels are the console's bays round the game's map ({@link MapMode}),
+ * which its look's painter draws. The console E opens at a deck console stays the classic one.
  *
  * <p>A HUD attaches it with its own, and hands it the screen hooks ({@code replaces}, {@code open},
  * {@code showing}, {@code close}, {@code keyDown}), {@code update} and {@code detach}.
@@ -28,7 +28,12 @@ public final class WindowScreens {
     static final float STATION_W = 1280f;
 
     /** How far in from the right edge a side panel hangs, and where it starts (Stations, 6.2). */
-    static final float SIDE_MARGIN = 16f, SIDE_TOP = 16f;
+    public static final float SIDE_MARGIN = 16f, SIDE_TOP = 16f;
+    /**
+     * How wide the boarding console hangs beside the view ({@link #sideBoarding}): the Task spec's
+     * BRD, 360 in its wireframe, by the quarter an artist may add.
+     */
+    public static final float BOARDING_SIDE_W = 450f;
 
     private final Boards boards = new Boards();
     private final Array<BigConsole> consoles = new Array<>();
@@ -38,6 +43,10 @@ public final class WindowScreens {
     private BigConsole link, slate;
     /** Whether the windows are the Stations spec's panels ({@link #panels}). */
     private boolean panels;
+    /** Whether the boarding console hangs beside the view under the modes ({@link #sideBoarding}). */
+    private boolean sideBoarding;
+    /** Where a side panel starts, from the top in design units. */
+    private float panelTop = SIDE_TOP;
     /** Where a side panel stops, from the top in design units: above the band when seated, else 16 from the foot; 0 for the foot. */
     private float panelBottom;
     private final MarketPage market = new MarketPage();
@@ -120,7 +129,9 @@ public final class WindowScreens {
                     .add(market).add(yard).add(shipyard).add(missions).add(hire));
             ship = console(new BigConsole(BigConsole.Livery.SHIP, "SHIP", boards).shipName()
                     .add(systems).add(crew).add(cargo).add(loadout).add(prize));
-            boarding = console(new BigConsole(BigConsole.Livery.SHIP, "BOARDING", boards).add(boardingPage));
+            boarding = new BigConsole(BigConsole.Livery.SHIP, "BOARDING", boards);
+            if (sideBoarding) boarding.side(BOARDING_SIDE_W);
+            boarding = console(boarding.add(boardingPage));
             record = console(new BigConsole(BigConsole.Livery.SHIP, "RECORD", boards).add(contracts).add(log));
         }
         if (was != null) consoles.add(was);
@@ -142,9 +153,36 @@ public final class WindowScreens {
         return this;
     }
 
+    /**
+     * Has the boarding console hang down the right side, so the deck or the outside view stays in sight
+     * while the boarders work (the Task spec's BRD), the other consoles across the screen as the modes
+     * have them. Set before {@link #attach}; the Stations spec's panels ({@link #panels}) have boarding
+     * on the slate at the side already.
+     */
+    public WindowScreens sideBoarding(boolean on) {
+        if (sideBoarding == on) return this;
+        if (canvas != null) throw new IllegalStateException("The windows are arranged before they are attached");
+        sideBoarding = on;
+        arrange();
+        return this;
+    }
+
     /** Where a side panel stops, from the top in design units: above the seated band, or 0 for 16 from the foot. */
     public void panelBottom(float y) {
         panelBottom = y;
+    }
+
+    /** Where a side panel starts, from the top in design units: 16 unless a HUD keeps more above it. */
+    public void panelTop(float y) {
+        panelTop = y;
+    }
+
+    /**
+     * How wide the boarding console hangs beside the view ({@link #sideBoarding}): {@link #BOARDING_SIDE_W}
+     * at most, less where a HUD's own units leave it less room.
+     */
+    public void boardingWidth(float w) {
+        if (sideBoarding && boarding != null) boarding.side(Math.min(BOARDING_SIDE_W, w));
     }
 
     /** Whether a side panel hangs at the right now, the band and the world left in view beside it. */
@@ -436,9 +474,9 @@ public final class WindowScreens {
         for (int i = 0; i < consoles.size; i++) {
             BigConsole c = consoles.get(i);
             if (c.hangsAtSide()) {
-                // A side panel: 480 wide, 16 in from the right, from the top to above the band or the foot
-                float bottom = panelBottom > 0f ? panelBottom : sh - SIDE_MARGIN;
-                c.place(sw - SIDE_MARGIN - BigConsole.SIDE_W + c.slideOffset(), SIDE_TOP, BigConsole.SIDE_W, Math.max(200f, bottom - SIDE_TOP));
+                // A side panel: 16 in from the right, from its top to above the band or the foot
+                float bottom = panelBottom > 0f ? panelBottom : sh - SIDE_MARGIN, sw2 = c.sideW();
+                c.place(sw - SIDE_MARGIN - sw2 + c.slideOffset(), panelTop, sw2, Math.max(200f, bottom - panelTop));
                 continue;
             }
             float w = c == station ? Math.min(sw, STATION_W) : sw;
