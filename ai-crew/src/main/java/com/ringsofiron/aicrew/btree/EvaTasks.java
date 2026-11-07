@@ -19,6 +19,7 @@ import com.ringsofiron.interiorgrid.DockingPortLayout;
 import com.ringsofiron.interiorgrid.Furnishing;
 import com.ringsofiron.interiorgrid.HullPlating;
 import com.ringsofiron.interiorgrid.HullSurface;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
@@ -69,6 +70,8 @@ public final class EvaTasks {
     public static final float MIN_JET = Suit.JET_DV * 0.5f;
     /** Seconds of air kept in hand beyond the way back in. */
     public static final float AIR_MARGIN = 300f;
+    /** Seconds of cutting, at their suited pace, through each door or hatch of a port cut open to get out ({@link #mayCutOut}). */
+    public static final float CUT_SECONDS = 20f;
     /** Seconds a crew member leaves an EVA job alone that they found no way out to. */
     public static final float NO_ROUTE = 60f;
     /** Seconds an airlock cycle takes, near enough, for reckoning the way back in. */
@@ -162,11 +165,28 @@ public final class EvaTasks {
         if (suit && grid != null) {
             for (int i = 0; i < grid.mounts.size && !port; i++) {
                 MountFootprint m = grid.mounts.get(i);
-                port = m.kind == MountFootprint.MountKind.PORT && Airlock.works(grid, m);
+                port = m.kind == MountFootprint.MountKind.PORT && (Airlock.works(grid, m) || mayCutOut(grid, m));
             }
         }
         a.evaSuitReady = suit && port;
         return a.evaSuitReady;
+    }
+
+    /**
+     * True if the crew may cut {@code port} open from inside to get out on EVA ({@link
+     * Airlock#cutThrough}): no airlock aboard can let anyone out (a hit wrecked a lone port's door),
+     * and there are too few patch kits to brace any back up ({@link LeakPatches#worksOnceBraced}), so
+     * nothing else gets them out. They suit up first, then cut from the chamber: the rooms behind it
+     * vent to space.
+     */
+    public static boolean mayCutOut(ShipGridComponent grid, MountFootprint port) {
+        if (port == null || port.kind != MountFootprint.MountKind.PORT || Airlock.docked(grid, port)
+                || Airlock.works(grid, port) || Airlock.nextToCut(grid, port) == null) return false;
+        for (int i = 0; i < grid.mounts.size; i++) {
+            MountFootprint m = grid.mounts.get(i);
+            if (m.kind == MountFootprint.MountKind.PORT && (Airlock.works(grid, m) || LeakPatches.worksOnceBraced(grid, m))) return false;
+        }
+        return true;
     }
 
     /** True if {@code s} is an EVA suit fit to go out in: {@link #MIN_AIR} of air and {@link #MIN_JET} in its jetpack. */
@@ -193,7 +213,7 @@ public final class EvaTasks {
         EvaRoute best = null;
         for (int i = 0; i < grid.mounts.size; i++) {
             MountFootprint port = grid.mounts.get(i);
-            if (port.kind != MountFootprint.MountKind.PORT || !Airlock.works(grid, port)) continue;
+            if (port.kind != MountFootprint.MountKind.PORT || !Airlock.works(grid, port) && !mayCutOut(grid, port)) continue;
             int crawl = crawlTiles(grid, hull, port, work[0], work[1], path);
             if (crawl < 0) continue;
             DockingPortLayout.chamberTile(port, chamber);

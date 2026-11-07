@@ -9,6 +9,8 @@ import com.ringsofiron.aicrew.EvaSystem;
 import com.ringsofiron.career.NewGame;
 import com.ringsofiron.interiorgrid.Airlock;
 import com.ringsofiron.interiorgrid.DockingPortLayout;
+import com.ringsofiron.interiorgrid.EdgeWall;
+import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.shipops.CollarWear;
@@ -131,22 +133,70 @@ class JammedCollarsTest {
         assertTrue(saidStarting(sent.name + " goes out on EVA"));
     }
 
-    @Test
-    void aLonePortJammedWithItsDoorWreckedCallsATowNotADeadEnd() {
-        assertEquals("your ship can still fly home", world.beacon.refusal(), "the crew can still go out and free it: no tow yet");
-        // The same hit wrecked the corvette's only port's outer door: its airlock can't cycle
+    /** The same hit wrecked the corvette's only port's outer door: its airlock can't cycle. */
+    private ShipGridComponent wreckTheDoor() {
         ShipGridComponent grid = game.player.getComponent(ShipGridComponent.class);
         assertEquals(1, game.player.getComponent(DockingPortsComponent.class).ports.length, "a lone port");
         for (int y = mount.originY; y < mount.originY + mount.height(); y++)
             for (int x = mount.originX; x < mount.originX + mount.width(); x++)
                 if (DockingPortLayout.isDoorTile(mount, x, y)) DockingPortLayout.door(grid, mount, x, y).integrity = 0f;
         assertFalse(Airlock.works(grid, mount));
+        return grid;
+    }
+
+    private EdgeWall door(ShipGridComponent grid) {
+        for (int y = mount.originY; y < mount.originY + mount.height(); y++)
+            for (int x = mount.originX; x < mount.originX + mount.width(); x++)
+                if (DockingPortLayout.isDoorTile(mount, x, y)) return DockingPortLayout.door(grid, mount, x, y);
+        return null;
+    }
+
+    /** Runs up to {@code minutes} till the collar is freed; true if anyone went out on the way. */
+    private boolean runTillFreed(int minutes) {
+        boolean out = false;
+        for (int i = 0; i < 60 * minutes && port.jammed; i++) {
+            run(60);
+            out |= !world.spacewalks.onEva().isEmpty();
+        }
+        return out;
+    }
+
+    @Test
+    void aWreckedAirlockDoorIsBracedWithAPatchKitAndTheCollarFreed() {
+        ShipGridComponent grid = wreckTheDoor();
+        int kits = grid.patchKits;
+        assertTrue(kits > 0);
+        boolean out = runTillFreed(15);
+        assertTrue(saidStarting("No airlock aboard can cycle: the crew are bracing a wrecked airlock door"));
+        assertEquals(LeakPatches.BRACED, door(grid).integrity, 1e-4f, "braced back up, but no more");
+        assertTrue(door(grid).isPatched(), "holding its air");
+        assertEquals(kits - 1, grid.patchKits, "one kit for the door");
+        assertTrue(out, "someone went out once it cycled");
+        assertFalse(port.jammed, "freed");
+        assertNull(world.docking.arm(game.player, index), "it arms again");
+    }
+
+    @Test
+    void withNoPatchKitsTheCrewCutThePortOpenToGetOut() {
+        ShipGridComponent grid = wreckTheDoor();
+        grid.patchKits = 0;
+        run(60 * 30);
+        assertEquals(Airlock.State.OUT, Airlock.of(grid, mount).state(), "the hatch shut behind the wrecked door");
+        assertTrue(Airlock.of(grid, mount).cabin(grid).pressureRatio() > 0.9f, "holding the cabin's air");
+        boolean out = runTillFreed(30);
+        assertTrue(saidStarting("No airlock aboard can cycle and there are no patch kits to brace one: the crew will cut an airlock open"));
+        assertTrue(Airlock.open(grid, mount), "cut open: nothing left across it");
+        assertTrue(out, "someone went out through the hole");
+        assertFalse(port.jammed, "freed");
+        assertNull(world.docking.arm(game.player, index), "it arms again");
+    }
+
+    @Test
+    void aLonePortJammedWithItsDoorWreckedCanStillCallATow() {
+        assertEquals("your ship can still fly home", world.beacon.refusal(), "the crew can still go out and free it: no tow");
+        wreckTheDoor();
         assertTrue(DistressBeacon.cannotDock(game.player));
-        run(60 * 60);
-        assertTrue(world.spacewalks.onEva().isEmpty(), "nobody can get out");
-        assertTrue(port.jammed);
-        assertTrue(saidStarting("No airlock aboard can cycle anyone out to free port " + (index + 1) + "'s collar"));
-        assertNull(world.beacon.refusal(), "stranded: the beacon can be called");
+        assertNull(world.beacon.refusal(), "stranded for now: the beacon can be called");
         world.beacon.call();
         for (int i = 0; i < 60 * 30 && world.docking.dockedTo(game.player) == null; i++) run(1);
         assertNotNull(world.docking.dockedTo(game.player), "towed in and clamped at the station, jammed collar and all");

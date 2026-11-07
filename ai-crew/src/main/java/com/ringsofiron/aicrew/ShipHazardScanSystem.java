@@ -87,6 +87,8 @@ public class ShipHazardScanSystem extends FixedIteratingSystem {
         }
         if (grid.patchKits > 0) {
             for (LeakPatches.Leak leak : LeakPatches.leaks(grid)) board.post(new PatchLeakTask(leak));
+            // A wrecked airlock door or hatch, braced back up so the port can cycle again
+            for (LeakPatches.Leak brace : LeakPatches.braces(grid)) board.post(new PatchLeakTask(brace));
         }
         ShipSubsystemRegistryComponent reg = regM.get(ship);
         if (reg != null) {

@@ -162,11 +162,29 @@ the next port) until an engineer works it free from outside (`JammedCollars`), a
 outside its door, or a yard's collar repair makes it whole. The player hears when one of their ports
 jams and when it is freed.
 
-If nobody can get out to it, the ship isn't stuck for good. That happens when the hit that jams a
-lone port also wrecks its door, so no airlock aboard can cycle and no port can dock. The ship then
-counts as stranded (`DistressBeacon.cannotDock`), and the player is told the distress beacon can
-call a tow. The tug clamps the ship in at the sponsor's station, where the yard refits the collar
-(clearing the jam) and the door. Every collar torn off, with none jammed, counts the same way.
+If nobody can get out to it, the ship still isn't stuck. That happens when the hit that jams a lone
+port also wrecks its door, so no airlock aboard can cycle. A field fix keeps the ship flying, but
+only a yard makes it whole:
+
+- **Bracing (`LeakPatches.braces`/`brace`).** With a patch kit aboard, an engineer braces each wrecked
+  port door or hatch back up from the chamber (`BRACE_KITS`, 1 kit apiece, `BRACE_WORK`, ten times a
+  leak patch's work). The door goes back at `BRACED` (25%), patched so it holds its air: shut, it
+  seals, and the airlock cycles again. It stays that damaged, so a new hit breaks it, and the yard
+  still lists it as a wall repair. Bracing is posted with the leak patches (`PatchLeakTask` on the
+  door's edge).
+- **Cutting out (`EvaTasks.mayCutOut`, `Airlock.cutThrough`).** With too few kits to brace any port, a
+  wrecked outer door shuts the hatch behind it (`Airlock.holdsCabinAir`), so the cabin keeps its air
+  and the crew can still suit up. Whoever takes the work outside then suits up and cuts the port open
+  from inside: from the deck behind the hatch, then from the chamber, each door or hatch in turn
+  (`CUT_SECONDS`, 20 s at their suited pace, the work kept on the airlock for whoever carries on
+  with it). With nothing left across it the port is open (`Airlock.open`): a hole the crew walk out
+  of and back in by, no cycle. The room behind it vents to space until a yard puts the doors back.
+- **The tow.** While no airlock aboard can let anyone out and no port can dock, the ship counts as
+  stranded (`DistressBeacon.cannotDock`), so the distress beacon can call a tow instead. The tug clamps
+  the ship in at the sponsor's station, where the yard refits the collar (clearing the jam) and the
+  doors. Every collar torn off, with none jammed, counts the same way.
+
+The player is told which of these the crew are doing, and that the beacon can call a tow instead.
 
 ## Out on the hull
 

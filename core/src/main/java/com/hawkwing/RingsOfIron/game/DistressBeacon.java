@@ -19,7 +19,7 @@ import java.util.function.BooleanSupplier;
 /**
  * The distress beacon: a ship that can no longer get itself home, disabled or out of propellant,
  * calls the sponsor's tug. So does one that can't dock anywhere ({@link #cannotDock}): every
- * collar jammed or torn off, and no airlock aboard that can cycle the crew out to free a jammed one. After the same days as a rescue the ship is towed into the sponsor's
+ * collar jammed or torn off, and no airlock aboard that can let the crew out to free a jammed one. After the same days as a rescue the ship is towed into the sponsor's
  * nearest station and docked there, keeping its crew, cargo and damage, for a fee of
  * {@link #FEE_SHARE} of the ship's value (the account can go negative) and
  * {@link #STANDING_COST} standing with the sponsor. Called with B at the helm while it is
@@ -95,9 +95,10 @@ public final class DistressBeacon {
     /**
      * True if {@code ship} has docking ports but can latch at none of them, nor be made to by its
      * crew: every collar jammed or torn off, and no airlock aboard that can cycle (the hit that
-     * jammed a lone port wrecked its door too), so nobody can go out on EVA to free a jammed one.
-     * A torn collar only a yard mends. The tug clamps the ship in at the station, and the yard
-     * there refits the collar and the door.
+     * jammed a lone port wrecked its door too), so nobody can go out on EVA to free a jammed one
+     * now. The crew can still brace a wrecked door or cut a port open ({@link JammedCollars}), but
+     * the tow is there as the other way out: the tug clamps the ship in at the station, and the yard
+     * there refits the collar and the doors. A torn collar only a yard mends.
      */
     public static boolean cannotDock(Entity ship) {
         DockingPortsComponent ports = ship.getComponent(DockingPortsComponent.class);

@@ -52,7 +52,8 @@ public final class TaskRules {
                 return t != null && t.isHullBreach();
             case PATCH_LEAK: {
                 PatchLeakTask p = (PatchLeakTask) task;
-                return grid.patchKits > 0 && LeakPatches.leaks(grid, p.x, p.y, p.side);
+                return grid.patchKits > 0 && LeakPatches.leaks(grid, p.x, p.y, p.side)
+                        || p.side != null && LeakPatches.braceable(grid, p.x, p.y, p.side);
             }
             case REPAIR: {
                 SubsystemComponent s = subsystemOf(task);

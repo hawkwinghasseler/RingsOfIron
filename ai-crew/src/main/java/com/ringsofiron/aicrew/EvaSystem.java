@@ -583,8 +583,12 @@ public class EvaSystem extends FixedLogicSystem {
         }
     }
 
-    /** True if {@code port}'s hatch is shut or its door open (and not blown away). */
+    /**
+     * True if {@code port}'s hatch is shut or its door open (and not blown away), or its airlock
+     * should shut the hatch to hold the cabin's air ({@link Airlock#holdsCabinAir}).
+     */
     private static boolean unrested(ShipGridComponent grid, MountFootprint port) {
+        if (Airlock.holdsCabinAir(grid, port)) return true;
         for (int y = port.originY; y < port.originY + port.height(); y++) {
             for (int x = port.originX; x < port.originX + port.width(); x++) {
                 EdgeWall h = DockingPortLayout.hatch(grid, port, x, y);
