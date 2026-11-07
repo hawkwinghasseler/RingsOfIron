@@ -114,6 +114,145 @@ class WindowScreensTest {
     }
 
     @Test
+    void aRowsSecondLineIsPassedOverAndBelongsToTheRowAboveIt() {
+        // A heading, then two people of two lines each
+        Rows r = new Rows(true, false, false, false, false);
+        r.seconds = new boolean[]{false, false, true, false, true};
+        r.refresh(null);
+        assertEquals(1, r.sel);
+        r.key(Input.Keys.DOWN);
+        assertEquals(3, r.sel, "over the first one's second line");
+        r.key(Input.Keys.DOWN);
+        assertEquals(3, r.sel, "the last one's second line is no row of its own");
+        assertEquals(3, r.owner(4));
+        assertEquals(1, r.owner(2));
+        assertEquals(0, r.owner(0), "a heading is its own");
+        r.key(Input.Keys.UP);
+        assertEquals(1, r.sel);
+    }
+
+    @Test
+    void aSidePanelStepsItsTabsWithTabAndLeavesTheNumberKeysToTheSeat() {
+        Boards boards = new Boards();
+        BigConsole c = new BigConsole(BigConsole.Livery.SHIP, "SLATE", boards).side();
+        Rows a = new Rows(false), b = new Rows(false), e = new Rows(false);
+        a.side = true;
+        b.side = true;
+        c.add(a).add(b).add(e);
+        c.show(a, new HudData());
+        assertTrue(c.isSide());
+        assertTrue(c.hangsAtSide(), "a page that fits hangs at the right");
+        assertFalse(c.key(Input.Keys.NUM_2), "the helm's orders stay the seat's");
+        assertSame(a, c.current());
+        assertTrue(c.key(Input.Keys.TAB));
+        assertSame(b, c.current());
+        assertTrue(c.key(Input.Keys.TAB));
+        assertSame(e, c.current());
+        assertFalse(c.hangsAtSide(), "a page that needs the room goes across the screen");
+        assertTrue(c.key(Input.Keys.TAB));
+        assertSame(a, c.current(), "round the row");
+        // The modes' console keeps its number keys
+        BigConsole wide = new BigConsole(BigConsole.Livery.SHIP, "SHIP", boards);
+        Rows f = new Rows(false), g = new Rows(false);
+        f.side = true;
+        wide.add(f).add(g);
+        wide.show(f, new HudData());
+        assertFalse(wide.hangsAtSide());
+        assertTrue(wide.key(Input.Keys.NUM_2));
+        assertSame(g, wide.current());
+    }
+
+    @Test
+    void thePanelsArrangeTheWindowsAsTheStationLinkAndTheSlate() {
+        WindowScreens w = new WindowScreens();
+        BigConsole market = w.consoleFor(ClassicWindow.TRADE), crew = w.consoleFor(ClassicWindow.CREW);
+        assertFalse(market.isSide(), "the Context spec's modes by default");
+        assertTrue(market != crew);
+        w.panels(true);
+        BigConsole link = w.consoleFor(ClassicWindow.TRADE), slate = w.consoleFor(ClassicWindow.CREW);
+        assertTrue(link.isSide());
+        assertTrue(slate.isSide());
+        assertTrue(link != slate);
+        assertSame(link, w.consoleFor(ClassicWindow.YARD), "the yard is a tab of the link");
+        assertSame(slate, w.consoleFor(ClassicWindow.MISSIONS), "away from a station, J is the slate's contracts");
+        assertSame(slate, w.consoleFor(ClassicWindow.LOG));
+        assertSame(slate, w.consoleFor(ClassicWindow.BOARDING));
+        assertEquals("BOARD", w.boardLabel(), "the spec's word for the station's tab");
+        // And back: the modes' consoles, their own words for the tabs
+        w.panels(false);
+        assertFalse(w.consoleFor(ClassicWindow.TRADE).isSide());
+        assertEquals("MISSIONS", w.boardLabel());
+    }
+
+    @Test
+    void theFootGivesEachTabTheKeyThatOpensItThere() {
+        Boards boards = new Boards();
+        CrewPage crew = new CrewPage(false), hire = new CrewPage(true);
+        assertEquals("I", crew.windowKey());
+        assertNull(hire.windowKey(), "I opens the slate's crew, not the hiring hall");
+        MissionsPage held = new MissionsPage(true), board = new MissionsPage(false);
+        held.refresh(boards);
+        board.refresh(boards);
+        assertEquals("J", held.windowKey(), "away from a station J opens the contracts held");
+        assertEquals("J", board.windowKey());
+        boards.missions.stationName = "Highport";
+        held.refresh(boards);
+        assertNull(held.windowKey(), "docked, J opens the station's board");
+        assertEquals("J", board.windowKey());
+    }
+
+    @Test
+    void theTerminalsQuantityIsWhatEachTradeKeyGives() {
+        Boards boards = new Boards();
+        boards.trade.stationName = "Highport";
+        boards.trade.credits = 5000;
+        boards.trade.hasHold = true;
+        boards.trade.cargoCapacity = 40;
+        com.ringsofiron.uihud.providers.TradeProvider.TradeLine food = boards.trade.addLine();
+        food.commodityId = "food";
+        food.name = "Food";
+        food.available = 935.6;
+        food.buyPrice = 38;
+        food.sellPrice = 30;
+        food.stationBuys = true;
+        food.held = 4;
+        food.onOrder = 6;
+        MarketPage m = new MarketPage();
+        m.refresh(boards);
+        assertEquals(0, m.sel);
+        assertEquals(1.0, m.units(food, true), 1e-9, "one at a time to start");
+        assertEquals(1.0, m.units(food, false), 1e-9);
+        m.control(MarketPage.Q10);
+        assertEquals(MarketPage.Q10, m.qty);
+        assertEquals(MarketPage.BUY, m.focus, "the keys go on to the trade it can make");
+        assertEquals(10.0, m.units(food, true), 1e-9);
+        assertEquals(4.0, m.units(food, false), 1e-9, "what is held; what is coming aboard isn't yet");
+        m.control(MarketPage.QALL);
+        assertEquals(131.0, m.units(food, true), 1e-9, "all it can pay for: 5,000 at 38 a unit");
+        food.onOrder = -3;
+        assertEquals(1.0, m.units(food, false), 1e-9, "what is held less what is on its way off");
+        // With nothing to pay with, Enter is SELL
+        boards.trade.credits = 0;
+        m.focus = -1;
+        assertEquals(MarketPage.SELL, m.action());
+        assertEquals("935", MarketPage.wholeUnits(935.6));
+        assertEquals("1,559", MarketPage.wholeUnits(1559.4));
+        assertEquals("1", MarketPage.wholeUnits(0.97));
+        assertEquals("<1", MarketPage.wholeUnits(0.4));
+    }
+
+    @Test
+    void aSentenceBreaksAtAWordForItsSecondLine() {
+        String eva = "EVA: crew go out for work outside as it comes";
+        int at = CrewPage.breakAt(eva, 42);
+        assertEquals("EVA: crew go out for work outside as it", eva.substring(0, at));
+        assertEquals("comes", CrewPage.rest(eva, 42));
+        assertEquals(eva.length(), CrewPage.breakAt(eva, 60), "whole where it fits");
+        assertEquals("", CrewPage.rest(eva, 60));
+        assertEquals(8, CrewPage.breakAt("Unbroken-sentence", 8), "cut where there is no word to break at");
+    }
+
+    @Test
     void aGuardedKeyGivesItsOrderOnlyOnTheSecondPressAndDropsWhenTheRowChanges() {
         Rows r = new Rows(false, false);
         r.guarded = true;
@@ -461,10 +600,13 @@ class WindowScreensTest {
         };
     }
 
-    /** A list of rows, headings where {@code heads} says, with a key to act and one to go on. */
+    /**
+     * A list of rows, headings where {@code heads} says and second lines where {@code seconds} does,
+     * with a key to act and one to go on.
+     */
     private static final class Rows extends ListPage {
-        boolean[] heads;
-        boolean guarded, offer = true;
+        boolean[] heads, seconds;
+        boolean guarded, offer = true, side;
         String refusal, ask;
         int pressed = -1, presses, shows;
         final Array<String> said = new Array<>();
@@ -495,7 +637,17 @@ class WindowScreensTest {
 
         @Override
         boolean selectable(int i) {
-            return !heads[i];
+            return !heads[i] && !belongsAbove(i);
+        }
+
+        @Override
+        boolean belongsAbove(int i) {
+            return seconds != null && seconds[i];
+        }
+
+        @Override
+        boolean fitsSide() {
+            return side;
         }
 
         @Override

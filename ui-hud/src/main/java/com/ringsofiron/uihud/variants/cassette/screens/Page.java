@@ -10,8 +10,8 @@ import com.ringsofiron.uihud.variants.cassette.YardPaint;
  * to {@link #draw} each frame into the body the console leaves it.
  */
 abstract class Page implements Hits.Target {
-    /** The tab's engraved legend. */
-    final String label;
+    /** The tab's engraved legend: its spec's word for it, which a console's arrangement may set. */
+    String label;
     /** The page's tag in the feed tube, five letters at most: TRADE, YARD, JOBS. */
     final String tag;
     /** The classic window it stands for: its key opens it, and the game's word on when it can open holds. */
@@ -41,6 +41,22 @@ abstract class Page implements Hits.Target {
 
     /** The wheel over the console: positive to scroll down. */
     void scroll(float amount) {
+    }
+
+    /**
+     * Whether it can draw in a side panel's body, about 480 wide (the Stations spec's panels); else a
+     * side panel on its tab draws across the screen, as the big console does.
+     */
+    boolean fitsSide() {
+        return false;
+    }
+
+    /**
+     * The key that opens this tab, for a side panel's foot, or null when its window's key opens
+     * another tab now (Station link's hiring hall: I opens the slate's crew).
+     */
+    String windowKey() {
+        return WindowScreens.keyOf(window);
     }
 
     /** Whether something on the page waits for the player: the amber jewel on its key. */

@@ -22,12 +22,21 @@ import java.util.Locale;
  * soft key. A part the link can't reach says so before it is marked ("EVA only", "latch on"), and
  * selected, gives the game's whole reason. A click on the part already selected marks it, or calls
  * its work off.
+ *
+ * <p>In a side panel (the slate's Boarding tab, Stations 10.4) the other ship's plate goes across the
+ * top, its name on flaps, how it stands typed under it, and the drums and lamps in a row; the list
+ * under it, a part whose state is too long for its column with the state on a second line.
  */
 final class BoardingPage extends ListPage {
-    private static final int HEAD = 0, BOARD = 1, STORM = 2, RECALL = 3, PART = 4, CARGO = 5, PRISONERS = 6;
+    /** Row kinds; in a side panel a part's long state is a row of its own under it ({@code DETAIL}). */
+    private static final int HEAD = 0, BOARD = 1, STORM = 2, RECALL = 3, PART = 4, CARGO = 5, PRISONERS = 6, DETAIL = 7;
     private static final String[] HEADS = {"ORDERS", "PARTS TO STRIP", "CARGO", "PRISONERS"};
-    private static final String[] KINDS = {"HEAD", "BOARD", "STORM", "RECALL", "PART", "CARGO", "PRISONERS"};
+    private static final String[] KINDS = {"HEAD", "BOARD", "STORM", "RECALL", "PART", "CARGO", "PRISONERS", "DETAIL"};
     private static final float SIDE_W = 300f;
+    /** In a side panel, the longest state that goes beside a part's value; a longer one takes the line under it. */
+    static final int NARROW_STATE = 16;
+    /** Whether it drew in a side panel last frame. */
+    private boolean narrow;
     private Boards b;
     private final IntArray kinds = new IntArray(), refs = new IntArray();
     private final Array<Integer> byValue = new Array<>();
@@ -48,6 +57,11 @@ final class BoardingPage extends ListPage {
     @Override
     boolean offered() {
         return b != null && board().isOpen();
+    }
+
+    @Override
+    boolean fitsSide() {
+        return true;
     }
 
     @Override
@@ -79,6 +93,7 @@ final class BoardingPage extends ListPage {
                 Part pt = bb.parts.get(byValue.get(i));
                 if (pt.value <= 0 && !pt.marked) continue;
                 add(PART, byValue.get(i));
+                if (narrow && partState(pt).length() > NARROW_STATE) add(DETAIL, byValue.get(i));
                 shownParts++;
             }
         }
@@ -116,11 +131,17 @@ final class BoardingPage extends ListPage {
 
     @Override
     boolean selectable(int i) {
-        return kinds.get(i) != HEAD;
+        return kinds.get(i) != HEAD && kinds.get(i) != DETAIL;
+    }
+
+    @Override
+    boolean belongsAbove(int i) {
+        return kinds.get(i) == DETAIL;
     }
 
     @Override
     void row(YardPaint p, int i, int r, boolean s) {
+        if (narrow && rowNarrow(p, i, r, s)) return;
         BoardingBoard bb = board();
         int ref = refs.get(i);
         switch (kinds.get(i)) {
@@ -184,6 +205,73 @@ final class BoardingPage extends ListPage {
         }
     }
 
+    /**
+     * A row in a side panel, 45 columns: a part's name to column 20, its value ending at 27 and its
+     * state from 28, or on the line under it when longer; the cargo's units and what is coming over
+     * in the same columns. False for a row that is drawn as across the screen: an order, the prisoners.
+     */
+    private boolean rowNarrow(YardPaint p, int i, int r, boolean s) {
+        BoardingBoard bb = board();
+        int ref = refs.get(i);
+        switch (kinds.get(i)) {
+            case HEAD:
+                L.at(p, 1, r, HEADS[ref], DIM);
+                if (ref == 1) {
+                    if (shownParts == 0) L.at(p, 16, r, "Nothing left to strip", DIM);
+                    else {
+                        L.right(p, 27, r, "VALUE", DIM);
+                        L.at(p, 28, r, "STATE", DIM);
+                    }
+                } else if (ref == 2) {
+                    L.right(p, 27, r, "UNITS", DIM);
+                    L.at(p, 28, r, "COMING OVER", DIM);
+                }
+                return true;
+            case PART: {
+                Part pt = bb.parts.get(ref);
+                Color ink = pt.off || !pt.marked && !pt.toggleable ? DIM : AMBER;
+                String state = partState(pt);
+                if (pt.marked) p.rect(L.cx(2) + 1f, L.base(r) - 9.5f, 6f, 7f, s ? Yard.CRT_BLACK : ink);
+                String name = Ledger.cut(pt.name, 16), value = Fmt.thousands(pt.value);
+                String beside = state.length() > NARROW_STATE ? "" : state;
+                if (s) {
+                    L.rev(p, 4, r, name);
+                    L.revRight(p, 27, r, value);
+                    L.rev(p, 28, r, beside);
+                } else {
+                    L.at(p, 4, r, name, ink);
+                    L.right(p, 27, r, value, ink);
+                    L.at(p, 28, r, beside, ink);
+                }
+                return true;
+            }
+            case DETAIL: {
+                // A part's state too long for its column, under its name
+                Part pt = bb.parts.get(ref);
+                String t = Ledger.cut(partState(pt), L.cols - 7);
+                if (s) L.rev(p, 6, r, t);
+                else L.at(p, 6, r, t, DIM);
+                return true;
+            }
+            case CARGO: {
+                Cargo c = bb.cargo.get(ref);
+                String name = Ledger.cut(c.commodity, 18), units = Fmt.units(c.units), over = c.onOrder > 0.05 ? Fmt.units(c.onOrder) : "--";
+                if (s) {
+                    L.rev(p, 2, r, name);
+                    L.revRight(p, 27, r, units);
+                    L.rev(p, 28, r, over);
+                } else {
+                    L.at(p, 2, r, name, AMBER);
+                    L.right(p, 27, r, units, AMBER);
+                    L.at(p, 28, r, over, AMBER);
+                }
+                return true;
+            }
+            default:
+                return false;
+        }
+    }
+
     private void put(YardPaint p, boolean s, float c, int r, String t, boolean live) {
         if (s) L.rev(p, c, r, t);
         else L.at(p, c, r, t, live ? AMBER : DIM);
@@ -206,7 +294,8 @@ final class BoardingPage extends ListPage {
             case PART: {
                 Part pt = bb.parts.get(refs.get(sel));
                 softKey(pt.marked ? "CALL OFF" : "MARK", partRefusal(bb, pt));
-                note(partNote(pt, L.cols - 49));
+                // In a side panel the strip under the keys has it whole
+                if (!narrow) note(partNote(pt, L.cols - 49));
                 return;
             }
             case CARGO:
@@ -291,6 +380,13 @@ final class BoardingPage extends ListPage {
 
     @Override
     void draw(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        boolean was = narrow;
+        narrow = w < 700f;
+        if (narrow != was && b != null) refresh(b);
+        if (narrow) {
+            drawNarrow(p, hits, x, y, w, h);
+            return;
+        }
         BoardingBoard bb = board();
         float bx = x + 8f, by = y + 6f, bh = h - 12f;
         // The other ship: its name, how it stands, the party and the prisoners
@@ -330,13 +426,109 @@ final class BoardingPage extends ListPage {
         drawSoftKeys(p, hits);
     }
 
-    private void counter(YardPaint p, int i, String legend, int n, float x, float y) {
+    /**
+     * In a side panel: the other ship's plate across the top (its name on flaps, how it stands typed
+     * on a strip, the party, the defenders and the prisoners on drums with the lamps beside them) and
+     * the list under it, how the ship is held on its title row.
+     */
+    private void drawNarrow(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        BoardingBoard bb = board();
+        float bx = x + 8f, by = y + 4f, bw = w - 16f, bh = h - 8f;
+        BigConsole.bay(p, bx, by, bw, bh, null, false);
+        float rx = bx + 16f, rw = bw - 32f;
+        int cells = Math.max(8, Math.min((int) (rw / 10f), nameCaps.length()));
+        p.flaps(rx, by + 10f, nameCaps.length() > cells ? nameCaps.substring(0, cells) : nameCaps, cells, 10f, 20f, 14f, Yard.FLAP_TEXT);
+        // How it stands, two typed lines broken at a word
+        float py = by + 38f;
+        p.paper(rx, py, rw, 42f);
+        String st = state(bb);
+        int per = Math.max(12, (int) ((rw - 16f) / 7.6f)), cut = CrewPage.breakAt(st, per);
+        p.typed(st.substring(0, cut), rx + 8f, py + 17f, 13f, Paper.INK);
+        if (cut < st.length()) p.typed(Ledger.cut(st.substring(cut).trim(), per), rx + 8f, py + 35f, 13f, Paper.INK);
+        // The drums in a row, each as wide as its legend; the four lamps in two rows at the plate's right
+        float cy = py + 62f, cx = rx;
+        cx = counter(p, 0, "PARTY ABOARD", bb.aboard, cx, cy) + 12f;
+        cx = counter(p, 1, "DEFENDERS", bb.defenders, cx, cy) + 12f;
+        counter(p, 2, "PRISONERS", bb.prisoners, cx, cy);
+        float col2 = rx + rw - 18f - Math.max(legendW(p, "PARTY OUT"), legendW(p, "SALVAGE"));
+        float col1 = col2 - 12f - 18f - Math.max(legendW(p, "TAKEN"), legendW(p, "DISABLED"));
+        lamp(p, col1, cy + 2f, Yard.GREEN_LAMP, bb.taken, "TAKEN");
+        lamp(p, col2, cy + 2f, Yard.AMBER_LAMP, bb.boarding, "PARTY OUT");
+        lamp(p, col1, cy + 26f, Yard.AMBER_LAMP, bb.disabled, "DISABLED");
+        lamp(p, col2, cy + 26f, Yard.GREEN_LAMP, bb.salvage, "SALVAGE");
+        // The list, and under its keys the selected row's whole word, typed: why a part waits, or can't be had
+        float ty = cy + 42f, stripH = 44f;
+        int cols = Ledger.colsIn(bw - 36f), rows = Math.max(6, Ledger.rowsIn(by + bh - 34f - stripH - 6f - ty));
+        L.set(bx + 12f, ty, cols, rows);
+        L.under(p, false);
+        title(p, "BOARDING", bb.byEva ? "ALONGSIDE, NOT LATCHED" : "LATCHED");
+        drawList(p, hits, 2, rows - 3);
+        drawSoftRow(p, hits);
+        L.over(p);
+        drawSoftKeys(p, hits);
+        String word = word();
+        if (!word.isEmpty()) {
+            float sy = L.y + L.h + 30f;
+            p.paper(L.x, sy, L.w, stripH);
+            int per2 = Math.max(12, (int) ((L.w - 16f) / 7.6f)), at = CrewPage.breakAt(word, per2);
+            p.typed(word.substring(0, at), L.x + 8f, sy + 17f, 13f, Paper.INK);
+            if (at < word.length()) p.typed(Ledger.cut(word.substring(at).trim(), per2), L.x + 8f, sy + 35f, 13f, Paper.INK);
+        }
+    }
+
+    private static float legendW(YardPaint p, String s) {
+        return p.width(com.ringsofiron.uihud.variants.cassette.YardFonts.Face.LEGEND, 12f, s);
+    }
+
+    /**
+     * The selected row's whole word for the strip under the keys in a side panel, in the game's words:
+     * why an order or a part can't be had now, why a part waits for an EVA or a latch, or how a marked
+     * one's strip stands; "" for nothing more than its line says.
+     */
+    String word() {
+        if (sel < 0 || sel >= kinds.size) return "";
+        BoardingBoard bb = board();
+        String w;
+        switch (kinds.get(sel)) {
+            case BOARD:
+                w = bb.boardRefusal;
+                break;
+            case STORM:
+                w = bb.stormRefusal;
+                break;
+            case PART: {
+                Part pt = bb.parts.get(refs.get(sel));
+                if (!bb.salvage && !bb.salvageRefusal.isEmpty()) w = bb.salvageRefusal;
+                else if (pt.off && pt.status.isEmpty()) w = "Already off: it is being carried home";
+                // Marked, or off: how it stands, where its line cuts it short
+                else if (pt.marked || pt.off) w = pt.status.length() > L.cols - 7 ? pt.status : "";
+                else w = pt.reachWhy.isEmpty() && !pt.toggleable ? "Out of reach from here" : pt.reachWhy;
+                break;
+            }
+            case CARGO:
+                w = bb.salvage ? "" : bb.salvageRefusal;
+                break;
+            default:
+                w = "";
+        }
+        return w.isEmpty() ? "" : Fmt.capital(w);
+    }
+
+    /** A lamp with its legend after it, the legend's baseline at {@code y}. */
+    private static void lamp(YardPaint p, float x, float y, Yard.Lamp lit, boolean on, String legend) {
+        p.lamp(x + 6f, y - 4f, 4f, lit, on);
+        p.legend(legend, x + 18f, y, Yard.INK);
+    }
+
+    /** A drum counter with its legend over it, its legend's baseline at {@code y}; returns where it ends. */
+    private float counter(YardPaint p, int i, String legend, int n, float x, float y) {
         if (n != drumAt[i]) {
             drumAt[i] = n;
             drums[i] = String.valueOf(Math.max(0, Math.min(99, n)));
         }
-        p.legend(legend, x, y, Yard.INK);
+        float lw = p.legend(legend, x, y, Yard.INK);
         p.drums(x, y + 8f, drums[i], 15f, 22f, 16f, false);
+        return x + Math.max(lw, 32f);
     }
 
     /** The parts' indices, most valuable first, those still on the hull before those already off it. */
