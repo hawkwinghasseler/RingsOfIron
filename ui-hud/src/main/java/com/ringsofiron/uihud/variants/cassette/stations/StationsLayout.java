@@ -8,8 +8,9 @@ package com.ringsofiron.uihud.variants.cassette.stations;
  * world. The top column hangs from the top edge, centred, each unit at its fixed height whatever else is
  * up ("slots hold still"): the status strip at 16, the annunciator at 44, the warp strip at 84, the ticker
  * at 108. The seated band stands flush with the bottom edge, 1088 wide and centred: the two MFDs either side
- * of the cluster, the station board under them on its sill. The guide card keeps the top left corner; the
- * suit readout the bottom left; the prompt line the bottom centre, over the band when seated.
+ * of the cluster, the station board under them on its sill. The guide card keeps the top left corner, and
+ * over a screen across the screen the top right, clear of the screen's title; the suit readout the bottom
+ * left; the prompt line the bottom centre, over the band when seated.
  */
 final class StationsLayout {
     /** The top column's width and its units' heights (6.2). */
@@ -70,7 +71,7 @@ final class StationsLayout {
     float width = 1280f, height = 800f;
     boolean strip, ann, warpStrip, ticker;
     StationsFrame.Seat seat = StationsFrame.Seat.DECK;
-    /** The band is hidden under the full-screen map. */
+    /** The band is hidden under a screen across the screen: the map, or a panel too wide for the side. */
     boolean map;
     boolean leftFolded, rightFolded;
     boolean suit, prompt, berth;
@@ -150,9 +151,12 @@ final class StationsLayout {
             promptR.set(px, py, pw, PROMPT_H);
         } else promptR.off();
 
-        // With a side panel up the column takes the top left: the guide card drops under the ticker
+        // With a side panel up the column takes the top left: the guide card drops under the ticker. Over a
+        // screen across the screen, whose title is at its top left, it goes to the top right beside the column
+        boolean across = map && panelLeft < 0f;
+        float guideX = across ? width - MARGIN - GUIDE_W : MARGIN;
         float guideY = panelLeft >= 0f ? TICKER_Y + TICKER_H + GAP : MARGIN;
-        if (guideH > 0f) guideR.set(MARGIN, guideY, GUIDE_W, guideH);
+        if (guideH > 0f) guideR.set(guideX, guideY, GUIDE_W, guideH);
         else guideR.off();
 
         if (berth) berthR.set(Math.max(MARGIN, Math.round((span - BERTH_W) / 2f)), TICKER_Y + TICKER_H + GAP, BERTH_W, BERTH_H);

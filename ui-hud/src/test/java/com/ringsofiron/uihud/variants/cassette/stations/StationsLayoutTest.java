@@ -75,6 +75,27 @@ class StationsLayoutTest {
     }
 
     @Test
+    void overAScreenAcrossTheScreenTheGuideCardKeepsClearOfItsTitle() {
+        for (float[] size : SIZES) {
+            StationsLayout l = new StationsLayout();
+            l.width = size[0];
+            l.height = size[1];
+            l.seat = Seat.HELM;
+            l.strip = l.ann = true;
+            l.guideH = GUIDE_TALLEST;
+            l.map = true;
+            l.solve();
+            String where = " at " + (int) size[0] + "x" + (int) size[1];
+            assertEquals(size[0] - StationsLayout.MARGIN, l.guideR.right(), 0.01f, "the top right, less the margin" + where);
+            assertEquals(StationsLayout.MARGIN, l.guideR.y, 0.01f, where);
+            assertFalse(l.guideR.overlaps(l.column), "beside the column" + where);
+            l.map = false;
+            l.solve();
+            assertEquals(StationsLayout.MARGIN, l.guideR.x, 0.01f, "back at the top left as the screen goes" + where);
+        }
+    }
+
+    @Test
     void aSidePanelLeavesTheColumnTheCardsAndThePromptInTheWorldLeftOfIt() {
         int checked = 0;
         for (float[] size : SIZES) {
