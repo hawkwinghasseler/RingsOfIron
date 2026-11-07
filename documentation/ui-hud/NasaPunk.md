@@ -78,8 +78,8 @@ card. The map and the console stay the game's. What the three share is in `varia
   along a foot. `Ui` holds the pieces: the text sizes, key caps, the lit push buttons and the
   barber-pole strip of a barred order, the cyan cursor.
 - **The workings.** `ScreenModes` is what each combination builds its modes on: which page a
-  window's key opens and which tabs come with it, the number keys turning the tabs (the number after
-  the last stays the game's), the arrows and Enter going to the page, clicks (`Hits`) and the wheel,
+  window's key opens and which tabs come with it, the number keys turning the tabs (a number past
+  the last tab stays the game's), the arrows and Enter going to the page, clicks (`Hits`) and the wheel,
   and the feed at the foot (`Feed`): an order's words for five seconds, then the game's newest notice.
   A mode closes when the station it needs is left behind, when the map opens, or when the console's
   window does. The combination draws the frame and says which mode each window opens.
