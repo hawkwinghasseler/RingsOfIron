@@ -14,6 +14,8 @@ public final class Sect {
     public final Array<String> notes = new Array<>();
     /** The part's own orders (FILL TANKS by the tanks), in their order. */
     public final Array<Act> acts = new Array<>();
+    /** The room each column's words take, measured by {@link Tables} the first time it has to squeeze them. */
+    float[] need;
 
     public Sect(String title) {
         this.title = title == null ? "" : title;

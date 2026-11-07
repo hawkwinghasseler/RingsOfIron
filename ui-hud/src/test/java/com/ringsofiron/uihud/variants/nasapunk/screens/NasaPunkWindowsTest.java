@@ -478,6 +478,29 @@ class NasaPunkWindowsTest {
     }
 
     @Test
+    void columnsTooWideGiveUpWhatTheirWordsDontUseBeforeShrinkingAlike() {
+        // the market's columns, 60 too wide: each gives from what its head and widest cell leave spare
+        float[] w = {150f, 74f, 68f, 68f, 52f, 82f};
+        float[] need = {125f, 60f, 50f, 56f, 40f, 72f};
+        Tables.squeeze(w, need, 6, 60f);
+        float sum = 0f;
+        for (int c = 0; c < 6; c++) {
+            assertTrue(w[c] >= need[c], "column " + c + " keeps its words whole");
+            sum += w[c];
+        }
+        assertEquals(494f - 60f, sum, 1e-3);
+        // past what is spare, all shrink alike
+        float[] tight = {100f, 100f};
+        Tables.squeeze(tight, new float[] {90f, 90f}, 2, 40f);
+        assertEquals(80f, tight[0], 1e-3);
+        assertEquals(80f, tight[1], 1e-3);
+        // and keep 55 per cent whatever the room
+        float[] one = {100f};
+        Tables.squeeze(one, new float[] {100f}, 1, 80f);
+        assertEquals(55f, one[0], 1e-3);
+    }
+
+    @Test
     void partsTooTallForTheirBoxGiveWayTallestFirst() {
         float[] h = {58f, 172f, 150f, 460f};
         Tables.cap(h, 4, 606f);
