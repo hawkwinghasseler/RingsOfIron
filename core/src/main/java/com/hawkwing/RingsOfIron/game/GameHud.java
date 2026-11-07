@@ -98,7 +98,8 @@ public class GameHud implements Disposable {
     static void wireFlightAndPosts(com.ringsofiron.uihud.data.HudData data, GameWorld world) {
         data.flight = new PlayerFlightStatus(world.context, world.docking, world.sensors, world.nav,
                 new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
-        StationServices services = new StationServices(world.macroSim, world.universe, world.standing, world.docking, world.shipyard);
+        StationServices services = new StationServices(world.macroSim, world.universe, world.standing, world.docking, world.shipyard,
+                StationServices.typeNames(world));
         data.navigation = new PlayerNavigation(world.context, world.nav, world.docking, world.contracts, world.universe,
                 world.pirateBase, new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), services);
         data.dockingApproach = new PlayerDockingApproach(world.context, world.docking, world.physics);

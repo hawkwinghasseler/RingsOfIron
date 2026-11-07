@@ -39,6 +39,9 @@ public class TrafficLayer {
     private TrafficMapProvider provider;
     /** Where each pickable contact was drawn last frame: x, y, index into the frame's contacts. */
     private final FloatArray picks = new FloatArray();
+    /** Layers a variant's map hides: kinds of contact, the contracts' rings, the tension readout. All shown by default. */
+    private final boolean[] hiddenKind = new boolean[ContactKind.values().length];
+    private boolean hideObjectives, hideRegions;
 
     public TrafficLayer(TextureRegion white, BitmapFont font) {
         classic = new MapPainter(white, font);
@@ -60,6 +63,47 @@ public class TrafficLayer {
 
     public TrafficFrame getFrame() {
         return frame;
+    }
+
+    /**
+     * Shows or hides one kind of contact. A hidden kind's contacts still show when one is the
+     * navigation target, or a contract's place while the contracts' layer shows.
+     */
+    public void setShown(ContactKind kind, boolean shown) {
+        hiddenKind[kind.ordinal()] = !shown;
+    }
+
+    public boolean shown(ContactKind kind) {
+        return !hiddenKind[kind.ordinal()];
+    }
+
+    /** Shows or hides the rings on the contracts' places (and those places, of a hidden kind). */
+    public void setObjectivesShown(boolean shown) {
+        hideObjectives = !shown;
+    }
+
+    public boolean objectivesShown() {
+        return !hideObjectives;
+    }
+
+    /** Shows or hides the tension readout. */
+    public void setRegionsShown(boolean shown) {
+        hideRegions = !shown;
+    }
+
+    public boolean regionsShown() {
+        return !hideRegions;
+    }
+
+    /** Every layer back, as the classic map has them. */
+    public void showAll() {
+        java.util.Arrays.fill(hiddenKind, false);
+        hideObjectives = hideRegions = false;
+    }
+
+    /** Whether contact {@code c} is drawn with the layers as they are. */
+    boolean drawn(Contact c) {
+        return !hiddenKind[c.kind.ordinal()] || c.target || c.objective && !hideObjectives;
     }
 
     /**
@@ -133,13 +177,13 @@ public class TrafficLayer {
         float line = painter.lineHeight();
         for (int index = 0; index < frame.contacts.size; index++) {
             Contact c = frame.contacts.get(index);
-            if (c.kind == ContactKind.PLAYER) continue;
+            if (c.kind == ContactKind.PLAYER || !drawn(c)) continue;
             float x = map.screenX(c.x), y = map.screenY(c.y);
             if (x < left || x > left + width || y < bottom || y > bottom + height) continue;
             if (!c.id.isEmpty()) picks.add(x, y, index);
             painter.contact(batch, c.kind, c.stale, x, y, alpha);
             // A contract's waypoint gets a gold ring
-            if (c.objective) painter.objective(batch, x, y, alpha);
+            if (c.objective && !hideObjectives) painter.objective(batch, x, y, alpha);
             // The navigation target gets brackets
             if (c.target) painter.targetBrackets(batch, x, y, alpha);
             if (font == null || dockedQuietly(c) || c.faded && !c.target && !c.objective) continue;
@@ -161,12 +205,12 @@ public class TrafficLayer {
 
     /** The tension readout, a line per region from {@code top} down, high ones in the hostile colour. */
     public void drawRegions(Batch batch, float alpha, float x, float top) {
-        painter.regions(batch, frame.regions, x, top, alpha);
+        if (!hideRegions) painter.regions(batch, frame.regions, x, top, alpha);
     }
 
     /** Lines the tension readout takes, its heading included; 0 for none. */
     public int regionLines() {
-        return frame.regions.size == 0 ? 0 : frame.regions.size + 1;
+        return frame.regions.size == 0 || hideRegions ? 0 : frame.regions.size + 1;
     }
 
     /** "5 stations   12 haulers   2 pirates" for the title; empty with no traffic. */

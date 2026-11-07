@@ -4,8 +4,9 @@
 # tabs (the market with a trade, the yard and a hardpoint's weapons on offer, the missions with an
 # offer taken, the hire); under Context, the ship on each of its tabs, with trouble aboard, the field
 # refit away from the station, the captain's record on each of its tabs, docked and away, the
-# controls card, boarding the raider, and the ship lost. Keyboard only. Needs Xvfb, xdotool and
-# ImageMagick's import.
+# controls card, the map with a transfer planned and accepted, boarding the raider, and the ship
+# lost. Keyboard only, but for a click on the map's view keys and the wheel over its plot. Needs
+# Xvfb, xdotool and ImageMagick's import.
 #   tools/playtest/windows-vfd.sh <context|stations|task> [out-dir] [WxH] [ui-scale]
 #   (default build/playtest-windows-vfd-<spec>, 1920x1200, the automatic scale)
 # Run from the repository root.
@@ -89,6 +90,17 @@ if [ "$SPEC" = context ]; then
   key j; pause 1.2; shot w16-contracts-away
   key Return; pause 1; shot w16-nav-set
   key j; pause 0.8; shot w16-closed
+  # The map (M1): M opens the game's orbit canvas through the frame's window, the Plan pane, the
+  # Target and traffic pane and the timeline round it. With Shackleton Ice the target, ; plans the
+  # transfer and Enter (the game's) accepts it. A click on ALL TRAFFIC fits the view to the traffic,
+  # and the wheel over the plot is the map's zoom; M closes it
+  cmd target shackleton; pause 1
+  key m; pause 1.5; shot w19-map
+  key semicolon; pause 2; shot w19-map-proposed
+  key Return; pause 1.5; shot w19-map-accepted
+  click 1254 128; pause 1; shot w19-map-all-traffic
+  xdotool mousemove --window "$WIN" 960 600 click 4 click 4 click 4; pause 1; shot w19-map-zoomed
+  key m; pause 0.8; shot w19-closed
   # Boarding (M4): the raider's reactor knocked out and the ship latched on to it. K opens it; Enter
   # strips the part in focus (the walk is on its key), a second one two rows down; ← walks the keys
   cmd disable raider; pause 3; cmd latch; pause 4

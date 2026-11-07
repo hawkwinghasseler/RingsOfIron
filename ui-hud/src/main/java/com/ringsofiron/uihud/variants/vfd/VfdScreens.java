@@ -13,6 +13,8 @@ import com.ringsofiron.uihud.widgets.MapPainter;
 public final class VfdScreens {
     private VfdMapPainter painter;
     private float uiScale = -1f;
+    private boolean framed;
+    private float clearTop;
 
     /** The menus' look, new for each asking, as the game wants it; needs GL. */
     public ShellLook shellLook() {
@@ -24,8 +26,19 @@ public final class VfdScreens {
         if (painter == null) {
             painter = new VfdMapPainter();
             if (uiScale > 0f) painter.rescale(uiScale);
+            painter.setFramed(framed, clearTop);
         }
         return painter;
+    }
+
+    /**
+     * The map in the HUD's own frame (its title and keys there), or on its own; the frame's labels over
+     * the plot, if any, take its top {@code clearTop} units.
+     */
+    public void framed(boolean on, float clearTop) {
+        framed = on;
+        this.clearTop = clearTop;
+        if (painter != null) painter.setFramed(on, clearTop);
     }
 
     /** The UI is drawn {@code uiScale} times its units now. */

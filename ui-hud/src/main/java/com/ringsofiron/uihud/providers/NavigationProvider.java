@@ -22,6 +22,8 @@ public interface NavigationProvider {
         public String name = "";
         /** The faction that runs it ("Free Traders"), or "". */
         public String owner = "";
+        /** What kind of station it is ("Ice Mine"), or "". */
+        public String type = "";
         /** Whether that faction sponsors the player's career. */
         public boolean sponsor;
         /** The player's standing with it, as the game rates it (−100 to 100), and its word ("Trusted"), or "". */
@@ -36,6 +38,7 @@ public interface NavigationProvider {
             present = false;
             name = "";
             owner = "";
+            type = "";
             sponsor = false;
             standing = Float.NaN;
             standingName = "";
@@ -63,6 +66,8 @@ public interface NavigationProvider {
         public final StationInfo station = new StationInfo();
         /** The contract whose waypoint it is ("Food to Shackleton Ice"), or "". */
         public String contract = "";
+        /** The body it orbits when that isn't the one the ship orbits ("Moon"), else "". */
+        public String around = "";
 
         /**
          * Burns still to come (the one being flown among them), and the burn's place in the plan: the
@@ -92,6 +97,15 @@ public interface NavigationProvider {
         public double planDeltaV;
         /** A transfer proposal is up, not yet planned. */
         public boolean proposal;
+        /**
+         * An accepted trip that goes on past its last burn into another body's sphere of influence, where
+         * the game plans the rest (the capture, then on to the target) at the crossing: that body, else "".
+         */
+        public String onwardBody = "";
+        /** The rest's estimated delta-v, m/s; NaN unknown. */
+        public float onwardDeltaV = Float.NaN;
+        /** Seconds until the trip (or the proposal) meets its target, an estimate past a crossing; NaN unknown. */
+        public float arrivalIn = Float.NaN;
 
         /** The station the ship is docked at. */
         public final StationInfo docked = new StationInfo();
@@ -109,6 +123,7 @@ public interface NavigationProvider {
             cpaIn = cpaSpeed = Float.NaN;
             station.clear();
             contract = "";
+            around = "";
             burnsLeft = burnNumber = burnsPlanned = 0;
             burnIn = burnDeltaV = Float.NaN;
             burnStartIn = turnIn = Float.NaN;
@@ -117,6 +132,8 @@ public interface NavigationProvider {
             burnTime = burnHeadingDeg = pointingDeg = Float.NaN;
             planDeltaV = 0;
             proposal = false;
+            onwardBody = "";
+            onwardDeltaV = arrivalIn = Float.NaN;
             docked.clear();
         }
     }

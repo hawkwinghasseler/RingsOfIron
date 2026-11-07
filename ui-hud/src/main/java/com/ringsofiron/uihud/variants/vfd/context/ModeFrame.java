@@ -39,6 +39,8 @@ final class ModeFrame {
     boolean slate;
     /** Only the foot strip, on the glass across the frame's bottom: the mode draws the rest itself (the controls' card). */
     boolean footOnly;
+    /** A window through the plate to what is under it, x, y, w, h (the map's canvas); none while its width is 0. */
+    final float[] hole = new float[4];
     String brand = "SLATE", owner = "CAPTAIN";
     /** The slate's title in large dots, at this pitch. */
     static final float SLATE_TITLE_PITCH = 2.5f;
@@ -123,7 +125,8 @@ final class ModeFrame {
             return;
         }
         float ty = y + (tabRow ? TABS_H : 0f);
-        f.plate(x, y, w, h, 7f, 8f);
+        if (hole[2] > 0f) f.plateAround(x, y, w, h, 7f, 8f, hole[0], hole[1], hole[2], hole[3]);
+        else f.plate(x, y, w, h, 7f, 8f);
         f.module(x, ty, w, TITLE_H, f.o().filaments(0).noGlare().radius(2f));
         float tx = x + 12f;
         tx += f.seg14(tx, ty + 7f, 16f, title, f.o().full()) + 14f;

@@ -82,6 +82,8 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
     @Override
     public void attach(HudVariantHost host) {
         this.host = host;
+        // The map shows only in M1's frame, which has its title and its keys
+        screens.framed(true, MapTab.LABELS);
         actor = new FilamentActor(this, this);
         host.layer().addActor(actor);
         modes.attach(host);
@@ -287,6 +289,16 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         rack.paintCue(f);
         // The orders menu over the world, on top of everything round it
         orders.paint(f, ordersFoot, time);
+    }
+
+    /** The top rack over the map, which covers this HUD's own layer when it opens: M1 stands under the rack. */
+    void paintTopOver(Filament f) {
+        f.origin(0f, 0f);
+        TopRack.paintRack(f, width);
+        top.paintLeft(f);
+        f.origin(rightX, 0f);
+        top.paintRight(f);
+        f.origin(0f, 0f);
     }
 
     /**

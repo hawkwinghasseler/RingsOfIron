@@ -35,8 +35,8 @@ import java.util.Locale;
  * puts the threat alert and the emergency card (P3, X3) over itself, since they still interrupt.
  */
 final class Modes implements Filament.Painter, FilamentActor.Clicks {
-    /** The plate under a mode, which takes the clicks that miss everything on it. */
-    static final int PLATE = 99;
+    /** The plate under a mode, which takes the clicks that miss everything on it; the top rack's chip over the map. */
+    static final int PLATE = 99, CHIP = 98;
     /** Where a tab's own click ids start, and the lost card's ways on. */
     static final int TAB_IDS = 100, LOST_IDS = 80;
     /** How often the boards are read while a mode shows. */
@@ -53,13 +53,18 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
     final BoardingMode boarding = new BoardingMode();
     final RecordMode record = new RecordMode();
     final ControlsMode controls = new ControlsMode();
-    private final Mode[] all = {station, ship, boarding, record, controls};
+    final MapMode map = new MapMode();
+    private final Mode[] all = {station, ship, boarding, record, controls, map};
     Mode current;
     /** The ship lost or the career over: the card shows over the dark HUD, and no mode opens. */
     boolean lost;
     final LostCard lostCard = new LostCard();
     private float sinceRefresh;
     float time;
+    /** Where the pointer was at the last turn of the wheel, y down: the list under it turns. */
+    float pointerX, pointerY;
+    /** The canvas insets last given to the game's map, left, top, right, bottom. */
+    private final float[] insets = {-1f, -1f, -1f, -1f};
     /** An order's answer for the foot, its source, how long it still holds, and the feed's revision when it was said. */
     private String said = "", saidSource = "";
     private float sayLeft;
@@ -92,7 +97,11 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
             @Override
             public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY) {
                 if (current == null || current.tab == null || amountY == 0f) return false;
+                pointerX = x;
+                pointerY = actor.getHeight() - y;
                 current.tab.scrolled(amountY > 0f ? 1 : -1);
+                // Over a pane round the map, the wheel is the pane's: the map doesn't zoom too
+                event.stop();
                 return true;
             }
         });
@@ -124,6 +133,7 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
             case LOG:
             case HELP:
             case GAME_OVER:
+            case MAP:
                 return true;
             default:
                 return false;
@@ -150,6 +160,8 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
                 return record;
             case HELP:
                 return controls;
+            case MAP:
+                return map;
             default:
                 return null;
         }
@@ -296,6 +308,25 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
         current.layout(w, h);
         actor.clearBoxes();
         current.boxes(actor);
+        if (current == map) {
+            canvas(w, h);
+            // The rack's chip, which the map covers in the HUD's own layer
+            if (hud.top.chip) actor.box(CHIP, hud.top.chipX, Geo.STRIP_Y, 66f, Geo.STRIP_H);
+        }
+    }
+
+    /** Keeps the game's orbit canvas in the plot between M1's panes, on a {@code w} x {@code h} stage. */
+    private void canvas(float w, float h) {
+        UiHud g = gameHud();
+        if (g == null) return;
+        float[] o = map.frame.hole;
+        float l = o[0], t = o[1], r = w - o[0] - o[2], b = h - o[1] - o[3];
+        if (l == insets[0] && t == insets[1] && r == insets[2] && b == insets[3]) return;
+        insets[0] = l;
+        insets[1] = t;
+        insets[2] = r;
+        insets[3] = b;
+        g.getManeuverMap().setCanvasInsets(l, t, r, b);
     }
 
     /** The foot's feed line: an order's answer while it holds, else the feed's newest line. */
@@ -325,6 +356,8 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
             if (d != null) lostCard.paint(f, d.gameOver);
             return;
         }
+        // The map covers the HUD's own layer, rack and all: the rack again, over it
+        if (current == map) hud.paintTopOver(f);
         current.paint(f, time);
         hud.paintInterruptsOver(f);
     }
@@ -332,6 +365,11 @@ final class Modes implements Filament.Painter, FilamentActor.Clicks {
     @Override
     public void clicked(int id) {
         if (id == PLATE) return;
+        if (id == CHIP) {
+            HudData d = data();
+            if (d != null) hud.acknowledge(d);
+            return;
+        }
         if (current != null) {
             current.clicked(id);
         } else if (lost && id >= LOST_IDS && id < TAB_IDS) {

@@ -329,6 +329,29 @@ class NavigationTest {
     }
 
     @Test
+    void warpToAnEventOnTheMapStopsAMinuteBeforeIt() {
+        double at = world.universe.now() + 2 * 3_600;
+        String said = world.nav.warpTo(at, "the Moon's sphere");
+        assertTrue(said.startsWith("Warping to the Moon's sphere"), said);
+        assertTrue(world.timeWarp.isRailsWarp());
+        for (int i = 0; i < 60 * 30 && world.timeWarp.isRailsWarp(); i++) world.update(FRAME);
+        assertFalse(world.timeWarp.isRailsWarp(), "dropped out");
+        assertEquals(Navigation.WARP_LEAD, at - world.universe.now(), 5, "a minute before it");
+        assertTrue(Double.isNaN(world.nav.nextDropOutTime()), "and nothing more to stop for");
+        assertTrue(world.nav.warpTo(world.universe.now() + 30, "periapsis").startsWith("Too close"), "half a minute off is too close");
+    }
+
+    @Test
+    void aBurnBeforeTheEventStillStopsTheWarpFirst() {
+        world.burns.addNode();
+        world.burns.adjust(5, 0);
+        ManeuverNodeComponent.Node n = world.burns.selected();
+        n.time = world.universe.now() + 3_600;
+        world.nav.warpTo(world.universe.now() + 5 * 3_600, "apoapsis");
+        assertEquals(n.time - world.nav.leadFor(n), world.nav.nextDropOutTime(), 1, "the burn's stop comes first");
+    }
+
+    @Test
     void theFuelEstimateCountsThePlanAgainstTheTanks() {
         world.update(FRAME);
         double left = world.nav.deltaVLeft();

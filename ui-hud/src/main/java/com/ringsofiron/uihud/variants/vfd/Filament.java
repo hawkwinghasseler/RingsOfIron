@@ -412,6 +412,34 @@ public final class Filament implements Disposable {
         shapes.roundRectStroke(px + 0.4f, py + 0.4f, pw - 0.8f, ph - 0.8f, radius, 0.8f, Ink.bits(Ink.PLATE_RIM, 1f));
     }
 
+    /**
+     * A plate like {@link #plate} with a window cut through it at {@code hx, hy, hw, hh}, inside the box
+     * it holds, to what is drawn under it (the map's canvas, under the map's panels). It casts no
+     * shadow, which would darken the window: the four pieces round the window, the bands across its
+     * top and bottom rounded at the plate's corners and the columns beside it square, so no corner
+     * opens a notch where they meet; then the rim round the outside.
+     */
+    public void plateAround(float x, float y, float w, float h, float pad, float radius, float hx, float hy, float hw, float hh) {
+        if (!baseNow()) return;
+        float px = x - pad, py = y - pad, pw = w + 2f * pad, ph = h + 2f * pad;
+        float top = Ink.bits(Ink.PLATE_TOP, 1f), bottom = Ink.bits(Ink.PLATE_BOTTOM, 1f);
+        float hb = hy + hh;
+        // The bands, each its slice of the plate's gradient
+        shapes.roundRectGradient(px, py, pw, hy - py, radius, new float[] {0f, top, 1f, plateAt(hy, py, ph, top, bottom)});
+        shapes.roundRectGradient(px, hb, pw, py + ph - hb, radius, new float[] {0f, plateAt(hb, py, ph, top, bottom), 1f, bottom});
+        // The columns, overlapping the bands by the radius
+        float c0 = hy - radius, c1 = hb + radius;
+        float[] stops = {0f, plateAt(c0, py, ph, top, bottom), 1f, plateAt(c1, py, ph, top, bottom)};
+        shapes.roundRectGradient(px, c0, hx - px, c1 - c0, 0f, stops);
+        shapes.roundRectGradient(hx + hw, c0, px + pw - hx - hw, c1 - c0, 0f, stops);
+        shapes.roundRectStroke(px + 0.4f, py + 0.4f, pw - 0.8f, ph - 0.8f, radius, 0.8f, Ink.bits(Ink.PLATE_RIM, 1f));
+    }
+
+    /** The plate's colour {@code at} y, down its gradient from {@code y0} over {@code h}. */
+    private static float plateAt(float at, float y0, float h, float top, float bottom) {
+        return Shapes.lerpColor(top, bottom, Math.max(0f, Math.min(1f, (at - y0) / h)));
+    }
+
     /** A slab: a free-standing window with a thin bezel of its own. */
     public void slab(float x, float y, float w, float h, float pad, int filaments, boolean glare) {
         plate(x, y, w, h, pad, 5f);

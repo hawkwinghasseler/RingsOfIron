@@ -124,6 +124,16 @@ class HudProvidersTest {
     }
 
     @Test
+    void aStationNavTargetSaysWhatKindItIsAndWhichBodyItOrbits() {
+        world.nav.target.select(game.lunarMine);
+        data.refresh();
+        NavigationProvider.NavReadout n = data.navReadout;
+        assertEquals("Ice Mine", n.station.type, "its station type's name");
+        assertEquals("Moon", n.around, "round the Moon, not Earth");
+        assertFalse(n.docked.type.isEmpty(), "the dock's kind too");
+    }
+
+    @Test
     void plannedBurnsCountDownAndPointTheWay() {
         ManeuverNodeComponent plan = game.player.getComponent(ManeuverNodeComponent.class);
         if (plan == null) game.player.add(plan = new ManeuverNodeComponent());
