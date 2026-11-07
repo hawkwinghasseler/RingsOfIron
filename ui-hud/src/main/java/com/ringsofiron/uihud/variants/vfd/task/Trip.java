@@ -72,7 +72,7 @@ final class Trip {
             if (o.state == State.FAILED) continue;
             Row r = rows[count++];
             String kind = o.kind.isEmpty() ? "" : o.kind.toUpperCase(Locale.ROOT) + ": ";
-            r.title = kind + o.title.toUpperCase(Locale.ROOT);
+            r.title = kind + title(o).toUpperCase(Locale.ROOT);
             r.done = o.state == State.DONE;
             r.late = o.late;
             r.nav = o.nextIsNav;
@@ -82,6 +82,12 @@ final class Trip {
             r.next = r.nav ? Words.cut(step, CELLS - 2) : "";
             r.left = r.done ? "" : left(o.timeLeft);
         }
+    }
+
+    /** A contract's title without the kind the row already leads with: the game's bounty is "Bounty: Raider 'Vex'". */
+    static String title(Objective o) {
+        String t = o.title, lead = o.kind + ": ";
+        return !o.kind.isEmpty() && t.regionMatches(true, 0, lead, 0, lead.length()) ? t.substring(lead.length()) : t;
     }
 
     /** Time left in five seven-segment cells: "2d21h", "21h05", "45:10". */
