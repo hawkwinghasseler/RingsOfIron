@@ -236,7 +236,7 @@ final class CrisisPlacard extends YardPart {
      * A typed slip of {@code text}, its paper as tall as its lines up to {@code maxH}, in red for a
      * refusal; lines past what fits are left off.
      */
-    private static void slip(YardPaint p, float x, float y, float w, float maxH, Array<String> text, boolean red) {
+    static void slip(YardPaint p, float x, float y, float w, float maxH, Array<String> text, boolean red) {
         int fits = Math.max(1, (int) ((maxH - 10f) / SLIP_LINE));
         int n = Math.min(text.size, fits);
         p.paper(x, y, w, Math.min(maxH, 10f + Math.max(2, n) * SLIP_LINE));
@@ -246,7 +246,7 @@ final class CrisisPlacard extends YardPart {
     }
 
     /** {@code s} broken at its spaces into typed lines no wider than {@code width}, added to {@code out}. */
-    private static void wrapInto(YardPaint p, String s, float width, Array<String> out) {
+    static void wrapInto(YardPaint p, String s, float width, Array<String> out) {
         StringBuilder line = new StringBuilder();
         for (String word : s.split(" ")) {
             if (line.length() > 0 && p.width(Face.PAPER, SLIP_SIZE, line + " " + word) > width) {

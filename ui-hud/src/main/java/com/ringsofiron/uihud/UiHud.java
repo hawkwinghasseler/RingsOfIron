@@ -562,6 +562,29 @@ public class UiHud implements Disposable {
         return screens.isOpen(window);
     }
 
+    /**
+     * Whether the console open now holds the captain where they stand: the classic window does, and a
+     * variant's screen for it unless it is a panel by the console that the captain may walk away from
+     * ({@link HudVariant#consoleLetsWalk}). False with no console open.
+     */
+    public boolean consoleHolds() {
+        if (!isOpen(ClassicWindow.CONSOLE)) return false;
+        return !(screens.replaced(ClassicWindow.CONSOLE) && variant != null && variant.consoleLetsWalk());
+    }
+
+    /**
+     * The id of the console E has open, whoever draws it, or else of the one the prompt offers
+     * ("helm", "turret_mount"); "" for none. The prompt finds nothing while a console is open, so the
+     * game asks here what a key at the console is for.
+     */
+    public String consoleInReach() {
+        if (data.console.isOpen()) return data.console.data.consoleId;
+        InteractableConsoleComponent open = consoleWindow.isOpen() && consoleWindow.getConsole() != null
+                ? consoleWindow.getConsole().getComponent(InteractableConsoleComponent.class) : null;
+        if (open != null) return open.consoleId;
+        return interactPromptSystem.getNearestId();
+    }
+
     /** Opens {@code window} if it can open now, the classic window or the variant's screen for it; whether it is open. */
     public boolean open(ClassicWindow window) {
         return screens.open(window);
@@ -842,6 +865,9 @@ public class UiHud implements Disposable {
         data.age(delta);
         if (variant != null) {
             data.promptAction = interactPromptSystem.getAction();
+            data.promptConsole = interactPromptSystem.getNearestId();
+            // Where the open console stands and how far the captain is from it, for a panel beside it
+            if (data.console.isOpen()) data.console.track(interactPromptSystem.distanceTo(data.console.data));
             data.dockHint = dockHintRef.isVisible() ? dockHintRef.getText().toString() : "";
             data.refresh();
             screens.update();

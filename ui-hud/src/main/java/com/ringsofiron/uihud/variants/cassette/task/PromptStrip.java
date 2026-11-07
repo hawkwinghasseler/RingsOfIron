@@ -39,12 +39,22 @@ final class PromptStrip extends YardPart {
 
     /**
      * The strip's segments: the key, then the words, a "[V]" among them a key of its own, as the game's
-     * prompts put a second key in brackets ("FOR THE GUN PANEL   [V] TAKE THE GUN").
+     * prompts put a second key in brackets ("FOR THE GUN PANEL   [V] TAKE THE GUN"). At the helm and the
+     * weapons console E opens no panel but seats the captain, as V does (spec CON): "E OR V  SIT AND FLY".
      */
     static String[] segments(HudData d) {
         List<String> out = new ArrayList<>();
         out.add(YardPaint.KEY + key(d));
         String w = words(d);
+        if (ConsolePanel.seat(d.promptConsole)) {
+            int a = w.indexOf('['), b = a < 0 ? -1 : w.indexOf(']', a);
+            if (a >= 0 && b > a && b - a <= 9) {
+                out.add("OR ");
+                out.add(YardPaint.KEY + w.substring(a + 1, b));
+                out.add(w.substring(b + 1).trim());
+                return out.toArray(new String[0]);
+            }
+        }
         int i = 0;
         while (i < w.length()) {
             int a = w.indexOf('[', i), b = a < 0 ? -1 : w.indexOf(']', a);

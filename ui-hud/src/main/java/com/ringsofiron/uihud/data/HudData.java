@@ -1,7 +1,9 @@
 package com.ringsofiron.uihud.data;
 
 import com.badlogic.ashley.core.Entity;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import com.ringsofiron.coreengine.components.TransformComponent;
 import com.ringsofiron.interiorgrid.RoomNames;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
@@ -142,6 +144,22 @@ public final class HudData {
         public InteractableConsoleComponent data;
         /** The game's own actions at this console, in order ({@code UiHud#registerConsoleAction}). */
         public final Array<ConsoleAction> actions = new Array<>();
+        /**
+         * Tiles from the player's avatar to the console's tile, NaN while the avatar is not aboard its
+         * ship: for a panel that closes as the captain walks off. Kept by {@code UiHud} each frame.
+         */
+        public float reach = Float.NaN;
+        /** Where the console stands, world (bubble) meters, for a panel drawn beside it; NaN when its ship has no pose. */
+        public float worldX = Float.NaN, worldY = Float.NaN;
+        /**
+         * The corners of its ship's deck, world meters, in turn round it from the grid's first tile: for a
+         * panel that keeps off the ship. NaN when its ship has no pose.
+         */
+        public final float[] hullX = new float[4], hullY = new float[4];
+
+        {
+            unplaced();
+        }
 
         public boolean isOpen() {
             return console != null;
@@ -152,12 +170,49 @@ public final class HudData {
             this.data = data;
             this.actions.clear();
             if (actions != null) this.actions.addAll(actions);
+            reach = worldX = worldY = Float.NaN;
+            unplaced();
         }
 
         public void clear() {
             console = null;
             data = null;
             actions.clear();
+            reach = worldX = worldY = Float.NaN;
+            unplaced();
+        }
+
+        private void unplaced() {
+            java.util.Arrays.fill(hullX, Float.NaN);
+            java.util.Arrays.fill(hullY, Float.NaN);
+        }
+
+        /**
+         * Takes {@code reach}, and works out where the console stands from its ship's pose: the middle
+         * of its tile, turned and moved as the ship is; and the corners of the ship's deck likewise.
+         */
+        public void track(float reach) {
+            this.reach = reach;
+            Entity ship = data == null ? null : data.ship;
+            TransformComponent t = ship == null ? null : ship.getComponent(TransformComponent.class);
+            ShipGridComponent g = ship == null ? null : ship.getComponent(ShipGridComponent.class);
+            if (t == null || g == null) {
+                worldX = worldY = Float.NaN;
+                unplaced();
+                return;
+            }
+            double a = Math.toRadians(t.rotation);
+            float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
+            Vector2 local = g.tileToLocal(data.tileX, data.tileY);
+            worldX = t.x + cos * local.x - sin * local.y;
+            worldY = t.y + sin * local.x + cos * local.y;
+            Vector2 first = g.tileToLocal(0, 0), last = g.tileToLocal(g.width - 1, g.height - 1);
+            float half = g.tileSize / 2f, x0 = first.x - half, y0 = first.y - half, x1 = last.x + half, y1 = last.y + half;
+            for (int i = 0; i < 4; i++) {
+                float lx = i == 1 || i == 2 ? x1 : x0, ly = i >= 2 ? y1 : y0;
+                hullX[i] = t.x + cos * lx - sin * ly;
+                hullY[i] = t.y + sin * lx + cos * ly;
+            }
         }
     }
 
@@ -216,6 +271,8 @@ public final class HudData {
      * pressure suit", "for the Helm panel"), or "" with nothing in reach; and that key's name.
      */
     public String promptAction = "", promptKey = "E";
+    /** The id of the console that prompt is for ("helm", "reactor"), or "" when it is for none. */
+    public String promptConsole = "";
     /** The docked banner's text ("Docked at Highport   [T] Trade   [Y] Yard"), or "" when not docked. */
     public String dockHint = "";
 

@@ -257,7 +257,8 @@ public final class GameBootstrap {
                     input.takeControlButton(body, skin, "Take fire control: every gun", SubsystemType.WEAPONS));
             hud.registerConsoleExtra("turret_mount", (body, skin, console, data) ->
                     input.takeControlButton(body, skin, "Take the gun", SubsystemType.TURRET_MOUNT));
-            // ... and so do a HUD variant's own console screens
+            // ... and so do a HUD variant's own console screens, which may seat the captain at the helm at once
+            hud.registerConsoleAction("helm", "Take the helm", Action.VIEW.name(), () -> input.takeControl(SubsystemType.HELM));
             hud.registerConsoleAction("weapons", "Take fire control: every gun", Action.VIEW.name(),
                     () -> input.takeControl(SubsystemType.WEAPONS));
             hud.registerConsoleAction("turret_mount", "Take the gun", Action.VIEW.name(), () -> input.takeControl(SubsystemType.TURRET_MOUNT));

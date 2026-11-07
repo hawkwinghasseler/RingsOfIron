@@ -1,5 +1,7 @@
 package com.ringsofiron.uihud.variants.cassette.task;
 
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.math.Vector2;
 import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.ContactProvider.Contact;
@@ -34,6 +36,9 @@ import java.util.Set;
  * start under the visor, so the master unit and the visor stay above them (Z1 and Z2). Those two and the
  * crisis panel, shown everywhere, are on a canvas of their own in the screen layer, over the map and the
  * consoles; the telex of the ship lost or the career over has the whole screen.
+ *
+ * <p>E at a system's console opens no screen: its panel stands beside the console on deck
+ * ({@link ConsolePanel}, spec CON), and the captain may walk away from it, which closes it.
  */
 public class CassetteTaskHud implements HudVariant {
     /** Hostiles within this many metres keep the scope up while docked. */
@@ -62,7 +67,11 @@ public class CassetteTaskHud implements HudVariant {
     private KeySill sill;
     private CrisisPlacard crisis;
     private PromptStrip prompt;
+    private ConsolePanel console;
     private Post lastPost;
+    private final Vector2 at = new Vector2();
+    /** The open console's ship's deck on the canvas, design units. */
+    private final TaskLayout.Rect hull = new TaskLayout.Rect();
     /** The menus, the map and the windows in the Yard Standard. */
     // Esc closes the controls card before the screen under it (spec round 11)
     private final YardScreens screens = new YardScreens().controlsOver(true);
@@ -88,9 +97,10 @@ public class CassetteTaskHud implements HudVariant {
         sill = new KeySill(frame);
         crisis = new CrisisPlacard(frame);
         prompt = new PromptStrip(frame);
-        // Painted in this order: the sill under the pods standing on it; over everything, screens included,
-        // the master unit, then the visor and the placard
-        for (YardPart p : new YardPart[]{sill, schematic, suit, rack, target, scope, guns, defence, flight, helm, prompt}) {
+        console = new ConsolePanel(frame);
+        // Painted in this order: the sill under the pods standing on it, the console panel over the deck's
+        // units; over everything, screens included, the master unit, then the visor and the placard
+        for (YardPart p : new YardPart[]{sill, schematic, suit, rack, target, scope, guns, defence, flight, helm, prompt, console}) {
             canvas.add(p);
         }
         for (YardPart p : new YardPart[]{master, visor, crisis}) over.add(p);
@@ -108,8 +118,9 @@ public class CassetteTaskHud implements HudVariant {
         UiHud hud = host.hud();
         boolean map = hud.isMapOpen();
         boolean telex = screens.showing(ClassicWindow.GAME_OVER);
-        // A screen covers zones 3 to 9: the map, a console in a window's place, the deck console's window, the telex
-        frame.read(d, map || hud.windowOpen() || telex);
+        // A screen covers zones 3 to 9: the map, a console in a window's place, the telex. The console
+        // panel stands on the deck among the units rather than covering them
+        frame.read(d, map || windowUp(hud) || telex);
         frame.time += delta;
         frame.alerts.update(d, delta, frame.post);
         if (frame.post != lastPost) {
@@ -118,6 +129,7 @@ public class CassetteTaskHud implements HudVariant {
             lastPost = frame.post;
         }
         visible(d, map, delta);
+        updateConsole(d, delta);
         place(d);
         canvas.setBounds(0f, 0f, host.width(), host.height());
         over.setBounds(0f, 0f, host.width(), host.height());
@@ -194,6 +206,25 @@ public class CassetteTaskHud implements HudVariant {
         sill.choose(delta);
     }
 
+    /** A window is up besides the console panel. */
+    private static boolean windowUp(UiHud hud) {
+        for (ClassicWindow w : ClassicWindow.values()) {
+            if (w != ClassicWindow.CONSOLE && w != ClassicWindow.GAME_OVER && hud.isOpen(w)) return true;
+        }
+        return false;
+    }
+
+    /** The console panel stands at its console on deck: it closes as the captain walks off or sits down (spec CON). */
+    private void updateConsole(HudData d, float delta) {
+        if (!console.isOpen()) return;
+        if (!d.console.isOpen() || frame.noShip || !frame.deck() || console.walkedAway(d.console.reach, delta)) {
+            console.close();
+            return;
+        }
+        console.update(d, delta);
+        console.visible = !frame.screen;
+    }
+
     private static boolean hostileNear(HudData d) {
         for (Contact c : d.contactFrame.contacts) {
             if (c.relation == Relation.HOSTILE && !Float.isNaN(c.range) && c.range <= DOCKED_SCOPE_RANGE) return true;
@@ -232,6 +263,7 @@ public class CassetteTaskHud implements HudVariant {
         guns.maxRows = guns.compact ? 8 : l.wpnRows;
         l.placeRack(l.rack ? rack.measure(l.rackLimit) : 0f);
         rack.visible = l.rackR.on;
+        placeConsole(d, l);
 
         put(master, l.master);
         put(visor, l.visorR);
@@ -247,6 +279,38 @@ public class CassetteTaskHud implements HudVariant {
         put(crisis, l.crsR);
         put(prompt, l.promptR);
         put(defence, l.defR);
+        put(console, l.conR);
+    }
+
+    /** The console panel by its console as the camera shows it: off the ship's deck where there's room, clear of the units up. */
+    private void placeConsole(HudData d, TaskLayout l) {
+        if (!console.isOpen() || !console.visible) {
+            l.placeConsole(false, 0f, 0f, 0f, 0f, null);
+            return;
+        }
+        float ax = Float.NaN, ay = Float.NaN;
+        if (!Float.isNaN(d.console.worldX) && !Float.isNaN(d.console.worldY)) {
+            host.viewports().worldToUi(d.console.worldX, d.console.worldY, at);
+            ax = at.x;
+            ay = l.height - at.y;
+        }
+        boolean known = !Float.isNaN(ax) && ax >= 0f && ax <= l.width && ay >= 0f && ay <= l.height;
+        console.anchor(known ? ax : Float.NaN, known ? ay : Float.NaN);
+        // The ship's deck on screen, which the panel keeps off where it can
+        hull.off();
+        if (known && !Float.isNaN(d.console.hullX[0])) {
+            float x0 = Float.MAX_VALUE, y0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, y1 = -Float.MAX_VALUE;
+            for (int i = 0; i < 4; i++) {
+                host.viewports().worldToUi(d.console.hullX[i], d.console.hullY[i], at);
+                x0 = Math.min(x0, at.x);
+                x1 = Math.max(x1, at.x);
+                y0 = Math.min(y0, l.height - at.y);
+                y1 = Math.max(y1, l.height - at.y);
+            }
+            hull.set(x0, y0, x1 - x0, y1 - y0);
+        }
+        // Where the game can't say, the deck view's middle, where the captain stands
+        l.placeConsole(true, known ? ax : l.width / 2f, known ? ay : l.height / 2f, ConsolePanel.W, console.measure(paint), hull);
     }
 
     private static void put(YardPart p, TaskLayout.Rect r) {
@@ -279,28 +343,66 @@ public class CassetteTaskHud implements HudVariant {
 
     @Override
     public boolean replaces(ClassicWindow window) {
-        return screens.replaces(window);
+        // The console's window is the panel beside it
+        return window == ClassicWindow.CONSOLE || screens.replaces(window);
     }
 
     @Override
     public boolean open(ClassicWindow window) {
-        return screens.open(window);
+        return window == ClassicWindow.CONSOLE ? openConsole() : screens.open(window);
+    }
+
+    /**
+     * E at a console: its panel, or at the helm and the weapons console the seat, as V gives it, since
+     * those two are worked from their seat (spec CON). False when no panel shows.
+     */
+    private boolean openConsole() {
+        HudData.ConsoleView v = host.data().console;
+        if (!v.isOpen()) return false;
+        Runnable sit = v.actions.size > 0 ? v.actions.first().run : null;
+        if (ConsolePanel.seat(v.data.consoleId) && sit != null) {
+            sit.run();
+            return false;
+        }
+        console.open(v);
+        console.update(host.data(), 0f);
+        console.visible = true;
+        return true;
     }
 
     @Override
     public boolean showing(ClassicWindow window) {
-        return screens.showing(window);
+        return window == ClassicWindow.CONSOLE ? console.isOpen() : screens.showing(window);
     }
 
     @Override
     public void close(ClassicWindow window) {
-        screens.close(window);
+        if (window == ClassicWindow.CONSOLE) console.close();
+        else screens.close(window);
     }
 
-    /** A key while a console shows goes to it. */
+    /** The captain may walk off from the console panel, which closes it. */
+    @Override
+    public boolean consoleLetsWalk() {
+        return true;
+    }
+
+    /** A key while a console shows goes to it; at the console panel, Enter works its switch and E closes it. */
     @Override
     public boolean keyDown(int keycode) {
-        return screens.keyDown(keycode);
+        if (screens.keyDown(keycode)) return true;
+        if (!console.isOpen()) return false;
+        switch (keycode) {
+            case Input.Keys.ENTER:
+            case Input.Keys.NUMPAD_ENTER:
+                console.flip();
+                return true;
+            case Input.Keys.E:
+                console.close();
+                return true;
+            default:
+                return false;
+        }
     }
 
     @Override

@@ -122,6 +122,98 @@ class TaskLayoutTest {
     }
 
     @Test
+    void theConsolePanelStandsBesideItsConsoleClearOfEveryUnit() {
+        // Spec CON: on deck, by the console the captain stands at, which the deck view keeps about the
+        // middle of the screen; as tall as life support's with five rooms and both tanks
+        int checked = 0;
+        for (float[] size : SIZES) {
+            for (int mask = 0; mask < 1 << 9; mask++) {
+                TaskLayout l = layout(size, 0, mask);
+                if (l == null) continue;
+                // The prompt goes while a console is open
+                l.prompt = false;
+                l.solve();
+                l.placeRack(262f);
+                for (float dx = -120f; dx <= 120f; dx += 40f) {
+                    for (float dy = -120f; dy <= 120f; dy += 40f) {
+                        float cx = size[0] / 2f + dx, cy = size[1] / 2f + dy;
+                        for (float h : new float[]{140f, 200f, 260f}) {
+                            l.placeConsole(true, cx, cy, ConsolePanel.W, h, null);
+                            TaskLayout.Rect r = l.conR;
+                            String where = h + " tall at (" + cx + ", " + cy + "), mask " + Integer.toBinaryString(mask) + " at " + (int) size[0] + "x" + (int) size[1];
+                            assertTrue(r.on, where);
+                            assertTrue(r.x >= 0f && r.right() <= l.width && r.y >= 0f, r + " leaves the screen, " + where);
+                            assertTrue(r.bottom() <= l.height - TaskLayout.SILL, r + " runs under the sill, " + where);
+                            assertTrue(r.x >= cx + TaskLayout.CON_LEAD - 0.01f || r.right() <= cx - TaskLayout.CON_LEAD + 0.01f,
+                                    r + " stands over its console, " + where);
+                            for (TaskLayout.Rect o : l.all) assertFalse(r.overlaps(o), r + " overlaps " + o + ", " + where);
+                            checked++;
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(checked > 10000, "checked " + checked);
+        TaskLayout l = layout(SIZES[0], 0, 0);
+        l.placeConsole(false, 0f, 0f, 0f, 0f, null);
+        assertFalse(l.conR.on);
+    }
+
+    @Test
+    void theConsolePanelKeepsOffItsShipWhereThereIsRoom() {
+        // Spec CON: by its console, but not over the rooms round it. On deck the starter corvette is
+        // about 360 x 120 units, a bigger ship 640 x 220, with the captain's console anywhere on it
+        int checked = 0, offDeck = 0;
+        TaskLayout.Rect hull = new TaskLayout.Rect();
+        for (float[] size : SIZES) {
+            for (int mask = 0; mask < 1 << 9; mask++) {
+                TaskLayout l = layout(size, 0, mask);
+                if (l == null) continue;
+                l.prompt = false;
+                l.solve();
+                l.placeRack(262f);
+                float cx = size[0] / 2f, cy = size[1] / 2f;
+                for (float[] deck : new float[][]{{360f, 120f}, {640f, 220f}}) {
+                    for (float fx = 0.1f; fx < 1f; fx += 0.2f) {
+                        for (float fy : new float[]{0.2f, 0.8f}) {
+                            hull.set(cx - fx * deck[0], cy - fy * deck[1], deck[0], deck[1]);
+                            for (float h : new float[]{140f, 260f}) {
+                                l.placeConsole(true, cx, cy, ConsolePanel.W, h, hull);
+                                TaskLayout.Rect r = l.conR;
+                                String where = h + " tall on a deck " + hull + ", mask " + Integer.toBinaryString(mask) + " at " + (int) size[0] + "x" + (int) size[1];
+                                assertTrue(r.on, where);
+                                assertTrue(r.x >= 0f && r.right() <= l.width && r.y >= 0f, r + " leaves the screen, " + where);
+                                assertTrue(r.bottom() <= l.height - TaskLayout.SILL, r + " runs under the sill, " + where);
+                                for (TaskLayout.Rect o : l.all) assertFalse(r.overlaps(o), r + " overlaps " + o + ", " + where);
+                                if (r.overlaps(hull)) {
+                                    // No room off the deck: beside the console, never over it
+                                    assertTrue(r.x >= cx + TaskLayout.CON_LEAD - 0.01f || r.right() <= cx - TaskLayout.CON_LEAD + 0.01f,
+                                            r + " stands over its console, " + where);
+                                } else {
+                                    offDeck++;
+                                }
+                                checked++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(offDeck > checked * 3 / 4, offDeck + " of " + checked + " off the deck");
+        // Docked, with nothing else about the middle, the corvette always leaves it room under the deck
+        for (float[] size : SIZES) {
+            TaskLayout l = layout(size, 0, 1);
+            l.solve();
+            l.placeRack(262f);
+            float cx = size[0] / 2f, cy = size[1] / 2f;
+            hull.set(cx - 180f, cy - 60f, 360f, 120f);
+            l.placeConsole(true, cx, cy, ConsolePanel.W, 260f, hull);
+            assertEquals(hull.bottom() + TaskLayout.HULL_GAP, l.conR.y, 0.01f, l.conR + " at " + (int) size[0] + "x" + (int) size[1]);
+            assertEquals(cx, l.conR.x + l.conR.w / 2f, 0.01f, l.conR + " centred under its console");
+        }
+    }
+
+    @Test
     void theGunneryPanelKeepsTheStarterShipsRows() {
         // The corvette's five mounts (coilgun, two autocannons, harpoons, laser), at 1280 x 800
         TaskLayout l = layout(SIZES[0], 2, 4 | 64);
