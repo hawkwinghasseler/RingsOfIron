@@ -1,5 +1,6 @@
 package com.ringsofiron.uihud.providers;
 
+import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
 
 /**
@@ -61,6 +62,12 @@ public interface CrewProvider {
         public boolean dismissable;
         /** What the player can order them to do about EVA: "Send out", "Call in", "Let out"; empty for nothing. */
         public String evaAction = "";
+        /** The craft they stand in, the player's or one they boarded, for a plan of it; null when on none. */
+        public Entity craft;
+        /** Where they stand on {@link #craft}'s deck, in tiles (a tile's centre is its column + 0.5); NaN when on none. */
+        public float x = Float.NaN, y = Float.NaN;
+        /** At work where they stand: on a task, and not walking to it. */
+        public boolean working;
     }
 
     final class Hire {

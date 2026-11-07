@@ -113,6 +113,53 @@ class OrbitMapPlanningTest {
         assertEquals(0, Math.hypot(lastX - entry.x, lastY - entry.y), 0.01 * ghost.soiRadius);
     }
 
+    @Test
+    void theMapKnowsWhenEachBurnAndEachMarkComesAndWhatTheTripLeavesForTheCrossing() {
+        world.nav.target.select(game.lunarMine);
+        world.nav.transfer.plan();
+        world.nav.transfer.accept(world.burns);
+        maneuvers.selectBurn(0);
+        OrbitPathProvider.OrbitPath p = draw();
+        ManeuverNodeComponent plan = world.burns.nodes();
+        double now = world.universe.now();
+        assertEquals(plan.nodes.size, p.nodeIn.size, "a time for every burn");
+        assertEquals(2 * plan.nodes.size, p.nodeDv.size, "and its delta-v");
+        ManeuverNodeComponent.Node first = plan.nodes.get(0);
+        assertEquals(first.time - now, p.nodeIn.get(0), 1);
+        assertEquals(first.prograde, p.nodeDv.get(0), 1e-3);
+        assertEquals(first.radial, p.nodeDv.get(1), 1e-3);
+        // The selected burn's orbit: up to the Moon's distance
+        assertEquals(0, p.selectedNode);
+        assertTrue(p.selectedPe > 0, "over the ground: " + p.selectedPe);
+        assertTrue(Double.isNaN(p.selectedAp) || p.selectedAp > 200_000e3, "out to the Moon: " + p.selectedAp);
+        OrbitPathProvider.PathMark entry = mark(p, MarkKind.SOI_ENTRY), moonPe = null;
+        for (OrbitPathProvider.PathMark m : p.marks) if (m.kind == MarkKind.PERIAPSIS && "Moon".equals(m.body)) moonPe = m;
+        assertNotNull(moonPe, "the Moon's periapsis, the capture: " + p.marks);
+        assertEquals("Moon", entry.body);
+        assertTrue(entry.in > p.nodeIn.get(p.nodeIn.size - 1), "the crossing after the last burn: " + entry.in);
+        assertTrue(moonPe.in > entry.in, "the capture after the crossing");
+        // What the HUD reads of the trip: the leg past the crossing, its estimate, and the arrival
+        com.ringsofiron.uihud.data.HudData data = new com.ringsofiron.uihud.data.HudData();
+        GameHud.wireFlightAndPosts(data, world);
+        data.refresh();
+        com.ringsofiron.uihud.providers.NavigationProvider.NavReadout n = data.navReadout;
+        assertEquals("Moon", n.onwardBody);
+        assertTrue(n.onwardDeltaV > 100f, "the capture and on: " + n.onwardDeltaV);
+        assertTrue(n.arrivalIn > moonPe.in, "arrives after the capture: " + n.arrivalIn + " vs " + moonPe.in);
+        assertEquals("Moon", n.around, "the mine is at the Moon");
+    }
+
+    @Test
+    void theOrbitNowKnowsWhenTheShipReachesEachApsis() {
+        com.ringsofiron.uihud.providers.OrbitInfoProvider.OrbitInfo info = orbits.getPlayerOrbit();
+        assertTrue(info.peIn > 0 && info.peIn < info.period, "" + info.peIn);
+        assertTrue(info.apIn > 0 && info.apIn < info.period, "" + info.apIn);
+        assertEquals(info.period / 2, Math.abs(info.peIn - info.apIn), 2, "half an orbit apart");
+        OrbitPathProvider.OrbitPath p = draw();
+        assertEquals(info.peIn, mark(p, MarkKind.PERIAPSIS).in, 2, "as the map marks it");
+        assertEquals(info.apIn, mark(p, MarkKind.APOAPSIS).in, 2);
+    }
+
     /** When the planned path enters the Moon's sphere, from the time on its label. */
     double entryTime() {
         KeplerOrbit k = orbits.currentConic();

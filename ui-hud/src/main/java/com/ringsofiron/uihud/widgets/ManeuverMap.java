@@ -321,6 +321,36 @@ public class ManeuverMap extends Table {
     }
 
     /**
+     * Centres the view on ({@code x}, {@code y}), meters from the map's body as the path's marks are,
+     * at the zoom it has: a variant's timeline shows where an event happens this way.
+     */
+    public void centreOn(double x, double y) {
+        if (metersPerPixel == 0) metersPerPixel = metersPerPixel();
+        focus = Focus.BODY;
+        setCenter(x, y);
+    }
+
+    /** What the view centres on now, as its Centre button says it: the body's name, "ship", "target" or "encounter". */
+    public String focusName() {
+        switch (focus) {
+            case SHIP: return "ship";
+            case TARGET: return "target";
+            case ENCOUNTER: return "encounter";
+            default: return map.getPath().bodyName.isEmpty() ? "body" : map.getPath().bodyName;
+        }
+    }
+
+    /** Picks the contact the provider knows by {@code id}, as a click on it does: it becomes the navigation target. */
+    public void pick(String id) {
+        if (pickListener != null && id != null && !id.isEmpty()) pickListener.accept(id);
+    }
+
+    /** Whether a click on a contact picks it, as {@link #pick} does. */
+    public boolean picks() {
+        return pickListener != null;
+    }
+
+    /**
      * The point {@code f} centres on, meters in the map's frame, into {@code out} (may be null to only
      * ask); false when there is none this frame: no target, or no moon on the path.
      */
@@ -585,15 +615,6 @@ public class ManeuverMap extends Table {
         hint.setText(selected
                 ? "Drag a handle to add delta-v (Shift: finer); drag the burn along its orbit to move it. Click the path to plan another."
                 : "Click the path to plan a burn there, or a contact to make it the navigation target. Drag or right-drag to pan; the wheel zooms.");
-    }
-
-    private String focusName() {
-        switch (focus) {
-            case SHIP: return "ship";
-            case TARGET: return "target";
-            case ENCOUNTER: return "encounter";
-            default: return map.getPath().bodyName.isEmpty() ? "body" : map.getPath().bodyName;
-        }
     }
 
     @Override

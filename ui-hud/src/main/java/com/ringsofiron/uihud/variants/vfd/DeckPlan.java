@@ -1,5 +1,6 @@
 package com.ringsofiron.uihud.variants.vfd;
 
+import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 import com.badlogic.gdx.utils.IntArray;
@@ -46,7 +47,17 @@ public final class DeckPlan {
 
     /** Reads this frame's ship: its layout when that changed, and each room's trouble. */
     public void update(HudData d) {
-        ShipGridComponent g = d.ctx.ship == null ? null : d.ctx.ship.getComponent(ShipGridComponent.class);
+        update(d, d.ctx.ship);
+    }
+
+    /**
+     * Reads this frame's {@code ship}, the player's or another (one latched to, for boarding): its
+     * layout when that changed, and each room's trouble. The systems down and the last hit on the
+     * hull are the player's ship's alone.
+     */
+    public void update(HudData d, Entity ship) {
+        boolean ours = ship != null && ship == d.ctx.ship;
+        ShipGridComponent g = ship == null ? null : ship.getComponent(ShipGridComponent.class);
         if (g != grid || g != null && g.layoutRevision != revision) build(g);
         trouble.clear();
         burning.clear();
@@ -74,18 +85,35 @@ public final class DeckPlan {
                     bits |= FIRE;
                     burning.add(packed);
                 }
-                if (t.isHullBreach()) {
-                    bits |= BREACH;
-                    breached.add(packed);
-                }
                 if (smoke && t.isFloor()) smoky.add(packed);
             }
             if (bits != 0) trouble.put(c.id, bits);
         }
+        breaches(g);
+        if (!ours) return;
         if (systems) systemsDown(d, g);
         if (!Float.isNaN(d.lastHullHit.age) && d.lastHullHit.age < 1.2f) {
             hitX = d.lastHullHit.tileX;
             hitY = d.lastHullHit.tileY;
+        }
+    }
+
+    /**
+     * The breaches: a hull tile knocked out is open to space, so it is in no room, and the whole grid is
+     * looked over for one; each room it opens on is in trouble.
+     */
+    private void breaches(ShipGridComponent g) {
+        for (int y = 0; y < g.height; y++) {
+            for (int x = 0; x < g.width; x++) {
+                Tile t = g.getTile(x, y);
+                if (t == null || !t.isHullBreach()) continue;
+                breached.add(y * g.width + x);
+                for (int k = 0; k < 4; k++) {
+                    int nx = x + (k == 0 ? -1 : k == 1 ? 1 : 0), ny = y + (k == 2 ? -1 : k == 3 ? 1 : 0);
+                    Tile n = g.inBounds(nx, ny) ? g.getTile(nx, ny) : null;
+                    if (n != null && n.compartment != null) trouble.put(n.compartment.id, trouble.get(n.compartment.id, 0) | BREACH);
+                }
+            }
         }
     }
 
@@ -167,12 +195,44 @@ public final class DeckPlan {
         return width > 0;
     }
 
+    /**
+     * Where the plan goes fitted and centred in the box, whole tiles on the dot pitch: a tile's side,
+     * and the left and top of the plan's first tile, into {@code out}.
+     */
+    public void fit(float x, float y, float w, float h, float[] out) {
+        float t = width == 0 ? P : Math.max(P, (float) Math.floor(Math.min(w / width, h / height) / P) * P);
+        out[0] = t;
+        out[1] = x + (float) Math.floor((w - width * t) / 2f / P) * P;
+        out[2] = y + (float) Math.floor((h - height * t) / 2f / P) * P;
+    }
+
+    /** The left of grid column {@code gx} on the screen, for a {@link #fit}. */
+    public float left(int gx, float[] fit) {
+        return fit[1] + (gx - minX) * fit[0];
+    }
+
+    /** The top of grid row {@code gy} on the screen, for a {@link #fit}: the grid's y runs up the screen. */
+    public float top(int gy, float[] fit) {
+        return fit[2] + (maxY - gy) * fit[0];
+    }
+
+    /** Where a point {@code gx} tiles across the grid falls on the screen, for a {@link #fit} (a tile's centre is its column + 0.5). */
+    public float screenX(float gx, float[] fit) {
+        return fit[1] + (gx - minX) * fit[0];
+    }
+
+    /** Where a point {@code gy} tiles up the grid falls on the screen, for a {@link #fit}. */
+    public float screenY(float gy, float[] fit) {
+        return fit[2] + (maxY + 1 - gy) * fit[0];
+    }
+
+    private final float[] fitted = new float[3];
+
     /** The plan fitted and centred in the box, whole tiles on the dot pitch. */
     public void paint(Filament f, float x, float y, float w, float h) {
         if (width == 0) return;
-        float t = Math.max(P, (float) Math.floor(Math.min(w / width, h / height) / P) * P);
-        float ox = x + (float) Math.floor((w - width * t) / 2f / P) * P;
-        float oy = y + (float) Math.floor((h - height * t) / 2f / P) * P;
+        fit(x, y, w, h, fitted);
+        float t = fitted[0], ox = fitted[1], oy = fitted[2];
         float size = P * 0.78f;
         for (int i = 0; i < burning.size; i++) fill(f, burning.get(i), ox, oy, t, size, true);
         for (int i = 0; i < smoky.size; i++) fill(f, smoky.get(i), ox, oy, t, size, false);

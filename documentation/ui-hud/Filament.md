@@ -53,7 +53,9 @@ told which box was hit. Its `Filament` holds GL resources: dispose the actor on 
 "7.67" ('.' joins the cell before), a value too big for its cells shows nines, NaN shows blank.
 Ranges are metres under a kilometre and kilometres above; times are m:ss, then h:mm:ss, then days.
 `name("Pirate raider 6", 8)` is "RAIDER 6": a name drops its leading words before it cuts one, so the
-words that tell two ships apart stay.
+words that tell two ships apart stay. `place("FWD PORT PD")` is "FWD PORT": a gun's mount by where it
+sits, less the kind the weapon's name already says ("GUN (FWD PORT)", "AUTOCANNON MK1 (FWD STBD)"); a
+mount the game could not place gives "", and keeps its whole name.
 
 `Kit` holds the helpers the three variants share: the sector scope, brackets and nameplates for the
 projected HUD, velocity markers, the lead reticle, missile glyphs and the impact cross, edge
@@ -108,3 +110,27 @@ kit when the map gives its last piece of the frame.
 
 `tools/playtest/shell-vfd.sh <spec>` drives the menus, a game paused, the map and the mod scripts
 dialog in a real window and screenshots each.
+
+## The terminals
+
+The game's windows under a FILAMENT HUD are terminals (style guide, section 18.2): panes of glass on
+the character grid, pages rather than scrolling, and soft keys. Each HUD lays its windows out as its
+spec has them, from parts in `vfd.screens` that the three share:
+
+| Part | What it is |
+|---|---|
+| `Glass` | The grid, 9 units a cell at pitch 1.5 (`cells(w)` fit in a width): panes with their names, section heads with a ghost rule, text, rows with the focus inverse and its cursor in column 0, severity pips, key caps with their words, the pager, seven-segment figures with their units, and ◀ choices ▶ |
+| `Pages` | A list's focus and the page that shows it: ↑ and ↓ move the focus, Page Up, Page Down and the wheel turn the page, Home and End go to the ends |
+| `SoftKeys` | The rubber keys under the glass, each action in the glass over its key. A key with a key of its own prints it on its cap; the rest are walked with ← and →, and Enter presses the one walked to. A key that can't be taken now stays in its place, dim, and the walk never moves on from it to a key that can't be undone |
+| `Slate` | The captain's slate (section 18.4): a graphic LCD in a rubber housing, the grid in dark dots on the grey-green |
+| `LostCard` | The ship lost or the career over: the tubes dark, and a printed card with what happened and the ways on, each with the game's key for it; a click runs a way as its key would |
+| `Boards` | What every page of a terminal reads at once, a few times a second and straight after an order: the windows' providers, and the station docked at, its owner, the standing, its services, the tanks, the infirmary's record and the held deliveries this market can supply |
+| `ShipSystems` | The ship's systems by kind, as a terminal lists them: health, power, state and switch; a kind the ship has more than one of is a group that switches them together; each gun by its weapon and mount |
+
+**FILAMENT × Context** shows the windows as its spec's full-screen modes (functional-context, section
+10), each the whole screen under the top rack with its tabs on the digits: M1 the map's panels round
+the game's orbit canvas, M2 the ship (systems on its plan, crew, cargo, loadout), M3 the station
+terminal (market, yard, shipyard, missions, hire, with the station's rail), M4 boarding, M5 the
+captain's record on the slate (log, career, standing, contracts), and M6 the controls card. P3 and X3
+still interrupt over a mode. `tools/playtest/windows-vfd.sh context` drives every mode in the game
+and screenshots each.

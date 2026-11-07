@@ -156,6 +156,16 @@ public class PlayerTransfer {
         if (proposal == null) return "No transfer plan to accept (" + keys.apply(Action.PLAN_TO_TARGET) + " plans one)";
         planner.replace(proposal.burns);
         setLeg(proposal.nextParent, proposal.nextParent == null ? null : proposal.targetUuid);
+        if (proposal.nextParent != null) {
+            // What the planner estimated for the rest, kept for the map and the HUD until the crossing plans it
+            TransferLegComponent leg = leg();
+            if (leg != null) {
+                double flown = 0;
+                for (double[] b : proposal.burns) flown += Math.hypot(b[1], b[2]);
+                leg.arrival = Double.isNaN(proposal.arrivalTime) ? 0 : proposal.arrivalTime;
+                leg.restDeltaV = Math.max(0, proposal.totalDeltaV - flown);
+            }
+        }
         String said = "Transfer to " + proposal.targetName + " planned: " + proposal.burns.size()
                 + (proposal.burns.size() == 1 ? " burn" : " burns");
         proposal = null;
@@ -226,6 +236,20 @@ public class PlayerTransfer {
         }
         leg.continueIn = continueIn;
         leg.continueTo = continueTo;
+        leg.arrival = 0;
+        leg.restDeltaV = 0;
+    }
+
+    /** The accepted leg still to go on past the next crossing, on the player's ship, or null with none. */
+    public TransferLegComponent leg() {
+        Entity ship = ctx.player();
+        TransferLegComponent leg = ship == null ? null : ship.getComponent(TransferLegComponent.class);
+        return leg == null || leg.continueIn == null ? null : leg;
+    }
+
+    /** When the proposal up now meets its target, sim seconds (an estimate past a crossing); NaN with none. */
+    public double proposalArrival() {
+        return proposal == null ? Double.NaN : proposal.arrivalTime;
     }
 
     /** "To Shackleton Ice: 2 burns, 3,140 m/s, arrives in 4.2 d" */

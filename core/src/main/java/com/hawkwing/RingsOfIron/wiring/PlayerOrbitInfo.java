@@ -100,6 +100,17 @@ public class PlayerOrbitInfo implements OrbitInfoProvider {
             info.period = Double.POSITIVE_INFINITY;
         }
         info.impactWarning = k.periapsis() < body.radius;
+        // When it next passes each apsis, as the orbit map marks them: an open orbit has its periapsis
+        // ahead or behind it, and no apoapsis
+        double now = universe.now(), m = k.meanAnomalyAt(now);
+        info.peIn = info.apIn = Float.NaN;
+        if (k.isElliptic()) {
+            double twoPi = 2 * Math.PI;
+            info.peIn = (float) ((((-m) % twoPi) + twoPi) % twoPi / k.meanMotion());
+            info.apIn = (float) ((((Math.PI - m) % twoPi) + twoPi) % twoPi / k.meanMotion());
+        } else if (m < 0) {
+            info.peIn = (float) (-m / k.meanMotion());
+        }
         return info;
     }
 }

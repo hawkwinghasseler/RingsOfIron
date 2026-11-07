@@ -261,6 +261,11 @@ public class MapManeuvers implements ManeuverPlannerProvider {
     }
 
     @Override
+    public void warpTo(double in, String what) {
+        ctx.notices.post(nav.warpTo(universe.now() + in, what == null || what.isEmpty() ? "it" : what));
+    }
+
+    @Override
     public void helmFlyBurns() {
         ctx.notices.post(nav.helm.give(HelmOrderComponent.Mode.FLY_BURNS));
     }
