@@ -126,11 +126,17 @@ final class ShipPage extends SectionPage {
     @Override
     void paint(Filament f, float time) {
         super.paint(f, time);
-        if (!read) return;
-        float x = at.left - 4f, w = Geo.MFD_W, y = viewY;
-        // A repeater of the MFD: its glass in the slate, its title row, its page
+        if (read) repeater(f, viewer, page(), at.left - 4f, viewY);
+    }
+
+    /**
+     * A repeater of an MFD's page from {@code x, y}, {@link Geo#MFD_W} by {@link #VIEW_H}: the MFD's glass,
+     * its title row (the page, what it is set to, the station it belongs to) and the page as
+     * {@code viewer} last read it. The slate's viewer and the console panels draw them.
+     */
+    static void repeater(Filament f, Pages viewer, Mfds.Page p, float x, float y) {
+        float w = Geo.MFD_W;
         f.module(x, y, w, VIEW_H, f.o().filaments(2));
-        Mfds.Page p = page();
         float tw = f.dm(x + 8f, y + 5f, p.name(), f.o().pitch(1.5f).norm().noGhost());
         String setting = viewer.setting(p);
         if (!setting.isEmpty()) f.legend(x + 8f + tw + 10f, y + 15f, setting, f.o().dim());

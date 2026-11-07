@@ -51,7 +51,9 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
     final StationLink link = new StationLink();
     final CaptainSlate slate = new CaptainSlate();
     final PlotPanel plot = new PlotPanel();
-    private final Panel[] all = {link, slate, plot};
+    final ConsolePanel console = new ConsolePanel();
+    final ControlsCard controls = new ControlsCard();
+    private final Panel[] all = {link, slate, plot, console, controls};
     /** The game's orbit canvas's insets as last set, so they are set only when they change. */
     private final float[] insets = new float[4];
     /** Whether the canvas leaves its title and help to the Plot's terminal, as last set. */
@@ -128,6 +130,8 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
             case BOARDING:
             case LOG:
             case MAP:
+            case CONSOLE:
+            case HELP:
             case GAME_OVER:
                 return true;
             default:
@@ -151,6 +155,10 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
                 return slate;
             case MAP:
                 return plot;
+            case CONSOLE:
+                return console;
+            case HELP:
+                return controls;
             default:
                 return null;
         }

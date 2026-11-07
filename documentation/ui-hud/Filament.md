@@ -134,3 +134,20 @@ terminal (market, yard, shipyard, missions, hire, with the station's rail), M4 b
 captain's record on the slate (log, career, standing, contracts), and M6 the controls card. P3 and X3
 still interrupt over a mode. `tools/playtest/windows-vfd.sh context` drives every mode in the game
 and screenshots each.
+
+**FILAMENT × Stations** shows them as its spec's panels (functional-stations, section 10), one at a
+time, each standing for the window of its page so the game's keys, Esc and the game's own checks
+work on it. A panel is a terminal or the slate, 480 wide at the right with the world beside it, down
+the screen on deck and over the band seated; Tab steps its pages, and a page that needs the room (the
+Yard, the Shipyard) takes the screen's width under the top column:
+
+| Panel | Pages | Opens on |
+|---|---|---|
+| The Station link (`StationLink`) | Market, Yard, Shipyard, the contract Board, Hiring, the Infirmary, each only where the station offers it; away from a yard, the crew's field refit alone | T, Y, J while docked; Y away from a yard |
+| The slate (`CaptainSlate`) | Ship, Crew, Medical, EVA, Boarding (latched), Prisoners (held), Contracts, Career, the Log | I at the Crew, K, L; J where there is no board |
+| The Plot (`PlotPanel`) | Map, Plan, Targets, in a terminal at the right of the game's orbit canvas, which keeps its own keys and draws no title of its own | M |
+| A console's panel (`ConsolePanel`) | The pages of the stations the console hosts, the MFDs' pages repeated: the Helm console panel (Helm, Navigation, Comms), the Tactical board (Contacts, Weapons, Defense), a gun's panel (its mount), Engineering at the reactor and life support (Power, Atmos, Damage); under them the console itself: its system and how it is, its mount, who works it, its switch on a soft key (a click alone) and the game's orders at it with their keys | E at the console, on the page of its worst live alert, else its focus page |
+| The controls card (`ControlsCard`) | A printed card under the top column, its Keyboard and Gamepad sides on index tabs; the keys for where the captain is first, marked HERE, then the keys that work anywhere and the MFDs' for a command seat; the game's window keys say what they open here | F1 |
+
+The ship lost lays `LostCard` over the dark HUD, every tube off. `tools/playtest/windows-vfd-stations.sh`
+drives every panel in the game and screenshots each.
