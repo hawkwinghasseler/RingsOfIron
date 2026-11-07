@@ -90,3 +90,34 @@ card. The map and the console stay the game's. What the three share is in `varia
 docked at Highport, the station's market with a buy and each of its tabs, then each window's own key;
 the crew's refit away from the station; boarding a raider that has surrendered, before and after the
 party goes across; and the career over.
+
+### Under the context HUD
+
+The context HUD's windows are its spec's modes (`context/ModeScreen`; the mockups are
+`documentation/ui-overhaul/variations/nasapunk-context`, C6 to C10). Each is a console under P1: a
+title row of glass with the mode's name and its tabs on their number caps, the page's display units,
+and a foot row with the feed and the keys that close it. M3, the station, is the one that leaves the
+docked view in sight: a panel 1 120 wide and as tall as its tab needs, with a rail every tab shares
+(credits, standing, the hold with what is on order, the tanks). A mode hides the HUD under it but P1.
+
+| The game's window, and its key | The mode, on its tab | Its other tabs |
+|---|---|---|
+| Market (T) | M3 STATION, MARKET | YARD, SHIPYARD where ships are sold, MISSIONS, HIRE |
+| Yard (Y) at a berth | M3 STATION, YARD | as above |
+| Yard (Y) away from one | M2 SHIP, LOADOUT: the crew's field refit | CREW |
+| Contracts (J) | M3's MISSIONS while M3 shows, else M5 RECORD, CONTRACTS | LOG |
+| Boarding (K) | M4 BOARDING: the salvage beside the boarding's state and orders | |
+| Crew (I) | M2 SHIP, CREW: the roster beside the standing orders and the prisoners | LOADOUT away from a yard |
+| Notice log (L) | M5 RECORD, LOG: its filters over the list | CONTRACTS |
+| Controls (F1) | M6 CONTROLS: every key in four columns | |
+
+A tab the game won't open now is left out, and leaving the station closes M3 whatever its tab.
+From the playtest at 1280x800:
+
+| | |
+|---|---|
+| ![M3 on its market tab, just after a buy](nasapunk/context/market.png) | ![M3's yard](nasapunk/context/yard.png) |
+| ![M3's missions](nasapunk/context/missions.png) | ![M2's crew](nasapunk/context/crew.png) |
+| ![M2's field refit away from the station](nasapunk/context/field-refit.png) | ![M4, a raider taken](nasapunk/context/boarding.png) |
+| ![M5's log](nasapunk/context/log.png) | ![M6, the controls](nasapunk/context/controls.png) |
+| ![The career over](nasapunk/context/career-over.png) | |
