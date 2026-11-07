@@ -36,7 +36,7 @@ public final class Tables {
         public boolean cursor = true;
         /** Where a line's value starts after its label. */
         public float pairCol = 150f;
-        /** The part's title centred over it with its dim line at its left, as a display unit heads its page. */
+        /** The part's title centred over it with its dim line at its left, as a display unit heads its page; at its left when the line needs the room. */
         public boolean centre;
     }
 
@@ -256,15 +256,17 @@ public final class Tables {
                 }
                 right = bx - 12f;
             }
-            if (st.centre) {
-                float mid = (lx + right) / 2f, tw = cv.width(sect.title, st.titleSize, true, 0.6f);
+            // centred, unless the sub needs more than the room left of the title: then the title goes left
+            float mid = (lx + right) / 2f, tw = cv.width(sect.title, st.titleSize, true, 0.6f);
+            boolean centre = st.centre && (sect.sub.isEmpty() || cv.width(sect.sub, Ui.LB, true, 0.6f) <= mid - tw / 2f - 20f - lx);
+            if (centre) {
                 cv.text(mid, y + 21f, sect.title, st.titleSize, true, NpColors.WHITE, 0.6f, NpCanvas.MIDDLE);
                 if (!sect.sub.isEmpty()) {
                     String sub = Ui.fit(cv, sect.sub, mid - tw / 2f - 20f - lx, Ui.LB, true, 0.6f);
                     cv.text(lx, y + 21f, sub, Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.START);
                 }
             } else {
-                float tw = cv.text(lx, y + 21f, sect.title, st.titleSize, true, NpColors.WHITE, 0.6f, NpCanvas.START);
+                cv.text(lx, y + 21f, sect.title, st.titleSize, true, NpColors.WHITE, 0.6f, NpCanvas.START);
                 if (!sect.sub.isEmpty()) {
                     String sub = Ui.fit(cv, sect.sub, right - (lx + tw + 24f), Ui.LB, true, 0.6f);
                     cv.text(right, y + 21f, sub, Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.END);
