@@ -517,6 +517,27 @@ class NasaPunkWindowsTest {
     }
 
     @Test
+    void aRowWithoutTermsOfItsOwnShowsItsCellsUnderTheirHeads() {
+        Sect s = new Sect("FURNISHINGS");
+        s.col(Col.start("PIECE", 190f)).col(Col.start("FOR", 110f)).col(Col.end("CR", 70f));
+        Row r = s.row("couch");
+        r.add("COUCH", Cell.Tone.NAME);
+        r.add("LOUNGE", Cell.Tone.LABEL);
+        r.add("900", Cell.Tone.VALUE);
+        Terms terms = new Terms();
+        com.badlogic.gdx.utils.Array<Line> t = terms.of(r, s);
+        assertEquals(2, t.size, "the name heads the terms; the rest go under their heads");
+        assertEquals("FOR", t.get(0).label);
+        assertEquals("LOUNGE", t.get(0).value);
+        assertEquals(Cell.Tone.VALUE, t.get(0).tone);
+        assertEquals("900", t.get(1).value);
+        // asked again, the same lines, not more
+        assertEquals(2, terms.of(r, s).size);
+        r.detail.add(Line.pair("PIECE", "COUCH", "", Cell.Tone.NAME));
+        assertSame(r.detail, terms.of(r, s), "a row's own terms stand");
+    }
+
+    @Test
     void partsTooTallForTheirBoxGiveWayTallestFirst() {
         float[] h = {58f, 172f, 150f, 460f};
         Tables.cap(h, 4, 606f);
