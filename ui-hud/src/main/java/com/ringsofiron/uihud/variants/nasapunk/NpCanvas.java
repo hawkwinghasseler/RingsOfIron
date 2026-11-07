@@ -33,7 +33,10 @@ public final class NpCanvas {
     private final NpFonts fonts;
     private final GlyphLayout layout = new GlyphLayout();
     private final float[] quad = new float[20];
-    private final Rectangle clipArea = new Rectangle(), scissor = new Rectangle();
+    private final Rectangle clipArea = new Rectangle();
+    /** One rectangle a clip deep: the scissor stack keeps the rectangle it is given, so a clip inside a clip needs its own. */
+    private final com.badlogic.gdx.utils.Array<Rectangle> scissors = new com.badlogic.gdx.utils.Array<>();
+    private int clips;
     private final Color tmp = new Color();
     private Batch batch;
     private float ox, oy, alpha = 1f;
@@ -301,13 +304,18 @@ public final class NpCanvas {
     public boolean clip(Camera camera, float x, float y, float w, float h) {
         batch.flush();
         clipArea.set(ox + x, oy - y - h, w, h);
+        while (scissors.size <= clips) scissors.add(new Rectangle());
+        Rectangle scissor = scissors.get(clips);
         ScissorStack.calculateScissors(camera, batch.getTransformMatrix(), clipArea, scissor);
-        return ScissorStack.pushScissors(scissor);
+        if (!ScissorStack.pushScissors(scissor)) return false;
+        clips++;
+        return true;
     }
 
     public void unclip() {
         batch.flush();
         ScissorStack.popScissors();
+        if (clips > 0) clips--;
     }
 
     // ---- text -----------------------------------------------------------------------------------
