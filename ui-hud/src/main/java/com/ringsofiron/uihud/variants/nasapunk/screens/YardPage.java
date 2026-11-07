@@ -68,9 +68,13 @@ public final class YardPage extends Page {
 
     private void refits(YardBoard y) {
         Sect s = sect("REFITS").empty("NO HARDPOINTS");
-        s.sub(y.offers.size == 0 ? "NOTHING ON SALE" : y.offers.size + (y.offers.size == 1 ? " WEAPON ON SALE" : " WEAPONS ON SALE"));
+        int salvaged = 0;
+        for (int i = 0; i < y.offers.size; i++) salvaged += y.offers.get(i).salvaged;
+        String onSale = y.offers.size == 0 ? "NOTHING ON SALE" : y.offers.size + (y.offers.size == 1 ? " WEAPON ON SALE" : " WEAPONS ON SALE");
+        // what the hold has to mount is said once over the table, and lights FIT SALVAGED on the rows it fits
+        s.sub(salvaged == 0 ? onSale : onSale + " · " + salvaged + " SALVAGED IN THE HOLD");
         s.col(Col.start("MOUNT", 96f)).col(Col.start("FITTED", 150f)).col(Col.start("FIT INSTEAD", 160f))
-                .col(Col.end("NEW", 70f)).col(Col.end("USED", 70f)).col(Col.end("SALVAGED", 80f));
+                .col(Col.end("NEW", 70f)).col(Col.end("USED", 70f));
         for (int i = 0; i < y.hardpoints.size; i++) {
             Hardpoint h = y.hardpoints.get(i);
             Offer o = offer(y, h.index);
@@ -80,7 +84,6 @@ public final class YardPage extends Page {
             r.add(o == null ? "—" : "‹ " + Fmt.caps(o.name) + " ›", Cell.Tone.CYAN);
             r.add(o == null ? "" : Fmt.credits(o.price), Cell.Tone.VALUE);
             r.add(o == null ? "" : Fmt.credits(o.price * y.usedPrice), Cell.Tone.VALUE);
-            r.add(o == null || o.salvaged == 0 ? "" : o.salvaged + " IN THE HOLD", Cell.Tone.GREEN);
             if (!h.progress.isEmpty()) r.sub = Fmt.caps(h.progress);
             int index = h.index;
             if (y.offers.size > 1) r.step = d -> pick.put(index, Math.floorMod(pick.get(index, 0) + d, y.offers.size));
