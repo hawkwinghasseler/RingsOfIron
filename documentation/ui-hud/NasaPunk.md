@@ -54,3 +54,39 @@ the HUD itself is still the classic one:
 | ![The main menu](nasapunk/main-menu.png) | ![Settings, the focus on a slider](nasapunk/settings.png) |
 | ![The pause menu over the game](nasapunk/pause.png) | ![The map](nasapunk/map.png) |
 | ![The mod scripts question](nasapunk/mod-scripts.png) | |
+
+## The game's windows
+
+The three HUDs show the game's windows in place of the classic ones, through the screens hook's
+`replaces`, `open`, `showing` and `close` (`Variants.md`, Screens in place of the windows): the
+market, the yard, the shipyard, the mission board and the contracts held, the hiring hall, the
+crew, the crew's refit away from a yard, boarding, the notice log, the controls and the ship-lost
+card. The map and the console stay the game's. What the three share is in `variants/nasapunk/screens`:
+
+- **The pages.** Each window is a `Page`: parts (`Sect`) of rows under their columns' heads, each
+  row with its own orders (`Act`) and the page with its own (REPAIR ALL), built afresh from what the
+  classic windows read (`Boards`) four times a second and straight after each order. The cursor keeps
+  its row by the row's id. An order that can't be given is barred and says why once; a guarded one
+  (GIVE UP a contract, LET GO one of the crew) asks for a second press. One page for each window:
+  `MarketPage`, `YardPage`, `ShipyardPage`, `OffersPage` (the board), `HeldPage` (the contracts
+  taken), `HirePage`, `CrewPage`, `LoadoutPage` (the field refit), `BoardingPage`, `LogPage` and
+  `HelpPage` (the controls, leaving out a part the deck's key hints already show whole).
+- **One table drawer.** `Tables` draws any part in the box a combination gives it: the title and its
+  orders, the heads, the rows with their buttons (as wide as their longest word), filters, bars,
+  notes, and a scroll bar when the rows run past the box. `stack` shares a box between parts, the
+  tallest giving way first; `flow` packs them into columns; `pageActs` lines the page's own orders up
+  along a foot. `Ui` holds the pieces: the text sizes, key caps, the lit push buttons and the
+  barber-pole strip of a barred order, the cyan cursor.
+- **The workings.** `ScreenModes` is what each combination builds its modes on: which page a
+  window's key opens and which tabs come with it, the number keys turning the tabs (the number after
+  the last stays the game's), the arrows and Enter going to the page, clicks (`Hits`) and the wheel,
+  and the feed at the foot (`Feed`): an order's words for five seconds, then the game's newest notice.
+  A mode closes when the station it needs is left behind, when the map opens, or when the console's
+  window does. The combination draws the frame and says which mode each window opens.
+- **The ship-lost card.** `LostCard`: every display on the deck shows its red X, and CDU-1 says what
+  happened, with the ways on under their keys.
+
+`tools/playtest/windows-nasapunk.sh <context|task|stations>` walks the windows in a real window:
+docked at Highport, the station's market with a buy and each of its tabs, then each window's own key;
+the crew's refit away from the station; boarding a raider that has surrendered, before and after the
+party goes across; and the career over.
