@@ -50,6 +50,8 @@ public final class Tables {
     /** A filter's position with nothing at it: darker than a dim one. */
     private static final Color EMPTY = NpColors.GRATICULE.cpy().lerp(NpColors.DIM, 0.45f);
     private static final float[] COLX = new float[16], COLW = new float[16];
+    /** The width of the row buttons in the part being drawn, set by {@link #sect}. */
+    private static float rowActW = 78f;
 
     private Tables() {}
 
@@ -229,7 +231,8 @@ public final class Tables {
         tail += nReasons * st.noteH;
 
         boolean filters = anyFilter(sect);
-        float actsW = st.acts ? maxActs(sect) * (st.actW + st.actGap) : 0f;
+        rowActW = st.acts ? actW(cv, sect, st) : st.actW;
+        float actsW = st.acts ? maxActs(sect) * (rowActW + st.actGap) : 0f;
         int nCols = Math.min(sect.cols.size, COLX.length);
         float gutter = anyMark(sect) ? 18f : 0f;
         columns(sect, lx + gutter, inner - gutter - actsW - (actsW > 0f ? 8f : 0f), st.gap);
@@ -297,19 +300,19 @@ public final class Tables {
             if (r.mark != Row.NONE) Ui.mark(cv, lx + 6f, base, r.mark, r.hollow);
             for (int c = 0; c < nCols && c < r.cells.size; c++) cell(cv, r, r.cells.get(c), sect(p, s).cols.get(c), COLX[c], COLW[c], base, st);
             if (!Float.isNaN(r.bar) && nCols > 0) {
-                float bx = COLX[nCols - 1] + COLW[nCols - 1] + st.gap, bw = Math.min(140f, x + w - st.pad - bx - (st.acts ? maxActs(sect(p, s)) * (st.actW + st.actGap) : 0f));
+                float bx = COLX[nCols - 1] + COLW[nCols - 1] + st.gap, bw = Math.min(140f, x + w - st.pad - bx - (st.acts ? maxActs(sect(p, s)) * (rowActW + st.actGap) : 0f));
                 if (bw > 30f) Ui.bar(cv, bx, base - 6f, bw, r.bar, r.bar < 0.25f ? NpColors.AMBER : NpColors.WHITE);
             }
             if (!r.sub.isEmpty()) Ui.lab(cv, cx, y + st.rowH + st.subH - 6f, Ui.fit(cv, r.sub, inner - gutter - 10f, Ui.LB, true, 0.6f));
             if (st.acts && r.acts.size > 0) {
                 Act enter = r.acts.size > 1 && cur ? p.picked(r) : null;
-                float bx = x + w - st.pad - r.acts.size * (st.actW + st.actGap) + st.actGap;
+                float aw = rowActW, bx = x + w - st.pad - r.acts.size * (aw + st.actGap) + st.actGap;
                 float by = y + (st.rowH - st.actH) / 2f;
                 for (int j = 0; j < r.acts.size; j++) {
                     Act a = r.acts.get(j);
-                    float ax = bx + j * (st.actW + st.actGap);
-                    Ui.korry(cv, cam, ax, by, st.actW, st.actH, a.label, a.state, a.live, a == enter);
-                    hits.add(ax - 2f, by - 2f, st.actW + 4f, st.actH + 4f, a, 0);
+                    float ax = bx + j * (aw + st.actGap);
+                    Ui.korry(cv, cam, ax, by, aw, st.actH, a.label, a.state, a.live, a == enter);
+                    hits.add(ax - 2f, by - 2f, aw + 4f, st.actH + 4f, a, 0);
                 }
             }
         }
@@ -485,6 +488,16 @@ public final class Tables {
 
     private static float rowH(Row r, Style st) {
         return st.rowH + (r.sub.isEmpty() ? 0f : st.subH) + (r.divider.isEmpty() ? 0f : st.dividerH);
+    }
+
+    /** The width of the part's row buttons: the style's, or wider to fit the longest label, up to 150. */
+    private static float actW(NpCanvas cv, Sect s, Style st) {
+        float w = st.actW;
+        for (int i = 0; i < s.rows.size; i++) {
+            Row r = s.rows.get(i);
+            for (int j = 0; j < r.acts.size; j++) w = Math.max(w, cv.width(r.acts.get(j).label, Ui.LB, true, 0.4f) + 14f);
+        }
+        return Math.min(w, 150f);
     }
 
     private static int maxActs(Sect s) {
