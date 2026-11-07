@@ -478,6 +478,46 @@ class NasaPunkWindowsTest {
     }
 
     @Test
+    void partsTooTallForTheirBoxGiveWayTallestFirst() {
+        float[] h = {58f, 172f, 150f, 460f};
+        Tables.cap(h, 4, 606f);
+        assertEquals(58f, h[0], 1e-3);
+        assertEquals(172f, h[1], 1e-3);
+        assertEquals(150f, h[2], 1e-3);
+        assertEquals(226f, h[3], 1e-3);
+        float[] even = {300f, 300f, 300f};
+        Tables.cap(even, 3, 600f);
+        assertEquals(200f, even[0], 1e-3);
+        assertEquals(200f, even[2], 1e-3);
+    }
+
+    @Test
+    void theControlsLeaveOutTheSectionThatIsAllHere() {
+        HelpPage page = new HelpPage();
+        Host host = new Host(page);
+        host.data.keyHints.add().key = "W/S";
+        host.data.keyHints.hints.peek().label = "Thrust";
+        host.data.hints = new com.ringsofiron.uihud.providers.KeyHintProvider() {
+            @Override
+            public void collect(KeyHintFrame out) {
+            }
+
+            @Override
+            public void collectAll(HelpFrame out) {
+                out.add("At the helm").add("W/S", "Thrust", "THRUST");
+                HelpSection deck = out.add("On deck");
+                deck.add("W/A/S/D", "Walk", "WALK");
+                deck.add("W/S", "Thrust", "THRUST");
+            }
+        };
+        host.read();
+        assertEquals(2, page.sects.size);
+        assertEquals("HERE", page.sects.get(0).title);
+        assertEquals("ON DECK", page.sects.get(1).title);
+        assertEquals("W/A/S/D", page.sects.get(1).rows.get(0).cells.get(0).text);
+    }
+
+    @Test
     void theWordsAreSetAsTheStyleGuideWritesThem() {
         String t = String.valueOf(NpCanvas.THIN);
         assertEquals("12" + t + "000 CR TO SIGN", Fmt.caps("12,000 cr to sign"));
