@@ -26,7 +26,7 @@ import java.util.Locale;
  * four panes. The plan of the other ship, with our party where they stand; the party, how it stands
  * and its orders (board, storm, recall); the parts to strip, what each sells for and how its strip
  * stands, the focused one's key marking it or leaving it; and the cargo aboard to take, with the
- * prisoners alongside to bring aboard.
+ * prisoners alongside to bring aboard, against the berths free for them.
  *
  * <p>↑ and ↓ move the focus down the parts and on into the cargo. The keys of all three strips are
  * walked as one, with ← and →, and Enter presses the one walked to; moving the focus walks to the
@@ -396,12 +396,14 @@ final class BoardingTab extends ModeTab {
         if (cy + 22f > bottom) return;
         Glass.head(f, q0, cy, q1, "PRISONERS");
         cy += 22f;
-        String first, second;
+        String first, second, room = "";
         if (crew.prisonersAlongside) {
             first = board.prisoners > 0 ? board.prisoners + " SURRENDERED, ABOARD IT" : "ITS PRISONERS, TO BRING ABOARD";
+            room = berths(board);
             second = "Brought aboard, a station takes them: hand them over, ransom them or let them go";
         } else if (board.taken && board.prisoners > 0) {
             first = board.prisoners + " SURRENDERED, HELD ABOARD IT";
+            room = berths(board);
             second = "";
         } else {
             first = board.taken || board.defenders == 0 ? "NONE ABOARD" : "NONE YET: THEY SURRENDER WHEN IT IS TAKEN";
@@ -409,9 +411,25 @@ final class BoardingTab extends ModeTab {
         }
         int k = Glass.wrap(first, cells - 1, wrapped, 2);
         for (int i = 0; i < k; i++, cy += Glass.RH) Glass.text(f, q0 + Glass.CW, cy, wrapped[i], Drive.NORM);
+        if (!room.isEmpty() && cy + Glass.RH <= bottom) {
+            Glass.text(f, q0 + Glass.CW, cy, Glass.cut(room, cells - 1), Drive.NORM);
+            cy += Glass.RH;
+        }
         cy += 2f;
         int n = Glass.wrap(second, cells - 1, wrapped, 2);
         for (int i = 0; i < n && cy + Glass.RH <= bottom; i++, cy += Glass.RH) Glass.text(f, q0 + Glass.CW, cy, wrapped[i], Drive.DIM);
+    }
+
+    /**
+     * The berths free aboard for its prisoners, since only as many come across (X2's rule,
+     * {@code Prisoners.takeAboard}): "4 BERTHS FREE", or "2 BERTHS FREE: ONLY 2 COME ACROSS".
+     */
+    static String berths(BoardingBoard b) {
+        int free = Math.max(0, b.berthsFree);
+        if (free == 0) return b.prisoners > 0 ? "NO BERTHS FREE: NONE COME ACROSS" : "NO BERTHS FREE";
+        String n = free == 1 ? "1 BERTH FREE" : free + " BERTHS FREE";
+        if (b.prisoners <= free) return n;
+        return n + ": ONLY " + free + (free == 1 ? " COMES ACROSS" : " COME ACROSS");
     }
 
     // ------------------------------------------------------------------ clicks

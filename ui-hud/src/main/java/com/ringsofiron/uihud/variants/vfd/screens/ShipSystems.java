@@ -9,6 +9,7 @@ import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
+import com.ringsofiron.uihud.variants.vfd.Fmt;
 
 import java.util.HashSet;
 import java.util.Locale;
@@ -18,7 +19,8 @@ import java.util.Set;
  * The ship's systems as a FILAMENT terminal lists them (functional-context 10.2, version 18): every
  * system in the ship's registry by kind, each with its health, its power, its state and its switch. A
  * kind the ship has more than one of is a group: its row switches them together, and opening it lists
- * each member with its own switch. Each gun is its own row, by its weapon and its mount. The RCS blocks
+ * each member with its own switch. Each gun is its own row, by its weapon and its mount
+ * ("AUTOCANNON MK1 (FWD STBD)", version 19). The RCS blocks
  * are hull parts, not systems: one row with no switch, counting those that fire. Read from the
  * components, as the classic console window reads and switches the one it shows.
  */
@@ -106,7 +108,7 @@ public final class ShipSystems {
             Mount m = s.type == SubsystemType.TURRET_MOUNT ? mount(s, mounts) : null;
             y.name = name(s, m);
             String room = grid == null || s.footprint == null ? "" : rooms.at(grid, s.footprint.originX, s.footprint.originY);
-            y.where = m != null && !m.name.isEmpty() ? m.name.toUpperCase(Locale.ROOT) : room == null ? "" : room.toUpperCase(Locale.ROOT);
+            y.where = m != null && !m.name.isEmpty() ? where(m.name) : room == null ? "" : room.toUpperCase(Locale.ROOT);
             y.state = state(s);
             y.timer = y.state == State.SHORTED ? Math.max(0f, DamageStates.AUTO_RESET - s.shortedFor) : y.state == State.STUNNED ? s.stunned : Float.NaN;
             y.circuit = grid == null || s.circuit == null ? 0 : grid.circuits.indexOf(s.circuit, true) + 1;
@@ -261,6 +263,15 @@ public final class ShipSystems {
         if (!s.switchedOn) return State.OFF;
         if (s.type.needsPower() && !s.isOperational) return State.CUT_OFF;
         return State.ON;
+    }
+
+    /**
+     * A gun's mount where it sits, less its kind, which the weapon's name already says (functional-context
+     * 10.2, version 19): "FWD PORT PD" is FWD PORT; a mount the game could not place keeps its name.
+     */
+    static String where(String mount) {
+        String at = Fmt.place(mount);
+        return at.isEmpty() ? mount.toUpperCase(Locale.ROOT) : at;
     }
 
     /** The gun mounted on turret {@code s}: the mount whose tile it covers. */

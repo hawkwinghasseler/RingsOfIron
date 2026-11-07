@@ -23,8 +23,8 @@ import java.util.regex.Pattern;
  * market, the yard, the shipyard, the mission board, boarding and the crew, as the classic windows
  * read them, and the career for the captain's record, a few times a second while a page shows and straight after each order. With them what
  * the terminal's title row and rail show on every page: the station docked at, its owner, the player's
- * standing there as a word and a figure, the services it offers, the tanks, and the held deliveries
- * this market can supply.
+ * standing there as the game's signed number, the services it offers, the tanks, the infirmary's
+ * record of the docking, and the held deliveries this market can supply.
  */
 public final class Boards {
     public final TradeBoard trade = new TradeBoard();
@@ -40,8 +40,8 @@ public final class Boards {
 
     /** The station docked at, in capitals, and its owner; empty when not docked. */
     public String station = "", owner = "";
-    /** The player's standing there: its word ("TRUSTED") and its figure ("+42"); empty when there is none. */
-    public String standingWord = "", standingFigure = "";
+    /** The player's standing there, the game's signed number ("+0", "-12"); empty when there is none. The game names no levels. */
+    public String standing = "";
     /** What the station offers: a market, a yard, ships for sale, contracts, crew for hire, an infirmary. */
     public boolean market, yardOffered, shipyardOffered, contracts, hiring, infirmary;
     /** The player's rank ("Lieutenant"), from the mission board's career line. */
@@ -52,8 +52,13 @@ public final class Boards {
     private String tanksRead;
     /** The held deliveries this market sells the goods for, each in a line. */
     public final Array<String> deliveries = new Array<>();
-    /** Wounded crew aboard: the station's infirmary treats them while the ship is docked. */
-    public int wounded;
+    /**
+     * The infirmary's record of the docking: the crew it is treating now, by name, and how many it has
+     * treated since the ship docked and what it billed for them, credits.
+     */
+    public final Array<String> treating = new Array<>();
+    public int treated;
+    public double treatedCost;
 
     private static final Pattern DELIVER = Pattern.compile("^Deliver (\\d+) (.+) to (.+)$");
     private static final Pattern LEFT = Pattern.compile("([0-9.,:]+ ?[a-zA-Z]*) left");
@@ -80,8 +85,7 @@ public final class Boards {
                 : !missions.stationName.isEmpty() ? missions.stationName : !yard.stationName.isEmpty() ? yard.stationName : "";
         station = name.toUpperCase(Locale.ROOT);
         owner = st.present ? st.owner.toUpperCase(Locale.ROOT) : "";
-        standingWord = st.present ? st.standingName.toUpperCase(Locale.ROOT) : "";
-        standingFigure = !st.present || Float.isNaN(st.standing) ? "" : String.format(Locale.ROOT, "%+d", Math.round(st.standing));
+        standing = !st.present || Float.isNaN(st.standing) ? "" : String.format(Locale.ROOT, "%+d", Math.round(st.standing));
         market = st.present ? st.market : trade.isDocked();
         yardOffered = st.present ? st.yard : !yard.stationName.isEmpty();
         shipyardOffered = st.present ? st.shipyard : !shipyard.stationName.isEmpty();
@@ -91,10 +95,13 @@ public final class Boards {
         rank = rank(missions.career);
         tanks(yard.tanks);
         deliveries();
-        wounded = 0;
-        for (int i = 0; i < crew.crew.size; i++) {
-            String c = crew.crew.get(i).condition.toLowerCase(Locale.ROOT);
-            if (c.contains("wound") || c.contains("unconscious")) wounded++;
+        treating.clear();
+        treated = 0;
+        treatedCost = 0;
+        if (infirmary) {
+            treating.addAll(st.treating);
+            treated = st.treated;
+            treatedCost = st.treatedCost;
         }
     }
 
