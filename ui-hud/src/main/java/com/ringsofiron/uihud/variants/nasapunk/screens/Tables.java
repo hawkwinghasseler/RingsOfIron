@@ -50,8 +50,14 @@ public final class Tables {
     /** A filter's position with nothing at it: darker than a dim one. */
     private static final Color EMPTY = NpColors.GRATICULE.cpy().lerp(NpColors.DIM, 0.45f);
     private static final float[] COLX = new float[16], COLW = new float[16];
-    /** The width of the row buttons in the part being drawn, set by {@link #sect}. */
-    private static float rowActW = 78f;
+    /**
+     * The row buttons' places in the part being drawn, set by {@link #sect}: each place as wide as the
+     * longest word any row has there, rows with fewer buttons taking the places at the right; and the
+     * width they take together.
+     */
+    private static final float[] SLOT_X = new float[8], SLOT_W = new float[8];
+    private static int slots;
+    private static float slotsW;
 
     private Tables() {}
 
@@ -209,12 +215,15 @@ public final class Tables {
         if (st.title && !sect.title.isEmpty()) {
             float right = x + w - st.pad;
             if (st.sectActs && sect.acts.size > 0) {
-                float bw = st.actW, bx = right - sect.acts.size * (bw + st.actGap) + st.actGap;
+                float bx = right + st.actGap;
+                for (int i = 0; i < sect.acts.size; i++) bx -= actW(cv, sect.acts.get(i).label, st) + st.actGap;
+                float ax = bx, ay = y + (st.titleH - st.actH) / 2f - 1f;
                 for (int i = 0; i < sect.acts.size; i++) {
                     Act a = sect.acts.get(i);
-                    float ax = bx + i * (bw + st.actGap), ay = y + (st.titleH - st.actH) / 2f - 1f;
+                    float bw = actW(cv, a.label, st);
                     Ui.korry(cv, cam, ax, ay, bw, st.actH, a.label, a.state, a.live, false);
                     hits.add(ax - 2f, ay - 2f, bw + 4f, st.actH + 4f, a, 0);
+                    ax += bw + st.actGap;
                 }
                 right = bx - 12f;
             }
@@ -231,8 +240,7 @@ public final class Tables {
         tail += nReasons * st.noteH;
 
         boolean filters = anyFilter(sect);
-        rowActW = st.acts ? actW(cv, sect, st) : st.actW;
-        float actsW = st.acts ? maxActs(sect) * (rowActW + st.actGap) : 0f;
+        float actsW = st.acts ? slots(cv, sect, x + w - st.pad, st) : 0f;
         int nCols = Math.min(sect.cols.size, COLX.length);
         float gutter = anyMark(sect) ? 18f : 0f;
         columns(cv, sect, lx + gutter, inner - gutter - actsW - (actsW > 0f ? 8f : 0f), st);
@@ -300,17 +308,17 @@ public final class Tables {
             if (r.mark != Row.NONE) Ui.mark(cv, lx + 6f, base, r.mark, r.hollow);
             for (int c = 0; c < nCols && c < r.cells.size; c++) cell(cv, r, r.cells.get(c), sect(p, s).cols.get(c), COLX[c], COLW[c], base, st);
             if (!Float.isNaN(r.bar) && nCols > 0) {
-                float bx = COLX[nCols - 1] + COLW[nCols - 1] + st.gap, bw = Math.min(140f, x + w - st.pad - bx - (st.acts ? maxActs(sect(p, s)) * (rowActW + st.actGap) : 0f));
+                float bx = COLX[nCols - 1] + COLW[nCols - 1] + st.gap, bw = Math.min(140f, x + w - st.pad - bx - (st.acts ? slotsW : 0f));
                 if (bw > 30f) Ui.bar(cv, bx, base - 6f, bw, r.bar, r.bar < 0.25f ? NpColors.AMBER : NpColors.WHITE);
             }
             if (!r.sub.isEmpty()) Ui.lab(cv, cx, y + st.rowH + st.subH - 6f, Ui.fit(cv, r.sub, inner - gutter - 10f, Ui.LB, true, 0.6f));
             if (st.acts && r.acts.size > 0) {
                 Act enter = r.acts.size > 1 && cur ? p.picked(r) : null;
-                float aw = rowActW, bx = x + w - st.pad - r.acts.size * (aw + st.actGap) + st.actGap;
                 float by = y + (st.rowH - st.actH) / 2f;
-                for (int j = 0; j < r.acts.size; j++) {
+                for (int j = 0, at = slots - r.acts.size; j < r.acts.size; j++) {
                     Act a = r.acts.get(j);
-                    float ax = bx + j * (aw + st.actGap);
+                    int slot = Math.max(0, Math.min(slots - 1, at + j));
+                    float ax = SLOT_X[slot], aw = SLOT_W[slot];
                     Ui.korry(cv, cam, ax, by, aw, st.actH, a.label, a.state, a.live, a == enter);
                     hits.add(ax - 2f, by - 2f, aw + 4f, st.actH + 4f, a, 0);
                 }
@@ -490,14 +498,36 @@ public final class Tables {
         return st.rowH + (r.sub.isEmpty() ? 0f : st.subH) + (r.divider.isEmpty() ? 0f : st.dividerH);
     }
 
-    /** The width of the part's row buttons: the style's, or wider to fit the longest label, up to 150. */
-    private static float actW(NpCanvas cv, Sect s, Style st) {
-        float w = st.actW;
+    /** A button's width for {@code label}: the style's, or wider to fit the word with the button's margin, up to 150. */
+    private static float actW(NpCanvas cv, String label, Style st) {
+        return Math.min(150f, Math.max(st.actW, cv.width(label, Ui.LB, true, 0.4f) + 10f));
+    }
+
+    /**
+     * Sets out the part's row buttons' places against {@code right} ({@link #SLOT_X}): as many as the
+     * row with the most has, each as wide as the longest word a row has there, rows with fewer taking
+     * the places at the right. Returns the width they take with their gaps.
+     */
+    private static float slots(NpCanvas cv, Sect s, float right, Style st) {
+        int m = Math.min(maxActs(s), SLOT_W.length);
+        for (int i = 0; i < m; i++) SLOT_W[i] = st.actW;
         for (int i = 0; i < s.rows.size; i++) {
             Row r = s.rows.get(i);
-            for (int j = 0; j < r.acts.size; j++) w = Math.max(w, cv.width(r.acts.get(j).label, Ui.LB, true, 0.4f) + 10f);
+            for (int j = 0, at = m - r.acts.size; j < r.acts.size; j++) {
+                if (at + j < 0) continue;
+                SLOT_W[at + j] = Math.max(SLOT_W[at + j], actW(cv, r.acts.get(j).label, st));
+            }
         }
-        return Math.min(w, 150f);
+        float x = right, total = 0f;
+        for (int i = m - 1; i >= 0; i--) {
+            x -= SLOT_W[i];
+            SLOT_X[i] = x;
+            x -= st.actGap;
+            total += SLOT_W[i] + st.actGap;
+        }
+        slots = m;
+        slotsW = total;
+        return total;
     }
 
     private static int maxActs(Sect s) {
