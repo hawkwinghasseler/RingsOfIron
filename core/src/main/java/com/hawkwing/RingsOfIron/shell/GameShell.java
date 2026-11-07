@@ -23,6 +23,8 @@ import com.ringsofiron.audiospatial.backend.MixLevels;
 import com.ringsofiron.uihud.HudSkin;
 import com.ringsofiron.uihud.UiScale;
 import com.ringsofiron.uihud.variants.HudVariants;
+import com.ringsofiron.uihud.variants.ShellLook;
+import com.ringsofiron.uihud.variants.ShellScreen;
 import com.ringsofiron.uihud.UiHud;
 
 import java.nio.file.Path;
@@ -37,6 +39,9 @@ import java.nio.file.Paths;
  * Quit to menu. Esc reaches the game's own windows first (map, market, yard, console); with none
  * open it pauses. Keys pass through {@link RemappedInput}, so the player's bindings and the gamepad
  * reach the game as its own keys.
+ *
+ * <p>The menus look classic, or as the HUD variant picked dresses them ({@link ShellLook}): its skin,
+ * its backdrops and its dressing on each menu. What they hold and do stays the shell's.
  */
 public class GameShell implements ApplicationListener {
     private final Path assetsDir;
@@ -50,7 +55,9 @@ public class GameShell implements ApplicationListener {
     private GamepadKeys pad;
     private RemappedInput input;
 
+    /** The classic skin, which the menus are built with unless the HUD variant picked has a look of its own. */
     private Skin skin;
+    private final MenuLook look = new MenuLook(id -> HudVariants.find(id).create());
     private Stage stage;
     private Table root;
     private ShellMenus menus;
@@ -114,6 +121,7 @@ public class GameShell implements ApplicationListener {
         root.setFillParent(true);
         stage.addActor(root);
         menus = new ShellMenus(this, skin);
+        syncLook();
         RandomXS128 random = new RandomXS128(7);
         for (int i = 0; i < stars.length; i += 3) {
             stars[i] = random.nextFloat();
@@ -199,14 +207,13 @@ public class GameShell implements ApplicationListener {
         return game == null || paused;
     }
 
-    /** A HUD window, the map or the game's notice log or controls panel is open: Esc closes it first. */
+    /**
+     * A HUD window, the map or the game's notice log or controls panel is open, whoever draws it (the
+     * classic HUD or a variant's own screen), or a developer tool: Esc closes it first.
+     */
     boolean hudWindowOpen() {
         UiHud hud = game.getHud();
-        return hud.isMapOpen() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
-                || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getCrewWindow().isOpen()
-                || hud.getShipyardWindow().isOpen()
-                || hud.getConsoleWindow().isOpen() || game.isOverlayOpen() || game.isDevConsoleOpen()
-                || game.isDebugMenuOpen();
+        return hud.windowOpen() || game.isOverlayOpen() || game.isDevConsoleOpen() || game.isDebugMenuOpen();
     }
 
     @Override
@@ -217,13 +224,15 @@ public class GameShell implements ApplicationListener {
         // Typing into the developer console is text, not the player's bindings
         input.setRemapping(game != null && !paused && !game.isRefitOpen() && !game.isDevConsoleTyping());
         // A menu or window takes the pad for moving between its buttons; the map does not
-        pad.setMenuMode(menuShown() || (game != null && (game.getHud().openWindow() != null || game.isOverlayOpen())));
+        pad.setMenuMode(menuShown() || (game != null && (game.getHud().windowHasKeys() || game.isOverlayOpen())));
         input.update();
         if (pending != null) {
             Runnable r = pending;
             pending = null;
             r.run();
         }
+        // A new HUD variant picked (in the settings, say) builds the menu showing again in its look
+        if (syncLook() && menuShown()) menus.reshow();
         float delta = Math.min(Gdx.graphics.getDeltaTime(), 0.25f);
         if (game != null) {
             game.setPaused(paused);
@@ -233,8 +242,10 @@ public class GameShell implements ApplicationListener {
             stage.getViewport().apply(true);
             batch.setProjectionMatrix(stage.getCamera().combined);
             batch.begin();
-            batch.setColor(0f, 0f, 0f, 0.55f);
-            batch.draw(white, 0f, 0f, stage.getWidth(), stage.getHeight());
+            if (!lookDrew(true, delta)) {
+                batch.setColor(0f, 0f, 0f, 0.55f);
+                batch.draw(white, 0f, 0f, stage.getWidth(), stage.getHeight());
+            }
             batch.setColor(1f, 1f, 1f, 1f);
             batch.end();
         } else {
@@ -251,25 +262,78 @@ public class GameShell implements ApplicationListener {
     private float drift;
 
     private void drawBackdrop(float delta) {
-        drift += delta * 0.004f;
         stage.getViewport().apply(true);
         batch.setProjectionMatrix(stage.getCamera().combined);
         batch.begin();
-        float w = stage.getWidth(), h = stage.getHeight();
-        for (int i = 0; i < stars.length; i += 3) {
-            float x = ((stars[i] + drift * stars[i + 2]) % 1f) * w;
-            float b = stars[i + 2];
-            batch.setColor(0.7f + 0.3f * b, 0.8f + 0.2f * b, 1f, b);
-            batch.draw(white, x, stars[i + 1] * h, b < 0.8f ? 1f : 2f, b < 0.8f ? 1f : 2f);
-        }
-        // The planet below: rings of falling brightness, as a lit limb
-        float r = w * 0.9f, cx = w * 0.5f, cy = -r * 0.82f;
-        for (int k = 0; k < 6; k++) {
-            batch.setColor(0.25f, 0.5f, 0.9f, 0.10f - k * 0.015f);
-            ring(cx, cy, r + k * 3f);
+        if (!lookDrew(false, delta)) {
+            drift += delta * 0.004f;
+            float w = stage.getWidth(), h = stage.getHeight();
+            for (int i = 0; i < stars.length; i += 3) {
+                float x = ((stars[i] + drift * stars[i + 2]) % 1f) * w;
+                float b = stars[i + 2];
+                batch.setColor(0.7f + 0.3f * b, 0.8f + 0.2f * b, 1f, b);
+                batch.draw(white, x, stars[i + 1] * h, b < 0.8f ? 1f : 2f, b < 0.8f ? 1f : 2f);
+            }
+            // The planet below: rings of falling brightness, as a lit limb
+            float r = w * 0.9f, cx = w * 0.5f, cy = -r * 0.82f;
+            for (int k = 0; k < 6; k++) {
+                batch.setColor(0.25f, 0.5f, 0.9f, 0.10f - k * 0.015f);
+                ring(cx, cy, r + k * 3f);
+            }
         }
         batch.setColor(1f, 1f, 1f, 1f);
         batch.end();
+    }
+
+    /**
+     * The menus' look draws the main menu's backdrop, or the paused game's ({@code pause}), with the
+     * batch begun. False when there is no look, it keeps the classic one, or it failed.
+     */
+    private boolean lookDrew(boolean pause, float delta) {
+        ShellLook l = look.look();
+        if (l == null) return false;
+        try {
+            return pause ? l.pauseBackdrop(batch, stage.getWidth(), stage.getHeight(), delta)
+                    : l.backdrop(batch, stage.getWidth(), stage.getHeight(), delta);
+        } catch (RuntimeException e) {
+            look.fail(pause ? "draw behind the pause menu" : "draw behind the main menu", e);
+            if (!batch.isDrawing()) batch.begin();
+            return false;
+        }
+    }
+
+    /**
+     * Catches the menus up with the HUD variant picked: the next menu shown is built with its look's
+     * skin, or the classic skin. True when the look changed.
+     */
+    private boolean syncLook() {
+        if (!look.sync(HudVariants.getChosen(), UiScale.effective(Gdx.graphics.getWidth(), Gdx.graphics.getHeight()))) {
+            return false;
+        }
+        menus.setSkin(look.skin() != null ? look.skin() : skin);
+        return true;
+    }
+
+    /** {@code panel} is built, the table of menu {@code p} in {@code root}: the menus' look dresses it. */
+    void dressMenu(ShellMenus.Panel p, Table panel, Table root) {
+        ShellLook l = look.look();
+        if (l == null) return;
+        try {
+            l.dress(screen(p), panel, root);
+        } catch (RuntimeException e) {
+            look.fail("dress the menu " + p, e);
+        }
+    }
+
+    static ShellScreen screen(ShellMenus.Panel p) {
+        return switch (p) {
+            case MAIN -> ShellScreen.MAIN;
+            case NEW_GAME -> ShellScreen.NEW_GAME;
+            case PAUSE -> ShellScreen.PAUSE;
+            case LOAD -> ShellScreen.LOAD;
+            case SAVE -> ShellScreen.SAVE;
+            case SETTINGS -> ShellScreen.SETTINGS;
+        };
     }
 
     private void ring(float cx, float cy, float r) {
@@ -357,6 +421,7 @@ public class GameShell implements ApplicationListener {
         game.setSaveSlots(slots);
         game.setBindings(bindings);
         game.setOpeningGuide(settings.openingGuide);
+        game.setMenuLook(look::look);
         game.create();
         game.resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         applyAudio();
@@ -466,7 +531,16 @@ public class GameShell implements ApplicationListener {
     private void scaleStage(int width, int height) {
         float scale = UiScale.effective(width, height);
         ((ScreenViewport) stage.getViewport()).setUnitsPerPixel(1f / scale);
-        if (HudSkin.rescale(skin, scale) && root != null) root.invalidateHierarchy();
+        boolean changed = HudSkin.rescale(skin, scale);
+        ShellLook l = look.look();
+        if (l != null) {
+            try {
+                changed |= l.rescale(scale);
+            } catch (RuntimeException e) {
+                look.fail("rescale", e);
+            }
+        }
+        if (changed && root != null) root.invalidateHierarchy();
     }
 
     private static float parseScale(String text, float fallback) {
@@ -509,6 +583,7 @@ public class GameShell implements ApplicationListener {
         if (game != null) game.dispose();
         stage.dispose();
         batch.dispose();
+        look.dispose();
         skin.dispose();
     }
 }

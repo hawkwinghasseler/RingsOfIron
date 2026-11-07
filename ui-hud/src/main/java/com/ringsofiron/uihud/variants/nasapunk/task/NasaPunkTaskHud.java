@@ -27,12 +27,15 @@ import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.variants.ClassicPart;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
+import com.ringsofiron.uihud.variants.ShellLook;
 import com.ringsofiron.uihud.variants.nasapunk.NpColors;
 import com.ringsofiron.uihud.variants.nasapunk.NpFormat;
 import com.ringsofiron.uihud.variants.nasapunk.NpHardware;
 import com.ringsofiron.uihud.variants.nasapunk.NpInstruments;
 import com.ringsofiron.uihud.variants.nasapunk.NpKit;
+import com.ringsofiron.uihud.variants.nasapunk.NpScreens;
 import com.ringsofiron.uihud.variants.nasapunk.NpSymbols;
+import com.ringsofiron.uihud.widgets.MapPainter;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -49,6 +52,8 @@ import java.util.Set;
  * on deck while it has something to say.
  */
 public class NasaPunkTaskHud implements HudVariant {
+    /** The menus as pages of CDU-1 and the map's system plot, the same under all three Nasa-punk HUDs. */
+    private final NpScreens screens = new NpScreens();
     private HudVariantHost host;
     private NpKit kit;
     private Group root;
@@ -772,12 +777,24 @@ public class NasaPunkTaskHud implements HudVariant {
     @Override
     public void resize(int width, int height, float uiScale) {
         if (kit != null) kit.setScale(uiScale);
+        screens.resize(uiScale);
     }
 
     @Override
     public void detach() {
         if (kit != null) kit.dispose();
         kit = null;
+        screens.dispose();
+    }
+
+    @Override
+    public ShellLook shellLook() {
+        return screens.shellLook();
+    }
+
+    @Override
+    public MapPainter mapPainter() {
+        return screens.mapPainter();
     }
 
     @Override

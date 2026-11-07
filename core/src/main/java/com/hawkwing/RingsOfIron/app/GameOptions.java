@@ -5,9 +5,11 @@ import com.ringsofiron.career.NewGame;
 import com.hawkwing.RingsOfIron.shell.KeyBindings;
 import com.ringsofiron.coreengine.input.Action;
 import com.hawkwing.RingsOfIron.shell.SaveSlots;
+import com.ringsofiron.uihud.variants.ShellLook;
 
 import java.nio.file.Path;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * What a game is started as, and what its host sets on it: most before it is created, a few (paused,
@@ -33,6 +35,11 @@ public final class GameOptions {
     public DebugScenarios.Entry scenarioEntry;
     /** Starts a new game with a scenario (null: a new career); the shell sets it. */
     public Consumer<DebugScenarios.Entry> scenarioLoader;
+    /**
+     * The look of the shell's menus for the HUD variant picked, which the mod scripts dialog takes
+     * too; it gives null for the classic look. The shell sets it; null without a shell.
+     */
+    public Supplier<ShellLook> menuLook;
 
     public GameOptions(Path assetsDir, Path modsDir, boolean firstPlay, NewGame newGame) {
         this.assetsDir = assetsDir;

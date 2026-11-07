@@ -35,6 +35,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.systems.HudRenderSystem;
 
 import java.util.function.Consumer;
@@ -56,6 +57,10 @@ import java.util.function.Supplier;
  * <p>The HUD's names for the craft under a bubble are hidden ({@link HudRenderSystem.NameCover});
  * the bubble says how many under its own name, "[+] 3 others", and a click there opens the list of
  * them (and "[-] 3 others" closes it again). A click on a name in the list selects that craft.
+ *
+ * <p>A HUD variant that draws the bubbles' rims and names in its own style turns this one's off
+ * ({@link #setChrome}): the bubbles are then the magnified pictures alone, and {@link #report} tells
+ * the HUD where each is and what it shows.
  */
 public final class PictureInPicture implements Disposable, HudRenderSystem.NameCover {
     /** A bubble's radius, UI units. */
@@ -73,8 +78,8 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
     private static final float EDGE_INSET = 12f;
     private static final float GAP = 10f;
     private static final int SEGMENTS = 96;
-    /** Room under a bubble for its name, UI units. */
-    private static final float LABEL_ROOM = 22f;
+    /** Room under a bubble for its name, UI units, as the classic HUD writes it. */
+    public static final float LABEL_ROOM = 22f;
     /** How far the pointer on an off-screen craft's bubble stands out from the rim, UI units. */
     private static final float POINTER = 12f;
     /** How far round a blocked place a bubble looks for a clear one: rings half a radius apart, so many places a ring. */
@@ -129,12 +134,16 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
     private final Vector2 tmp = new Vector2();
     private final Vector2 tmp2 = new Vector2();
     private boolean enabled = true;
+    /** Whether the bubbles draw their own rims, lines, pointers and names ({@link #setChrome}). */
+    private boolean chrome = true;
+    /** How far the rim, marks and name reach past a bubble's picture: either side, above and below ({@link #setRoom}). */
+    private float side, above, below = LABEL_ROOM;
     /** The craft whose HUD names are under each bubble (by the bubble's craft), this frame. */
     private final ObjectMap<Entity, Array<Entity>> covered = new ObjectMap<>();
     private final Array<Array<Entity>> coveredPool = new Array<>();
     /** The bubbles (by their craft) whose list of hidden names is open. */
     private final ObjectSet<Entity> expanded = new ObjectSet<>();
-    private Entity player;
+    private Entity player, target, navTarget;
 
     /**
      * Bubbles drawn with {@code view}, an outside view of {@code world}'s craft of their own whose
@@ -159,6 +168,27 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
     public void setEnabled(boolean on) {
         enabled = on;
         if (!on) shown.clear();
+    }
+
+    /**
+     * Whether the bubbles draw their own rims, the line or pointer to each craft, and its name and
+     * "[+] 3 others" under it: on as the classic HUD has them, off when a HUD variant draws them
+     * itself from {@link #report}. Off, nothing under a bubble takes a click or hides a HUD name.
+     */
+    public void setChrome(boolean on) {
+        chrome = on;
+    }
+
+    /**
+     * How far each bubble's rim, marks and name reach past the edge of its picture, UI units: {@code side}
+     * either side, {@code above} over it, {@code below} under it. The bubbles keep that room clear of
+     * the panels, each other and the stage's edges. The classic name's by default: none above or
+     * either side, {@link #LABEL_ROOM} below.
+     */
+    public void setRoom(float side, float above, float below) {
+        this.side = Math.max(0f, side);
+        this.above = Math.max(0f, above);
+        this.below = Math.max(0f, below);
     }
 
     /** Takes down the bubbles drawn last, when the outside view is not showing. */
@@ -271,8 +301,18 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
      * draws too small or not at all. {@code delta} moves the flames and flashes on.
      */
     public void draw(ViewportManager viewports, Entity player, Entity target, Entity navTarget, float delta) {
+        draw(viewports, player, true, target, navTarget, delta);
+    }
+
+    /**
+     * As {@link #draw(ViewportManager, Entity, Entity, Entity, float)}, the player's own ship getting a
+     * bubble only when {@code own}; {@code player} still gives the distances.
+     */
+    public void draw(ViewportManager viewports, Entity player, boolean own, Entity target, Entity navTarget, float delta) {
         shown.clear();
         this.player = player;
+        this.target = target;
+        this.navTarget = navTarget;
         if (!enabled) {
             keepClear.clear();
             return;
@@ -281,7 +321,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         float mpp = viewports.metersPerPixel();
         float scale = viewports.getUiScale();
         float radiusPx = RADIUS * scale;
-        collect(player, "", Color.CYAN, viewports, mpp, radiusPx, uiW, uiH, player);
+        if (own) collect(player, "", Color.CYAN, viewports, mpp, radiusPx, uiW, uiH, player);
         collect(target, null, null, viewports, mpp, radiusPx, uiW, uiH, player);
         collect(navTarget, null, null, viewports, mpp, radiusPx, uiW, uiH, player);
         if (shown.size == 0) {
@@ -307,7 +347,44 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
             disc.draw(circle, b.center.x - RADIUS, b.center.y - RADIUS, 2f * RADIUS, 2f * RADIUS);
             disc.end();
         }
-        drawRims(viewports);
+        if (chrome) drawRims(viewports);
+        else bare();
+    }
+
+    /** Without the bubbles' own text, nothing under them takes a click or covers a HUD name. */
+    private void bare() {
+        for (Bubble b : shown) {
+            b.text.set(0f, 0f, 0f, 0f);
+            b.toggle.set(-1e6f, -1e6f, 0f, 0f);
+            b.rows.clear();
+        }
+    }
+
+    /**
+     * The bubbles drawn this frame into {@code out}, for a HUD that draws their rims and names itself:
+     * where each is on the UI under {@code viewports} (UI units, y up), its craft and what it is for.
+     */
+    public void report(Insets out, ViewportManager viewports) {
+        out.clear();
+        float mpu = Math.max(1e-6f, viewports.metersPerUiUnit());
+        for (Bubble b : shown) {
+            Insets.Inset in = out.add();
+            if (in == null) return;
+            in.entity = b.entity;
+            in.own = b.entity == player;
+            in.locked = b.entity == target;
+            in.nav = b.entity == navTarget;
+            in.label = in.own ? "" : b.label;
+            in.x = b.center.x;
+            in.y = b.center.y;
+            in.radius = RADIUS;
+            in.craftX = b.anchor.x;
+            in.craftY = b.anchor.y;
+            in.onScreen = b.onScreen;
+            in.centered = b.centered;
+            in.reach = b.reach / mpu;
+            in.distance = b.distance < 0f ? Float.NaN : b.distance;
+        }
     }
 
     /** The frame buffer each bubble is drawn into, {@code size} back-buffer pixels square, and the disc it is laid on screen as. */
@@ -448,7 +525,7 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
             } else {
                 // By the edge, on the line from the middle of the screen towards it, so the bubble
                 // points the way the craft is; where a panel is in the way, further in along that line
-                float inX = cx - RADIUS - MARGIN - EDGE_INSET, inY = cy - RADIUS - MARGIN - EDGE_INSET - LABEL_ROOM - POINTER;
+                float inX = cx - RADIUS - side - MARGIN - EDGE_INSET, inY = cy - RADIUS - MARGIN - EDGE_INSET - below - POINTER;
                 dir.nor();
                 float t = Math.max(0f, Math.min(dir.x == 0f ? Float.MAX_VALUE : inX / Math.abs(dir.x),
                         dir.y == 0f ? Float.MAX_VALUE : inY / Math.abs(dir.y)));
@@ -486,11 +563,11 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
      * screen, clear of the HUD's panels and of the bubbles before it.
      */
     private boolean centeredClear(int i, Vector2 at, float uiW, float uiH) {
-        float edge = RADIUS + MARGIN;
-        if (at.x < edge || at.x > uiW - edge || at.y < edge + LABEL_ROOM || at.y > uiH - edge) return false;
-        box.set(at.x - RADIUS, at.y - RADIUS - LABEL_ROOM, 2f * RADIUS, 2f * RADIUS + LABEL_ROOM);
+        float across = RADIUS + side, up = RADIUS + above, down = RADIUS + below;
+        if (at.x < across + MARGIN || at.x > uiW - across - MARGIN || at.y < down + MARGIN || at.y > uiH - up - MARGIN) return false;
+        box.set(at.x - across, at.y - down, 2f * across, up + down);
         for (Rectangle r : keepClear) if (r.overlaps(box)) return false;
-        float apart = 2f * RADIUS + GAP;
+        float apart = 2f * across + GAP;
         for (int j = 0; j < i; j++) if (shown.get(j).center.dst2(at) < apart * apart) return false;
         return true;
     }
@@ -498,9 +575,10 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
     /** True when bubble {@code b} (the {@code i}th) at {@code at} is clear of the HUD's panels, the bubbles before it and its own craft. */
     private boolean clear(Bubble b, int i, Vector2 at) {
         // The bubble and its name under it
-        box.set(at.x - b.halfWidth, at.y - RADIUS - LABEL_ROOM - POINTER, 2f * b.halfWidth, 2f * RADIUS + LABEL_ROOM + POINTER);
+        float across = Math.max(b.halfWidth, RADIUS + side), up = RADIUS + above, down = RADIUS + below + POINTER;
+        box.set(at.x - across, at.y - down, 2f * across, up + down);
         for (Rectangle r : keepClear) if (r.overlaps(box)) return false;
-        float apart = 2f * RADIUS + GAP;
+        float apart = 2f * (RADIUS + side) + GAP;
         for (int j = 0; j < i; j++) if (shown.get(j).center.dst2(at) < apart * apart) return false;
         // Not over the craft itself, nor the HUD's marker and name under it
         return !b.onScreen || !box.overlaps(around.set(b.anchor.x - 45f, b.anchor.y - 45f, 90f, 60f));
@@ -516,10 +594,11 @@ public final class PictureInPicture implements Disposable, HudRenderSystem.NameC
         keepClear.add(copy.set(r));
     }
 
-    private static void clamp(Vector2 c, float uiW, float uiH) {
-        float edge = RADIUS + MARGIN;
-        c.x = MathUtils.clamp(c.x, edge, Math.max(edge, uiW - edge));
-        c.y = MathUtils.clamp(c.y, edge + LABEL_ROOM, Math.max(edge + LABEL_ROOM, uiH - edge));
+    /** {@code c} moved onto the stage, with the room round the bubble ({@link #setRoom}) and a margin. */
+    private void clamp(Vector2 c, float uiW, float uiH) {
+        float across = RADIUS + side + MARGIN, up = RADIUS + above + MARGIN, down = RADIUS + below + MARGIN;
+        c.x = MathUtils.clamp(c.x, across, Math.max(across, uiW - across));
+        c.y = MathUtils.clamp(c.y, down, Math.max(down, uiH - up));
     }
 
     /** The craft and what is around it, magnified, into the frame buffer. */
