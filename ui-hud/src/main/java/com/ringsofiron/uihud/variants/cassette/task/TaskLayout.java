@@ -1,5 +1,7 @@
 package com.ringsofiron.uihud.variants.cassette.task;
 
+import com.ringsofiron.uihud.variants.cassette.screens.WindowScreens;
+
 /**
  * Where each unit of the Task-driven Cassette HUD goes, from what is up and how big it is: pure, so the
  * layout test can try every post at every window size without a GL context.
@@ -13,6 +15,14 @@ package com.ringsofiron.uihud.variants.cassette.task;
  * more rows than keep it out of the clear zone. The console panel alone goes where its console is, which
  * on deck is about the middle of the screen: off the ship by it where there is room, else beside it, and
  * clear of every other unit ({@link #placeConsole}).
+ *
+ * <p>The boarding panel (spec BRD) hangs down the right side while it is open, so the deck or the outside
+ * view stays in sight beside it, as its wireframe has it: the right column's units (the rack, the target
+ * plate, the scope, the weapons with their defence pod) give way to it, and it runs from under the
+ * visor's slot, as a screen starts, or under the crisis placard while one is up, to the sill. It is as
+ * wide as the windows hang it ({@link WindowScreens#BOARDING_SIDE_W}) where the pods at the bottom
+ * centre leave the room, and no wider than they leave where they don't, so the flight pod and the helm
+ * line keep their places.
  */
 final class TaskLayout {
     /** The key sill along the bottom edge, and the gap between units. */
@@ -25,6 +35,8 @@ final class TaskLayout {
     static final float CON_LEAD = 56f;
     /** Units the console panel stands off its ship's deck, which the hull's art overhangs a little. */
     static final float HULL_GAP = 16f;
+    /** The narrowest the boarding panel goes: its wireframe's width (spec BRD). */
+    static final float BRD_MIN_W = 360f;
 
     /** A unit's place, in design units, y down from the top left. */
     static final class Rect {
@@ -78,6 +90,8 @@ final class TaskLayout {
     /** The helm pod: at gunnery between the schematic's zone and the weapons, else centred where FLT goes. */
     boolean hlm, hlmAtGunnery;
     boolean rack;
+    /** The boarding panel is open down the right side. */
+    boolean brd;
     float fltH = FlightPod.H, tgtH = TargetPlate.H_FULL, crsH = CrisisPlacard.H_FULL, promptW = 200f;
     /** The weapons panel without rows, and how many mounts it would show. */
     float wpnBaseH = 75f;
@@ -87,11 +101,15 @@ final class TaskLayout {
     final Rect master = new Rect(), visorR = new Rect(), rackR = new Rect(), perR = new Rect(), schR = new Rect();
     final Rect fltR = new Rect(), hlmR = new Rect(), scopeR = new Rect(), tgtR = new Rect(), wpnR = new Rect();
     final Rect sillR = new Rect(), crsR = new Rect(), promptR = new Rect(), defR = new Rect();
+    /** The boarding panel, while it is open: the screens draw it, here so every unit keeps clear of it. */
+    final Rect brdR = new Rect();
+    /** Where the boarding panel starts and stops and how wide it is, worked out whether it is open or not, so the screens have it as it opens. */
+    float brdTop, brdBottom, brdW;
     /** The weapons rows that fit, and the most the rack may stand. */
     int wpnRows;
     float rackLimit;
 
-    final Rect[] all = {master, visorR, rackR, perR, schR, fltR, hlmR, scopeR, tgtR, wpnR, sillR, crsR, promptR, defR};
+    final Rect[] all = {master, visorR, rackR, perR, schR, fltR, hlmR, scopeR, tgtR, wpnR, sillR, crsR, promptR, defR, brdR};
     /** The console panel (spec CON): not among {@link #all}, since it stands where its console is. */
     final Rect conR = new Rect();
 
@@ -113,11 +131,11 @@ final class TaskLayout {
         if (flt) fltR.set((w - FlightPod.W) / 2f, base - fltH, FlightPod.W, fltH);
         else fltR.off();
 
-        // Bottom right: the scope in the corner, the weapons beside it
+        // Bottom right: the scope in the corner, the weapons beside it; neither beside the boarding panel
         float scopeX = w - Scope.W;
-        if (scope) scopeR.set(scopeX, base - Scope.H, Scope.W, Scope.H);
+        if (scope && !brd) scopeR.set(scopeX, base - Scope.H, Scope.W, Scope.H);
         else scopeR.off();
-        if (wpn) {
+        if (wpn && !brd) {
             float ww = wpnCompact ? GunPanel.W_COMPACT : GunPanel.W, wx = scopeX - 6f - ww;
             if (wpnCompact) {
                 wpnRows = 0;
@@ -135,22 +153,37 @@ final class TaskLayout {
         }
         if (hlm) {
             if (hlmAtGunnery) {
-                float hx = Schematic.W + 12f, right = (wpn ? wpnR.x : scopeX - 6f - GunPanel.W) - GAP;
+                float hx = Schematic.W + 12f, right = (wpnR.on ? wpnR.x : scopeX - 6f - GunPanel.W) - GAP;
                 hlmR.set(hx, base - HelmPod.H, Math.min(FlightPod.W, right - hx), HelmPod.H);
             } else {
                 hlmR.set((w - FlightPod.W) / 2f, base - HelmPod.H, FlightPod.W, HelmPod.H);
             }
         } else hlmR.off();
-        if (defence) defR.set(Schematic.W + 12f, base - HelmPod.H - GAP - defenceH, DefencePod.W, defenceH);
+        if (defence && !brd) defR.set(Schematic.W + 12f, base - HelmPod.H - GAP - defenceH, DefencePod.W, defenceH);
         else defR.off();
         if (prompt) promptR.set((w - promptW) / 2f, base - HelmPod.H - GAP - PromptStrip.H, promptW, PromptStrip.H);
         else promptR.off();
 
+        // The boarding panel down the right side, clear of the bottom centre's pods, under the visor's slot
+        // and the crisis placard, to the sill; above a prompt too wide for the pods' column
+        float bRight = w - WindowScreens.SIDE_MARGIN, podsRight = (w + FlightPod.W) / 2f + GAP;
+        float bw = Math.max(BRD_MIN_W, Math.min(WindowScreens.BOARDING_SIDE_W, bRight - podsRight)), bx = bRight - bw;
+        float bTop = Visor.H + GAP, bBottom = base - GAP;
+        if (crsR.on && crsR.right() > bx && crsR.x < bRight) bTop = Math.max(bTop, crsR.bottom() + GAP);
+        for (Rect r : new Rect[]{fltR, hlmR, promptR}) {
+            if (r.on && r.right() > bx && r.x < bRight) bBottom = Math.min(bBottom, r.y - GAP);
+        }
+        brdTop = bTop;
+        brdBottom = bBottom;
+        brdW = bw;
+        if (brd) brdR.set(bx, bTop, bw, bBottom - bTop);
+        else brdR.off();
+
         // The right column, bottom up: the plate clears what is under it, the rack stops short of the plate
         float floor = base;
-        if (scope) floor = Math.min(floor, scopeR.y - GAP);
+        if (scopeR.on) floor = Math.min(floor, scopeR.y - GAP);
         if (wpnR.on && wpnR.right() > w - TargetPlate.W) floor = Math.min(floor, wpnR.y - GAP);
-        if (tgt) {
+        if (tgt && !brd) {
             tgtR.set(w - TargetPlate.W, Math.min(TGT_Y, floor - tgtH), TargetPlate.W, tgtH);
             rackLimit = tgtR.y - GAP;
         } else {
@@ -160,9 +193,9 @@ final class TaskLayout {
         rackR.off();
     }
 
-    /** Puts the rack at the top right, as tall as it measured (never past {@link #rackLimit}). */
+    /** Puts the rack at the top right, as tall as it measured (never past {@link #rackLimit}); off beside the boarding panel. */
     void placeRack(float rackH) {
-        if (rack && rackH > 0f) rackR.set(width - Rack.W, 0f, Rack.W, Math.min(rackH, rackLimit));
+        if (rack && !brd && rackH > 0f) rackR.set(width - Rack.W, 0f, Rack.W, Math.min(rackH, rackLimit));
         else rackR.off();
     }
 

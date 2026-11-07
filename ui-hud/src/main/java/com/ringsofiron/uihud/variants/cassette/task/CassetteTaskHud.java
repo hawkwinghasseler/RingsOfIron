@@ -16,6 +16,7 @@ import com.ringsofiron.uihud.variants.cassette.YardCanvas;
 import com.ringsofiron.uihud.variants.cassette.YardPaint;
 import com.ringsofiron.uihud.variants.cassette.YardPart;
 import com.ringsofiron.uihud.variants.cassette.YardScreens;
+import com.ringsofiron.uihud.variants.cassette.screens.WindowScreens;
 import com.ringsofiron.uihud.variants.cassette.task.TaskAlerts.Post;
 import com.ringsofiron.uihud.widgets.MapPainter;
 
@@ -35,7 +36,10 @@ import java.util.Set;
  * ({@link YardScreens}): the menus, the map with its bays, and the game's windows as consoles. They
  * start under the visor, so the master unit and the visor stay above them (Z1 and Z2). Those two and the
  * crisis panel, shown everywhere, are on a canvas of their own in the screen layer, over the map and the
- * consoles; the telex of the ship lost or the career over has the whole screen.
+ * consoles; the telex of the ship lost or the career over has the whole screen. Boarding (spec BRD) hangs
+ * down the right side instead, so the deck or the outside view stays in sight while the boarders work: the
+ * right column's units give way to it ({@link TaskLayout}), and the view eases left by half the panel, so
+ * the ship, or the avatar on deck, stays in the middle of the world left in sight.
  *
  * <p>E at a system's console opens no screen: its panel stands beside the console on deck
  * ({@link ConsolePanel}, spec CON), and the captain may walk away from it, which closes it.
@@ -74,8 +78,10 @@ public class CassetteTaskHud implements HudVariant {
     private final TaskLayout.Rect hull = new TaskLayout.Rect();
     /** The menus, the map and the windows in the Yard Standard. */
     // Esc closes the controls card before the screen under it (spec round 11); the log has each alert
-    // on one line, stamped when it clears, under the spec's filters (LOG)
-    private final YardScreens screens = new YardScreens().controlsOver(true).onceLog(true);
+    // on one line, stamped when it clears, under the spec's filters (LOG); boarding down the right side (BRD)
+    private final YardScreens screens = new YardScreens().controlsOver(true).onceLog(true).sideBoarding(true);
+    /** Boarding hangs down the right side now: no screen, the units up beside it. */
+    private boolean side;
 
     @Override
     public void attach(HudVariantHost host) {
@@ -119,9 +125,11 @@ public class CassetteTaskHud implements HudVariant {
         UiHud hud = host.hud();
         boolean map = hud.isMapOpen();
         boolean telex = screens.showing(ClassicWindow.GAME_OVER);
-        // A screen covers zones 3 to 9: the map, a console in a window's place, the telex. The console
-        // panel stands on the deck among the units rather than covering them
-        frame.read(d, map || windowUp(hud) || telex);
+        // A screen covers zones 3 to 9: the map, a console in a window's place, the telex. Boarding hangs
+        // down the right side instead, and the console panel stands on the deck among the units, neither
+        // covering them
+        side = screens.sideUp();
+        frame.read(d, map || windowUp(hud) && !side || telex);
         frame.time += delta;
         frame.alerts.update(d, delta, frame.post);
         if (frame.post != lastPost) {
@@ -203,6 +211,8 @@ public class CassetteTaskHud implements HudVariant {
             sill.elsewhere.add("CUT");
             sill.elsewhere.add("ABANDON");
         }
+        // The boarding panel's foot has its own key
+        if (side) sill.elsewhere.add("BOARD");
         sill.promptKeys.clear();
         if (prompt.visible) for (String k : PromptStrip.keys(d)) sill.promptKeys.add(k);
         sill.choose(delta);
@@ -261,7 +271,15 @@ public class CassetteTaskHud implements HudVariant {
         if (prompt.visible) l.promptW = prompt.measure(paint);
         l.sill = sill.visible;
         l.rack = !frame.screen && !frame.noShip;
+        l.brd = side;
         l.solve();
+        // Boarding down the right side: from under the visor's slot, or the crisis placard, to the sill, as
+        // wide as the pods at the bottom centre leave it. The ship, or the avatar on deck, in the middle of
+        // the world it leaves in view, as the spec's wireframe has the deck
+        screens.panelTop(l.brdTop);
+        screens.panelBottom(l.brdBottom);
+        screens.boardingWidth(l.brdW);
+        host.viewports().easeViewShift(side ? -(l.brdW + WindowScreens.SIDE_MARGIN) / 2f : 0f, 0f);
         guns.maxRows = guns.compact ? 8 : l.wpnRows;
         l.placeRack(l.rack ? rack.measure(l.rackLimit) : 0f);
         rack.visible = l.rackR.on;
@@ -333,6 +351,8 @@ public class CassetteTaskHud implements HudVariant {
 
     @Override
     public void detach() {
+        // The world back in the middle, as the game and the other HUDs have it
+        if (host != null) host.viewports().setViewShift(0f, 0f);
         screens.dispose();
         if (over != null) over.remove();
         if (paint != null) paint.dispose();

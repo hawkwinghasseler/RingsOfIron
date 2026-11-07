@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * scale a 1080p window allows (1422 x 800), at 1080p's own 1920 x 1080 and at a 5:4 window, on every
  * post and in every situation the visibility rules allow, at the units' largest sizes, no two units
  * overlap, all stay on screen and above the key sill, and nothing but the crisis placard reaches into
- * the clear zone.
+ * the clear zone, but for the boarding panel, a screen that hangs where its wireframe has it.
  */
 class TaskLayoutTest {
     private static final float[][] SIZES = {{1280f, 800f}, {1422f, 800f}, {1920f, 1080f}, {1280f, 1024f}, {2048f, 1152f}};
@@ -87,7 +87,7 @@ class TaskLayoutTest {
 
     private static void check(TaskLayout l, String where) {
         TaskLayout.Rect[] all = l.all;
-        String[] names = {"master", "visor", "rack", "per", "sch", "flt", "hlm", "scope", "tgt", "wpn", "sill", "crs", "prompt", "defence"};
+        String[] names = {"master", "visor", "rack", "per", "sch", "flt", "hlm", "scope", "tgt", "wpn", "sill", "crs", "prompt", "defence", "brd"};
         for (int i = 0; i < all.length; i++) {
             TaskLayout.Rect r = all[i];
             if (!r.on) continue;
@@ -95,12 +95,97 @@ class TaskLayoutTest {
                 fail(names[i] + " " + r + " leaves the " + l.width + "x" + l.height + " screen, " + where);
             }
             if (r != l.sillR && r.bottom() > l.height - TaskLayout.SILL + 0.01f) fail(names[i] + " " + r + " runs under the sill, " + where);
-            if (r != l.crsR && l.inClearZone(r)) fail(names[i] + " " + r + " reaches into the clear zone, " + where);
+            if (r != l.crsR && r != l.brdR && l.inClearZone(r)) fail(names[i] + " " + r + " reaches into the clear zone, " + where);
             if (r.h <= 0f || r.w <= 0f) fail(names[i] + " " + r + " has no size, " + where);
             for (int j = i + 1; j < all.length; j++) {
                 if (r.overlaps(all[j])) fail(names[i] + " " + r + " overlaps " + names[j] + " " + all[j] + ", " + where);
             }
         }
+    }
+
+    @Test
+    void theBoardingPanelHasTheRightSideOnEveryPost() {
+        // Spec BRD: down the right side, the deck or the outside view in sight beside it; its wireframe
+        // hangs it 360 wide from under the top strip to just above the hint line, over where the right
+        // column's units stand, so they give way to it
+        int checked = 0;
+        for (float[] size : SIZES) {
+            for (int post = 0; post < 3; post++) {
+                for (int mask = 0; mask < 1 << 9; mask++) {
+                    TaskLayout shut = layout(size, post, mask);
+                    if (shut == null) continue;
+                    shut.solve();
+                    TaskLayout l = layout(size, post, mask);
+                    l.brd = true;
+                    l.solve();
+                    l.placeRack(262f);
+                    String where = "post " + post + " mask " + Integer.toBinaryString(mask) + " at " + (int) size[0] + "x" + (int) size[1];
+                    check(l, "the boarding panel up, " + where);
+                    TaskLayout.Rect b = l.brdR;
+                    assertTrue(b.on, where);
+                    assertEquals(l.width - 16f, b.right(), 0.01f, b + " hangs 16 in from the right, " + where);
+                    assertTrue(b.w >= TaskLayout.BRD_MIN_W - 0.01f && b.w <= 450.01f, b + " as wide as its wireframe, or by a quarter more, " + where);
+                    assertTrue(b.y >= CassetteTaskHud.SCREEN_TOP - 0.01f, b + " starts under the visor's slot, " + where);
+                    assertTrue(b.bottom() <= l.height - TaskLayout.SILL - TaskLayout.GAP + 0.01f, b + " stops above the sill, " + where);
+                    // Room for the page's list: under the crisis placard at 1280 x 800 the windows draw it alone, with
+                    // six rows of it; at its whole height the other ship's plate over it
+                    assertTrue(b.h >= 360f, b + " is too short for the page, " + where);
+                    assertFalse(l.rackR.on || l.tgtR.on || l.scopeR.on || l.wpnR.on || l.defR.on, "the right column gives way, " + where);
+                    // The flight pod and the helm line keep their places, and the panel its own, open or not
+                    assertEquals(shut.fltR.toString(), l.fltR.toString(), where);
+                    assertEquals(shut.hlmR.toString(), l.hlmR.toString(), where);
+                    assertEquals(shut.brdTop, b.y, 0.01f, where);
+                    assertEquals(shut.brdBottom, b.bottom(), 0.01f, where);
+                    assertEquals(shut.brdW, b.w, 0.01f, where);
+                    checked++;
+                }
+            }
+        }
+        assertTrue(checked > 1000, "checked " + checked);
+        // Where the pods at the bottom centre leave the room, as wide as the windows hang it; at 1280 as wide
+        // as they leave, the whole height under the visor's slot
+        TaskLayout l = layout(SIZES[1], 1, 0);
+        l.brd = true;
+        l.solve();
+        assertEquals(450f, l.brdR.w, 0.01f);
+        l = layout(SIZES[0], 0, 0);
+        l.brd = true;
+        l.solve();
+        assertEquals(386f, l.brdR.w, 0.01f, l.brdR.toString());
+        assertEquals(CassetteTaskHud.SCREEN_TOP, l.brdR.y, 0.01f);
+        assertEquals(800f - TaskLayout.SILL - TaskLayout.GAP, l.brdR.bottom(), 0.01f);
+    }
+
+    @Test
+    void theConsolePanelKeepsClearOfTheBoardingPanel() {
+        // On deck the boarders' panel and a console's can both be up: the console's stands by its console,
+        // clear of the boarding panel as of every unit
+        int checked = 0;
+        for (float[] size : SIZES) {
+            for (int mask = 0; mask < 1 << 9; mask++) {
+                TaskLayout l = layout(size, 0, mask);
+                if (l == null) continue;
+                l.prompt = false;
+                l.brd = true;
+                l.solve();
+                l.placeRack(262f);
+                for (float dx = -120f; dx <= 120f; dx += 40f) {
+                    for (float dy = -120f; dy <= 120f; dy += 40f) {
+                        float cx = size[0] / 2f + dx, cy = size[1] / 2f + dy;
+                        for (float h : new float[]{140f, 260f}) {
+                            l.placeConsole(true, cx, cy, ConsolePanel.W, h, null);
+                            TaskLayout.Rect r = l.conR;
+                            String where = h + " tall at (" + cx + ", " + cy + "), mask " + Integer.toBinaryString(mask) + " at " + (int) size[0] + "x" + (int) size[1];
+                            assertTrue(r.on, where);
+                            assertFalse(r.overlaps(l.brdR), r + " overlaps the boarding panel " + l.brdR + ", " + where);
+                            for (TaskLayout.Rect o : l.all) assertFalse(r.overlaps(o), r + " overlaps " + o + ", " + where);
+                            checked++;
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(checked > 1000, "checked " + checked);
     }
 
     @Test
