@@ -90,3 +90,41 @@ card. The map and the console stay the game's. What the three share is in `varia
 docked at Highport, the station's market with a buy and each of its tabs, then each window's own key;
 the crew's refit away from the station; boarding a raider that has surrendered, before and after the
 party goes across; and the career over.
+
+### Under the task HUD
+
+The task HUD's windows are its spec's panels (`task/TaskScreen`; the mockups are
+`documentation/ui-overhaul/variations/nasapunk-task`, T5 to T9). The station terminal and the ship's
+book are T6's console under CHR and ALR: a plate with the console's name, a header of glass that
+says where you are with ESC back to the deck, the tabs on the game's keys for their windows, and
+the page's display units. A page whose rows have terms lists them on the left and shows the terms
+of the row under the cursor on the right, with that row's orders as hard keys under the glass and
+ENTER stencilled under the one Enter gives; the page's own orders are soft keys along the list's
+foot, and the last order's words stand at the right of the tab row. The log and the contracts held
+take one unit the whole width, their orders on their rows. Boarding is one panel down the right
+side, so the deck and the latched ship stay in sight (T5). A console hides the HUD under it but CHR
+and ALR; boarding hides only the panels it covers.
+
+| The game's window, and its key | The panel, on its tab | Its other tabs |
+|---|---|---|
+| Market (T) | TRM, MARKET | CONTRACTS (J), YARD (Y), SHIPYARD where ships are sold, CREW: the hiring hall, with no key |
+| Yard (Y) at a berth | TRM, YARD | as above |
+| Yard (Y) away from one | BOOK, LOADOUT: the crew's field refit | CREW (I), CONTRACTS (J) while any are held, LOG (L) |
+| Contracts (J) docked | TRM, CONTRACTS: the board | as the market's |
+| Contracts (J) undocked | BOOK, CONTRACTS: those held | as the field refit's |
+| Boarding (K) | DU-7 BOARDING: its state and orders over the salvage and the cargo aboard | |
+| Crew (I) | BOOK, CREW: the roster beside the person under the cursor | LOADOUT away from a yard, CONTRACTS, LOG |
+| Notice log (L) | BOOK, LOG: its filters over the list | as the crew's |
+| Controls (F1) | CTL: every key by where it works in three columns, with no HERE since the hint line says it | |
+
+Docked, J opens the terminal's board, so the book's CONTRACTS tab has no key and the tab row says
+so. A tab the game won't open now is left out (with no shipyard, the tab row says why), and leaving
+the station closes the terminal whatever its tab. From the playtest at 1280x800:
+
+| | |
+|---|---|
+| ![TRM on its market tab, just after a buy](nasapunk/task/market.png) | ![TRM's yard](nasapunk/task/yard.png) |
+| ![TRM's contracts](nasapunk/task/contracts.png) | ![The book's crew](nasapunk/task/crew.png) |
+| ![The book's field refit away from the station](nasapunk/task/field-refit.png) | ![DU-7, a raider taken](nasapunk/task/boarding.png) |
+| ![The book's log](nasapunk/task/log.png) | ![CTL, the controls](nasapunk/task/controls.png) |
+| ![The career over](nasapunk/task/career-over.png) | |
