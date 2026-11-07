@@ -25,6 +25,7 @@ import java.util.Locale;
 import java.util.Set;
 import com.ringsofiron.stationsdocking.DockingSystem;
 import com.ringsofiron.combatsys.events.CombatEvents;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 
 /**
  * Pirates who board a beaten player (round 7 part 4). Kept small: a pirate that has beaten the
@@ -155,7 +156,7 @@ public class PirateBoarding implements SaveParticipant, Resettable {
             aboard = false;
             hits = 0;
             began = ctx.engine.getSimSeconds();
-            ctx.notices.post(h.displayName + " is coming alongside to board you", NoticeLog.Kind.WARNING);
+            ctx.notices.post(h.displayName + " is coming alongside to board you", NoticeLog.Kind.WARNING, NoticeAlerts.BOARDERS);
         }
         asked = ctx.engine.getSimSeconds();
         // Alongside, guns cold: it wants the cargo, not a wreck
@@ -169,7 +170,7 @@ public class PirateBoarding implements SaveParticipant, Resettable {
         if (range(pirate, player) > LATCH_RANGE) return true;
         if (!aboard) {
             aboard = true;
-            ctx.notices.post(h.displayName + " has latched on: pirates are aboard", NoticeLog.Kind.WARNING);
+            ctx.notices.post(h.displayName + " has latched on: pirates are aboard", NoticeLog.Kind.WARNING, NoticeAlerts.BOARDERS);
         }
         latched += seconds;
         if (latched < BOARD_SECONDS) return true;

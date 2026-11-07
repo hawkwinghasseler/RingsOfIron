@@ -18,6 +18,7 @@ import com.ringsofiron.macrosim.hostile.HostileTrafficController;
 import com.ringsofiron.macrosim.rails.StateVector;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
 import com.ringsofiron.shipops.ShipDisablement;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -187,7 +188,8 @@ class PirateBoardingTest {
         beatThePlayer();
         assertTrue(runUntil(600, () -> said.stream().anyMatch(n -> n.contains("has latched on"))), "latched on");
         // Round 9: boarded is a warning, not a promotion's green
-        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains("has latched on") && n.kind == NoticeLog.Kind.WARNING));
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.contains("has latched on") && n.kind == NoticeLog.Kind.WARNING
+                && n.alert.equals(NoticeAlerts.BOARDERS)), "BOARDERS carries it (the Task spec's 9.2)");
         world.combatEvents.impacts.dispatch(hitFrom(game.player, ship));
         assertNull(world.pirateBoarding.boarder(), "one hit ends it");
         assertTrue(said.contains(h.displayName + " breaks off its boarding under fire"));

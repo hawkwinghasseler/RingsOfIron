@@ -15,6 +15,7 @@ import com.ringsofiron.uihud.data.AlertRegistry;
 import com.ringsofiron.uihud.data.AlertRegistry.Category;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.ConditionLog;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.providers.TradeProvider.TradeBoard;
 import com.ringsofiron.uihud.providers.TradeProvider.TradeLine;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
@@ -463,6 +464,44 @@ class ShipConsoleTest {
         lines.refresh(b);
         assertEquals(5, lines.lines());
         assertEquals("MISSILE WARNING: 2 inbound, impact in 9 s", lines.line(0));
+    }
+
+    @Test
+    void keptOnceAWarningIsLeftOutOnlyWhereTheLogHasItsAlertsLineAndOneNothingCarriesIsNews() {
+        com.ringsofiron.uihud.data.HudData d = new com.ringsofiron.uihud.data.HudData();
+        Boards b = new Boards();
+        b.data = d;
+        d.messages.clear();
+        d.messages.add("The couch burned", Level.WARNING, 700).minor = true;
+        d.messages.add("Cole has died of wounds", Level.WARNING, 650);
+        d.messages.add("Out of hull patches: warp is refused until a station yard repairs the leak", Level.WARNING, 600).alert = NoticeAlerts.VENTING;
+        d.messages.add("Pirate raider 3 is coming alongside to board you", Level.WARNING, 520).alert = NoticeAlerts.BOARDERS;
+        d.messages.add("Hull leaking: the crew are patching it (2 patches aboard). Warp waits until it holds", Level.WARNING, 501)
+                .alert = NoticeAlerts.VENTING;
+        // A breach in the hold from 500, all clear at 560
+        frame(d.alerts, d.record, 500, "breach:HOLD", "BREACH", Level.WARNING, null, null, null);
+        frame(d.alerts, d.record, 560, null, null, null, null, null, null);
+        frame(d.alerts, d.record, 563, null, null, null, null, null, null);
+        LogPage log = new LogPage().once(true);
+        log.refresh(b);
+        assertEquals(5, log.lines(), "the leak's warning goes for the breach's line");
+        assertEquals("The couch burned", log.line(0));
+        assertEquals(Level.ADVISORY, log.lineLevel(0), "a loss and nothing more is news");
+        assertEquals("Cole has died of wounds", log.line(1));
+        assertEquals(Level.ADVISORY, log.lineLevel(1), "nothing carries a death: news, not an alert");
+        assertEquals("Out of hull patches: warp is refused until a station yard repairs the leak", log.line(2),
+                "the record has no line for it then: kept");
+        assertEquals("Pirate raider 3 is coming alongside to board you", log.line(3), "BOARDERS is no line of the record's");
+        assertEquals(Level.ADVISORY, log.lineLevel(3), "a notice: only an alert's line is marked with its level");
+        assertEquals(560, log.lineCleared(4), 1e-9);
+        log.hit(1);
+        assertEquals(1, log.lines(), "alerts: the breach");
+        log.hit(2);
+        assertEquals(3, log.lines(), "important: the death and the two warnings kept");
+        assertEquals("Cole has died of wounds", log.line(0));
+        log.hit(3);
+        assertEquals(1, log.lines(), "info: the couch");
+        assertEquals("The couch burned", log.line(0));
     }
 
     /** One frame of the game's alerts: up to two raised, then the log reads them. */

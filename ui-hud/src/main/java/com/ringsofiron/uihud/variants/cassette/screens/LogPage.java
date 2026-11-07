@@ -6,6 +6,7 @@ import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.AlertRegistry;
 import com.ringsofiron.uihud.data.ConditionLog;
 import com.ringsofiron.uihud.data.MessageFeed;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.cassette.Yard;
 import com.ringsofiron.uihud.variants.cassette.YardFonts;
@@ -22,10 +23,13 @@ import java.util.Locale;
  * so they show under all only.
  *
  * <p>Kept {@link #once(boolean) once} (the Task spec's book), each condition is one line from its
- * raising: its latest words at the worst it reached, and "cleared 14:31" once it has cleared. A notice
- * an alert carries is left out for the alert's line ({@link MessageFeed.Message#alert}: the salvo's,
- * low propellant's, the ship disabled). One control then picks alerts, important news (the game's
- * good news and its warnings) or the rest.
+ * raising: its latest words at the worst it reached, and "cleared 14:31" once it has cleared. A
+ * warning an alert carries is left out for the alert's line where the record has it ({@link
+ * #carried}: the salvo's, a leak's, the ship disabled), and kept where it hasn't (a wound, the
+ * boarders). The notices are news, so only an alert's line is marked with its level: a warning kept
+ * is important news (a death, the ship wrecked), or info for a loss and nothing more ({@link
+ * MessageFeed.Message#minor}). One control then picks alerts, important news (the game's good news and
+ * those warnings) or the rest.
  *
  * <p>Keys, as every mode's controls: Up and Down move between the controls and the roll, Left and
  * Right step the control with the focus (from the roll, the first). On the roll, Up and Down feed it
@@ -151,15 +155,52 @@ final class LogPage extends Page {
                 ConditionLog.Course k = held.get(c--);
                 if (kind(filter, true, k.level, false)) add(k.text, k.level, false, k.time, "", k.cleared);
             }
-            if (m != null && rows.size < ConditionLog.KEEP && kind(filter, false, m.level, m.important) && !anAlerts(m)) {
-                add(m.label(), m.level, m.important, m.time, "", Double.NaN);
+            if (m == null || rows.size >= ConditionLog.KEEP || carried(m, record)) continue;
+            // A notice is news, marked by whether it matters: a warning does, unless it is of a loss and nothing more
+            boolean important = m.important || m.level == AlertRegistry.Level.WARNING && !m.minor;
+            if (kind(filter, false, AlertRegistry.Level.ADVISORY, important)) {
+                add(m.label(), AlertRegistry.Level.ADVISORY, important, m.time, "", Double.NaN);
             }
         }
     }
 
-    /** Whether a notice is one an alert carries (the salvo's), which the log kept once leaves out for the alert's line. */
-    static boolean anAlerts(MessageFeed.Message m) {
-        return !m.alert.isEmpty();
+    /** Seconds either side of a notice in which an alert's course carries it: the record notes a fault once it has held. */
+    static final double CARRY_SLACK = ConditionLog.SETTLE + ConditionLog.HOLD;
+    private static final String[] NONE = {}, MISSILE = {ConditionLog.MISSILES}, PROPELLANT = {"propellant"},
+            DISABLED = {"disabled"}, ROOM_AIR = {"air:"}, AIR = {"oxygen", "air:", "smoke:"}, CAPTAIN = {"captain:"},
+            CASUALTY = {"casualty:"};
+
+    /**
+     * Whether a warning is one an alert carries whose line the log has: its {@link MessageFeed.Message#alert}
+     * names an alert the record keeps, and the record holds a course of it from around the notice's
+     * time. Kept once, the log leaves such a notice out for the alert's line (the Task spec's 9.2: an
+     * alert is logged as an alert, not as a notice).
+     */
+    static boolean carried(MessageFeed.Message m, ConditionLog record) {
+        String[] keys = courses(m.alert);
+        if (keys.length == 0) return false;
+        Array<ConditionLog.Course> held = record.courses;
+        for (int i = 0; i < held.size; i++) {
+            ConditionLog.Course k = held.get(i);
+            if (k.time > m.time + CARRY_SLACK || k.isCleared() && k.cleared < m.time - CARRY_SLACK) continue;
+            for (String key : keys) if (key.endsWith(":") ? k.key.startsWith(key) : k.key.equals(key)) return true;
+        }
+        return false;
+    }
+
+    /** The record's courses ({@link ConditionLog#key}, a prefix when it ends in a colon) that carry what a warning names. */
+    private static String[] courses(String alert) {
+        switch (alert) {
+            case NoticeAlerts.MISSILE: return MISSILE;
+            case NoticeAlerts.PROPELLANT: return PROPELLANT;
+            case NoticeAlerts.DISABLED: return DISABLED;
+            // A leak is its room's air course: the breach, then the vacuum, then the low pressure
+            case NoticeAlerts.VENTING: return ROOM_AIR;
+            case NoticeAlerts.AIR: return AIR;
+            case NoticeAlerts.CAPTAIN: return CAPTAIN;
+            case NoticeAlerts.CRITICAL: return CASUALTY;
+            default: return NONE;
+        }
     }
 
     private void add(String text, AlertRegistry.Level level, boolean important, double time, String src, double cleared) {

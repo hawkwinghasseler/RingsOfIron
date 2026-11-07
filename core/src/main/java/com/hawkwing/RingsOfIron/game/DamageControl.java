@@ -11,6 +11,7 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.interiorgrid.Tile;
 
 import com.ringsofiron.uihud.HintRegistry;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import java.util.Locale;
 
 /**
@@ -56,12 +57,12 @@ public final class DamageControl {
                     ? String.format(Locale.ROOT, "Hull leaking: the crew are patching it (%d patch%s aboard). Warp waits until it holds",
                             grid.patchKits, grid.patchKits == 1 ? "" : "es")
                     : "Hull leaking and no patches left: warp is refused until a station yard repairs it",
-                    NoticeLog.Kind.WARNING);
+                    NoticeLog.Kind.WARNING, NoticeAlerts.VENTING);
             episode = true;
             outWarned = grid.patchKits <= 0;
         } else if (leaking && grid.patchKits <= 0 && !outWarned) {
             ctx.notices.post("Out of hull patches: warp is refused until a station yard repairs the leak",
-                    NoticeLog.Kind.WARNING);
+                    NoticeLog.Kind.WARNING, NoticeAlerts.VENTING);
             outWarned = true;
         } else if (episode && leaks == 0 && !venting) {
             // Every leak patched (or mended) and the air has stopped going: say so once

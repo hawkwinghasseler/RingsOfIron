@@ -9,6 +9,7 @@ import com.ringsofiron.coreengine.input.Action;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.aicrew.CrewState;
+import com.ringsofiron.aicrew.PlayerAvatarComponent;
 import com.ringsofiron.aicrew.ShipTaskBoardComponent;
 import com.ringsofiron.aicrew.Wound;
 import com.ringsofiron.aicrew.pilot.NpcCombatComponent;
@@ -22,6 +23,7 @@ import java.util.IdentityHashMap;
 import java.util.Locale;
 import java.util.Map;
 import com.ringsofiron.combatsys.events.CombatEvents;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 
 /**
  * Wounds, medics and suits in the game (round 5 part 2). ai-crew wounds the crew and treats them;
@@ -199,12 +201,25 @@ public final class CrewMedical {
             // While the last notice is still up, the new one takes its place: a burst of hits cut Ivo
             // Castell's clock nine times in a second, nine lines in the log (round 9, real window)
             NoticeLog.Notice last = told.get(e);
-            told.put(e, last != null && ctx.notices.showing().contains(last)
-                    ? ctx.notices.revise(last, describe(who, c), kind) : ctx.notices.post(describe(who, c), kind));
+            NoticeLog.Notice n = last != null && ctx.notices.showing().contains(last)
+                    ? ctx.notices.revise(last, describe(who, c), kind) : ctx.notices.post(describe(who, c), kind);
+            if (n != null) n.alert = own ? woundAlert(c, e.getComponent(PlayerAvatarComponent.class) != null) : "";
+            told.put(e, n);
         }
         told.keySet().removeIf(e -> crew.crew(e) == null || !crew.crew(e).isAlive());
         seen.keySet().removeIf(e -> crew.crew(e) == null);
         clocks.keySet().removeIf(e -> crew.crew(e) == null);
+    }
+
+    /**
+     * What carries the warning of a wound to one of the ship's own ({@link NoticeLog.Notice#alert}):
+     * the captain's own is the captain's alerts', a critical wound CRITICAL and a serious one WOUNDED
+     * (the Task spec's 9.2); a light wound is news.
+     */
+    static String woundAlert(CrewMemberComponent c, boolean captain) {
+        if (c.wound != Wound.CRITICAL && c.wound != Wound.SERIOUS) return "";
+        if (captain) return NoticeAlerts.CAPTAIN;
+        return c.wound == Wound.CRITICAL ? NoticeAlerts.CRITICAL : NoticeAlerts.WOUNDED;
     }
 
     static String describe(String who, CrewMemberComponent c) {

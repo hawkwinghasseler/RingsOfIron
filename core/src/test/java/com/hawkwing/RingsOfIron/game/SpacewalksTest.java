@@ -24,6 +24,7 @@ import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.physicsexterior.components.PhysicsBodyComponent;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.systems.HudRenderSystem;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -197,6 +198,9 @@ class SpacewalksTest {
                 && n.text.endsWith(" off with no way back alone: bring the ship to them"));
         for (int i = 0; i < 60 * 5 && !warned.getAsBoolean(); i++) run(1);
         assertTrue(warned.getAsBoolean(), "the warning");
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.startsWith(name + " is adrift ") && n.alert.equals(NoticeAlerts.ADRIFT)),
+                "EVA's adrift form carries it (the Task spec's 9.2)");
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.equals(name + "'s tether has parted") && n.alert.equals(NoticeAlerts.EVA)));
         assertNotNull(world.spacewalks.marker(e), "a marker on the HUD over them");
         // Over them when the HUD draws it, mid-frame: against the ship's transform as they are against its hull
         float[] seen = new float[4];

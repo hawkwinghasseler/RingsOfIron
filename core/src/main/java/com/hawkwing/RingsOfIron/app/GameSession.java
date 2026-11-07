@@ -83,6 +83,11 @@ public final class GameSession {
         world.notices.post(message, kind);
     }
 
+    /** {@link #show(String, NoticeLog.Kind)} for a warning that {@code alert} carries ({@link NoticeLog.Notice#alert}). */
+    void show(String message, NoticeLog.Kind kind, String alert) {
+        world.notices.post(message, kind, alert);
+    }
+
     String key(Action action) {
         return options.key(action);
     }
