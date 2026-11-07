@@ -104,6 +104,24 @@ class TaskLayoutTest {
     }
 
     @Test
+    void strandedAndAbandoningStayAboveTheClearZone() {
+        // Spec CRS: those two are a strip that keeps out of the clear zone, since the ship can still
+        // move; only the full placard of a disabled ship may hang into it
+        for (float[] size : SIZES) {
+            for (int post = 0; post < 3; post++) {
+                for (float h : new float[]{CrisisPlacard.H_STRANDED, CrisisPlacard.H_ABANDON}) {
+                    TaskLayout l = layout(size, post, 8);
+                    l.crsH = h;
+                    l.solve();
+                    l.placeRack(262f);
+                    assertFalse(l.inClearZone(l.crsR), "a " + h + " strip " + l.crsR + " in the clear zone at " + (int) size[0] + "x" + (int) size[1]);
+                    check(l, "post " + post + ", a " + h + " strip, at " + (int) size[0] + "x" + (int) size[1]);
+                }
+            }
+        }
+    }
+
+    @Test
     void theGunneryPanelKeepsTheStarterShipsRows() {
         // The corvette's five mounts (coilgun, two autocannons, harpoons, laser), at 1280 x 800
         TaskLayout l = layout(SIZES[0], 2, 4 | 64);

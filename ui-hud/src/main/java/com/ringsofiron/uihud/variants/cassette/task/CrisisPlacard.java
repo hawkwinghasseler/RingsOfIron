@@ -30,12 +30,17 @@ import java.util.Locale;
  * ways out can be weighed), and the air aboard. Abandoning shrinks it to one strip with the launch key.
  */
 final class CrisisPlacard extends YardPart {
-    static final float W = 600f, H_FULL = 272f, H_ABANDON = 76f, H_STRANDED = 96f;
+    static final float W = 600f, H_FULL = 272f, H_ABANDON = 76f, H_STRANDED = 88f;
     private static final float X = 340f, Y = 112f;
     /** The disabled placard's three faces: wait, the tow and abandon ship, over the air strip. */
     private static final float FACE_H = 196f;
     /** Lines the wait tube holds, and a typed slip's line spacing. */
     private static final int TUBE_LINES = 9;
+    /**
+     * Seconds after the last fault clears in which a ship still down for want of power is taken to
+     * be coming back: the game reroutes power once a second and counts the ship as up after that.
+     */
+    private static final double MENDED_GRACE = 3.0;
     private static final float SLIP_LINE = 14f, SLIP_SIZE = 12.5f;
     private static final Color TAG_DIM = Yard.hex("5A4F42");
 
@@ -44,6 +49,8 @@ final class CrisisPlacard extends YardPart {
     private final Array<String> lines = new Array<>();
     private final Array<Boolean> dim = new Array<>();
     private final Array<String> typed = new Array<>();
+    /** Sim seconds the tube last had a fault to show, NaN before any. */
+    private double faultsSeenAt = Double.NaN;
 
     CrisisPlacard(TaskFrame f) {
         super(X, Y);
@@ -178,30 +185,32 @@ final class CrisisPlacard extends YardPart {
     private void drawStranded(YardPaint p) {
         HudData d = f.data;
         Yard.Finish fin = Yard.Finish.YARD;
-        float py = Y + 16f;
-        p.face(X + 16f, py, W - 32f, 64f, fin, false);
-        p.text(Face.LEGEND, 13f, "CALL A TOW", X + 28f, py + 20f, fin.ink);
+        // 88 tall, so it stays above the clear zone at 800 high: the ship can still move
+        float py = Y + 14f;
+        p.face(X + 16f, py, W - 32f, 60f, fin, false);
+        p.text(Face.LEGEND, 13f, "CALL A TOW", X + 28f, py + 18f, fin.ink);
         Orders o = d.orderState;
-        towKey(p, d, X + 28f, py + 30f, 98f, fin);
-        p.toggle(X + 132f, py + 32f, false, true, o.towArmed > 0f);
+        towKey(p, d, X + 28f, py + 28f, 98f, fin);
+        p.toggle(X + 132f, py + 30f, false, true, o.towArmed > 0f);
         typed.clear();
         if (!known()) typed.add("The sponsor's tug; days pass");
         else if (!o.towRefusal.isEmpty()) wrapInto(p, "Refused: " + o.towRefusal, 206f, typed);
         else for (String s : strandedTerms(o, d.objectiveFrame)) typed.add(s);
-        slip(p, X + 160f, py + 6f, 220f, 52f, typed, known() && !o.towRefusal.isEmpty());
+        slip(p, X + 160f, py + 4f, 220f, 52f, typed, known() && !o.towRefusal.isEmpty());
         // How far short the propellant leaves the ship
         FlightStatus fs = d.flightStatus;
         double need = !Double.isNaN(fs.deltaVHome) ? fs.deltaVHome : d.navReadout.planDeltaV;
         double shortBy = Double.isNaN(fs.deltaVLeft) || need <= 0 ? Double.NaN : need - fs.deltaVLeft;
-        p.legend("ΔV SHORT", X + 392f, py + 26f, fin.ink);
-        if (Double.isNaN(shortBy) || shortBy <= 0) p.blank(X + 452f, py + 12f, 60f, 18f);
+        p.legend("ΔV SHORT", X + 392f, py + 24f, fin.ink);
+        if (Double.isNaN(shortBy) || shortBy <= 0) p.blank(X + 452f, py + 10f, 60f, 18f);
         else {
-            float w = p.drums(X + 452f, py + 11f, YardText.drums(shortBy, 4, 0), 12f, 19f, 15f, true);
-            p.legend("M/S", X + 456f + w, py + 26f, fin.ink);
+            float w = p.drums(X + 452f, py + 9f, YardText.drums(shortBy, 4, 0), 12f, 19f, 15f, true);
+            p.legend("M/S", X + 456f + w, py + 24f, fin.ink);
         }
-        p.legend("OR LET THE CREW", X + 392f, py + 48f, fin.dim);
-        p.legend("FLY HOME WHAT IT CAN", X + 392f, py + 60f, fin.dim);
+        p.legend("OR LET THE CREW", X + 392f, py + 45f, fin.dim);
+        p.legend("FLY HOME WHAT IT CAN", X + 392f, py + 56f, fin.dim);
     }
+
 
     /** The tow's face: guarded switch, key, and its full cost on a slip, or why it is refused. */
     private void tow(YardPaint p, HudData d, float wx, float py, float w, float ph, Yard.Finish fin) {
@@ -418,8 +427,10 @@ final class CrisisPlacard extends YardPart {
                 break;
             }
         }
-        if (rows.size == 0) {
-            String[] words = downWords(d.powerFrame, d.ctx.disabledReason);
+        if (rows.size > 0) faultsSeenAt = d.ctx.simSeconds;
+        else {
+            boolean mended = !Double.isNaN(faultsSeenAt) && d.ctx.simSeconds - faultsSeenAt < MENDED_GRACE;
+            String[] words = downWords(d.powerFrame, d.ctx.disabledReason, mended);
             wrap(p, words[0], width, false);
             add(p, "", width, true);
             for (String line : words[1].split("\n")) wrap(p, line, width, true);
@@ -428,19 +439,18 @@ final class CrisisPlacard extends YardPart {
 
     /**
      * With no fault the crew can work keeping the ship down, the tube's words for why: a reactor
-     * switched off, which the ship's console switches back on; a reactor working again a moment
-     * before the game counts the ship as up, its health past the line where it runs while the crew
-     * still mend it; or the reason, as nothing clears it.
+     * switched off, which the ship's console switches back on; a reactor back on line, feeding again
+     * or {@code mended} a moment ago (past the line where it runs, the crew still at it), before the
+     * game counts the ship as up; or the reason, as nothing clears it.
      */
-    static String[] downWords(PowerFrame power, String reason) {
-        boolean noPower = "reactor down".equals(reason);
-        if (noPower) {
+    static String[] downWords(PowerFrame power, String reason, boolean mended) {
+        if ("reactor down".equals(reason)) {
             for (SystemRow r : power.faults) {
                 if ("REACTOR".equals(r.system) && r.fault == Fault.OFF) {
                     return new String[]{"REACTOR SWITCHED OFF", "SWITCH IT ON AT THE\nSHIP'S CONSOLE"};
                 }
             }
-            if (power.outputWatts > 0) return new String[]{"REACTOR BACK ON LINE", "POWER COMING BACK"};
+            if (mended || power.outputWatts > 0) return new String[]{"REACTOR BACK ON LINE", "POWER COMING BACK"};
         }
         return new String[]{reason.toUpperCase(Locale.ROOT), "NOTHING CLEARS IT\nBY ITSELF"};
     }

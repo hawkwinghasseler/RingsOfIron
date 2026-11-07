@@ -173,15 +173,20 @@ class CrisisPlacardTest {
     @Test
     void withNoFaultToWorkTheTubeSaysASwitchedOffReactorOrOneBackOnLine() {
         PowerFrame power = new PowerFrame();
-        assertArrayEquals(new String[]{"REACTOR DOWN", "NOTHING CLEARS IT\nBY ITSELF"}, CrisisPlacard.downWords(power, "reactor down"));
-        assertArrayEquals(new String[]{"CREW DOWN", "NOTHING CLEARS IT\nBY ITSELF"}, CrisisPlacard.downWords(power, "crew down"));
-        // Mended past the line where it runs: up a moment before the game counts the ship as up
+        String[] nothing = {"REACTOR DOWN", "NOTHING CLEARS IT\nBY ITSELF"};
+        String[] back = {"REACTOR BACK ON LINE", "POWER COMING BACK"};
+        assertArrayEquals(nothing, CrisisPlacard.downWords(power, "reactor down", false));
+        assertArrayEquals(new String[]{"CREW DOWN", "NOTHING CLEARS IT\nBY ITSELF"}, CrisisPlacard.downWords(power, "crew down", true));
+        // Mended past the line where it runs, its fault gone a moment before the game counts the ship
+        // as up (the tour found the tube saying nothing would clear it then), or feeding again
+        assertArrayEquals(back, CrisisPlacard.downWords(power, "reactor down", true));
         power.outputWatts = 1e6;
-        assertArrayEquals(new String[]{"REACTOR BACK ON LINE", "POWER COMING BACK"}, CrisisPlacard.downWords(power, "reactor down"));
+        assertArrayEquals(back, CrisisPlacard.downWords(power, "reactor down", false));
         power.outputWatts = 0;
         SystemRow off = power.addFault();
         off.system = "REACTOR";
         off.fault = Fault.OFF;
-        assertArrayEquals(new String[]{"REACTOR SWITCHED OFF", "SWITCH IT ON AT THE\nSHIP'S CONSOLE"}, CrisisPlacard.downWords(power, "reactor down"));
+        assertArrayEquals(new String[]{"REACTOR SWITCHED OFF", "SWITCH IT ON AT THE\nSHIP'S CONSOLE"},
+                CrisisPlacard.downWords(power, "reactor down", true));
     }
 }
