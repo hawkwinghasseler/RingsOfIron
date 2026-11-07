@@ -224,6 +224,11 @@ public final class HudData {
 
     /** An action the game offers at a console, as the classic window's button: what it says, its key, and what it does. */
     public static final class ConsoleAction {
+        /**
+         * The {@link #action} of the weapons console's hold-fire switch: run, it holds the gunners' fire, or
+         * lifts the hold. It has no key of its own.
+         */
+        public static final String HOLD_FIRE = "HOLD_FIRE";
         /** "Take fire control: every gun". */
         public final String label;
         /** The {@code Action} name of its key ("VIEW"), for {@link HudData#key}; "" for none. */
