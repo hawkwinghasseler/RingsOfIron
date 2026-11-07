@@ -31,6 +31,8 @@ public final class Tables {
         /** The barred orders' reasons under the table, each once. */
         public boolean reasons = true;
         public boolean rules = true;
+        /** The cyan cursor round the row it is on; a list of keys has no use for one. */
+        public boolean cursor = true;
         /** Where a line's value starts after its label. */
         public float pairCol = 150f;
     }
@@ -97,7 +99,7 @@ public final class Tables {
     public static float want(NpCanvas cv, Page p, int s, float w, Style st) {
         Sect sect = p.sects.get(s);
         float h = st.title && !sect.title.isEmpty() ? st.titleH : 0f;
-        if (sect.cols.size > 0 && (sect.rows.size > 0 && !anyFilter(sect))) h += st.headH;
+        if (heads(sect) && sect.rows.size > 0 && !anyFilter(sect)) h += st.headH;
         for (int i = 0; i < sect.rows.size; i++) h += rowH(sect.rows.get(i), st);
         if (sect.rows.size == 0 && !sect.empty.isEmpty()) h += st.rowH;
         h += linesH(cv, sect.lines, w, st);
@@ -140,7 +142,7 @@ public final class Tables {
         int nCols = Math.min(sect.cols.size, COLX.length);
         float gutter = anyMark(sect) ? 18f : 0f;
         columns(sect, lx + gutter, inner - gutter - actsW - (actsW > 0f ? 8f : 0f), st.gap);
-        if (nCols > 0 && sect.rows.size > 0 && !filters) {
+        if (heads(sect) && sect.rows.size > 0 && !filters) {
             for (int c = 0; c < nCols; c++) {
                 Col col = sect.cols.get(c);
                 if (col.head.isEmpty()) continue;
@@ -220,7 +222,7 @@ public final class Tables {
                 }
             }
         }
-        if (cur) Ui.cursor(cv, x + 3f, y + 1f, w - 6f, rh - 2f);
+        if (cur && st.cursor) Ui.cursor(cv, x + 3f, y + 1f, w - 6f, rh - 2f);
         else if (st.rules && r.filter == null) Ui.rule(cv, lx, y + rh - 1f, inner);
         return rh + (r.divider.isEmpty() ? 0f : st.dividerH);
     }
@@ -260,16 +262,23 @@ public final class Tables {
         Ui.stepKey(cv, kx + 26f, ky, 22f, 20f, true);
         hits.add(kx + 26f, ky, 22f, 20f, f, -2);
         float px = kx + 70f;
+        // every position at 13 and 26 apart where they fit, else smaller and closer
+        float size = Ui.B, gap = 26f, all = 0f;
+        for (int i = 0; i < f.options.size; i++) all += cv.width(f.options.get(i) + "  " + f.counts.get(i), size, true, 0.5f) + gap;
+        if (px + all - gap > x + w) {
+            size = Ui.LB;
+            gap = 16f;
+        }
         for (int i = 0; i < f.options.size; i++) {
             String t = f.options.get(i) + "  " + f.counts.get(i);
-            float tw = cv.width(t, Ui.B, true, 0.5f);
+            float tw = cv.width(t, size, true, 0.5f);
             if (px + tw > x + w) break;
             boolean set = i == f.at, none = f.counts.get(i) == 0;
             Color c = set ? NpColors.WHITE : none ? EMPTY : NpColors.DIM;
-            cv.text(px, base, t, Ui.B, true, c, 0.5f, NpCanvas.START);
+            cv.text(px, base, t, size, true, c, 0.5f, NpCanvas.START);
             if (set) cv.fill(px, base + 4f, tw, 1.5f, NpColors.WHITE);
             hits.add(px - 4f, y + 2f, tw + 8f, st.rowH - 4f, f, i);
-            px += tw + 26f;
+            px += tw + gap;
         }
     }
 
@@ -395,6 +404,12 @@ public final class Tables {
 
     private static boolean anyMark(Sect s) {
         for (int i = 0; i < s.rows.size; i++) if (s.rows.get(i).mark != Row.NONE) return true;
+        return false;
+    }
+
+    /** Whether any of the part's columns has a head to print. */
+    private static boolean heads(Sect s) {
+        for (int i = 0; i < s.cols.size; i++) if (!s.cols.get(i).head.isEmpty()) return true;
         return false;
     }
 
