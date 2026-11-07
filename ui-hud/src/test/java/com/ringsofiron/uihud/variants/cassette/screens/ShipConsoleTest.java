@@ -492,7 +492,7 @@ class ShipConsoleTest {
         assertEquals("Out of hull patches: warp is refused until a station yard repairs the leak", log.line(2),
                 "the record has no line for it then: kept");
         assertEquals("Pirate raider 3 is coming alongside to board you", log.line(3), "BOARDERS is no line of the record's");
-        assertEquals(Level.WARNING, log.lineLevel(3), "kept at its level");
+        assertEquals(Level.ADVISORY, log.lineLevel(3), "a notice: only an alert's line is marked with its level");
         assertEquals(560, log.lineCleared(4), 1e-9);
         log.hit(1);
         assertEquals(1, log.lines(), "alerts: the breach");
