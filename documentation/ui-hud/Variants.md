@@ -268,7 +268,7 @@ their contents.
 | `key("FIRE")` | the key bound to an action, for a prompt |
 | `promptAction`, `promptKey`, `promptConsole` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; the key; and the id of the console it is for ("helm"), or "" for none |
 | `dockHint` | the docked banner's text, or "" when not docked |
-| `console` | the console E opened while the variant shows its console screen: the entity, what E found, the game's actions there (`UiHud.registerConsoleAction`), where it and its ship's deck stand and how far the captain is (`track`, each frame); empty otherwise |
+| `console` | the console E opened while the variant shows its console screen: the entity, what E found, the game's actions there (`UiHud.registerConsoleAction`: V's seat at the helm, the weapons console and a gun, and the weapons console's hold-fire switch, `ConsoleAction.HOLD_FIRE`), where it and its ship's deck stand and how far the captain is (`track`, each frame); empty otherwise |
 | `gameOver` | ship lost or career over: shown, which, the title ("SHIP LOST"), what happened in one line, and the ways on, each with its key, what it does and the action a click runs (`GameOverChoices`) |
 | `insets` | the game's magnified bubbles this frame, at most three: the craft, what each is for (the player's ship, the lock, the nav target), the craft's label as the game has it, the bubble's middle and radius (UI units, y up), where the craft is, whether it is in view and whether the bubble sits right over it, how far the craft reaches as drawn, and its distance. Filled before `update`, and empty on deck (`PictureInPicture.report`) |
 

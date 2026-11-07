@@ -105,10 +105,11 @@ class ConsolePanelsTest {
         d = at(ship, life, "life_support");
         assertSame(panels.atmos, panels.open(d));
         assertSame(sys(life), panels.atmos.lines.get(panels.atmos.sel).unit.s);
-        // The gun panel at a gun; the tactical board at the weapons console; the helm's panel is its own
+        // The gun panel at a gun, the tactical board at the weapons console, the helm panel at the helm
         assertSame(panels.gunPage, panels.open(at(ship, gun, "turret_mount")));
         assertSame(panels.gun, panels.gunPage.console);
-        assertNull(panels.open(at(ship, helm, "helm")));
+        assertSame(panels.helm, panels.open(at(ship, helm, "helm")));
+        assertSame(panels.helmPanel, panels.helm.console);
         Entity weapons = ship.system(SubsystemType.WEAPONS, 9, 9, false);
         assertSame(panels.weapons, panels.open(at(ship, weapons, "weapons")));
         assertSame(panels.tactical, panels.weapons.console);
@@ -613,5 +614,95 @@ class ConsolePanelsTest {
         page.refresh(b);
         assertFalse(page.kinds.contains(DefensePage.IN_HEAD));
         assertTrue(page.kinds.contains(DefensePage.NO_PD));
+    }
+
+    @Test
+    void theHelmPanelOpensWhereTheHelmIsNeededAndSaysWhatItWouldRefuse() {
+        Ship ship = new Ship();
+        Entity helm = ship.system(SubsystemType.HELM, 5, 5, false);
+        ConsolePanels panels = new ConsolePanels(new Boards(), new FireTrend());
+        HudData d = at(ship, helm, "helm");
+        boolean[] seated = {false};
+        Array<HudData.ConsoleAction> actions = new Array<>();
+        actions.add(new HudData.ConsoleAction("Take the helm", "VIEW", () -> seated[0] = true));
+        d.console.set(helm, d.console.data, actions);
+        d.ctx.helmsman = "Cole";
+        d.orderState.helmRefusal[com.ringsofiron.uihud.providers.OrdersProvider.HelmOrder.DOCK.ordinal()] = "The helm needs a navigation target for that";
+        d.orderState.helm = com.ringsofiron.uihud.providers.OrdersProvider.HelmOrder.HOLD_POSITION;
+        d.orderState.autopilotRefusal = "The autopilot needs a destination";
+        assertSame(panels.helm, panels.open(d));
+        HelmPage h = panels.helm;
+        assertEquals("COLE", h.value("HELMSMAN"));
+        assertEquals("HOLD POSITION", h.value("ORDER"));
+        assertEquals("IN FORCE", h.value("3 HOLD"));
+        assertEquals("READY", h.value("1 BURNS"));
+        assertEquals("THE HELM NEEDS A NAVIGATION TARGET FOR THAT", h.value("5 DOCK"));
+        assertEquals("NEEDS A DESTINATION", h.value("6 AUTO"), "the row names the autopilot already");
+        assertTrue(h.says("NO DOCKING PORT FITTED"));
+        assertEquals("TAKE HELM", h.enterLabel());
+        h.key(com.badlogic.gdx.Input.Keys.ENTER);
+        assertTrue(seated[0], "the soft key seats the captain, where the orders are given");
+        d.ctx.presence = Presence.HELM;
+        assertNull(h.enterLabel(), "seated, there is nothing to take");
+
+        // Navigation with a transfer proposed, and the plot it opens
+        d = at(ship, helm, "helm");
+        d.navReadout.proposal = true;
+        d.navReadout.planDeltaV = 900;
+        d.flightStatus.deltaVLeft = 600;
+        assertSame(panels.nav, panels.open(d));
+        assertEquals("900 M/S OF 600 M/S", panels.nav.value("NEEDS"));
+        assertTrue(panels.nav.says("A TRANSFER IS PROPOSED"));
+        boolean[] plot = {false};
+        panels.nav.openPlot = () -> plot[0] = true;
+        panels.nav.pressKey(0);
+        assertTrue(plot[0]);
+        // Comms when the station refused the port
+        d = at(ship, helm, "helm");
+        d.docking.present = true;
+        d.docking.clearance = com.ringsofiron.uihud.providers.DockingApproachProvider.Clearance.DENIED;
+        assertSame(panels.comms, panels.open(d));
+        assertEquals("DENIED", panels.comms.value("CLEARANCE"));
+        // A prize's helm: its Systems
+        Ship prize = new Ship();
+        Entity theirs = prize.system(SubsystemType.HELM, 2, 2, false);
+        d = at(prize, theirs, "helm");
+        d.ctx.ship = ship.entity;
+        assertSame(panels.switches, panels.open(d));
+    }
+
+    @Test
+    void theCommsTabSaysTheStationTheTowAndTheNewestMessagesFirst() {
+        Ship ship = new Ship();
+        HudData d = at(ship, ship.system(SubsystemType.HELM, 5, 5, false), "helm");
+        com.ringsofiron.uihud.providers.NavigationProvider.StationInfo s = d.navReadout.docked;
+        s.present = true;
+        s.name = "Highport";
+        s.owner = "Free Traders";
+        s.standing = 12f;
+        s.standingName = "Trusted";
+        s.market = s.yard = s.contracts = true;
+        d.orderState.towFee = 1240;
+        d.messages.add("Older", com.ringsofiron.uihud.data.AlertRegistry.Level.ADVISORY, 1);
+        d.messages.all().insert(0, d.messages.all().pop());
+        d.messages.add("Newest", com.ringsofiron.uihud.data.AlertRegistry.Level.WARNING, 2);
+        d.messages.all().insert(0, d.messages.all().pop());
+        Boards b = new Boards();
+        b.refresh(d);
+        CommsPage page = new CommsPage();
+        page.refresh(b);
+        assertEquals("FREE TRADERS", page.value("HELD BY"));
+        assertEquals("+12, TRUSTED", page.value("STANDING"));
+        assertEquals("MARKET, YARD, JOBS", page.value("OFFERS"));
+        assertEquals("COMES FOR 1,240 CR", page.value("A TUG"));
+        int newest = -1, older = -1;
+        for (int i = 0; i < page.facts.size; i++) {
+            if (page.facts.get(i).value.equals("NEWEST")) newest = i;
+            if (page.facts.get(i).value.equals("OLDER")) older = i;
+        }
+        assertTrue(newest >= 0 && newest < older, "the newest message first");
+        // The hold is on its own tab, standing for the console
+        CargoPage cargo = new ConsolePanels(new Boards(), new FireTrend()).cargo;
+        assertSame(com.ringsofiron.uihud.variants.ClassicWindow.CONSOLE, cargo.window);
     }
 }

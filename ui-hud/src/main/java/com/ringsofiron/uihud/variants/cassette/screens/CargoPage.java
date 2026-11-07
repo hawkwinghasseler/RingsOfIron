@@ -40,7 +40,12 @@ final class CargoPage extends ListPage {
     }
 
     CargoPage() {
-        super("CARGO", "HOLD", ClassicWindow.CREW);
+        this(ClassicWindow.CREW);
+    }
+
+    /** The hold on a tab standing for {@code window}: the slate's (I), or the helm console's panel's. */
+    CargoPage(ClassicWindow window) {
+        super("CARGO", "HOLD", window);
     }
 
     @Override
