@@ -243,7 +243,8 @@ final class TaskAlerts {
      * guarded order's question, low propellant and the ship disabled. Otherwise the warning is news, so
      * nothing the game warns of goes unshown: a wound someone is already treating, a leak before its
      * room's air has fallen, and what this HUD can't raise yet (INTERCEPT, BOARDERS, COLLAR, BURN MISSED,
-     * HELM, SUIT AIR for the crew, EVA's other forms, and the autopilot's hold, which no part of it says).
+     * HELM, SUIT AIR for the crew and EVA's other forms). The autopilot's hold is the helm line's, which
+     * the rack asks of the frame ({@link Rack#news}).
      */
     boolean carries(String alert, boolean crisis) {
         switch (alert) {

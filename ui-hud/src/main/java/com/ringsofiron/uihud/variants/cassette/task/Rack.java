@@ -54,7 +54,7 @@ final class Rack extends YardPart {
         boolean armed = f.data.orderState.abandonArmed > 0f || f.data.orderState.towArmed > 0f;
         for (int i = 0; i < all.size && telex.size < LINES; i++) {
             MessageFeed.Message m = all.get(i);
-            if (m.secondsLeft <= 0f || !news(m, f.alerts, f.crisis, armed)) continue;
+            if (m.secondsLeft <= 0f || !news(m, f.alerts, f.crisis, armed, f.helmHolds)) continue;
             // In combat, news waits unless it is important
             if (f.combat && !important(m)) continue;
             telex.add(m);
@@ -77,11 +77,12 @@ final class Rack extends YardPart {
      * Whether a notice is news here: an info or important notice, or a warning nothing this HUD shows
      * in its place this frame ({@link TaskAlerts#carries}). The first press of a guarded order (abandon
      * ship, the tow) asks for the second only while {@code armed}, its guard holding: after that the
-     * key asks again.
+     * key asks again. The autopilot's hold is the helm line's while it says so ({@code helmHolds}).
      */
-    static boolean news(MessageFeed.Message m, TaskAlerts alerts, boolean crisis, boolean armed) {
+    static boolean news(MessageFeed.Message m, TaskAlerts alerts, boolean crisis, boolean armed, boolean helmHolds) {
         if (m.level != Level.WARNING) return true;
         if (m.alert.equals(NoticeAlerts.ASKED)) return armed && !crisis;
+        if (m.alert.equals(NoticeAlerts.AUTOPILOT)) return !helmHolds;
         return !alerts.carries(m.alert, crisis);
     }
 

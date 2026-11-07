@@ -162,6 +162,7 @@ public class CassetteTaskHud implements HudVariant {
 
         // At the helm the helm line rides on the flight pod; on deck and at gunnery it has a pod of its own
         helm.visible = !screen && ship && (f.deck() || f.gunnery()) && !f.docked;
+        f.helmHolds = (helm.visible || flight.visible && flight.helmLine) && HelmPod.saysHold(d);
         helm.finish = f.gunnery() ? Yard.Finish.GUN : Yard.Finish.YARD;
 
         scope.visible = !screen && ship && outside && !f.rails && (!f.docked || hostileNear(d));

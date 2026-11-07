@@ -28,6 +28,11 @@ final class TaskFrame {
     boolean crisis;
     /** Not disabled, but the ship can't get home by itself and the tow would come. */
     boolean stranded;
+    /**
+     * The helm line is up and says the autopilot holds off ({@link HelmPod#saysHold}), which 9.2 gives
+     * the game's "Autopilot holds" warning to. Set with the units' visibility, before the rack reads it.
+     */
+    boolean helmHolds;
     /** Seconds the HUD has been up, real time. */
     float time;
 
@@ -48,6 +53,7 @@ final class TaskFrame {
         // The beacon refuses a ship that can still fly home, so a tow on offer means the ship is stranded
         stranded = !disabled && !abandoning && !noShip && !docked && d.orders != null && d.orderState.towRefusal.isEmpty();
         crisis = disabled || abandoning || stranded;
+        helmHolds = false;
     }
 
     boolean helm() {

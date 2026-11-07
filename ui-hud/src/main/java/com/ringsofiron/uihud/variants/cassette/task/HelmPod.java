@@ -2,6 +2,8 @@ package com.ringsofiron.uihud.variants.cassette.task;
 
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.NavigationProvider.NavReadout;
+import com.ringsofiron.uihud.providers.OrdersProvider.Autopilot;
+import com.ringsofiron.uihud.providers.OrdersProvider.Orders;
 import com.ringsofiron.uihud.providers.UiContextProvider.UiContext;
 import com.ringsofiron.uihud.variants.cassette.Yard;
 import com.ringsofiron.uihud.variants.cassette.YardPaint;
@@ -14,11 +16,16 @@ import java.util.Locale;
  * HLM on deck and at gunnery: a pod of its own standing on the sill, with who has the helm on a name
  * flap and the standing order on an amber strip tube. It never counts down: the chronometer and FLT
  * own the times. At the helm the same line rides on top of FLT instead.
+ *
+ * <p>The autopilot is a standing order like the helm's ("AUTOPILOT TO SHACKLETON ICE"), and its hold
+ * is this line's ("..., HOLDING: PIRATES ABOUT"): 9.2 sends the game's "Autopilot holds" warning here,
+ * not to the band, so the telex leaves it out while the line says it ({@link TaskFrame#helmHolds}).
  */
 final class HelmPod extends YardPart {
     static final float H = 36f;
     private static final float Y = 726f;
     private static final String WAITING = "WAITING: ";
+    private static final String AUTOPILOT = "AUTOPILOT", HOLDING = ", HOLDING: ";
 
     private final TaskFrame f;
     Yard.Finish finish = Yard.Finish.GUN;
@@ -40,7 +47,7 @@ final class HelmPod extends YardPart {
         p.tubeOver(124f, Y + 10f, tw, 16f);
     }
 
-    /** Who has the helm, as the name flap shows it: YOU, a helmsman's name, AUTOPILOT or NOBODY. */
+    /** Who has the helm, as the name flap shows it: YOU, a helmsman's name or NOBODY. The autopilot is a helmsman's job. */
     static String who(HudData d) {
         String h = d.ctx.helmsman;
         if (h.isEmpty()) return "NOBODY";
@@ -60,18 +67,39 @@ final class HelmPod extends YardPart {
         }
         if (!c.helmFault.isEmpty()) return WAITING + c.helmFault.toUpperCase(Locale.ROOT);
         if (!c.helmOrder.isEmpty()) return c.helmOrder.toUpperCase(Locale.ROOT);
+        String auto = autopilot(d.orderState);
+        if (!auto.isEmpty()) return auto;
         if (c.helmsman.isEmpty()) return "";
         return "HOLDING HEADING";
     }
 
     /**
+     * The autopilot as the line words it, or "" while it is off: where it flies, and while it holds off,
+     * why ("AUTOPILOT TO SHACKLETON ICE, HOLDING: PIRATES ABOUT"), in the game's words.
+     */
+    static String autopilot(Orders o) {
+        if (o.autopilot == Autopilot.OFF) return "";
+        String s = o.autopilotTo.isEmpty() ? AUTOPILOT : AUTOPILOT + " TO " + o.autopilotTo.toUpperCase(Locale.ROOT);
+        if (o.autopilot != Autopilot.HELD) return s;
+        return o.autopilotHeld.isEmpty() ? s + ", HOLDING" : s + HOLDING + o.autopilotHeld.toUpperCase(Locale.ROOT);
+    }
+
+    /** Whether the line says the autopilot holds off this frame, where it is up: nothing flown or ordered ahead of it. */
+    static boolean saysHold(HudData d) {
+        return d.orderState.autopilot == Autopilot.HELD && order(d).startsWith(AUTOPILOT);
+    }
+
+    /**
      * The order cut to a strip tube {@code width} units across; a fault too long for it loses its
-     * WAITING: first, since the amber strip and the fault say as much.
+     * WAITING: first, since the amber strip and the fault say as much, and the autopilot held its
+     * destination, since why it holds matters more (the hover has both).
      */
     static String orderFit(HudData d, float width) {
         int room = (int) (width / 7.8f);
         String o = order(d);
         if (o.length() > room && o.startsWith(WAITING)) o = o.substring(WAITING.length());
+        int held = o.startsWith(AUTOPILOT) ? o.indexOf(HOLDING) : -1;
+        if (o.length() > room && held > 0) o = AUTOPILOT + " HOLDING: " + o.substring(held + HOLDING.length());
         return YardText.fit(o, room);
     }
 
