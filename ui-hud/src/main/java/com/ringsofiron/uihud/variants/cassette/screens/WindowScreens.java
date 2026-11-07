@@ -27,9 +27,19 @@ public final class WindowScreens {
     /** How wide the station's console is at most: it stands over the docked view (Context 10.3). */
     static final float STATION_W = 1280f;
 
+    /** How far in from the right edge a side panel hangs, and where it starts (Stations, 6.2). */
+    static final float SIDE_MARGIN = 16f, SIDE_TOP = 16f;
+
     private final Boards boards = new Boards();
     private final Array<BigConsole> consoles = new Array<>();
-    private final BigConsole station, ship, boarding, record, controls;
+    private BigConsole station, ship, boarding, record;
+    private final BigConsole controls;
+    /** The Stations spec's side panels: the Station link and the slate; null under the other arrangement. */
+    private BigConsole link, slate;
+    /** Whether the windows are the Stations spec's panels ({@link #panels}). */
+    private boolean panels;
+    /** Where a side panel stops, from the top in design units: above the band when seated, else 16 from the foot; 0 for the foot. */
+    private float panelBottom;
     private final MarketPage market = new MarketPage();
     private final YardPage yard = new YardPage(false), loadout = new YardPage(true);
     private final ShipyardPage shipyard = new ShipyardPage(false), prize = new ShipyardPage(true);
@@ -50,7 +60,10 @@ public final class WindowScreens {
     private YardCanvas canvas;
     private float top;
     private boolean mapWasOpen;
-    /** The ship's console's tab I opens: the last of systems, crew and cargo used (the crew the first time). */
+    /**
+     * The ship's console's tab I opens: the last of systems, crew and cargo used (the crew the first
+     * time); with the panels, the slate's last tab.
+     */
     private Page shipTab;
     /**
      * The controls card rises over the screen under it (the map, or a console on its tab), and Esc or
@@ -62,12 +75,7 @@ public final class WindowScreens {
     private BigConsole under;
 
     public WindowScreens() {
-        station = console(new BigConsole(BigConsole.Livery.STATION, "STATION", boards)
-                .add(market).add(yard).add(shipyard).add(missions).add(hire));
-        ship = console(new BigConsole(BigConsole.Livery.SHIP, "SHIP", boards).shipName()
-                .add(systems).add(crew).add(cargo).add(loadout).add(prize));
-        boarding = console(new BigConsole(BigConsole.Livery.SHIP, "BOARDING", boards).add(boardingPage));
-        record = console(new BigConsole(BigConsole.Livery.SHIP, "RECORD", boards).add(contracts).add(log));
+        arrange();
         // The controls cards, a card for each place keys apply; what no card names goes on Anywhere
         cards[0] = new ControlsCard("HELM", "AT THE HELM", help, cards, false, "At the helm");
         cards[1] = new ControlsCard("GUNS", "AT THE WEAPONS CONSOLE", help, cards, false, "At the weapons console");
@@ -80,6 +88,76 @@ public final class WindowScreens {
         BigConsole c = new BigConsole(BigConsole.Livery.SHIP, "CONTROLS", boards);
         for (ControlsCard card : cards) c.add(card);
         controls = console(c);
+    }
+
+    /**
+     * The consoles each window is a tab of: the Context spec's modes (the station's console, the
+     * ship's, boarding and the record), or the Stations spec's panels ({@link #panels}).
+     */
+    private void arrange() {
+        BigConsole was = controls;
+        consoles.clear();
+        if (panels) {
+            // The Station link: everything the berth offers, docked only (Stations, 10.3)
+            market.label = "MARKET";
+            missions.label = "BOARD";
+            hire.label = "HIRING";
+            link = console(new BigConsole(BigConsole.Livery.STATION, "STATION", boards).side()
+                    .add(market).add(yard).add(shipyard).add(missions).add(hire));
+            // The slate: the captain's own, anywhere aboard (10.4); the field refit and a prize off a station
+            slate = console(new BigConsole(BigConsole.Livery.SHIP, "SLATE", boards).side()
+                    .add(crew).add(cargo).add(boardingPage).add(contracts).add(log).add(loadout).add(prize));
+            station = link;
+            ship = slate;
+            boarding = slate;
+            record = slate;
+        } else {
+            market.label = "MARKET";
+            missions.label = "MISSIONS";
+            hire.label = "HIRE";
+            link = slate = null;
+            station = console(new BigConsole(BigConsole.Livery.STATION, "STATION", boards)
+                    .add(market).add(yard).add(shipyard).add(missions).add(hire));
+            ship = console(new BigConsole(BigConsole.Livery.SHIP, "SHIP", boards).shipName()
+                    .add(systems).add(crew).add(cargo).add(loadout).add(prize));
+            boarding = console(new BigConsole(BigConsole.Livery.SHIP, "BOARDING", boards).add(boardingPage));
+            record = console(new BigConsole(BigConsole.Livery.SHIP, "RECORD", boards).add(contracts).add(log));
+        }
+        if (was != null) consoles.add(was);
+    }
+
+    /**
+     * Has the windows be the Stations spec's panels (section 10): the Station link while docked, with
+     * the market, the yard, the shipyard, the contract board and the hiring hall, and the slate anywhere
+     * aboard, with the crew, the hold, boarding, the contracts held and the log, the field refit and a
+     * prize. Both hang as side panels 480 wide at the right, so the world and the band stay in view;
+     * the yard's tabs, which need the room, draw across the screen. Else the Context spec's modes.
+     * Set before {@link #attach}, which puts the consoles on the canvas.
+     */
+    public WindowScreens panels(boolean on) {
+        if (panels == on) return this;
+        if (canvas != null) throw new IllegalStateException("The windows are arranged before they are attached");
+        panels = on;
+        arrange();
+        return this;
+    }
+
+    /** Where a side panel stops, from the top in design units: above the seated band, or 0 for 16 from the foot. */
+    public void panelBottom(float y) {
+        panelBottom = y;
+    }
+
+    /** Whether a side panel hangs at the right now, the band and the world left in view beside it. */
+    public boolean sideUp() {
+        BigConsole c = up();
+        return c != null && c.hangsAtSide();
+    }
+
+    /** The left edge of the side panel up now, in design units; the screen's width when none is. */
+    public float sideLeft() {
+        BigConsole c = up();
+        if (c == null || !c.hangsAtSide() || host == null) return host == null ? 0f : host.width();
+        return c.x;
     }
 
     /** Has the controls card rise over the screen under it, Esc closing it first; else it replaces the screen. */
@@ -168,6 +246,17 @@ public final class WindowScreens {
         }
     }
 
+    /** The console {@code w} opens on as things stand (not the controls, which need the host), for tests. */
+    BigConsole consoleFor(ClassicWindow w) {
+        Page p = w == ClassicWindow.HELP ? null : pageFor(w);
+        return p == null ? null : p.console;
+    }
+
+    /** The station's contract board's tab legend under the arrangement now, for tests. */
+    String boardLabel() {
+        return missions.label;
+    }
+
     /** The controls card for where the player is: the helm's at the helm, the map's with the map up. */
     private Page card() {
         if (host.data().hints != null) {
@@ -232,7 +321,7 @@ public final class WindowScreens {
     }
 
     /** The key the game opens {@code w} with, for the console's foot. */
-    private static String keyOf(ClassicWindow w) {
+    static String keyOf(ClassicWindow w) {
         switch (w) {
             case TRADE:
                 return "T";
@@ -319,7 +408,8 @@ public final class WindowScreens {
             } else {
                 c.update(delta);
                 Page p = c.current();
-                if (c == ship && (p == systems || p == crew || p == cargo)) shipTab = p;
+                // I opens the last of these used; on the slate, the last of its tabs (Stations, 16.1)
+                if (c == ship && (panels || p == systems || p == crew || p == cargo)) shipTab = p;
                 if (p == null || !p.offered() || c.closing()) {
                     c.hide();
                     if (c == controls) uncover();
@@ -345,6 +435,12 @@ public final class WindowScreens {
         canvas.setBounds(0f, 0f, sw, sh);
         for (int i = 0; i < consoles.size; i++) {
             BigConsole c = consoles.get(i);
+            if (c.hangsAtSide()) {
+                // A side panel: 480 wide, 16 in from the right, from the top to above the band or the foot
+                float bottom = panelBottom > 0f ? panelBottom : sh - SIDE_MARGIN;
+                c.place(sw - SIDE_MARGIN - BigConsole.SIDE_W + c.slideOffset(), SIDE_TOP, BigConsole.SIDE_W, Math.max(200f, bottom - SIDE_TOP));
+                continue;
+            }
             float w = c == station ? Math.min(sw, STATION_W) : sw;
             c.place((sw - w) / 2f, top + c.riseOffset(), w, sh - top);
         }

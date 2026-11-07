@@ -28,6 +28,8 @@ final class CargoPage extends ListPage {
     private final Array<Line> pool = new Array<>();
     /** The list: each row a heading (its index in {@link #HEADS}) or a line. */
     private final Array<Object> rowsOf = new Array<>();
+    /** Whether it drew in a side panel last frame (the slate): the units, volume and mass from the tube's right. */
+    private boolean narrow;
 
     /** One commodity aboard. */
     static final class Line {
@@ -44,6 +46,11 @@ final class CargoPage extends ListPage {
     @Override
     boolean offered() {
         return hold != null && hold.bayTileCount() > 0;
+    }
+
+    @Override
+    boolean fitsSide() {
+        return true;
     }
 
     @Override
@@ -122,23 +129,25 @@ final class CargoPage extends ListPage {
 
     @Override
     void row(YardPaint p, int i, int r, boolean s) {
+        // In a side panel the figures end at the tube's right, the name taking what is left
+        int cMass = narrow ? L.cols - 1 : 84, cVol = narrow ? L.cols - 10 : 68, cUnits = narrow ? L.cols - 20 : 52;
         Object o = rowsOf.get(i);
         if (o instanceof String) {
             L.at(p, 1, r, (String) o, DIM);
             if (HEADS[0].equals(o) || i == 0) {
-                L.right(p, 52, r, "UNITS", DIM);
-                L.right(p, 68, r, "VOLUME", DIM);
-                L.right(p, 84, r, "MASS", DIM);
-                if (L.cols >= 100) L.at(p, 88, r, "BAYS", DIM);
+                L.right(p, cUnits, r, "UNITS", DIM);
+                L.right(p, cVol, r, "VOLUME", DIM);
+                L.right(p, cMass, r, "MASS", DIM);
+                if (!narrow && L.cols >= 100) L.at(p, 88, r, "BAYS", DIM);
             }
             return;
         }
         Line l = (Line) o;
-        put(p, s, 2, r, Ledger.cut(l.name, 40), false);
-        put(p, s, 52, r, Fmt.units(l.units), true);
-        put(p, s, 68, r, volume(l.volume), true);
-        put(p, s, 84, r, mass(l.mass), true);
-        if (L.cols >= 100) put(p, s, 88, r, l.bays == 1 ? "1 BAY" : l.bays + " BAYS", false);
+        put(p, s, 2, r, Ledger.cut(narrow ? Fmt.upper(l.name) : l.name, narrow ? cUnits - 9 : 40), false);
+        put(p, s, cUnits, r, Fmt.units(l.units), true);
+        put(p, s, cVol, r, volume(l.volume), true);
+        put(p, s, cMass, r, mass(l.mass), true);
+        if (!narrow && L.cols >= 100) put(p, s, 88, r, l.bays == 1 ? "1 BAY" : l.bays + " BAYS", false);
     }
 
     private void put(YardPaint p, boolean s, float c, int r, String t, boolean right) {
@@ -175,22 +184,25 @@ final class CargoPage extends ListPage {
 
     @Override
     void draw(YardPaint p, Hits hits, float x, float y, float w, float h) {
-        float bx = x + 8f, by = y + 6f, bw = w - 16f, bh = h - 12f;
+        narrow = w < 700f;
+        float bx = x + 8f, by = y + (narrow ? 4f : 6f), bw = w - 16f, bh = h - (narrow ? 8f : 12f);
         BigConsole.bay(p, bx, by, bw, bh, null, false);
-        int cols = Math.max(90, Ledger.colsIn(bw - 42f)), rows = Math.max(10, Ledger.rowsIn(bh - 100f));
-        L.set(bx + 16f, by + 12f, cols, rows);
+        int cols = narrow ? Ledger.colsIn(bw - 36f) : Math.max(90, Ledger.colsIn(bw - 42f));
+        int rows = Math.max(narrow ? 6 : 10, Ledger.rowsIn(bh - (narrow ? 70f : 100f)));
+        L.set(bx + (narrow ? 12f : 16f), by + (narrow ? 10f : 12f), cols, rows);
         L.under(p, false);
         double used = hold == null ? 0 : hold.usedVolume(), cap = hold == null ? 0 : hold.capacity();
         double kg = hold == null ? 0 : hold.mass();
         int bays = 0;
         for (int i = 0; i < rowsOf.size; i++) if (rowsOf.get(i) instanceof Line) bays += ((Line) rowsOf.get(i)).bays;
-        title(p, "HOLD", volume(used).replace(" M³", "") + " OF " + volume(cap) + " · " + mass(kg)
-                + " · " + bays + " OF " + (hold == null ? 0 : hold.bayTileCount()) + " BAYS");
+        String of = volume(used).replace(" M³", "") + " OF " + volume(cap);
+        title(p, "HOLD", narrow ? of + " · " + bays + "/" + (hold == null ? 0 : hold.bayTileCount()) + " BAYS"
+                : of + " · " + mass(kg) + " · " + bays + " OF " + (hold == null ? 0 : hold.bayTileCount()) + " BAYS");
         drawList(p, hits, 2, rows - 3);
         drawSoftRow(p, hits);
         L.over(p);
         // The hold used of its capacity, on a level gauge under the tube
-        float gy = L.y + L.h + 28f, gw = Math.min(520f, L.w);
+        float gy = L.y + L.h + 28f, gw = Math.min(narrow ? L.w - 60f : 520f, L.w);
         p.legend("HOLD USED", L.x, gy - 8f, Yard.INK);
         float frac = cap <= 1e-9 ? 0f : (float) Math.min(1.0, used / cap);
         p.level(L.x, gy, gw, 16f, frac, null, null);
