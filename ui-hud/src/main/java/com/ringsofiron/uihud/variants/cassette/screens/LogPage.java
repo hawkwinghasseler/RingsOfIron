@@ -25,10 +25,11 @@ import java.util.Locale;
  * <p>Kept {@link #once(boolean) once} (the Task spec's book), each condition is one line from its
  * raising: its latest words at the worst it reached, and "cleared 14:31" once it has cleared. A
  * warning an alert carries is left out for the alert's line where the record has it ({@link
- * #carried}: the salvo's, a leak's, the ship disabled), and kept, at its level, where it hasn't (a
- * wound, the boarders). A warning nothing carries is news (a death, the ship wrecked), marked as
- * important, or as info for a loss and nothing more ({@link MessageFeed.Message#minor}). One control
- * then picks alerts, important news (the game's good news and those warnings) or the rest.
+ * #carried}: the salvo's, a leak's, the ship disabled), and kept where it hasn't (a wound, the
+ * boarders). The notices are news, so only an alert's line is marked with its level: a warning kept
+ * is important news (a death, the ship wrecked), or info for a loss and nothing more ({@link
+ * MessageFeed.Message#minor}). One control then picks alerts, important news (the game's good news and
+ * those warnings) or the rest.
  *
  * <p>Keys, as every mode's controls: Up and Down move between the controls and the roll, Left and
  * Right step the control with the focus (from the roll, the first). On the roll, Up and Down feed it
@@ -155,11 +156,11 @@ final class LogPage extends Page {
                 if (kind(filter, true, k.level, false)) add(k.text, k.level, false, k.time, "", k.cleared);
             }
             if (m == null || rows.size >= ConditionLog.KEEP || carried(m, record)) continue;
-            // A warning nothing carries is news: important, or info for a loss and nothing more
-            boolean news = m.level == AlertRegistry.Level.WARNING && m.alert.isEmpty();
-            AlertRegistry.Level level = news ? AlertRegistry.Level.ADVISORY : m.level;
-            boolean important = m.important || news && !m.minor;
-            if (kind(filter, false, level, important)) add(m.label(), level, important, m.time, "", Double.NaN);
+            // A notice is news, marked by whether it matters: a warning does, unless it is of a loss and nothing more
+            boolean important = m.important || m.level == AlertRegistry.Level.WARNING && !m.minor;
+            if (kind(filter, false, AlertRegistry.Level.ADVISORY, important)) {
+                add(m.label(), AlertRegistry.Level.ADVISORY, important, m.time, "", Double.NaN);
+            }
         }
     }
 
