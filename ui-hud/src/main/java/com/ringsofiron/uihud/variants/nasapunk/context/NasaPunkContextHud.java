@@ -2,6 +2,7 @@ package com.ringsofiron.uihud.variants.nasapunk.context;
 
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
@@ -38,6 +39,7 @@ import com.ringsofiron.uihud.providers.UiContextProvider.UiContext;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.ShellLook;
@@ -108,6 +110,9 @@ public class NasaPunkContextHud implements HudVariant {
     private NpKit kit;
     /** The menus as pages of CDU-1 and the map's system plot, the same under all three Nasa-punk HUDs. */
     private final NpScreens screens = new NpScreens();
+    /** The modes in place of the game's windows (M2 to M6) and the ship-lost card. */
+    private ModeScreen modes;
+    private final List<Rectangle> panelPool = new ArrayList<>();
     private Group root;
     private StatusStrip strip;
     private CautionPanel cautions;
@@ -183,8 +188,12 @@ public class NasaPunkContextHud implements HudVariant {
         orders = add(new OrdersPanel(kit), false);
         strip = add(new StatusStrip(kit), true);
         cue.onAcknowledge = this::acknowledge;
+        modes = new ModeScreen(ModeScreen.of(host), host.screenLayer(), kit);
         // a click on P1's chip closes the full-screen mode, back to P2's rows
-        strip.onChip = () -> host.hud().setMapVisible(false);
+        strip.onChip = () -> {
+            host.hud().setMapVisible(false);
+            modes.closeMode();
+        };
         lights();
     }
 
@@ -217,7 +226,10 @@ public class NasaPunkContextHud implements HudVariant {
         boolean mapOpen = host.hud().isMapOpen();
         BoardingWindow bw = host.hud().getBoardingWindow();
         board = bw == null ? null : bw.getBoard();
-        if (mapOpen) ordersOpen = false;
+        modes.update(delta);
+        // a mode takes the screen as the map does: the HUD hides under it and P1's chip stands for P2
+        boolean covered = modes.covering();
+        if (mapOpen || covered) ordersOpen = false;
         situations(d, dt);
         int sig = signature();
         if (sig != lastSignature) {
@@ -263,8 +275,8 @@ public class NasaPunkContextHud implements HudVariant {
         derived.end();
         caution.build(d, derived, shown);
 
-        strip(d, mapOpen);
-        cautionPanel(d, mapOpen);
+        strip(d, mapOpen || covered);
+        cautionPanel(d, mapOpen || covered);
         masterCue(dt);
         threatAlert(d, threats.isVisible());
         messages(d);
@@ -287,6 +299,19 @@ public class NasaPunkContextHud implements HudVariant {
         float a = emergency.isVisible() ? DIM : 1f;
         for (Actor x : dimmed) x.getColor().a = a;
         layout();
+        if (modes.lostShows()) lostPanels();
+        if (covered) for (Actor x : root.getChildren()) if (x != strip) x.setVisible(false);
+    }
+
+    /** The displays the ship-lost card strikes through: every widget showing but P1, y up. */
+    private void lostPanels() {
+        modes.panels.clear();
+        int n = 0;
+        for (Actor x : root.getChildren()) {
+            if (x == strip || !x.isVisible() || x.getWidth() <= 0f || x.getHeight() <= 0f) continue;
+            if (panelPool.size() <= n) panelPool.add(new Rectangle());
+            modes.panels.add(panelPool.get(n++).set(x.getX(), x.getY(), x.getWidth(), x.getHeight()));
+        }
     }
 
     private static Seat seatOf(Presence p) {
@@ -1494,6 +1519,11 @@ public class NasaPunkContextHud implements HudVariant {
     @Override
     public boolean keyDown(int keycode) {
         if (host == null) return false;
+        // a mode's tabs and page have the keys first; the orders menu stays shut under it
+        if (modes.covering()) {
+            if (modes.keyDown(keycode)) return true;
+            if (keycode == Input.Keys.NUM_7) return false;
+        }
         if (keycode == Input.Keys.NUM_7) {
             ordersOpen = !ordersOpen;
             return true;
@@ -1531,7 +1561,44 @@ public class NasaPunkContextHud implements HudVariant {
         if (kit != null) kit.dispose();
         kit = null;
         host = null;
+        modes = null;
         screens.dispose();
+    }
+
+    // ---- the game's windows as the spec's modes ----------------------------------------------------
+
+    /** The windows M2 to M6 and the ship-lost card stand in for; the map and the consoles stay the game's. */
+    @Override
+    public boolean replaces(ClassicWindow window) {
+        switch (window) {
+            case TRADE:
+            case YARD:
+            case SHIPYARD:
+            case MISSIONS:
+            case BOARDING:
+            case CREW:
+            case LOG:
+            case HELP:
+            case GAME_OVER:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
+    public boolean open(ClassicWindow window) {
+        return modes != null && modes.show(window);
+    }
+
+    @Override
+    public boolean showing(ClassicWindow window) {
+        return modes != null && modes.showing(window);
+    }
+
+    @Override
+    public void close(ClassicWindow window) {
+        if (modes != null) modes.close(window);
     }
 
     @Override
