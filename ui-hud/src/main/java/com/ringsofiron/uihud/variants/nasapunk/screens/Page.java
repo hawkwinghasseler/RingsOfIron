@@ -128,6 +128,12 @@ public abstract class Page {
         return null;
     }
 
+    /** The part row {@code r} is in, or null when it is none of this page's. */
+    public Sect sectOf(Row r) {
+        for (int i = 0; i < sects.size; i++) if (sects.get(i).rows.contains(r, true)) return sects.get(i);
+        return null;
+    }
+
     /** The row under the cursor, or null with none. */
     public Row current() {
         return rowCount() == 0 ? null : row(cursor);
