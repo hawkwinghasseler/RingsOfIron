@@ -34,12 +34,15 @@ import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.variants.ClassicPart;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
+import com.ringsofiron.uihud.variants.ShellLook;
 import com.ringsofiron.uihud.variants.nasapunk.NpColors;
 import com.ringsofiron.uihud.variants.nasapunk.NpFormat;
 import com.ringsofiron.uihud.variants.nasapunk.NpHardware.BoxState;
 import com.ringsofiron.uihud.variants.nasapunk.NpKit;
+import com.ringsofiron.uihud.variants.nasapunk.NpScreens;
 import com.ringsofiron.uihud.variants.nasapunk.NpSymbols;
 import com.ringsofiron.uihud.variants.nasapunk.stations.StationsLayout.Zone;
+import com.ringsofiron.uihud.widgets.MapPainter;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -79,6 +82,8 @@ public class NasaPunkStationsHud implements HudVariant {
     /** Missiles one press throws at most (PlayerGunnery.SALVO). */
     private static final int SALVO = 4;
 
+    /** The menus as pages of CDU-1 and the map's system plot, the same under all three Nasa-punk HUDs. */
+    private final NpScreens screens = new NpScreens();
     private HudVariantHost host;
     private NpKit kit;
     private Group root;
@@ -1007,6 +1012,7 @@ public class NasaPunkStationsHud implements HudVariant {
     @Override
     public void resize(int width, int height, float uiScale) {
         if (kit != null) kit.setScale(uiScale);
+        screens.resize(uiScale);
     }
 
     @Override
@@ -1014,6 +1020,17 @@ public class NasaPunkStationsHud implements HudVariant {
         if (kit != null) kit.dispose();
         kit = null;
         host = null;
+        screens.dispose();
+    }
+
+    @Override
+    public ShellLook shellLook() {
+        return screens.shellLook();
+    }
+
+    @Override
+    public MapPainter mapPainter() {
+        return screens.mapPainter();
     }
 
     @Override

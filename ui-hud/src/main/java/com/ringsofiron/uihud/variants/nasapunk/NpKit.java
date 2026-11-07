@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.Disposable;
  */
 public final class NpKit implements Disposable {
     private final Texture white;
+    private final TextureRegion whiteRegion;
     private final NpFonts fonts = new NpFonts();
     private final NpCanvas canvas;
 
@@ -21,7 +22,13 @@ public final class NpKit implements Disposable {
         white = new Texture(p);
         p.dispose();
         // the region's middle texel, so filtering never reaches an edge
-        canvas = new NpCanvas(new TextureRegion(white, 1, 1, 2, 2), fonts);
+        whiteRegion = new TextureRegion(white, 1, 1, 2, 2);
+        canvas = new NpCanvas(whiteRegion, fonts);
+    }
+
+    /** The white the canvas draws its shapes with, for anything else that draws with a white region. */
+    public TextureRegion whiteRegion() {
+        return whiteRegion;
     }
 
     public NpCanvas canvas() {
