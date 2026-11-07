@@ -29,7 +29,8 @@ import java.util.Locale;
 /**
  * The shell's menus, built with the HUD's Scene2D skin: the main menu, the pause menu, the load
  * list, the save panel and the settings window. Each fills the shell's root table in place of the
- * last; {@link GameShell} does what their buttons ask.
+ * last; {@link GameShell} does what their buttons ask. Under a HUD variant with a look of its own
+ * for the menus ({@code ShellLook}) they are built with its skin, and it dresses each once built.
  */
 class ShellMenus {
     enum Panel { MAIN, PAUSE, LOAD, SAVE, SETTINGS, NEW_GAME }
@@ -40,13 +41,33 @@ class ShellMenus {
             {1920, 1080}, {1920, 1200}, {2560, 1440}};
 
     private final GameShell shell;
-    private final Skin skin;
+    private Skin skin;
     private Panel panel = Panel.MAIN;
     private Label message;
+    /** The table the menu showing fills, for its look to dress around it. */
+    private Table root;
 
     ShellMenus(GameShell shell, Skin skin) {
         this.shell = shell;
         this.skin = skin;
+    }
+
+    /** Builds the menus with {@code skin} from the next one shown: the classic skin, or a variant's look's. */
+    void setSkin(Skin skin) {
+        this.skin = skin;
+    }
+
+    /** Builds the menu showing again, as after a change of look. */
+    void reshow() {
+        if (root == null) return;
+        switch (panel) {
+            case PAUSE: showPause(root); break;
+            case LOAD: showLoad(root); break;
+            case SAVE: showSave(root); break;
+            case SETTINGS: showSettings(root); break;
+            case NEW_GAME: showNewGame(root); break;
+            default: showMain(root);
+        }
     }
 
     boolean isTopLevel() {
@@ -63,6 +84,7 @@ class ShellMenus {
 
     private Table frame(Table root, Panel p, String title) {
         panel = p;
+        this.root = root;
         root.clear();
         shell.menuNav.clear();
         Table t = new Table();
@@ -102,6 +124,7 @@ class ShellMenus {
 
     private void endFrame(Table t) {
         t.add(message).colspan(3).padTop(10f).row();
+        shell.dressMenu(panel, t, root);
     }
 
     // --- Main and pause ----------------------------------------------------------------

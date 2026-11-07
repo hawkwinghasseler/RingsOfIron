@@ -221,6 +221,11 @@ public final class Rom {
         return -1;
     }
 
+    /** The glyphs past ASCII that the ROM holds, in the order they were defined. */
+    static String extras() {
+        return EXTRA_CHARS.toString();
+    }
+
     /** Whether the dot at {@code row}, {@code col} of {@code glyph} is lit. */
     public static boolean lit(long glyph, int row, int col) {
         return (glyph >>> (row * COLS + col) & 1L) != 0;

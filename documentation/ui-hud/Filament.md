@@ -64,3 +64,47 @@ and the pips.
 something wrong in it, fire as a dense checker, smoke as a dither, a breach as an X, a room without
 air in red, and the last hull hit flashing. Context's H4 face and Task's schematic both use it; call
 `update` each frame and `paint` into a box, and it fits whole tiles to its dot pitch.
+
+## The menus and the map
+
+The three HUDs give the game's menus and map one look between them (style guide, section 18.5),
+through the shared screens hook (`Variants.md`): `VfdScreens` holds what each hands on, and frees it
+on `detach`.
+
+**The menus** (`VfdShellLook`) are the ship's computer in setup mode. Before a game starts the racks
+are dark, the annunciators and the clock ghosts, and the top rack shows SETUP in fourteen segments,
+over the stars and the planet's limb; a menu too tall for the window between the racks comes up in
+front of the windows it covers. Over a paused game the world goes under a scrim. Each menu keeps the
+classic one's rows, buttons, keys and order: it is built from `SetupSkin`, whose styles carry the
+classic names and the ROM's metrics (`RomFont`, the ROM on a texture) but draw nothing, and
+`SetupPaint` reads the widgets each frame and paints them through the kit:
+
+| Widget | Shown as |
+|---|---|
+| Button | A field of cells at pitch 2, a cursor column first; focus lights ▶ and inverts the field, disabled is dim |
+| One of a group (a sponsor) | Its word in a lit frame when picked |
+| Choice | ◀ value ▶, the value inverse with the focus |
+| Check box | A lit block, or a ghost frame |
+| Text field | Its cells with their ghosts, a rule under them, a blinking block cursor |
+| Slider | A bar of 20 segments |
+| List | Its rows in view, and its place as a column of segments; it never slides sideways, so a row too long is cut short |
+| Heading, title | Fourteen segments; a section's name a legend in the glass |
+
+The game's focus (`FocusNav`) tints the focused control; the painter reads that tint
+(`SetupPaint.FOCUS`, kept equal to it by a test) and shows the inverse field instead. The legend of
+keys sits in the bottom rack, split round a menu that comes down over it, or on a slab under the menu
+over the game. The mod scripts dialog has its title in a red strip. If the painter ever fails, the
+fonts' own glyphs show so the menu can still be read and left, and the next backdrop hands the menus
+back to the classic look.
+
+**The map** (`VfdMapPainter`) is a graphic dot panel at pitch 3 (`Plot`): every piece lights the
+panel's own dots and the brightest call on a dot wins. The ship's orbit is every second dot at L2,
+the plan solid at L3, a proposal every third at L3, the target's orbit and spheres of influence
+every second at L1, a moon's orbit every third at L1. A body is a solid limb over a dither; one
+drawn past 60 units is the ground under the orbits, a quarter of its dots at L1. Labels are ROM text
+at pitch 1.5 on a ground that keeps the dots under them dark, and one under the map's heading moves
+down clear of it. The map's side panel stays its HUD's own. Everything is drawn in one pass of the
+kit when the map gives its last piece of the frame.
+
+`tools/playtest/shell-vfd.sh <spec>` drives the menus, a game paused, the map and the mod scripts
+dialog in a real window and screenshots each.
