@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.stationsdocking.DockingSystem;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 
 /**
  * A ship docked at a station with a hole to space aboard. Out in the black the hazard guard holds
@@ -84,7 +85,7 @@ public final class BerthVenting {
         if (warned || ++ventingTicks < WARN_AFTER_TICKS) return;
         warned = true;
         ctx.notices.post(ShipNames.name(station) + ": your ship is venting at the berth. "
-                + "Time warp waits until it is patched or repaired", NoticeLog.Kind.WARNING);
+                + "Time warp waits until it is patched or repaired", NoticeLog.Kind.WARNING, NoticeAlerts.VENTING);
     }
 
     /**

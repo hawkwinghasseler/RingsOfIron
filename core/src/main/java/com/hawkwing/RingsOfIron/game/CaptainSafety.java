@@ -14,6 +14,7 @@ import com.ringsofiron.interiorgrid.crew.Suit;
 import com.ringsofiron.uihud.HintRegistry;
 import com.ringsofiron.uihud.systems.InteractPromptSystem;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 
 /**
  * The player's own figure in a holed ship (round 6 part 1). The crew's behaviour tree suits them up
@@ -233,7 +234,7 @@ public final class CaptainSafety {
         boolean thin = !TaskRules.isBreathable(grid, p.tileX(), p.tileY());
         fillSuit(e, c, p, grid, thin, dt);
         fillAtConsole(e, c, dt);
-        if (thin && !warned) ctx.notices.post(c.suited ? THIN_AIR : NO_SUIT, NoticeLog.Kind.WARNING);
+        if (thin && !warned) ctx.notices.post(c.suited ? THIN_AIR : NO_SUIT, NoticeLog.Kind.WARNING, NoticeAlerts.CAPTAIN);
         warned = thin;
         stepAtLocker(c, p, grid, dt);
     }
