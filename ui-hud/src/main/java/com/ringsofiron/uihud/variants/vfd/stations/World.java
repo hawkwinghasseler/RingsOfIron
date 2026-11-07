@@ -90,6 +90,14 @@ final class World {
     float leadX, leadY, shipX, shipY;
     /** Where labels may sit: the screen less its margins, the top column and the band. */
     float left, right, top, bottom, colX0, colX1, colBottom;
+    /**
+     * Set before each {@link #update}: the top column's offset when a side panel has moved it (NaN: the
+     * grid's), the panel's left on the stage (the world ends there), and whether a panel covers the world.
+     */
+    float column = Float.NaN, panelLeft = Float.POSITIVE_INFINITY;
+    boolean hidden;
+    private float stageWidth = Geo.W;
+    private final Rectangle panelBox = new Rectangle();
     /** The game's magnified insets this frame, and how each reads. */
     final Insets.Inset[] insets = new Insets.Inset[Insets.MAX];
     final Optic.Look[] looks = new Optic.Look[Insets.MAX];
@@ -127,7 +135,7 @@ final class World {
         this.seat = seat;
         boolean seated = seat == Presence.HELM || seat == Presence.WEAPONS || seat == Presence.GUN;
         TransformComponent ship = d.ctx.ship == null ? null : d.ctx.ship.getComponent(TransformComponent.class);
-        on = seated && d.ctx.exteriorView && !blackout && ship != null && views != null;
+        on = !hidden && seated && d.ctx.exteriorView && !blackout && ship != null && views != null;
         if (!on) return;
         stageHeight = height;
         ShipGridComponent grid = d.ctx.ship.getComponent(ShipGridComponent.class);
@@ -145,11 +153,12 @@ final class World {
                 if (in.centered) ownRing = in.radius + Optic.RING_GAP;
             }
         }
+        stageWidth = width;
         left = 16f;
-        right = width - 16f;
+        right = Math.min(width - 16f, panelLeft - 8f);
         top = 16f;
         bottom = floor - 8f;
-        colX0 = topX + Geo.TOP_X;
+        colX0 = (Float.isNaN(column) ? topX : column) + Geo.TOP_X;
         colX1 = colX0 + Geo.TOP_W;
         colBottom = Geo.TICKER_Y + 60f + 6f;
         views.worldToUi(ship.x, ship.y, v);
@@ -332,6 +341,8 @@ final class World {
         out.add(column.set(colX0 - 6f, height - colBottom, colX1 - colX0 + 12f, colBottom));
         float floor = bottom + 8f;
         if (floor < height) out.add(band.set(topX + Geo.BAND_X - 6f, 0f, Geo.BAND_W + 12f, height - floor));
+        // A side panel, down its height
+        if (panelLeft < stageWidth) out.add(panelBox.set(panelLeft - 6f, 0f, stageWidth - panelLeft + 6f, height));
         // The player's ship, so no other craft's magnified picture covers it
         if (on && shipReach > 0f) {
             float h = shipReach + 6f;
