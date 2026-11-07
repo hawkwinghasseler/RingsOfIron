@@ -552,6 +552,18 @@ class NasaPunkWindowsTest {
     }
 
     @Test
+    void aNarrowListLeavesOutTheFixedColumnsAtItsRightThatItsWordsWontFit() {
+        // the crew's columns on the slate: name, role, skills, condition, morale, wage
+        float[] width = {130f, 96f, 170f, 190f, 66f, 96f};
+        float[] need = {50f, 80f, 190f, 80f, 60f, 70f};
+        assertEquals(3, Tables.kept(width, need, 6, 426f, 12f));
+        assertEquals(6, Tables.kept(width, need, 6, 900f, 12f), "all fit: none left out");
+        assertEquals(2, Tables.kept(width, need, 6, 100f, 12f), "never fewer than two");
+        // a last column that takes the rest stops it: the log keeps its message
+        assertEquals(3, Tables.kept(new float[] {92f, 132f, 0f}, new float[] {80f, 100f, 900f}, 3, 200f, 12f));
+    }
+
+    @Test
     void partsTooManyForTheirColumnsAllShowSharingTheRoomOfTheirs() {
         // a part taller than a column, then parts that fill the rest, then two with no room left whole
         float[] hs = {600f, 180f, 390f, 500f, 120f, 240f};
