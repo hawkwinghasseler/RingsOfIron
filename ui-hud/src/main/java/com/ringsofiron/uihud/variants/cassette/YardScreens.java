@@ -74,6 +74,11 @@ public final class YardScreens {
         windows.panelTop(y);
     }
 
+    /** How wide the boarding console hangs beside the view, at most its own width ({@link WindowScreens#boardingWidth}). */
+    public void boardingWidth(float w) {
+        windows.boardingWidth(w);
+    }
+
     /** Whether a side panel hangs at the right now, the band and the world beside it. */
     public boolean sideUp() {
         return windows.sideUp();

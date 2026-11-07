@@ -177,6 +177,14 @@ public final class WindowScreens {
         panelTop = y;
     }
 
+    /**
+     * How wide the boarding console hangs beside the view ({@link #sideBoarding}): {@link #BOARDING_SIDE_W}
+     * at most, less where a HUD's own units leave it less room.
+     */
+    public void boardingWidth(float w) {
+        if (sideBoarding && boarding != null) boarding.side(Math.min(BOARDING_SIDE_W, w));
+    }
+
     /** Whether a side panel hangs at the right now, the band and the world left in view beside it. */
     public boolean sideUp() {
         BigConsole c = up();

@@ -25,7 +25,8 @@ import java.util.Locale;
  *
  * <p>In a side panel (the slate's Boarding tab, Stations 10.4) the other ship's plate goes across the
  * top, its name on flaps, how it stands typed under it, and the drums and lamps in a row; the list
- * under it, a part whose state is too long for its column with the state on a second line.
+ * under it, a part whose state is too long for its column with the state on a second line. In one too
+ * short for the plate (a crisis placard over the Task spec's BRD) the list has the page alone.
  */
 final class BoardingPage extends ListPage {
     /** Row kinds; in a side panel a part's long state is a row of its own under it ({@code DETAIL}). */
@@ -40,8 +41,12 @@ final class BoardingPage extends ListPage {
     static final int NARROW_STATE = 16;
     /** The column a part's state starts at in a side panel, after its name and value. */
     private static final int STATE_COL = 28;
+    /** The least height a side panel's page needs for the other ship's plate over three rows of the list. */
+    static final float PLATE_ROOM = 384f;
     /** Whether it drew in a side panel last frame. */
     private boolean narrow;
+    /** Whether it drew the list alone last frame, in a side panel too short for the plate ({@link #listOnly(float)}). */
+    private boolean listOnly;
     /** The longest state beside a part's value in the side panel it drew in last frame. */
     private int stateRoom = NARROW_STATE;
     private Boards b;
@@ -213,10 +218,10 @@ final class BoardingPage extends ListPage {
     }
 
     /**
-     * A row in a side panel, 45 columns (42 in the Task spec's narrower one): a part's name to column 20,
-     * its value ending at 27 and its state from 28, or on the line under it when longer than the room
-     * left; the cargo's units and what is coming over in the same columns. False for a row that is
-     * drawn as across the screen: an order, the prisoners.
+     * A row in a side panel, 45 columns (35 to 42 in the Task spec's narrower one): a part's name to
+     * column 20, its value ending at 27 and its state from 28, or on the line under it when longer than
+     * the room left; the cargo's units and what is coming over in the same columns. False for a row that
+     * is drawn as across the screen: an order, the prisoners.
      */
     private boolean rowNarrow(YardPaint p, int i, int r, boolean s) {
         BoardingBoard bb = board();
@@ -225,14 +230,14 @@ final class BoardingPage extends ListPage {
             case HEAD:
                 L.at(p, 1, r, HEADS[ref], DIM);
                 if (ref == 1) {
-                    if (shownParts == 0) L.at(p, 16, r, "Nothing left to strip", DIM);
+                    if (shownParts == 0) L.at(p, 16, r, L.cols >= 37 ? "Nothing left to strip" : "Nothing left", DIM);
                     else {
                         L.right(p, STATE_COL - 1, r, "VALUE", DIM);
                         L.at(p, STATE_COL, r, "STATE", DIM);
                     }
                 } else if (ref == 2) {
                     L.right(p, STATE_COL - 1, r, "UNITS", DIM);
-                    L.at(p, STATE_COL, r, "COMING OVER", DIM);
+                    L.at(p, STATE_COL, r, L.cols >= STATE_COL + 11 ? "COMING OVER" : "COMING", DIM);
                 }
                 return true;
             case PART: {
@@ -302,8 +307,9 @@ final class BoardingPage extends ListPage {
             case PART: {
                 Part pt = bb.parts.get(refs.get(sel));
                 softKey(pt.marked ? "CALL OFF" : "MARK", partRefusal(bb, pt));
-                // In a side panel the strip under the keys has it whole
+                // In a side panel the strip under the keys has it whole; with the list alone, the soft row
                 if (!narrow) note(partNote(pt, L.cols - 49));
+                else if (listOnly) note(partNote(pt, L.cols - 7));
                 return;
             }
             case CARGO:
@@ -445,6 +451,20 @@ final class BoardingPage extends ListPage {
         BoardingBoard bb = board();
         float bx = x + 8f, by = y + 4f, bw = w - 16f, bh = h - 8f;
         BigConsole.bay(p, bx, by, bw, bh, null, false);
+        listOnly = listOnly(h);
+        if (listOnly) {
+            // The list alone: the ship and how it is held on the title row, why a row waits by its keys
+            int cols = Ledger.colsIn(bw - 36f), rows = Math.max(5, Ledger.rowsIn(bh - 42f));
+            L.set(bx + 12f, by + 8f, cols, rows);
+            L.under(p, false);
+            String held = held(bb);
+            title(p, Ledger.cut(nameCaps, Math.max(4, cols - 3 - held.length())), held);
+            drawList(p, hits, 2, rows - 3);
+            drawSoftRow(p, hits);
+            L.over(p);
+            drawSoftKeys(p, hits);
+            return;
+        }
         float rx = bx + 16f, rw = bw - 32f;
         int cells = Math.max(8, Math.min((int) (rw / 10f), nameCaps.length()));
         p.flaps(rx, by + 10f, nameCaps.length() > cells ? nameCaps.substring(0, cells) : nameCaps, cells, 10f, 20f, 14f, Yard.FLAP_TEXT);
@@ -470,12 +490,12 @@ final class BoardingPage extends ListPage {
             lamp(p, col1, cy + 26f, Yard.AMBER_LAMP, bb.disabled, "DISABLED");
             lamp(p, col2, cy + 26f, Yard.GREEN_LAMP, bb.salvage, "SALVAGE");
         } else {
-            float ly = cy + 44f, lx = rx;
+            float ly = cy + 48f, lx = rx;
             lx = lamp(p, lx, ly, Yard.GREEN_LAMP, bb.taken, "TAKEN") + 16f;
             lx = lamp(p, lx, ly, Yard.AMBER_LAMP, bb.boarding, "PARTY OUT") + 16f;
             lx = lamp(p, lx, ly, Yard.AMBER_LAMP, bb.disabled, "DISABLED") + 16f;
             lamp(p, lx, ly, Yard.GREEN_LAMP, bb.salvage, "SALVAGE");
-            ty += 24f;
+            ty += 28f;
         }
         // The list, and under its keys the selected row's whole word, typed: why a part waits, or can't be had
         int cols = Ledger.colsIn(bw - 36f), rows = Math.max(6, Ledger.rowsIn(by + bh - 34f - stripH - 6f - ty));
@@ -497,12 +517,27 @@ final class BoardingPage extends ListPage {
     }
 
     /**
+     * Whether a side panel's page {@code h} tall draws the list alone: too short for the other ship's plate
+     * over three rows of it, as the Task spec's BRD is under a crisis placard.
+     */
+    static boolean listOnly(float h) {
+        return h < PLATE_ROOM;
+    }
+
+    /** How the other ship is held, for the list's title row when it has the page alone. */
+    private static String held(BoardingBoard bb) {
+        if (bb.taken) return "TAKEN";
+        if (bb.boarding) return "PARTY ACROSS";
+        return bb.byEva ? "ALONGSIDE" : "LATCHED";
+    }
+
+    /**
      * The longest part's state that goes beside its value in a side panel {@code w} wide: the columns
      * its tube holds past the value's, at most {@link #NARROW_STATE}; across the screen, all of it.
      */
     static int stateRoom(float w) {
         if (w >= 700f) return NARROW_STATE;
-        return Math.max(8, Math.min(NARROW_STATE, Ledger.colsIn(w - 52f) - STATE_COL));
+        return Math.max(0, Math.min(NARROW_STATE, Ledger.colsIn(w - 52f) - STATE_COL));
     }
 
     private static float legendW(YardPaint p, String s) {
