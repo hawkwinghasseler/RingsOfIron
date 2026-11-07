@@ -43,6 +43,21 @@ public final class Tables {
          * two, for a frame that shows every cell of the cursor's row beside or under it.
          */
         public boolean drop;
+        /**
+         * A last column that takes the rest runs its words onto further lines, up to {@link #wrapMax},
+         * rather than cutting them: for a narrow list with no terms beside it to show them whole.
+         */
+        public boolean wrap;
+        public int wrapMax = 3;
+        /** How far apart a wrapped cell's lines are. */
+        public float wrapH = 17f;
+        /** Each row's dim line under it; a frame showing the cursor's row's terms under the list may leave it to them. */
+        public boolean subs = true;
+    }
+
+    /** How wide words are drawn, in the font a cell uses. */
+    interface Measure {
+        float width(String words);
     }
 
     /** A part's dim line under its title, when it won't fit beside it. */
@@ -68,6 +83,10 @@ public final class Tables {
      * width they take together.
      */
     private static final float[] SLOT_X = new float[8], SLOT_W = new float[8];
+    /** A wrapped cell's lines as drawn. */
+    private static final Array<String> WRAPPED = new Array<>();
+    /** Past this a part wants more than any box can give it, so a wrapping one stops measuring. */
+    private static final float WANT_MOST = 4096f;
     private static int slots;
     private static float slotsW;
 
@@ -237,7 +256,13 @@ public final class Tables {
         Sect sect = p.sects.get(s);
         float h = st.title && !sect.title.isEmpty() ? st.titleH + (subBelow(cv, sect, st.pad, titleRight(cv, sect, 0f, w, st), st) ? SUB_H : 0f) : 0f;
         if (heads(sect) && sect.rows.size > 0 && !anyFilter(sect)) h += st.headH;
-        for (int i = 0; i < sect.rows.size; i++) h += rowH(sect.rows.get(i), st);
+        // wrapped rows take the height their words need at the columns' widths
+        int nCols = st.wrap || st.drop ? layout(cv, sect, 0f, w, st) : 0;
+        for (int i = 0; i < sect.rows.size; i++) {
+            h += rowH(cv, sect.rows.get(i), sect, nCols, st);
+            // a long log is taller than any screen well before its last line: no need to wrap it all
+            if (st.wrap && h > WANT_MOST) break;
+        }
         if (sect.rows.size == 0 && !sect.empty.isEmpty()) h += st.rowH;
         h += linesH(cv, sect.lines, w, st);
         h += sect.notes.size * st.noteH;
@@ -291,9 +316,8 @@ public final class Tables {
         tail += nReasons * st.noteH;
 
         boolean filters = anyFilter(sect);
-        float actsW = st.acts ? slots(cv, sect, x + w - st.pad, st) : 0f;
         float gutter = anyMark(sect) ? 18f : 0f;
-        int nCols = columns(cv, sect, lx + gutter, inner - gutter - actsW - (actsW > 0f ? 8f : 0f), st);
+        int nCols = layout(cv, sect, x, w, st);
         if (heads(sect) && sect.rows.size > 0 && !filters) {
             for (int c = 0; c < nCols; c++) {
                 Col col = sect.cols.get(c);
@@ -312,7 +336,7 @@ public final class Tables {
         float used = 0f;
         int n = 0;
         for (int i = first; i < sect.rows.size; i++) {
-            float rh = rowH(sect.rows.get(i), st);
+            float rh = rowH(cv, sect.rows.get(i), sect, nCols, st);
             if (used + rh > room + 0.5f && n > 0) break;
             used += rh;
             n++;
@@ -348,7 +372,10 @@ public final class Tables {
             Ui.rule(cv, x + st.pad + dw + 12f, y + 11f, inner - dw - 12f);
             y += st.dividerH;
         }
-        float rh = st.rowH + (r.sub.isEmpty() ? 0f : st.subH);
+        Sect sect = sect(p, s);
+        float extra = wrapExtra(cv, r, sect, nCols, st);
+        boolean sub = st.subs && !r.sub.isEmpty();
+        float rh = st.rowH + extra + (sub ? st.subH : 0f);
         boolean cur = p.isCursor(r);
         hits.add(x + 2f, y, w - 4f, rh, r, 1);
         float base = y + st.rowH / 2f + 4.6f;
@@ -356,12 +383,15 @@ public final class Tables {
             filter(cv, r.filter, lx, y, inner, st, hits);
         } else {
             if (r.mark != Row.NONE) Ui.mark(cv, lx + 6f, base, r.mark, r.hollow);
-            for (int c = 0; c < nCols && c < r.cells.size; c++) cell(cv, r, r.cells.get(c), sect(p, s).cols.get(c), COLX[c], COLW[c], base, st);
+            for (int c = 0; c < nCols && c < r.cells.size; c++) {
+                if (extra > 0f && c == nCols - 1) wrapped(cv, r, r.cells.get(c), COLX[c], COLW[c], base, st);
+                else cell(cv, r, r.cells.get(c), sect.cols.get(c), COLX[c], COLW[c], base, st);
+            }
             if (!Float.isNaN(r.bar) && nCols > 0) {
                 float bx = COLX[nCols - 1] + COLW[nCols - 1] + st.gap, bw = Math.min(140f, x + w - st.pad - bx - (st.acts ? slotsW : 0f));
                 if (bw > 30f) Ui.bar(cv, bx, base - 6f, bw, r.bar, r.bar < 0.25f ? NpColors.AMBER : NpColors.WHITE);
             }
-            if (!r.sub.isEmpty()) Ui.lab(cv, cx, y + st.rowH + st.subH - 6f, Ui.fit(cv, r.sub, inner - gutter - 10f, Ui.LB, true, 0.6f));
+            if (sub) Ui.lab(cv, cx, y + st.rowH + extra + st.subH - 6f, Ui.fit(cv, r.sub, inner - gutter - 10f, Ui.LB, true, 0.6f));
             if (st.acts && r.acts.size > 0) {
                 Act enter = r.acts.size > 1 && cur ? p.picked(r) : null;
                 float by = y + (st.rowH - st.actH) / 2f;
@@ -544,8 +574,76 @@ public final class Tables {
 
     // ---- helpers --------------------------------------------------------------------------------
 
-    private static float rowH(Row r, Style st) {
-        return st.rowH + (r.sub.isEmpty() ? 0f : st.subH) + (r.divider.isEmpty() ? 0f : st.dividerH);
+    /** A row's height: its line, its wrapped cell's further lines, its dim line and the divider over it. */
+    private static float rowH(NpCanvas cv, Row r, Sect s, int nCols, Style st) {
+        return st.rowH + wrapExtra(cv, r, s, nCols, st) + (st.subs && !r.sub.isEmpty() ? st.subH : 0f)
+                + (r.divider.isEmpty() ? 0f : st.dividerH);
+    }
+
+    /**
+     * Sets out part {@code sect}'s columns in a box at {@code x} {@code w} wide, as its rows draw them:
+     * after its mark's gutter, before its rows' buttons. Returns how many show.
+     */
+    private static int layout(NpCanvas cv, Sect sect, float x, float w, Style st) {
+        float inner = w - 2f * st.pad, lx = x + st.pad;
+        float actsW = st.acts ? slots(cv, sect, x + w - st.pad, st) : 0f;
+        float gutter = anyMark(sect) ? 18f : 0f;
+        return columns(cv, sect, lx + gutter, inner - gutter - actsW - (actsW > 0f ? 8f : 0f), st);
+    }
+
+    /** The height a row's wrapped last cell adds past its first line, at the columns last set out; 0 if it fits or doesn't wrap. */
+    private static float wrapExtra(NpCanvas cv, Row r, Sect s, int nCols, Style st) {
+        if (!st.wrap || nCols == 0 || r.filter != null || nCols > r.cells.size) return 0f;
+        int c = nCols - 1;
+        Cell cell = r.cells.get(c);
+        if (s.cols.get(c).width > 0f || cell.text.isEmpty() || cell.tone == Cell.Tone.KEY || !cell.unit.isEmpty()) return 0f;
+        boolean bold = Ui.bold(cell.tone) || r.notable;
+        float size = cell.tone == Cell.Tone.NAME ? st.nameSize : st.cellSize, track = bold ? 0.4f : 0.2f;
+        if (cv.width(cell.text, size, bold, track) <= COLW[c]) return 0f;
+        int lines = breaks(cell.text, COLW[c], st.wrapMax, t -> cv.width(t, size, bold, track), null);
+        return Math.max(0, lines - 1) * st.wrapH;
+    }
+
+    /** A cell's words over as many lines as {@link #breaks} gives them, the last cut if they run on past it. */
+    private static void wrapped(NpCanvas cv, Row r, Cell c, float x, float w, float base, Style st) {
+        boolean bold = Ui.bold(c.tone) || r.notable;
+        float size = c.tone == Cell.Tone.NAME ? st.nameSize : st.cellSize, track = bold ? 0.4f : 0.2f;
+        Color ink = r.dim ? NpColors.DIM : Ui.color(c.tone);
+        breaks(c.text, w, st.wrapMax, t -> cv.width(t, size, bold, track), WRAPPED);
+        for (int i = 0; i < WRAPPED.size; i++)
+            cv.text(x, base + i * st.wrapH, Ui.fit(cv, WRAPPED.get(i), w, size, bold, track), size, bold, ink, track, NpCanvas.START);
+    }
+
+    /**
+     * Breaks {@code words} at their spaces into lines no wider than {@code w}, at most {@code max} of
+     * them, into {@code out} if it is given: the last line takes all that is left, to be cut where it
+     * is drawn, and a word wider than a line stands on its own. Returns how many lines.
+     */
+    static int breaks(String words, float w, int max, Measure m, Array<String> out) {
+        if (out != null) out.clear();
+        int n = words.length(), start = 0, lines = 0;
+        while (start < n && words.charAt(start) == ' ') start++;
+        while (start < n && lines < max) {
+            if (lines == max - 1 || m.width(words.substring(start)) <= w) {
+                if (out != null) out.add(words.substring(start));
+                return lines + 1;
+            }
+            // the most words from start that fit, or the first alone if even it won't
+            int end = -1;
+            for (int sp = words.indexOf(' ', start); sp >= 0; sp = words.indexOf(' ', sp + 1)) {
+                if (m.width(words.substring(start, sp)) > w) break;
+                end = sp;
+            }
+            if (end < 0) {
+                end = words.indexOf(' ', start);
+                if (end < 0) end = n;
+            }
+            if (out != null) out.add(words.substring(start, end));
+            lines++;
+            start = end;
+            while (start < n && words.charAt(start) == ' ') start++;
+        }
+        return lines;
     }
 
     /** A button's width for {@code label}: the style's, or wider to fit the word with the button's margin, up to 150. */
@@ -656,6 +754,7 @@ public final class Tables {
         }
         // the last 0-width column takes to the end
         if (rest > 0 && s.cols.get(n - 1).width <= 0f) COLW[n - 1] = Math.max(COLW[n - 1], x + w - COLX[n - 1]);
+        s.whole = whole(COLW, s.need, n);
         return n;
     }
 
@@ -665,6 +764,13 @@ public final class Tables {
      * whose words won't fit, down to two. One that takes the rest counts at 60 at most, and stops the
      * dropping when it is the last.
      */
+    /** Which of the first {@code n} columns, {@code w} wide, hold their {@code need} whole: a bit each, the first lowest. */
+    static long whole(float[] w, float[] need, int n) {
+        long bits = 0L;
+        for (int c = 0; c < n && c < 64; c++) if (w[c] + 0.5f >= need[c]) bits |= 1L << c;
+        return bits;
+    }
+
     static int kept(float[] width, float[] need, int n, float w, float gap) {
         while (n > 2 && width[n - 1] > 0f) {
             float sum = gap * (n - 1);

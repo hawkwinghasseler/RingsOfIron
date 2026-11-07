@@ -16,6 +16,8 @@ public final class Sect {
     public final Array<Act> acts = new Array<>();
     /** The room each column's words take, measured by {@link Tables} the first time it has to squeeze them. */
     float[] need;
+    /** Which of its columns the table last drew with their words whole, a bit each: none left out by a narrow list, none cut. */
+    long whole;
 
     public Sect(String title) {
         this.title = title == null ? "" : title;
@@ -52,6 +54,14 @@ public final class Sect {
     public Line line(Line l) {
         lines.add(l);
         return l;
+    }
+
+    /**
+     * Whether the table last drew column {@code c} with every row's words whole, so a panel of the
+     * cursor's row's terms needn't say them again. False until it has been drawn.
+     */
+    public boolean drawnWhole(int c) {
+        return c >= 0 && c < 64 && (whole >>> c & 1L) != 0L;
     }
 
     public Sect note(String note) {

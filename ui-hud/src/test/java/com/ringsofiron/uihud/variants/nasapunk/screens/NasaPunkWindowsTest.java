@@ -1,5 +1,6 @@
 package com.ringsofiron.uihud.variants.nasapunk.screens;
 
+import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.BoardingProvider;
@@ -561,6 +562,42 @@ class NasaPunkWindowsTest {
         assertEquals(2, Tables.kept(width, need, 6, 100f, 12f), "never fewer than two");
         // a last column that takes the rest stops it: the log keeps its message
         assertEquals(3, Tables.kept(new float[] {92f, 132f, 0f}, new float[] {80f, 100f, 900f}, 3, 200f, 12f));
+    }
+
+    @Test
+    void aLineTooLongForTheColumnThatTakesTheRestRunsOntoTheLinesItNeeds() {
+        Tables.Measure m = t -> t.length() * 10f; // 10 a character
+        Array<String> out = new Array<>();
+        assertEquals(1, Tables.breaks("Raider is taken.", 200f, 3, m, out));
+        assertEquals("Raider is taken.", out.first());
+        // whole words to a line
+        assertEquals(3, Tables.breaks("Pick a job on the board and take it", 120f, 3, m, out));
+        assertEquals("Pick a job", out.get(0));
+        assertEquals("on the board", out.get(1));
+        assertEquals("and take it", out.get(2));
+        // what is left at the last line stays on it, to be cut where it is drawn
+        assertEquals(2, Tables.breaks("Raider bounty done: +7 500 CR, +6 standing", 200f, 2, m, out));
+        assertEquals("Raider bounty done:", out.get(0));
+        assertEquals("+7 500 CR, +6 standing", out.get(1));
+        // a word wider than a line stands on its own
+        assertEquals(2, Tables.breaks("Supercalifragilistic yes", 100f, 3, m, out));
+        assertEquals("Supercalifragilistic", out.get(0));
+        assertEquals("yes", out.get(1));
+        assertEquals(0, Tables.breaks("", 100f, 3, m, null));
+    }
+
+    @Test
+    void aPartKnowsWhichColumnsItsTableLastDrewWhole() {
+        // the crew on the slate: the name and the role whole, the skills cut
+        long bits = Tables.whole(new float[] {130f, 96f, 150f}, new float[] {60f, 96f, 190f}, 3);
+        assertEquals(0b011L, bits);
+        Sect s = new Sect("ABOARD");
+        assertFalse(s.drawnWhole(0), "not drawn yet: none is known whole");
+        s.whole = bits;
+        assertTrue(s.drawnWhole(0));
+        assertTrue(s.drawnWhole(1));
+        assertFalse(s.drawnWhole(2));
+        assertFalse(s.drawnWhole(5), "a column it left out");
     }
 
     @Test
