@@ -53,7 +53,9 @@ told which box was hit. Its `Filament` holds GL resources: dispose the actor on 
 "7.67" ('.' joins the cell before), a value too big for its cells shows nines, NaN shows blank.
 Ranges are metres under a kilometre and kilometres above; times are m:ss, then h:mm:ss, then days.
 `name("Pirate raider 6", 8)` is "RAIDER 6": a name drops its leading words before it cuts one, so the
-words that tell two ships apart stay.
+words that tell two ships apart stay. `place("FWD PORT PD")` is "FWD PORT": a gun's mount by where it
+sits, less the kind the weapon's name already says ("GUN (FWD PORT)", "AUTOCANNON MK1 (FWD STBD)"); a
+mount the game could not place gives "", and keeps its whole name.
 
 `Kit` holds the helpers the three variants share: the sector scope, brackets and nameplates for the
 projected HUD, velocity markers, the lead reticle, missile glyphs and the impact cross, edge
