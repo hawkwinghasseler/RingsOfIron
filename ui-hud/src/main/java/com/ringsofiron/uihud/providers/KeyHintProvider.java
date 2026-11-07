@@ -13,6 +13,56 @@ public interface KeyHintProvider {
     /** Fills {@code out}, already cleared. */
     void collect(KeyHintFrame out);
 
+    /**
+     * Every hint the game knows, by where it applies, with the player's keys: what the classic
+     * controls panel (F1) lists, for a variant's own ({@code ClassicWindow.HELP}). Fills {@code out},
+     * already cleared. Asked when a screen shows it, not each frame. Leaves it empty by default.
+     */
+    default void collectAll(HelpFrame out) {
+    }
+
+    /** One place's keys on the controls panel: "At the helm", then its hints. */
+    final class HelpSection {
+        public String title = "";
+        public final Array<KeyHint> hints = new Array<>();
+        private final Array<KeyHint> pool = new Array<>();
+
+        public KeyHint add(String key, String label, String action) {
+            KeyHint h = pool.size > 0 ? pool.pop() : new KeyHint();
+            h.reset();
+            h.key = key == null ? "" : key;
+            h.label = label == null ? "" : label;
+            h.action = action == null ? "" : action;
+            hints.add(h);
+            return h;
+        }
+
+        void clear() {
+            title = "";
+            pool.addAll(hints);
+            hints.clear();
+        }
+    }
+
+    /** The controls panel's sections, in the classic panel's order. */
+    final class HelpFrame {
+        public final Array<HelpSection> sections = new Array<>();
+        private final Array<HelpSection> pool = new Array<>();
+
+        public HelpSection add(String title) {
+            HelpSection s = pool.size > 0 ? pool.pop() : new HelpSection();
+            s.clear();
+            s.title = title == null ? "" : title;
+            sections.add(s);
+            return s;
+        }
+
+        public void clear() {
+            pool.addAll(sections);
+            sections.clear();
+        }
+    }
+
     final class KeyHint {
         /** The keys, as the player bound them: "W/S", "Space", "Wheel". */
         public String key = "";
