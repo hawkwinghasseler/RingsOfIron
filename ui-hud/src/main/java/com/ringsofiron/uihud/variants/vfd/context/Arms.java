@@ -18,17 +18,19 @@ import java.util.Locale;
  * The ship's arms (functional-context 7, H7 and F2). H7, the armament strip, under the lock card at
  * the helm in a fight: the guns' state and who fires them, the missiles left across every launcher
  * and ready while any can fire, and on a hull with an emitter the shields raised or lowered and their
- * trim. F2, the weapons rack, in fire control's tower: a row per mount, the ones in hand marked, with
- * its weapon, state, hit chance on the Lock, missiles left for a launcher, and who fires it; at a gun
- * seat it shrinks to that gun's row and any launcher's. A launcher has no hit chance, so its missiles
- * left take that column ("4 LEFT"), and a name is never cut inside a word or off its number.
+ * trim. F2, the weapons rack, in fire control's tower: a row per mount by where it sits (NOSE, FWD
+ * PORT), the ones in the captain's hand marked, with its weapon, state, hit chance on the Lock,
+ * missiles left for a launcher, and who fires it; at a gun seat it shrinks to that gun's row and any
+ * launcher's. A launcher has no hit chance, so its missiles left take that column ("4 LEFT"), and a
+ * name is never cut inside a word or off its number. Point defense out of hand picks its own targets
+ * and reads PD; at its own gun seat it is in hand, a gun like any other (version 19).
  */
 final class Arms {
     static final int MOUNTS = 8;
     /**
-     * F2's columns, cells. The game names a mount by its place and kind, numbered when two share both,
-     * so a name runs to fifteen ("FWD STBD BEAM 2"), thirteen kept at a gun seat's narrower rack; a
-     * weapon to sixteen ("HARPOON LAUNCHER"); a state to thirteen ("RELOAD 10.5 S").
+     * F2's columns, cells. A mount is named by its place, the game's name less its kind, which the
+     * weapon says ("FWD STBD 2"), within fifteen, thirteen kept at a gun seat's narrower rack; a weapon
+     * to sixteen ("HARPOON LAUNCHER"); a state to thirteen ("RELOAD 10.5 S").
      */
     static final int NAME = 15, NAME_AT_GUN = 13, WEAPON = 16, STATE = 13;
     static final float HEADER = 16f, ROW = 24f;
@@ -128,12 +130,14 @@ final class Arms {
             if (rows == MOUNTS) break;
             if (gunSeat && m.kind != Kind.LAUNCHER && m.controller != Controller.PLAYER) continue;
             int i = rows++;
-            name[i] = mountName(m.name.isEmpty() ? "MOUNT " + (m.index + 1) : m.name, gunSeat ? NAME_AT_GUN : NAME);
+            String at = Fmt.place(m.name);
+            name[i] = mountName(m.name.isEmpty() ? "MOUNT " + (m.index + 1) : at.isEmpty() ? m.name : at, gunSeat ? NAME_AT_GUN : NAME);
             weapon[i] = Fmt.cut(m.weapon, WEAPON);
-            inHand[i] = m.kind != Kind.POINT_DEFENSE && (m.controller == Controller.PLAYER || m.controller == Controller.CONSOLE);
+            inHand[i] = m.controller == Controller.PLAYER;
             state[i] = mountState(m, d.targetStatus.present);
             bad[i] = !m.working();
-            boolean hits = m.kind != Kind.POINT_DEFENSE && m.kind != Kind.LAUNCHER && !Float.isNaN(m.hitChance) && d.targetStatus.present;
+            // Point defense in hand aims where the captain does, with a hit chance like any gun's
+            boolean hits = !hunts(m) && m.kind != Kind.LAUNCHER && !Float.isNaN(m.hitChance) && d.targetStatus.present;
             left[i] = m.kind == Kind.LAUNCHER && m.ammo >= 0;
             hit[i] = hits ? Integer.toString(Math.min(99, Math.round(m.hitChance * 100f)))
                     : left[i] ? Integer.toString(Math.min(99, m.ammo)) : "";
@@ -142,12 +146,17 @@ final class Arms {
         }
     }
 
+    /** Point defense left to itself, hunting missiles: any not in the captain's hand. */
+    static boolean hunts(Mount m) {
+        return m.kind == Kind.POINT_DEFENSE && m.controller != Controller.PLAYER;
+    }
+
     /** A mount's state in the rack's words: ready, reloading, no power, damaged, stunned, out of arc, engaging. */
     static String mountState(Mount m, boolean lock) {
         String s;
         switch (m.state) {
             case READY:
-                if (m.kind == Kind.POINT_DEFENSE) s = m.engaging ? "ENGAGING MSL" : "READY";
+                if (hunts(m)) s = m.engaging ? "ENGAGING MSL" : "READY";
                 else s = lock && !m.inArc && m.kind != Kind.LAUNCHER ? "OUT OF ARC" : "READY";
                 break;
             case RELOADING:
@@ -178,11 +187,12 @@ final class Arms {
         return name.substring(0, cells - tail.length()).stripTrailing() + tail;
     }
 
+    /** Who fires it: YOU with it in hand, PD for point defense left to itself, CREW at the gun or the console. */
     static String controller(Mount m) {
+        if (m.controller == Controller.PLAYER) return "YOU";
         if (m.kind == Kind.POINT_DEFENSE) return "PD";
         switch (m.controller) {
-            case PLAYER:
-            case CONSOLE: return "YOU";
+            case CONSOLE:
             case CREW: return "CREW";
             case AUTO: return "AUTO";
             default: return "";

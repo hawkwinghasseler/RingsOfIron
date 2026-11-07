@@ -172,6 +172,22 @@ public final class GameBootstrap {
         return this;
     }
 
+    /**
+     * Whether gun console {@code c} works a point-defense mount: in hand it shoots where the captain aims
+     * and leaves the missiles alone until it is let go ({@code PlayerGunnery.inHand}), so its prompt says so.
+     */
+    static boolean pointDefense(com.ringsofiron.uihud.components.InteractableConsoleComponent c) {
+        com.ringsofiron.combatsys.components.WeaponsComponent w = c.ship == null ? null
+                : c.ship.getComponent(com.ringsofiron.combatsys.components.WeaponsComponent.class);
+        if (w == null) return false;
+        for (com.ringsofiron.combatsys.components.WeaponMountComponent m : w.mounts) {
+            if (m.subsystem != null && m.subsystem.getComponent(com.ringsofiron.uihud.components.InteractableConsoleComponent.class) == c) {
+                return m.def != null && m.def.pointDefense;
+            }
+        }
+        return false;
+    }
+
     /** The seats, the view, and what the world tells the player: rescues, tows, ships bought and disabled. */
     private void listenToTheWorld(UiHud hud) {
         // E at a suit locker: a suit on, or hung back up
@@ -182,7 +198,8 @@ public final class GameBootstrap {
             // E opens a console's power panel; the helm, weapons console and guns are worked from their seat
             hud.getInteractPromptSystem().setPromptExtra(c -> "helm".equals(c.consoleId) ? "   [" + session.key(Action.VIEW) + "] sit and fly"
                     : "weapons".equals(c.consoleId) ? "   [" + session.key(Action.VIEW) + "] sit and fight"
-                    : "turret_mount".equals(c.consoleId) ? "   [" + session.key(Action.VIEW) + "] take the gun" : null);
+                    : "turret_mount".equals(c.consoleId) ? "   [" + session.key(Action.VIEW) + "] take the gun"
+                    + (pointDefense(c) ? " (point defense pauses)" : "") : null);
             // ... and their windows offer the same seat
             hud.registerConsoleExtra("weapons", (body, skin, console, data) ->
                     input.takeControlButton(body, skin, "Take fire control: every gun", SubsystemType.WEAPONS));

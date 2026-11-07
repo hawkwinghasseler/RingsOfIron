@@ -250,6 +250,71 @@ class VfdContextHudTest {
     }
 
     @Test
+    void theStationPanelSignsTheStandingAndNamesTheInfirmaryOnlyWhileItHasWorkOrABill() {
+        d.ctx.docked = true;
+        StationInfo st = d.navReadout.docked;
+        st.present = true;
+        st.name = "Highport";
+        st.market = st.infirmary = true;
+        st.standing = 0f;
+        frame(1280f, 800f);
+        assertEquals("+0", hud.panels.standing, "the game's number, signed");
+        assertEquals(1, hud.panels.lines, "an infirmary with nobody to treat says nothing");
+        st.standing = -12.4f;
+        st.treating.add("Ada");
+        frame(1280f, 800f);
+        assertEquals("-12", hud.panels.standing);
+        assertEquals(2, hud.panels.lines);
+        assertEquals("INFIRMARY: TREATING ADA", hud.panels.words[1]);
+        st.treating.add("Bram");
+        frame(1280f, 800f);
+        assertEquals("INFIRMARY: TREATING 2", hud.panels.words[1]);
+        st.treating.clear();
+        st.treated = 1;
+        st.treatedCost = 1_150;
+        frame(1280f, 800f);
+        assertEquals("INFIRMARY: 1 TREATED · 1,150 CR", hud.panels.words[1]);
+    }
+
+    @Test
+    void aTakenCraftSaysHowItWasTakenAndShowsOnlyTheRowsWithSomethingToSay() {
+        BoardingBoard board = new BoardingBoard();
+        board.craftName = "Hauler Kestrel";
+        board.disabled = board.taken = board.undefended = true;
+        board.state = "Taken";
+        for (double value : new double[] {100, 7_450}) board.addPart().value = value;
+        hud.layout(d, 1280f, 800f, 0.016f, false, board);
+        Panels p = hud.panels;
+        assertTrue(p.boarding);
+        assertEquals("TAKEN: UNDEFENDED", p.state);
+        assertFalse(p.partyRow, "nobody fought for it: no party to speak of");
+        assertTrue(p.salvRow);
+        assertFalse(p.anyMarked);
+        assertEquals("2", p.worth);
+        assertEquals("7,550 CR", p.worthCr);
+        assertFalse(p.cargoRow);
+        assertFalse(p.prisoners);
+        board.parts.first().marked = true;
+        board.undefended = false;
+        board.prisoners = 3;
+        board.berthsFree = 2;
+        board.addCargo().onOrder = 4;
+        board.addCargo();
+        hud.layout(d, 1280f, 800f, 0.016f, false, board);
+        assertEquals("TAKEN: CREW SURRENDERED", p.state);
+        assertTrue(p.partyRow);
+        assertTrue(p.anyMarked);
+        assertEquals("1", p.marked);
+        assertEquals("0", p.off);
+        assertTrue(p.cargoRow);
+        assertEquals("2", p.lots);
+        assertEquals("1", p.coming);
+        assertTrue(p.prisoners);
+        assertEquals("3", p.held);
+        assertEquals("2", p.berths);
+    }
+
+    @Test
     void aShipInReachIsABoardingOnlyOnceItIsBeaten() {
         BoardingBoard board = new BoardingBoard();
         board.craftName = "Hauler Kestrel";

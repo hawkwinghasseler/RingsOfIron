@@ -279,7 +279,9 @@ public class Boarding extends EntitySystem {
         if (!canTakeUndefended(ship, target)) return false;
         if (takenBy(target, ship)) return true;
         begin(ship, target);
-        take(target, BOARDED_M.get(target));
+        BoardedComponent b = BOARDED_M.get(target);
+        b.undefended = true;
+        take(target, b);
         return true;
     }
 

@@ -25,6 +25,8 @@ final class StationServices {
     private final FactionStanding standing;
     private final DockingSystem docking;
     private final Shipyard shipyard;
+    /** The infirmary's record of the docking; none by default. */
+    private StationInfirmary infirmary;
 
     StationServices(MacroSimulation macroSim, RailsUniverse universe, FactionStanding standing, DockingSystem docking, Shipyard shipyard) {
         this.macroSim = macroSim;
@@ -32,6 +34,12 @@ final class StationServices {
         this.standing = standing;
         this.docking = docking;
         this.shipyard = shipyard;
+    }
+
+    /** With {@code infirmary}, whose record of the docking the docked station's info carries. */
+    StationServices infirmary(StationInfirmary infirmary) {
+        this.infirmary = infirmary;
+        return this;
     }
 
     /** {@code station} as the player's {@code ship} would find it, into {@code out}. */
@@ -57,6 +65,14 @@ final class StationServices {
         out.hiring = open && trades;
         out.yard = open;
         out.infirmary = open;
+        out.treating.clear();
+        out.treated = 0;
+        out.treatedCost = 0;
+        if (open && infirmary != null && infirmary.recordAt() == station) {
+            out.treating.addAll(infirmary.treating());
+            out.treated = infirmary.treated();
+            out.treatedCost = infirmary.billed();
+        }
         out.shipyard = open && shipyard.sellsShips(station);
     }
 
