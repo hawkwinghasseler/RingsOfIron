@@ -126,6 +126,15 @@ public interface HudVariant {
     }
 
     /**
+     * Whether the captain may walk while the variant's screen for {@link ClassicWindow#CONSOLE} shows:
+     * a panel beside the console, which closes as they walk away ({@code HudData.ConsoleView#reach}),
+     * rather than a window that holds them at it. The game then lets the deck keys walk. False by default.
+     */
+    default boolean consoleLetsWalk() {
+        return false;
+    }
+
+    /**
      * How the full-screen map looks under this variant: a {@link MapPainter} that draws every piece of
      * it (the backdrop, the orbits, the bodies, the marks, the labels, the traffic, the burn handles,
      * the scale bar and the title), or null for the classic look. Read once, after {@link #attach}.
