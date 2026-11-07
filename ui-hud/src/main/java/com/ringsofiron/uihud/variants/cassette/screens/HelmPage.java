@@ -52,13 +52,17 @@ final class HelmPage extends FactsPage {
         if (!data.ctx.helmFault.isEmpty()) text(Fmt.upper(data.ctx.helmFault), Yard.P_RED);
 
         head("ORDERS", o.seated ? "BY KEY" : "GIVEN SEATED");
+        // Off the seat every order is refused alike, for want of the seat: the heading says so once
+        String shared = shared(o);
         for (int i = 0; i < ORDERS.length; i++) {
             HelmOrder h = ORDERS[i];
             String refusal = o.helmRefusal[h.ordinal()];
+            if (refusal != null && refusal.equals(shared)) refusal = "";
             boolean standing = o.helm == h;
             String says = standing ? "IN FORCE" : refusal == null || refusal.isEmpty() ? "READY" : Fmt.upper(refusal);
             fact(key(ACTIONS[i], KEYS[i]) + " " + WORDS[i], says, standing ? AMBER : refusal == null || refusal.isEmpty() ? AMBER : DIM);
         }
+        if (shared != null && shared.equals(o.autopilotRefusal)) o = withoutAutopilotRefusal(o);
         fact(key("AUTOPILOT", "6") + " AUTO", autopilot(o), o.autopilotRefusal.isEmpty() || o.autopilot != Autopilot.OFF ? AMBER : DIM);
 
         DockingApproach a = data.docking;
@@ -83,6 +87,26 @@ final class HelmPage extends FactsPage {
             fact("STRAIN", (Float.isNaN(a.strain) ? "--" : Math.round(a.strain * 100f) + "%") + (a.rigid ? ", RIGID" : ""), hard ? Yard.P_RED : AMBER);
         }
         keepSelection();
+    }
+
+    /** The refusal every order has alike while the captain isn't seated, or null when they differ or they are seated. */
+    static String shared(Orders o) {
+        if (o.seated) return null;
+        String first = o.helmRefusal[ORDERS[0].ordinal()];
+        if (first == null || first.isEmpty()) return null;
+        for (HelmOrder h : ORDERS) if (!first.equals(o.helmRefusal[h.ordinal()])) return null;
+        return first;
+    }
+
+    private final Orders quiet = new Orders();
+
+    /** The orders with the autopilot's shared refusal dropped, for its row. */
+    private Orders withoutAutopilotRefusal(Orders o) {
+        quiet.autopilot = o.autopilot;
+        quiet.autopilotTo = o.autopilotTo;
+        quiet.autopilotHeld = o.autopilotHeld;
+        quiet.autopilotRefusal = "";
+        return quiet;
     }
 
     private String key(String action, String fallback) {
