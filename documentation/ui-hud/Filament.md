@@ -134,3 +134,23 @@ terminal (market, yard, shipyard, missions, hire, with the station's rail), M4 b
 captain's record on the slate (log, career, standing, contracts), and M6 the controls card. P3 and X3
 still interrupt over a mode. `tools/playtest/windows-vfd.sh context` drives every mode in the game
 and screenshots each.
+
+**FILAMENT × Task** shows them as its spec's screens and panels (functional-task, section 7), one at
+a time, each standing for the window of its tab so the game's keys, Esc and the game's own checks
+work on it. A screen is a terminal across the screen under the band (`Terminal`: the tab keys along
+its top edge, a blank key in its fixed home for a tab the place doesn't offer, the header row with
+the place in fourteen segments and its figures in seven, the response line, the action keys along
+its foot) or the ship's book on its LCD (`BookFrame`: the tab keys down its left edge, CLOSE on Esc).
+Tab steps a screen's tabs, and the arrows, Enter and the page keys are the tab's:
+
+| Screen | Tabs | Opens on |
+|---|---|---|
+| The station terminal (`StationTerminal`) | Contracts, Market, Yard, Shipyard, Crew for hire, each only where the station offers it; the header row is the berth (the station, its owner and how they stand to the player, the standing, the credits, the hold, the contracts held). Away from a station, the crew's field refit on the Yard tab, or a prize in tow's terms on the Shipyard tab, alone | J, T, Y while docked; I at the Crew while it shows at a station that hires; Y away |
+| The ship's book (`ShipsBook`) | Ship, Crew, Contracts held, Career, the Log: every notice and alert since the game started, an alert once and stamped as it clears (`Logbook`; like the game's feed, not saved) | I at the Crew, L at the Log; J at the Contracts where there is no board |
+| The map (`MapScreen`) | The game's orbit canvas through a window in a plate, the body in fourteen segments over it with the view's keys; the Destination and Plan panes at its right (the target and the transfer, the contacts and the layers; the orbit, the burns, the delta-v left and the arrival, the orders that fly it), the plan's timeline along its foot | M |
+| The boarding panel (`BoardingPanel`) | Down the right under the band, the world beside it: the ship latched to, the party and its orders, then its parts, cargo and prisoners and a prize's terms; only the right column's widgets give way | K |
+| A console's panel (`ConsolePanel`) | A small terminal beside the console in the deck view, a dotted leader to a bracket on it, on the side away from the captain: the system's health, power and state, who works it, its switch on a soft key (a click alone; the reactor asks twice before going off), the system's own rows (the reactor's circuit and its draw over the last second; life support's air, the rooms it reaches, those cut off and why, the tanks and the reserve; a gun's weapon and who has it) and the game's orders at it with their keys. The helm and the weapons console open none: E sits there, as V does | E at a console; E, Esc or a walking key closes it, and it closes as the captain walks away, sits or leaves the ship |
+| The controls card (`ControlsCard`) | A printed card under the band, its Keyboard and Gamepad sides on index tabs; the keys for where the captain is first, then those that work anywhere, then the screens' own; the game's window keys say what they open here | F1, over any screen and closing back to it, so Esc takes the card before the screen |
+
+The ship lost lays `LostCard` over the dark HUD. `tools/playtest/windows-vfd-task.sh` drives every
+screen and panel in the game and screenshots each.
