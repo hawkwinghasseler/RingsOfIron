@@ -54,7 +54,24 @@ abstract class ListPage extends Page {
         return true;
     }
 
-    /** Draws row {@code i} on the tube's row {@code r}; when {@code selected} its bar is drawn already. */
+    /**
+     * Whether row {@code i} is the second line of the row above it, as a person's or a job's in a side
+     * panel: it is lit, clicked and kept in view with that row.
+     */
+    boolean belongsAbove(int i) {
+        return false;
+    }
+
+    /** The row that row {@code i} is part of: itself, or the one above it that it is the second line of. */
+    final int owner(int i) {
+        while (i > 0 && belongsAbove(i)) i--;
+        return i;
+    }
+
+    /**
+     * Draws row {@code i} on the tube's row {@code r}; when {@code selected} (or the row it is the
+     * second line of is) its bar is drawn already.
+     */
     abstract void row(YardPaint p, int i, int r, boolean selected);
 
     /** Says the soft keys for the selected row with {@link #softKey} (or none). */
@@ -262,18 +279,21 @@ abstract class ListPage extends Page {
             return;
         }
         if (follow && sel >= 0) {
+            // The selection's last line: its second line, when it has one
+            int end = sel;
+            while (end + 1 < n && belongsAbove(end + 1)) end++;
             if (sel < top) top = sel;
-            if (sel >= top + shownRows) top = sel - shownRows + 1;
-            // A heading just above the selection comes into view with it
-            if (sel == top && top > 0 && !selectable(top - 1)) top--;
+            if (end >= top + shownRows) top = Math.min(sel, end - shownRows + 1);
+            // A heading just above the selection comes into view with it, while the selection still fits
+            if (sel == top && top > 0 && !selectable(top - 1) && !belongsAbove(top - 1) && end < top - 1 + shownRows) top--;
         }
         top = Math.max(0, Math.min(top, n - shownRows));
         for (int r = 0; r < shownRows && top + r < n; r++) {
-            int i = top + r, rr = r0 + r;
-            boolean s = i == sel;
+            int i = top + r, rr = r0 + r, o = owner(i);
+            boolean s = o == sel;
             if (s) L.bar(p, rr);
             row(p, i, rr, s);
-            if (selectable(i)) hits.add(p, L.x, L.rowTop(rr), L.w, Ledger.ROW, this, ROW + i);
+            if (selectable(o)) hits.add(p, L.x, L.rowTop(rr), L.w, Ledger.ROW, this, ROW + o);
         }
         L.meter(p, r0, r1, top, shownRows, n);
     }

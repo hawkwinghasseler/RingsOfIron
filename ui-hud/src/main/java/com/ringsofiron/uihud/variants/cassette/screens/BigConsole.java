@@ -1,5 +1,6 @@
 package com.ringsofiron.uihud.variants.cassette.screens;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.MathUtils;
@@ -18,10 +19,17 @@ import com.ringsofiron.uihud.variants.cassette.YardPart;
  * equipment, in its livery, with the rail of credits, standing, hold and tanks on every tab and the
  * jack that patches it into the ship.
  *
+ * <p>Or a side panel (the Stations spec's 10.1), 480 wide at the right with the world beside it: a title
+ * bar (the station's badge, name, owner, credits and hold, or the slate's rank, ship and credits), the
+ * tabs as piano keys under it, the body, and a foot with the response line over the keys of its tabs and
+ * Esc. A tab whose page needs the room still draws across the screen, as the big console does.
+ *
  * <p>Drawn in its own units, (0, 0) its top left: the head is 30 tall, the foot 27, the body between.
  */
 final class BigConsole extends YardPart implements Hits.Target {
     static final float HEAD_H = 30f, FOOT_H = 27f, RAIL_W = 316f;
+    /** The side panel's width, its title bar, a row of its tabs, and its foot (Stations, 10.1 and 6.2). */
+    static final float SIDE_W = 480f, SIDE_TITLE_H = 42f, SIDE_TAB_ROW = 28f, SIDE_FOOT_H = 52f;
     /** Seconds the console takes to rise into place. */
     static final float RISE = 0.45f;
 
@@ -63,6 +71,12 @@ final class BigConsole extends YardPart implements Hits.Target {
     private HudData data;
     /** The foot's feed: the newest notice, or a page's answer for a while. */
     private final FeedTube feed = new FeedTube();
+    /** Hangs as a side panel at the right while its page can (the Stations spec's panels), else across the screen. */
+    private boolean side;
+    /** The tab rows the side panel's keys took as last drawn: two when one row won't hold their legends. */
+    private int tabRows = 1;
+    private String creditsText = "", holdText = "";
+    private double creditsAt = Double.NaN, heldAt = Double.NaN, capAt = Double.NaN;
 
     BigConsole(Livery livery, String nameplate, Boards boards) {
         super(0f, 0f);
@@ -76,6 +90,25 @@ final class BigConsole extends YardPart implements Hits.Target {
     BigConsole shipName() {
         shipFlaps = true;
         return this;
+    }
+
+    /**
+     * Hangs it as a side panel at the right, the world and the band left in view (the Stations spec's
+     * panels). Its tabs turn on the windows' own keys, Tab and a click: the number keys stay the seat's.
+     */
+    BigConsole side() {
+        side = true;
+        return this;
+    }
+
+    /** Whether it is a side panel ({@link #side()}). */
+    boolean isSide() {
+        return side;
+    }
+
+    /** Whether it hangs at the right now: a side panel on a tab whose page fits it. */
+    boolean hangsAtSide() {
+        return side && current != null && current.fitsSide();
     }
 
     BigConsole add(Page p) {
@@ -182,6 +215,15 @@ final class BigConsole extends YardPart implements Hits.Target {
      * its last tab, so a helm order on them waits until it closes (Context, section 10).
      */
     boolean key(int keycode) {
+        if (side) {
+            // The seat keeps its number keys (the helm's orders): Tab steps the tabs, Shift+Tab back
+            if (keycode == Input.Keys.TAB) {
+                boolean back = Gdx.input != null && (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT));
+                flip(back ? -1 : 1);
+                return true;
+            }
+            return current != null && current.key(keycode);
+        }
         if (keycode >= Input.Keys.NUM_1 && keycode <= Input.Keys.NUM_9) {
             tab(keycode - Input.Keys.NUM_0);
             return true;
@@ -206,10 +248,20 @@ final class BigConsole extends YardPart implements Hits.Target {
 
     /** How far it still has to rise: a 2-unit bump at the top as it settles. */
     float riseOffset() {
+        if (hangsAtSide()) return 0f;
         float t = MathUtils.clamp(riseT / RISE, 0f, 1f);
         if (t >= 1f) return 0f;
         float e = 1f - (1f - t) * (1f - t) * (1f - t);
         return (1f - e) * h * 0.35f - MathUtils.sin(t * MathUtils.PI) * 2f;
+    }
+
+    /** How far a side panel still has to slide in from the right edge, with a 2-unit bump as it settles. */
+    float slideOffset() {
+        if (!hangsAtSide()) return 0f;
+        float t = MathUtils.clamp(riseT / RISE, 0f, 1f);
+        if (t >= 1f) return 0f;
+        float e = 1f - (1f - t) * (1f - t) * (1f - t);
+        return (1f - e) * (SIDE_W + 24f) - MathUtils.sin(t * MathUtils.PI) * 2f;
     }
 
     @Override
@@ -224,8 +276,8 @@ final class BigConsole extends YardPart implements Hits.Target {
 
     @Override
     public void hit(int code) {
-        // The tabs' piano keys
-        tab(code + 1);
+        // The tabs' piano keys, and a side panel's keys in its foot
+        tab((code >= FOOT_KEY ? code - FOOT_KEY : code) + 1);
     }
 
     // --- Drawing -----------------------------------------------------------------------------
@@ -233,6 +285,10 @@ final class BigConsole extends YardPart implements Hits.Target {
     @Override
     protected void draw(YardPaint p) {
         hits.clear();
+        if (hangsAtSide()) {
+            drawSide(p);
+            return;
+        }
         boolean liv = livery == Livery.STATION;
         float bodyTop = HEAD_H, footTop = h - FOOT_H;
         // The body's ground, then the head
@@ -283,25 +339,175 @@ final class BigConsole extends YardPart implements Hits.Target {
         if (n == 0) return x;
         float kw = liv ? 104f : 100f, kh = 24f, gap = 3f, y = 3f;
         p.rrect(x - 3f, y - 3f, n * (kw + gap) - gap + 6f, kh + 6f, 2.5f, Yard.BAKELITE);
-        for (int i = 0; i < n; i++) {
-            Page pg = tabs.get(i);
-            float kx = x + i * (kw + gap);
-            boolean dn = pg == current, jewel = pg.jewel();
-            float ky = y + (dn ? 2f : 0f);
-            if (!dn) p.rrect(kx + 0.5f, ky + 1.5f, kw, kh - 2f, 2f, Color.BLACK, 0.4f);
-            p.rrect(kx, ky, kw, kh - 2f, 2f, dn ? KEY_DOWN : KEY_UP);
-            p.rect(kx + 2f, ky + 0.8f, kw - 4f, 1f, Color.WHITE, 0.5f);
-            if (dn) p.rect(kx, y + kh - 4f, kw, 3f, Yard.ORANGE);
-            p.key(kx + 6f, ky + 3.5f, DIGITS[Math.min(i + 1, 9)]);
-            float jw = jewel ? 14f : 0f, lx = kx + 21f + (kw - 21f - jw) / 2f - 2f;
-            p.textC(YardFonts.Face.LEGEND, 12f, pg.label, lx, y + kh / 2f + 12f * 0.36f + (dn ? 1f : -1f), Yard.INK);
-            if (jewel) p.lamp(kx + kw - 12f, ky + 10f, 2.4f, Yard.AMBER_LAMP, true);
-            hits.add(p, kx, y, kw, kh, this, i);
-        }
+        for (int i = 0; i < n; i++) pianoKey(p, x + i * (kw + gap), y, kw, kh, i);
         return x + n * (kw + gap) - gap;
     }
 
+    /** Tab {@code i}'s piano key at ({@code kx}, {@code y}): down with its orange foot while open, its jewel lit while its page waits. */
+    private void pianoKey(YardPaint p, float kx, float y, float kw, float kh, int i) {
+        Page pg = tabs.get(i);
+        boolean dn = pg == current, jewel = pg.jewel();
+        float ky = y + (dn ? 2f : 0f);
+        if (!dn) p.rrect(kx + 0.5f, ky + 1.5f, kw, kh - 2f, 2f, Color.BLACK, 0.4f);
+        p.rrect(kx, ky, kw, kh - 2f, 2f, dn ? KEY_DOWN : KEY_UP);
+        p.rect(kx + 2f, ky + 0.8f, kw - 4f, 1f, Color.WHITE, 0.5f);
+        if (dn) p.rect(kx, y + kh - 4f, kw, 3f, Yard.ORANGE);
+        // A side panel's number keys are the seat's: its tabs have no digit
+        if (!side) p.key(kx + 6f, ky + 3.5f, DIGITS[Math.min(i + 1, 9)]);
+        float dw = side ? 0f : 21f, jw = jewel ? 14f : 0f, lx = kx + dw + (kw - dw - jw) / 2f - (side ? 0f : 2f);
+        p.textC(YardFonts.Face.LEGEND, 12f, pg.label, lx, y + kh / 2f + 12f * 0.36f + (dn ? 1f : -1f), Yard.INK);
+        if (jewel) p.lamp(kx + kw - 12f, ky + 10f, 2.4f, Yard.AMBER_LAMP, true);
+        hits.add(p, kx, y, kw, kh, this, i);
+    }
+
     private static final String[] DIGITS = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+
+    // --- The side panel ----------------------------------------------------------------------
+
+    /** Where a side panel's body starts: under its title bar and the rows of its tabs as last drawn. */
+    float sideBodyTop() {
+        return SIDE_TITLE_H + 6f + tabRows * SIDE_TAB_ROW + 2f;
+    }
+
+    /**
+     * A side panel: the title bar in its livery, the tabs on a row of piano keys under it (two rows when
+     * one won't hold their legends), the page, and the foot with the response line over the tabs' keys.
+     */
+    private void drawSide(YardPaint p) {
+        boolean liv = livery == Livery.STATION;
+        if (liv) p.vgrad(0f, 0f, w, h, LIV_DEEP_TOP, LIV_DEEP_FOOT);
+        else p.vgrad(0f, 0f, w, h, Yard.CHASSIS_TOP, Yard.CHASSIS_BOTTOM);
+        if (liv) p.vgrad(0f, 0f, w, SIDE_TITLE_H, LIV_TOP, LIV_FOOT);
+        else p.vgrad(0f, 0f, w, SIDE_TITLE_H, Yard.ENAMEL_TOP, Yard.ENAMEL_BOTTOM);
+        p.rect(0f, 0f, w, 1f, Color.WHITE, 0.18f);
+        p.rect(0f, SIDE_TITLE_H - 3f, w, 3f, liv ? LIV_STRIPE : SHIP_STRIPE);
+        p.rect(0f, SIDE_TITLE_H, w, 1.5f, SEAM);
+        title(p, liv);
+        tabRows = pianoSide(p, 12f, SIDE_TITLE_H + 6f, w - 24f);
+        float bodyTop = sideBodyTop(), footTop = h - SIDE_FOOT_H;
+        if (current != null) current.draw(p, hits, 0f, bodyTop, w, footTop - bodyTop);
+        footSide(p, footTop, liv);
+        // The case's edge and its four screws
+        p.frame(0f, 0f, w, h, 1f, Yard.hex("0B0908"), 0.9f);
+        p.screw(5.5f, 5.5f);
+        p.screw(w - 5.5f, 5.5f);
+        p.screw(5.5f, h - 5.5f);
+        p.screw(w - 5.5f, h - 5.5f);
+    }
+
+    /**
+     * The title bar: a station's badge, name and owner, its credits on drums and the hold used on a bar;
+     * or the slate's plate, the ship's name and the captain's rank, and the credits.
+     */
+    private void title(YardPaint p, boolean liv) {
+        Color ink = liv ? LIV_INK : Yard.INK, ink2 = liv ? LIV_INK2 : Yard.INK;
+        float right = w - 14f;
+        // The hold, a station's: used of its capacity on a bar, the figures after it
+        if (liv && boards.trade.hasHold) {
+            double held = boards.trade.cargoUsed, cap = boards.trade.cargoCapacity;
+            if (held != heldAt || cap != capAt) {
+                heldAt = held;
+                capAt = cap;
+                holdText = Math.round(held) + "/" + Math.round(cap);
+            }
+            float tw = p.width(YardFonts.Face.LEGEND, 12f, holdText);
+            p.text(YardFonts.Face.LEGEND, 12f, holdText, right - tw, 31f, ink);
+            float bw = 62f, bx = right - tw - 8f - bw;
+            p.text(YardFonts.Face.LEGEND, 10f, "HOLD M³", bx, 14.5f, ink2);
+            StationRail.bar(p, bx, 22f, bw, cap <= 0 ? 0f : (float) (held / cap));
+            right = bx - 18f;
+        }
+        // The credits: the market's, or the yard's (in the field too) where there is no market
+        double credits = boards.trade.isDocked() ? boards.trade.credits : boards.yard.credits;
+        boolean known = boards.trade.isDocked() || boards.yard.field || !boards.yard.stationName.isEmpty();
+        if (known) {
+            if (credits != creditsAt) {
+                creditsAt = credits;
+                creditsText = String.format(java.util.Locale.ROOT, "%05d", Math.max(0L, Math.round(credits)));
+            }
+            float cw = YardPaint.drumWidth(creditsText, 11f);
+            p.text(YardFonts.Face.LEGEND, 10f, "CREDITS", right - cw - 3f, 14.5f, ink2);
+            p.drums(right - cw, 19f, creditsText, 11f, 17f, 13.5f, true);
+            right -= cw + 20f;
+        }
+        // The plate at the left: the owner's badge at a station, the slate's own on the ship's
+        float nx = 14f;
+        String plate = liv ? boards.badge : nameplate;
+        if (!plate.isEmpty()) {
+            float pw = Math.max(32f, p.width(YardFonts.Face.LEGEND, 11f, plate) + 12f);
+            p.rrect(12f, 9f, pw, 24f, 2f, liv ? BADGE : Yard.BAKELITE);
+            p.textC(YardFonts.Face.LEGEND, 11f, plate, 12f + pw / 2f, 25f, liv ? LIV_INK : Yard.INK_LIGHT);
+            nx = 12f + pw + 9f;
+        }
+        String name = liv ? boards.stationCaps : boards.shipCaps, under = liv ? boards.ownerCaps : boards.rankCaps;
+        float room = Math.max(40f, right - nx);
+        float size = 17f, nw = p.width(YardFonts.Face.LEGEND, size, name);
+        if (nw > room) size = Math.max(12f, size * room / nw);
+        p.text(YardFonts.Face.LEGEND, size, name, nx, under.isEmpty() ? 27f : 22f, liv ? NAME_INK : Yard.INK);
+        if (!under.isEmpty()) p.legendFit(under, nx, 35.5f, room, ink2);
+    }
+
+    /** The side panel's tabs as piano keys across the panel, in two rows when one row won't hold their legends. Returns the rows. */
+    private int pianoSide(YardPaint p, float x, float y, float aw) {
+        int n = tabs.size;
+        if (n == 0) return 1;
+        float gap = 3f, kh = 22f, need = 0f;
+        for (int i = 0; i < n; i++) {
+            Page pg = tabs.get(i);
+            need = Math.max(need, p.width(YardFonts.Face.LEGEND, 12f, pg.label) + (pg.jewel() ? 30f : 14f));
+        }
+        int perRow = n, rows = 1;
+        float kw = (aw - (n - 1) * gap) / n;
+        if (kw < need && n > 1) {
+            rows = 2;
+            perRow = (n + 1) / 2;
+            kw = (aw - (perRow - 1) * gap) / perRow;
+        }
+        kw = Math.min(kw, 110f);
+        for (int r = 0; r < rows; r++) {
+            int inRow = Math.min(perRow, n - r * perRow);
+            float ry = y + r * SIDE_TAB_ROW;
+            p.rrect(x - 3f, ry - 3f, inRow * (kw + gap) - gap + 6f, kh + 6f, 2.5f, Yard.BAKELITE);
+        }
+        for (int i = 0; i < n; i++) pianoKey(p, x + (i % perRow) * (kw + gap), y + (i / perRow) * SIDE_TAB_ROW, kw, kh, i);
+        return rows;
+    }
+
+    /** Hit codes of the foot's tab keys, from {@code FOOT_KEY}: the tab's index. */
+    private static final int FOOT_KEY = 100;
+
+    /**
+     * The side panel's foot: the response line across it, then the window key of each tab that has one
+     * with the tab's legend, and Esc at the right. Each key turns to its tab on a click as its key does.
+     */
+    private void footSide(YardPaint p, float y, boolean liv) {
+        if (liv) p.vgrad(0f, y, w, SIDE_FOOT_H, LIV_TOP, LIV_FOOT);
+        else p.rect(0f, y, w, SIDE_FOOT_H, Yard.CHASSIS_DEEP);
+        p.rect(0f, y, w, 1.5f, Yard.hex("0B0908"));
+        feed.draw(p, data, 10f, y + 6f, w - 20f);
+        Color ink = liv ? LIV_INK : Yard.INK_LIGHT;
+        float ky = y + 30f;
+        float ex = w - 14f - p.width(YardFonts.Face.LEGEND, 12f, "CLOSE");
+        p.legend("CLOSE", ex, ky + 11.5f, ink);
+        ex -= 5f + p.keyWidth("ESC");
+        p.key(ex, ky, "ESC");
+        float x = 14f;
+        int seen = 0;
+        for (int i = 0; i < tabs.size; i++) {
+            Page pg = tabs.get(i);
+            String k = pg.windowKey();
+            if (k == null || k.length() != 1) continue;
+            int bit = 1 << ((k.charAt(0) - 'A') & 31);
+            if ((seen & bit) != 0) continue;
+            seen |= bit;
+            float kw = p.keyWidth(k), lw = p.width(YardFonts.Face.LEGEND, 12f, pg.label);
+            if (x + kw + 5f + lw > ex - 12f) break;
+            p.key(x, ky, k);
+            p.legend(pg.label, x + kw + 5f, ky + 11.5f, ink);
+            hits.add(p, x, ky - 2f, kw + 5f + lw, 19f, this, FOOT_KEY + i);
+            x += kw + 5f + lw + 14f;
+        }
+    }
 
     /** The foot: the newest notice, or a page's answer, on the feed tube; the close keys from the right. */
     private void foot(YardPaint p, float y) {

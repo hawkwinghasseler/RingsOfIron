@@ -76,7 +76,13 @@ final class LogPage extends Page {
         AlertRegistry.Level level;
         boolean important;
         double time, cleared = Double.NaN;
+        /** In a side panel, its words broken to the roll's width ({@link #wrapChars} a line), or null until broken. */
+        final Array<String> wrap = new Array<>();
+        int wrapChars = -1;
     }
+
+    /** Whether it drew in a side panel last frame: its controls in two rows, a line's words run on under it. */
+    private boolean narrow;
 
     LogPage() {
         super("LOG", "LOG", ClassicWindow.LOG);
@@ -99,6 +105,11 @@ final class LogPage extends Page {
 
     @Override
     boolean offered() {
+        return true;
+    }
+
+    @Override
+    boolean fitsSide() {
         return true;
     }
 
@@ -212,6 +223,7 @@ final class LogPage extends Page {
         r.time = time;
         r.source = src;
         r.cleared = cleared;
+        r.wrapChars = -1;
         rows.add(r);
     }
 
@@ -383,6 +395,11 @@ final class LogPage extends Page {
 
     @Override
     void draw(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        narrow = w < 700f;
+        if (narrow) {
+            drawNarrow(p, hits, x, y, w, h);
+            return;
+        }
         float bx = x + 8f, by = y + 6f, bw = w - 16f, bh = h - 12f;
         BigConsole.bay(p, bx, by, bw, bh, "NOTICE LOG", false);
         // The least severity, or kept once the kind: interlocked keys at the bay's head, engraved
@@ -466,5 +483,146 @@ final class LogPage extends Page {
         p.screw(rx + rw + 12f, platen + 50f);
         // Fed back from the newest: how far, on the case
         if (back > 0) p.legend("FED BACK " + back, rx, platen + 40f, Yard.MUSTARD);
+    }
+
+    /**
+     * In a side panel (the slate's Log, Stations 10.4): the controls in two rows at the bay's head, the
+     * least severity (or kept once, the kind) over the source; under them the roll, each line's words
+     * run on under its stamp where the panel is too narrow for them, the source typed faded before them.
+     */
+    private void drawNarrow(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        float bx = x + 8f, by = y + 4f, bw = w - 16f, bh = h - 8f;
+        BigConsole.bay(p, bx, by, bw, bh, null, false);
+        String[] keys = filters();
+        String label = once ? "SHOW" : "AT LEAST";
+        float lx = bx + 16f, kh = 24f;
+        float col = Math.max(p.width(YardFonts.Face.LEGEND, 12f, label), once ? 0f : p.width(YardFonts.Face.LEGEND, 12f, "FROM")) + 12f;
+        float kx = lx + col, kw = Math.min(once ? 92f : 84f, (bx + bw - 16f - kx) / keys.length - 3f);
+        float ry = by + 8f;
+        p.legend(label, lx, ry + 16f, Yard.INK);
+        p.rrect(kx - 3f, ry - 3f, keys.length * (kw + 3f) + 3f, kh + 6f, 2.5f, Yard.BAKELITE);
+        for (int i = 0; i < keys.length; i++) {
+            float fx = kx + i * (kw + 3f);
+            boolean dn = i == filter;
+            float fy = ry + (dn ? 2f : 0f);
+            if (!dn) p.rrect(fx + 0.5f, fy + 1.5f, kw, kh - 2f, 2f, Color.BLACK, 0.4f);
+            p.rrect(fx, fy, kw, kh - 2f, 2f, dn ? BigConsole.KEY_DOWN : BigConsole.KEY_UP);
+            if (dn) p.rect(fx, ry + kh - 4f, kw, 3f, Yard.ORANGE);
+            p.textC(YardFonts.Face.LEGEND, 12f, keys[i], fx + kw / 2f, ry + kh / 2f + 4.3f + (dn ? 1f : -1f), Yard.INK);
+            hits.add(p, fx, ry, kw, kh, this, i);
+        }
+        float bankW = keys.length * (kw + 3f) + 3f;
+        if (focus == SEVERITY) p.frame(kx - 6f, ry - 5.5f, bankW + 6f, kh + 11f, 2f, Yard.ORANGE, 0.95f);
+        float top = ry + kh + 14f;
+        if (!once) {
+            // The source on its flaps, under the severity, between a step down and a step up
+            float sy = top;
+            p.legend("FROM", lx, sy + 16f, Yard.INK);
+            float fx = kx;
+            p.keyButton(fx, sy, 22f, 22f, "-");
+            hits.add(p, fx, sy, 22f, 22f, this, HIT_SOURCE_DOWN);
+            String name = source.isEmpty() ? "ALL" : source;
+            float cells = 11, cw = 11f, flapsX = fx + 28f;
+            p.flaps(flapsX, sy, name, (int) cells, cw, 22f, 14f, Yard.FLAP_TEXT);
+            float upX = flapsX + cells * cw + 6f;
+            p.keyButton(upX, sy, 22f, 22f, "+");
+            hits.add(p, upX, sy, 22f, 22f, this, HIT_SOURCE_UP);
+            if (focus == SOURCE) p.frame(fx - 4f, sy - 4.5f, upX + 26f - fx, 31f, 2f, Yard.ORANGE, 0.95f);
+            top = sy + 22f + 14f;
+        }
+        // The roll, rising out of the teleprinter's platen
+        float rw = bw - 48f, rx = bx + 24f;
+        float caseH = 42f, platen = by + bh - caseH - 8f;
+        p.rect(rx + 2f, top + 3f, rw, platen - top, Yard.SHADOW, 0.5f);
+        p.vgrad(rx, top, rw, platen - top, ROLL_TOP, ROLL_FOOT);
+        p.rect(rx, top, rw, 10f, Color.BLACK, 0.08f);
+        hits.add(p, rx, top, rw, platen - top, this, HIT_ROLL);
+        // The stamp, then the words: run on under the stamp's end where they don't fit one line
+        float textX = rx + 110f;
+        int chars = Math.max(12, (int) ((rx + rw - 12f - textX) / 7.6f));
+        float ly = platen - 12f, floor = top + 16f;
+        clampTo(Math.max(1, shown));
+        int k = back, drawn = 0;
+        while (k < rows.size) {
+            Row m = rows.get(k);
+            wrap(m, chars);
+            int n = m.wrap.size;
+            float first = ly - (n - 1) * LINE;
+            // The oldest in view shows from its first line, or not at all
+            if (first < floor && drawn > 0) break;
+            boolean warn = m.level == AlertRegistry.Level.WARNING, caut = m.level == AlertRegistry.Level.CAUTION;
+            Color ink = warn ? Paper.STAMP : Paper.INK;
+            for (int j = 0; j < n; j++) {
+                float yy = first + j * LINE;
+                if (yy < floor) continue;
+                String t = m.wrap.get(j);
+                float tx = textX;
+                if (j == 0) {
+                    if (warn) p.diamond(rx + 16f, yy - 4.5f, 4.5f, Paper.STAMP);
+                    else if (caut) p.triangle(rx + 16f, yy - 4.5f, 5f, Paper.INK);
+                    else if (m.important) p.circle(rx + 16f, yy - 4.5f, 3f, Yard.AVOCADO);
+                    p.typed(m.stamp, rx + 28f, yy, 13f, Paper.FADED);
+                    if (!m.source.isEmpty()) tx += p.typed(m.source + "  ", tx, yy, 13f, Paper.FADED);
+                }
+                // The clearing, kept once, is typed faded after the words on the last line
+                boolean tail = j == n - 1 && !Double.isNaN(m.cleared);
+                String words = tail && t.endsWith(TAIL_MARK) ? t.substring(0, t.length() - TAIL_MARK.length()) : t;
+                float ww = p.typed(words, tx, yy, 13f, ink);
+                if (tail) p.typed((words.isEmpty() ? "" : "  ") + cleared(m.time, m.cleared), tx + ww, yy, 13f, Paper.FADED);
+            }
+            ly = first - LINE - 4f;
+            drawn++;
+            k++;
+            if (ly < floor) break;
+        }
+        shown = Math.max(1, drawn);
+        if (rows.size == 0) p.typed(filter == 0 && source.isEmpty() ? "Nothing logged yet" : "Nothing of this kind logged", rx + 28f, platen - 12f, 13f, Paper.FADED);
+        // The teleprinter's case and platen, shallower than the console's
+        p.rrect(rx - 16f + 2f, platen + 2f, rw + 32f, caseH, 5f, Yard.SHADOW, 0.6f);
+        p.vgrad(rx - 16f, platen - 2f, rw + 32f, caseH, CASE, CASE_FOOT);
+        p.rect(rx - 12f, platen - 1.5f, rw + 24f, 1f, Color.WHITE, 0.1f);
+        p.rrect(rx - 8f, platen, rw + 16f, 12f, 5f, PLATEN);
+        p.rect(rx - 6f, platen + 2f, rw + 12f, 2f, Color.WHITE, 0.08f);
+        if (focus == ROLL) p.rect(rx - 6f, platen + 9f, rw + 12f, 2f, Yard.ORANGE);
+        p.textC(YardFonts.Face.LEGEND, 12f, "TELEPRINTER", rx + rw / 2f, platen + 31f, Yard.INK_LIGHT);
+        p.screw(rx - 6f, platen + 27f);
+        p.screw(rx + rw + 6f, platen + 27f);
+        if (back > 0) p.legend("FED BACK " + back, rx + 8f, platen + 31f, Yard.MUSTARD);
+    }
+
+    /** Marks a broken line's end where the clearing is to be typed after its words. */
+    private static final String TAIL_MARK = "\u0000";
+
+    /**
+     * Breaks {@code m}'s words to {@code chars} a line, the first line short by its source, and leaves
+     * room on the last for the clearing ("cleared 14:31") or gives it a line of its own.
+     */
+    private static void wrap(Row m, int chars) {
+        if (m.wrapChars == chars) return;
+        m.wrapChars = chars;
+        m.wrap.clear();
+        String t = m.text;
+        int room = chars - (m.source.isEmpty() ? 0 : m.source.length() + 2);
+        while (!t.isEmpty()) {
+            int at = CrewPage.breakAt(t, Math.max(6, room));
+            m.wrap.add(t.substring(0, at));
+            t = t.substring(at).trim();
+            room = chars;
+        }
+        if (m.wrap.size == 0) m.wrap.add("");
+        if (!Double.isNaN(m.cleared)) {
+            int tail = 2 + cleared(m.time, m.cleared).length();
+            String last = m.wrap.peek();
+            int lastRoom = m.wrap.size == 1 && !m.source.isEmpty() ? chars - m.source.length() - 2 : chars;
+            if (last.length() + tail <= lastRoom) m.wrap.set(m.wrap.size - 1, last + TAIL_MARK);
+            else m.wrap.add(TAIL_MARK);
+        }
+    }
+
+    /** Keeps the lines fed back within what is logged, for a roll that shows {@code n}. */
+    private void clampTo(int n) {
+        int max = Math.max(0, rows.size - n);
+        if (back > max) back = max;
+        if (back < 0) back = 0;
     }
 }

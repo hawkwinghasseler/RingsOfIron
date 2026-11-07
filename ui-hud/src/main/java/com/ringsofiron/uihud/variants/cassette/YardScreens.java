@@ -46,6 +46,30 @@ public final class YardScreens {
         return this;
     }
 
+    /**
+     * Has the windows be the Stations spec's panels: the Station link and the slate as side panels 480
+     * wide at the right, the band and the world left in view, the yard's tabs across the screen.
+     */
+    public YardScreens panels(boolean on) {
+        windows.panels(on);
+        return this;
+    }
+
+    /** Where a side panel stops, from the top in design units: above the seated band, or 0 for 16 from the foot. */
+    public void panelBottom(float y) {
+        windows.panelBottom(y);
+    }
+
+    /** Whether a side panel hangs at the right now, the band and the world beside it. */
+    public boolean sideUp() {
+        return windows.sideUp();
+    }
+
+    /** The left edge of the side panel up now, in design units. */
+    public float sideLeft() {
+        return windows.sideLeft();
+    }
+
     /** The paint the map and the windows share, made the first time; needs GL. */
     private YardPaint paint() {
         if (paint == null) {
