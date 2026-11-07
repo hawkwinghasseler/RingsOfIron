@@ -47,5 +47,5 @@ key k; pause 1.5; shot w-12-boarding
 cmd dev "world.boarding.order(player)"; pause 4; shot w-13-boarding-party
 key Escape; pause 1
 # The career over: the ship-lost card over the deck's displays
-cmd dev "world.@careerOver = 'Your sponsor has struck you off its books.'"; pause 3; shot w-14-career-over
+cmd dev "world.@careerOver = 'nobody was left to bring you home'"; pause 3; shot w-14-career-over
 finish
