@@ -90,4 +90,17 @@ class FmtTest {
         assertEquals(4, Fmt.segCells("12:04"));
         assertEquals(1, Fmt.segCells("."));
     }
+
+    @Test
+    void aGunsMountIsWhereItSitsLessTheKindTheWeaponAlreadySays() {
+        assertEquals("FWD PORT", Fmt.place("FWD PORT PD"));
+        assertEquals("NOSE", Fmt.place("NOSE GUN"));
+        assertEquals("AFT STBD", Fmt.place("aft stbd msl"));
+        assertEquals("STBD", Fmt.place("STBD BEAM"));
+        assertEquals("PORT 2", Fmt.place("PORT PD 2"));
+        // A mount the game could not place has no place: it keeps its whole name
+        assertEquals("", Fmt.place("PD"));
+        assertEquals("", Fmt.place("GUN 2"));
+        assertEquals("", Fmt.place(null));
+    }
 }

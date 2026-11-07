@@ -63,7 +63,7 @@ public class GameHud implements Disposable {
         // Ships for sale at the docked station and the prize in tow, for the shipyard window (the [Y] yard's Ships for sale).
         hud.setShipyard(new ShipyardWork(world.context, world.standing, world.shipyard));
         // The ship latched to, for the [K] boarding window: boarding it, then stripping it.
-        hud.setBoarding(new BoardingWork(world.context, world.docking, world.boarding, world.salvage));
+        hud.setBoarding(new BoardingWork(world.context, world.docking, world.boarding, world.salvage, world.crewHiring));
         // The player's crew, the station's hires and the prisoners, for the [I] crew window.
         hud.setCrew(new CrewRoster(world.context, world.crew, world.macroSim, world.standing, world.crewCareer, world.crewHiring, world.medical, world.prisoners, world.spacewalks));
         hullHits = (signal, hit) -> {
@@ -98,7 +98,8 @@ public class GameHud implements Disposable {
     static void wireFlightAndPosts(com.ringsofiron.uihud.data.HudData data, GameWorld world) {
         data.flight = new PlayerFlightStatus(world.context, world.docking, world.sensors, world.nav,
                 new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
-        StationServices services = new StationServices(world.macroSim, world.universe, world.standing, world.docking, world.shipyard);
+        StationServices services = new StationServices(world.macroSim, world.universe, world.standing, world.docking, world.shipyard)
+                .infirmary(world.infirmary);
         data.navigation = new PlayerNavigation(world.context, world.nav, world.docking, world.contracts, world.universe,
                 world.pirateBase, new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), services);
         data.dockingApproach = new PlayerDockingApproach(world.context, world.docking, world.physics);
