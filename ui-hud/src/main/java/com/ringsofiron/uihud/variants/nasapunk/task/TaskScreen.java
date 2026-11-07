@@ -12,7 +12,6 @@ import com.ringsofiron.uihud.variants.nasapunk.NpColors;
 import com.ringsofiron.uihud.variants.nasapunk.NpHardware;
 import com.ringsofiron.uihud.variants.nasapunk.NpKit;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Act;
-import com.ringsofiron.uihud.variants.nasapunk.screens.Cell;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Fmt;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Hits;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Line;
@@ -21,6 +20,7 @@ import com.ringsofiron.uihud.variants.nasapunk.screens.Row;
 import com.ringsofiron.uihud.variants.nasapunk.screens.ScreenModes;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Sect;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Tables;
+import com.ringsofiron.uihud.variants.nasapunk.screens.Terms;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Ui;
 
 import java.util.Locale;
@@ -60,8 +60,8 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
     /** Where the console starts: under CHR and ALR (T6). */
     static final float TOP = 96f;
     private static final float EDGE = 8f, INSET = 16f, HEAD_H = 48f, TAB_H = 26f, GAP = 10f, DU_B = 7f;
-    /** A unit's foot under its glass: the plate alone, or the hard keys over it. */
-    private static final float FOOT = 24f, KEYS_FOOT = 50f;
+    /** A unit's foot under its glass: the plate alone, or the hard keys with ENTER under one, over it. */
+    private static final float FOOT = 24f, KEYS_FOOT = 58f;
     /** The soft keys' row along the foot of a list's glass. */
     private static final float SOFT_H = 26f;
     /** The terms' foot line over the hard keys. */
@@ -83,9 +83,7 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
     private final Tables.Style panel = new Tables.Style();
 
     private final IntArray all = new IntArray();
-    /** The terms made from a row's cells under their heads, for a row that has none of its own. */
-    private final Array<Line> made = new Array<>();
-    private final Array<Line> linePool = new Array<>();
+    private final Terms termsOf = new Terms();
 
     TaskScreen(Game game, Group layer, NpKit kit) {
         super(game, layer, kit);
@@ -266,7 +264,7 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
         NpHardware.fastener(cv, x + 5f, y + h - 5f);
         NpHardware.fastener(cv, x + w - 5f, y + h - 5f);
         NpHardware.glass(cv, x + DU_B, y + DU_B, w - 2f * DU_B, h - DU_B - foot);
-        NpHardware.plate(cv, x + 14f, y + h - 15f, plate);
+        NpHardware.plate(cv, x + 14f, y + h - 14f, plate);
     }
 
     // ---- the header and the tabs -------------------------------------------------------------------
@@ -395,7 +393,10 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
         allSects();
         boolean clipped = cam != null && cv.clip(cam, gx, gy, gw, gh);
         Tables.stack(cv, cam, page, all, gx, gy, gw, gh - soft, list, hits);
-        if (soft > 0f) softKeys(cv, gx, gy + gh - soft, gw, soft, hits);
+        if (soft > 0f) {
+            Ui.rule(cv, gx + 8f, gy + gh - soft, gw - 16f);
+            softKeys(cv, gx, gy + gh - soft, gw, soft, hits);
+        }
         if (clipped) cv.unclip();
         unit(cv, rx, y, rw, h, KEYS_FOOT, mode.unit + "-2  " + (page == crew ? "PERSON" : "TERMS"));
         termsUnit(cv, cam, rx + DU_B, y + DU_B, rw - 2f * DU_B, h - DU_B - KEYS_FOOT, hits);
@@ -459,34 +460,22 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
             cv.text(gx + gw / 2f, gy + gh / 2f, Ui.fit(cv, empty, gw - 28f, Ui.LB, true, 0.6f), Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.MIDDLE);
             return;
         }
-        Sect s = sectOf(r);
+        Sect s = page.sectOf(r);
         String name = r.cells.size > 0 ? r.cells.first().text : "";
         Ui.lab(cv, l, gy + 22f, s == null || s.title.isEmpty() ? "TERMS" : Ui.fit(cv, s.title, 120f, Ui.LB, true, 0.6f));
         float mid = gx + gw / 2f + 30f;
         cv.text(mid, gy + 23f, Ui.fit(cv, name, (right - mid) * 2f - 20f, Ui.V, true, 0.6f), Ui.V, true, NpColors.WHITE, 0.6f, NpCanvas.MIDDLE);
-        Array<Line> lines = r.detail.size > 0 ? r.detail : fromCells(r, s);
+        Array<Line> lines = termsOf.of(r, s);
         boolean clipped = cam != null && cv.clip(cam, gx, gy + 34f, gw, gh - 34f - SAY_H);
-        float ly = gy + 42f;
-        ly += Tables.lines(cv, lines, gx, ly, gw, terms);
-        if (!r.sub.isEmpty() && r.detail.size == 0) cv.text(l, ly + 14f, Ui.fit(cv, r.sub, gw - 28f, Ui.LB, true, 0.6f), Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.START);
+        Tables.lines(cv, lines, gx, gy + 42f, gw, terms);
         if (clipped) cv.unclip();
-        // what Enter does, or why it can't, over the hard keys
+        // what Enter does, or why it can't, over the hard keys; the last order's words are the tab row's
         Act enter = page.picked(r);
         float sy = gy + gh - SAY_H;
         Ui.rule(cv, gx + 8f, sy, gw - 16f);
-        String say = say(r, enter);
+        String say = enterLine(r);
         if (!say.isEmpty()) cv.text(l, sy + 16f, Ui.fit(cv, say, gw - 28f, Ui.LB, true, 0.6f), Ui.LB, true, enter != null && !enter.live ? NpColors.AMBER : NpColors.DIM, 0.6f, NpCanvas.START);
         hardKeys(cv, cam, r, enter, gx, gy + gh + 6f, gw, hits);
-    }
-
-    /** The foot line: the feed's last words while they stand, else what Enter gives on the row, or why it can't. */
-    private String say(Row r, Act enter) {
-        if (feed.showing()) return (feed.source.isEmpty() ? "" : feed.source + "  ") + feed.text.toUpperCase(Locale.ROOT);
-        if (enter == null) return r.acts.size == 0 ? "" : "NOTHING TO DO HERE NOW";
-        String pick = r.acts.size > 1 ? "  ·  ← → PICK" : "";
-        if (!enter.live) return enter.label + ": " + (enter.why.isEmpty() ? "NOT NOW" : enter.why) + pick;
-        if (enter.state == Act.State.ARMED) return "ENTER AGAIN TO " + enter.label;
-        return "ENTER " + enter.label + pick;
     }
 
     /** The row's orders as push buttons under the glass, each under its key: ENTER for the one Enter gives. */
@@ -498,36 +487,9 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
             if (kx + kw > x + w) break;
             Ui.korry(cv, cam, kx, y, kw, kh, a.label, a.state, a.live, false);
             hits.add(kx - 2f, y - 2f, kw + 4f, kh + 4f, a, 0);
-            if (a == enter) cv.text(kx + kw / 2f, y + kh + 10f, "ENTER", 7.5f, true, NpColors.STENCIL, 1f, NpCanvas.MIDDLE);
+            if (a == enter) NpHardware.stencil(cv, kx + kw / 2f, y + kh + 9f, "ENTER", 7.5f, 1f, NpCanvas.MIDDLE);
             kx += kw + 10f;
         }
-    }
-
-    private Sect sectOf(Row r) {
-        for (int i = 0; i < page.sects.size; i++) if (page.sects.get(i).rows.contains(r, true)) return page.sects.get(i);
-        return null;
-    }
-
-    /** Terms for a row that has none of its own: each cell under its column's head. */
-    private Array<Line> fromCells(Row r, Sect s) {
-        linePool.addAll(made);
-        made.clear();
-        if (s == null) return made;
-        for (int c = 1; c < r.cells.size && c < s.cols.size; c++) {
-            Cell cell = r.cells.get(c);
-            String head = s.cols.get(c).head;
-            if (cell.text.isEmpty() || head.isEmpty()) continue;
-            Line l = linePool.size > 0 ? linePool.pop() : new Line();
-            l.kind = Line.Kind.PAIR;
-            l.label = head;
-            l.value = cell.text;
-            l.unit = cell.unit;
-            l.note = "";
-            l.bar = Float.NaN;
-            l.tone = cell.tone == Cell.Tone.NAME || cell.tone == Cell.Tone.BODY || cell.tone == Cell.Tone.LABEL ? Cell.Tone.VALUE : cell.tone;
-            made.add(l);
-        }
-        return made;
     }
 
     // ---- boarding ----------------------------------------------------------------------------------
@@ -551,9 +513,11 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
         Act enter = r == null ? null : page.picked(r);
         float sy = gy + gh - SAY_H;
         Ui.rule(cv, gx + 8f, sy, gw - 16f);
-        String say = r == null ? (feed.showing() ? feed.text.toUpperCase(Locale.ROOT) : "") : say(r, enter);
-        if (r != null && enter != null && enter.live && !feed.showing() && r.cells.size > 0) say = "ENTER " + enter.label + "  ·  " + r.cells.first().text;
-        if (!say.isEmpty()) cv.text(gx + 12f, sy + 16f, Ui.fit(cv, say, gw - 24f, Ui.LB, true, 0.6f), Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.START);
+        // with no tab row over it, the panel's foot carries the last order's words while they stand
+        boolean news = feed.showing();
+        String say = news ? (feed.source.isEmpty() ? "" : feed.source + "  ") + feed.text.toUpperCase(Locale.ROOT) : enterLine(r);
+        Color ink = news ? NpColors.WHITE : enter != null && !enter.live ? NpColors.AMBER : NpColors.DIM;
+        if (!say.isEmpty()) cv.text(gx + 12f, sy + 16f, Ui.fit(cv, say, gw - 24f, Ui.LB, true, 0.6f), Ui.LB, true, ink, 0.6f, NpCanvas.START);
         if (r != null) hardKeys(cv, cam, r, enter, gx, gy + gh + 6f, gw, hits);
     }
 }
