@@ -304,7 +304,7 @@ final class ModeScreen extends ScreenModes<ModeScreen.Mode> {
             return;
         }
         if (page == crew || page == boarding) {
-            float lw = Math.round((w - GAP) * (page == crew ? 0.66f : 0.56f));
+            float lw = Math.round((w - GAP) * (page == crew ? 0.64f : 0.56f));
             Unit left = unit(x, y, lw, h), right = unit(x + lw + GAP, y, w - lw - GAP, h);
             String main = page == crew ? "ABOARD" : "SALVAGE";
             for (int i = 0; i < page.sects.size; i++) (page.sects.get(i).title.equals(main) ? left : right).sects.add(i);
