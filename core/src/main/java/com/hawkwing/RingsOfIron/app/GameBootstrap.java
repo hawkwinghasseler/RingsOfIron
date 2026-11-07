@@ -33,6 +33,7 @@ import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.modding.ModTrustDialog;
 import com.ringsofiron.uihud.text.HudText;
 import com.ringsofiron.uihud.variants.ClassicWindow;
@@ -269,6 +270,9 @@ public final class GameBootstrap {
                 hud.getViewMode().setMode(ViewMode.INTERIOR);
             });
         }
+        // The weapons console's hold-fire switch, which a variant's console screen offers: the gunners hold fire
+        hud.registerConsoleAction("weapons", "Hold fire", HudData.ConsoleAction.HOLD_FIRE,
+                () -> world.gunCrews.holdFire = !world.gunCrews.holdFire);
         input.easeViewChanges();
         world.rescue.rescues.add((signal, rescue) -> {
             session.rearm();

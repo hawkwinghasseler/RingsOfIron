@@ -35,8 +35,21 @@ import java.util.Locale;
  * reactors, output against rating and store, and what no reactor reaches; and life support: which
  * rooms it puts air into and why not the rest, and the oxygen tanks.
  * The switches are the classic console window's ({@code SubsystemComponent.switchedOn}).
+ *
+ * <p>In a side panel it is two of Engineering's tabs (the Stations spec's 5.5, {@link Side}): Systems, the
+ * list with its switches, narrowed to the panel; and Damage, the plan over the damage control board.
  */
 final class SystemsPage extends ListPage {
+    /** Where it draws: across the ship's console, or as one of Engineering's tabs in a side panel. */
+    enum Side {
+        /** The ship's console's Systems tab, across the screen (Context's M2). */
+        NONE,
+        /** Engineering's Systems tab: every system, its health and state, with its switch. */
+        LIST,
+        /** Engineering's Damage tab (the DAMAGE page, 9.2): the ship's plan over the damage control board. */
+        PLAN
+    }
+
     private static final Color MIMIC_TOP = Yard.hex("3F4B43"), MIMIC_FOOT = Yard.hex("333D37");
     private static final Color MIMIC_RIM = Yard.hex("1F2420"), FLOOR = Yard.hex("56655A");
     private static final Color PAINT = Yard.hex("EFE8D6"), BLOCK = Yard.hex("232823");
@@ -60,10 +73,24 @@ final class SystemsPage extends ListPage {
     private float ox, oy, px;
     private boolean turned;
     private int gw, gh;
+    private final Side side;
+    /** Whether the list drew narrowed to a side panel last frame: no power column, the others closer. */
+    private boolean narrow;
 
     SystemsPage(FireTrend fires) {
-        super("SYSTEMS", "SHIP", ClassicWindow.CREW);
+        this(fires, Side.NONE);
+    }
+
+    SystemsPage(FireTrend fires, Side side) {
+        super(side == Side.PLAN ? "DAMAGE" : "SYSTEMS", side == Side.NONE ? "SHIP" : "ENG",
+                side == Side.NONE ? ClassicWindow.CREW : ClassicWindow.CONSOLE);
         this.fires = fires;
+        this.side = side;
+    }
+
+    @Override
+    boolean fitsSide() {
+        return side != Side.NONE;
     }
 
     @Override
@@ -76,7 +103,10 @@ final class SystemsPage extends ListPage {
         b = boards;
         HudData d = b.data;
         found.clear();
-        Entity ship = d == null ? null : d.ctx.ship;
+        // Engineering's tabs read the ship whose console it is, which may be a prize's; the crew's jobs,
+        // the rooms' names and the guns are the player's own ship's
+        Entity ship = d == null ? null : side == Side.NONE ? d.ctx.ship : ConsolePanels.ship(d);
+        boolean own = d != null && ship == d.ctx.ship;
         grid = ship == null ? null : ship.getComponent(ShipGridComponent.class);
         ShipSubsystemRegistryComponent registry = ship == null ? null : ship.getComponent(ShipSubsystemRegistryComponent.class);
         if (registry != null) {
@@ -85,11 +115,11 @@ final class SystemsPage extends ListPage {
                 if (s != null) found.add(s);
             }
         }
-        systems.read(found, grid, d == null ? null : d::roomAt, d == null ? null : d.weaponFrame.mounts);
+        systems.read(found, grid, own ? d::roomAt : null, own ? d.weaponFrame.mounts : null);
         keepSelection();
-        jobs(d == null ? null : d.alerts, jobs);
+        jobs(own ? d.alerts : null, jobs);
         data = d;
-        lifeSupport(d == null ? null : d.roomNames());
+        lifeSupport(own ? d.roomNames() : null);
         troubled.clear();
         for (int i = 0; i < jobs.size; i++) {
             AlertRegistry.Alert a = jobs.get(i);
@@ -261,14 +291,16 @@ final class SystemsPage extends ListPage {
         ShipSystems.Row row = systems.rows.get(i);
         Color ink = row.worst.bad() ? RED : row.worst == ShipSystems.State.OFF ? DIM : AMBER;
         if (row.kind == ShipSystems.Row.GROUP) put(p, s, 1, r, row.open ? "-" : "+", ink);
-        int nameAt = row.kind == ShipSystems.Row.MEMBER ? 5 : 3;
-        put(p, s, nameAt, r, Ledger.cut(row.name, 22 - nameAt), ink);
-        put(p, s, 22, r, Ledger.cut(row.where, 11), ink);
+        // Narrowed to a side panel the power column goes (Power has it), the rest close up
+        int nameAt = row.kind == ShipSystems.Row.MEMBER ? 5 : 3, whereAt = narrow ? 18 : 22, healthAt = narrow ? 30 : 39;
+        int stateAt = narrow ? 32 : 47;
+        put(p, s, nameAt, r, Ledger.cut(row.name, whereAt - nameAt), ink);
+        put(p, s, whereAt, r, Ledger.cut(row.where, narrow ? 8 : 11), ink);
         String health = Float.isNaN(row.health) ? "—" : Math.round(row.health * 100f) + "%";
-        if (s) L.revRight(p, 39, r, health);
-        else L.right(p, 39, r, health, ink);
-        put(p, s, 41, r, row.power, row.power.equals("NONE") ? RED : ink);
-        put(p, s, 47, r, fit(row.state, Math.max(4, L.cols - 48)), ink);
+        if (s) L.revRight(p, healthAt, r, health);
+        else L.right(p, healthAt, r, health, ink);
+        if (!narrow) put(p, s, 41, r, row.power, row.power.equals("NONE") ? RED : ink);
+        put(p, s, stateAt, r, fit(row.state, Math.max(4, L.cols - stateAt - 1)), ink);
     }
 
     private void put(YardPaint p, boolean s, float c, int r, String t, Color ink) {
@@ -278,7 +310,8 @@ final class SystemsPage extends ListPage {
 
     @Override
     void keys() {
-        if (sel < 0 || sel >= systems.rows.size) return;
+        // The plan's tab has no switches: they are on Systems beside it
+        if (side == Side.PLAN || sel < 0 || sel >= systems.rows.size) return;
         ShipSystems.Row row = systems.rows.get(sel);
         switch (row.kind) {
             case ShipSystems.Row.RCS:
@@ -316,6 +349,17 @@ final class SystemsPage extends ListPage {
 
     @Override
     void draw(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        if (side == Side.LIST) {
+            list(p, hits, x + 8f, y + 4f, w - 16f, h - 8f);
+            return;
+        }
+        if (side == Side.PLAN) {
+            // The plan over the board, half the body each
+            float bx = x + 8f, by = y + 4f, bw = w - 16f, bh = h - 8f, ph = Math.round((bh - 8f) * 0.5f);
+            plan(p, hits, bx, by, bw, ph);
+            board(p, bx, by + ph + 8f, bw, bh - ph - 8f);
+            return;
+        }
         float gap = 8f, bx = x + 8f, by = y + 6f, bw = w - 16f, bh = h - 12f;
         float lw = Math.round((bw - gap) * 0.5f), rw = bw - gap - lw;
         float th = Math.round((bh - gap) * 0.58f), fh = bh - gap - th;
@@ -329,7 +373,8 @@ final class SystemsPage extends ListPage {
     /** The systems on their tube, the selected one's switch on the soft keys under it. */
     private void list(YardPaint p, Hits hits, float x, float y, float w, float h) {
         BigConsole.bay(p, x, y, w, h, null, false);
-        int cols = Math.max(56, Ledger.colsIn(w - 38f)), rows = Math.max(8, Ledger.rowsIn(h - 52f));
+        narrow = side != Side.NONE;
+        int cols = narrow ? Ledger.colsIn(w - 38f) : Math.max(56, Ledger.colsIn(w - 38f)), rows = Math.max(8, Ledger.rowsIn(h - 52f));
         L.set(x + 12f, y + 10f, cols, rows);
         L.under(p, false);
         int down = 0;
@@ -337,10 +382,10 @@ final class SystemsPage extends ListPage {
         String count = systems.all.size + " SYSTEMS" + (down > 0 ? " · " + down + " DOWN" : "");
         title(p, "SYSTEMS", count);
         L.at(p, 3, 1, "SYSTEM", DIM);
-        L.at(p, 22, 1, "WHERE", DIM);
-        L.right(p, 39, 1, "HEALTH", DIM);
-        L.at(p, 41, 1, "POWER", DIM);
-        L.at(p, 47, 1, "STATE", DIM);
+        L.at(p, narrow ? 18 : 22, 1, "WHERE", DIM);
+        L.right(p, narrow ? 30 : 39, 1, "HEALTH", DIM);
+        if (!narrow) L.at(p, 41, 1, "POWER", DIM);
+        L.at(p, narrow ? 32 : 47, 1, "STATE", DIM);
         drawList(p, hits, 2, rows - 3);
         drawSoftRow(p, hits);
         L.over(p);
@@ -644,7 +689,7 @@ final class SystemsPage extends ListPage {
     }
 
     /** A system's lamp: green while it works, amber for a while (stunned, shorted) or cut off, red when damage has it. */
-    private static void lamp(YardPaint p, float cx, float cy, float r, ShipSystems.State st, boolean blink) {
+    static void lamp(YardPaint p, float cx, float cy, float r, ShipSystems.State st, boolean blink) {
         switch (st) {
             case ON:
                 p.lamp(cx, cy, r, Yard.GREEN_LAMP, true);

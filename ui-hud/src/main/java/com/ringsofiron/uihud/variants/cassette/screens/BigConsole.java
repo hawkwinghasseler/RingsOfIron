@@ -22,7 +22,9 @@ import com.ringsofiron.uihud.variants.cassette.YardPart;
  * <p>Or a side panel (the Stations spec's 10.1), 480 wide at the right with the world beside it: a title
  * bar (the station's badge, name, owner, credits and hold, or the slate's rank, ship and credits), the
  * tabs as piano keys under it, the body, and a foot with the response line over the keys of its tabs and
- * Esc. A tab whose page needs the room still draws across the screen, as the big console does.
+ * Esc. A tab whose page needs the room still draws across the screen, as the big console does. A
+ * console's panel ({@link #consolePanel}) names the station and the console on its title bar, with the
+ * console's system's state at the right, and its foot has the keys that work it: Enter, Tab and E.
  *
  * <p>Drawn in its own units, (0, 0) its top left: the head is 30 tall, the foot 27, the body between.
  */
@@ -78,6 +80,15 @@ final class BigConsole extends YardPart implements Hits.Target {
     /** The tab rows the side panel's keys took as last drawn: two when one row won't hold their legends. */
     private int tabRows = 1;
     private String creditsText = "", holdText = "";
+    /** A deck console's panel (the Stations spec's 10.2): its title bar names the station and the console. */
+    private boolean consolePanel;
+    /**
+     * A console panel's title bar: the console's name ("REACTOR"), where it stands under it ("BRIDGE"),
+     * and its system's state at the right on a lamp ("SHORTED 32 S"); no lamp while {@code consoleLamp}
+     * is null. Set each frame by whoever raised it.
+     */
+    String consoleName = "", consoleWhere = "", consoleState = "";
+    ShipSystems.State consoleLamp;
     private double creditsAt = Double.NaN, heldAt = Double.NaN, capAt = Double.NaN;
 
     BigConsole(Livery livery, String nameplate, Boards boards) {
@@ -107,6 +118,21 @@ final class BigConsole extends YardPart implements Hits.Target {
         side = true;
         sideW = w;
         return this;
+    }
+
+    /**
+     * Hangs it as a deck console's panel at the right (the Stations spec's 10.2): the station on its
+     * plate, the console's name and its system's state on the title bar, and in its foot the keys that
+     * work it (Enter, Tab) and close it (E, Esc).
+     */
+    BigConsole consolePanel() {
+        consolePanel = true;
+        return side();
+    }
+
+    /** Whether it is a deck console's panel ({@link #consolePanel}). */
+    boolean isConsolePanel() {
+        return consolePanel;
     }
 
     /** How wide it hangs as a side panel. */
@@ -289,6 +315,15 @@ final class BigConsole extends YardPart implements Hits.Target {
 
     @Override
     public void hit(int code) {
+        // A console panel's foot: Enter as its key does, Tab to the next tab
+        if (code == FOOT_ENTER) {
+            if (current != null) current.key(Input.Keys.ENTER);
+            return;
+        }
+        if (code == FOOT_TAB) {
+            flip(1);
+            return;
+        }
         // The tabs' piano keys, and a side panel's keys in its foot
         tab((code >= FOOT_KEY ? code - FOOT_KEY : code) + 1);
     }
@@ -413,6 +448,10 @@ final class BigConsole extends YardPart implements Hits.Target {
      * or the slate's plate, the ship's name and the captain's rank, and the credits.
      */
     private void title(YardPaint p, boolean liv) {
+        if (consolePanel) {
+            consoleTitle(p);
+            return;
+        }
         Color ink = liv ? LIV_INK : Yard.INK, ink2 = liv ? LIV_INK2 : Yard.INK;
         float right = w - 14f;
         // The hold, a station's: used of its capacity on a bar, the figures after it
@@ -460,6 +499,28 @@ final class BigConsole extends YardPart implements Hits.Target {
         if (!under.isEmpty()) p.legendFit(under, nx, 35.5f, room, ink2);
     }
 
+    /**
+     * A console panel's title bar: the station on the plate at the left ("ENGINEERING"), the console's
+     * name and where it stands, and at the right its system's state on a lamp, as walkthrough F draws it.
+     */
+    private void consoleTitle(YardPaint p) {
+        float right = w - 14f;
+        if (consoleLamp != null && !consoleState.isEmpty()) {
+            float sw = p.width(YardFonts.Face.LEGEND, 12f, consoleState);
+            p.text(YardFonts.Face.LEGEND, 12f, consoleState, right - sw, 26f, Yard.INK);
+            SystemsPage.lamp(p, right - sw - 11f, 21.5f, 4f, consoleLamp, (p.time() % 1f) < 0.55f);
+            right -= sw + 28f;
+        }
+        float pw = Math.max(32f, p.width(YardFonts.Face.LEGEND, 11f, nameplate) + 12f);
+        p.rrect(12f, 9f, pw, 24f, 2f, Yard.BAKELITE);
+        p.textC(YardFonts.Face.LEGEND, 11f, nameplate, 12f + pw / 2f, 25f, Yard.INK_LIGHT);
+        float nx = 12f + pw + 9f, room = Math.max(40f, right - nx);
+        float size = 17f, nw = p.width(YardFonts.Face.LEGEND, size, consoleName);
+        if (nw > room) size = Math.max(12f, size * room / nw);
+        p.text(YardFonts.Face.LEGEND, size, consoleName, nx, consoleWhere.isEmpty() ? 27f : 22f, Yard.INK);
+        if (!consoleWhere.isEmpty()) p.legendFit(consoleWhere, nx, 35.5f, room, Yard.INK);
+    }
+
     /** The side panel's tabs as piano keys across the panel, in two rows when one row won't hold their legends. Returns the rows. */
     private int pianoSide(YardPaint p, float x, float y, float aw) {
         int n = tabs.size;
@@ -486,8 +547,8 @@ final class BigConsole extends YardPart implements Hits.Target {
         return rows;
     }
 
-    /** Hit codes of the foot's tab keys, from {@code FOOT_KEY}: the tab's index. */
-    private static final int FOOT_KEY = 100;
+    /** Hit codes of the foot's tab keys, from {@code FOOT_KEY}: the tab's index; a console panel's Enter and Tab. */
+    private static final int FOOT_KEY = 100, FOOT_ENTER = 900, FOOT_TAB = 901;
 
     /**
      * The side panel's foot: the response line across it, then the window key of each tab that has one
@@ -504,6 +565,13 @@ final class BigConsole extends YardPart implements Hits.Target {
         p.legend("CLOSE", ex, ky + 11.5f, ink);
         ex -= 5f + p.keyWidth("ESC");
         p.key(ex, ky, "ESC");
+        if (consolePanel) {
+            // E closes it too, as it opened it
+            ex -= 3f + p.keyWidth("E");
+            p.key(ex, ky, "E");
+            consoleKeys(p, ky, ex, ink);
+            return;
+        }
         float x = 14f;
         int seen = 0;
         for (int i = 0; i < tabs.size; i++) {
@@ -519,6 +587,34 @@ final class BigConsole extends YardPart implements Hits.Target {
             p.legend(pg.label, x + kw + 5f, ky + 11.5f, ink);
             hits.add(p, x, ky - 2f, kw + 5f + lw, 19f, this, FOOT_KEY + i);
             x += kw + 5f + lw + 14f;
+        }
+    }
+
+    /**
+     * A console panel's keys at the foot's left, up to {@code end}: Enter with what it does on this tab
+     * ("SWITCH OFF"), and Tab with the tab it turns to. A click works each as its key does.
+     */
+    private void consoleKeys(YardPaint p, float ky, float end, Color ink) {
+        float x = 14f;
+        String enter = current == null ? null : current.enterLabel();
+        if (enter != null) {
+            float kw = p.keyWidth("ENTER"), lw = p.width(YardFonts.Face.LEGEND, 12f, enter);
+            if (x + kw + 5f + lw <= end - 12f) {
+                p.key(x, ky, "ENTER");
+                p.legend(enter, x + kw + 5f, ky + 11.5f, ink);
+                hits.add(p, x, ky - 2f, kw + 5f + lw, 19f, this, FOOT_ENTER);
+                x += kw + 5f + lw + 14f;
+            }
+        }
+        if (tabs.size > 1) {
+            int i = tabs.indexOf(current, true);
+            String next = tabs.get((Math.max(0, i) + 1) % tabs.size).label;
+            float kw = p.keyWidth("TAB"), lw = p.width(YardFonts.Face.LEGEND, 12f, next);
+            if (x + kw + 5f + lw <= end - 12f) {
+                p.key(x, ky, "TAB");
+                p.legend(next, x + kw + 5f, ky + 11.5f, ink);
+                hits.add(p, x, ky - 2f, kw + 5f + lw, 19f, this, FOOT_TAB);
+            }
         }
     }
 

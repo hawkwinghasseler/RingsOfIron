@@ -219,6 +219,11 @@ class WindowScreensTest {
         assertFalse(w.showing(ClassicWindow.CONSOLE), "it leaves no console screen up");
         w.consoles(null);
         assertFalse(w.replaces(ClassicWindow.CONSOLE), "none is the game's again");
+        // The Stations spec's: the console's own panel at the right
+        w.consoles(WindowScreens.Consoles.PANELS);
+        assertTrue(w.replaces(ClassicWindow.CONSOLE));
+        assertFalse(w.showing(ClassicWindow.CONSOLE), "until E opens one");
+        w.consoles(WindowScreens.Consoles.CLASSIC);
         // E sits the captain at the three seats (Context 4.3); the reactor and life support open Systems
         assertTrue(WindowScreens.seated("helm"));
         assertTrue(WindowScreens.seated("weapons"));
