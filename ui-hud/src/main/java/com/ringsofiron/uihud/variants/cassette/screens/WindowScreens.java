@@ -112,6 +112,10 @@ public final class WindowScreens {
 
     public WindowScreens() {
         arrange();
+        // The helm panel's Navigation tab opens the plot: the map, which the console gives way to
+        consolePanels.nav.openPlot = () -> {
+            if (host != null) host.hud().open(ClassicWindow.MAP);
+        };
         // The controls cards, a card for each place keys apply; what no card names goes on Anywhere
         cards[0] = new ControlsCard("HELM", "AT THE HELM", help, cards, false, "At the helm");
         cards[1] = new ControlsCard("GUNS", "AT THE WEAPONS CONSOLE", help, cards, false, "At the weapons console");

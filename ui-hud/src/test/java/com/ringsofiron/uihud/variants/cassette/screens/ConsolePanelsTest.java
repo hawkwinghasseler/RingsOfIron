@@ -105,11 +105,30 @@ class ConsolePanelsTest {
         d = at(ship, life, "life_support");
         assertSame(panels.atmos, panels.open(d));
         assertSame(sys(life), panels.atmos.lines.get(panels.atmos.sel).unit.s);
-        // The gun panel at a gun; the helm's and the weapons console's panels are their stations' own
+        // The gun panel at a gun, the tactical board at the weapons console, the helm panel at the helm
         assertSame(panels.gunPage, panels.open(at(ship, gun, "turret_mount")));
         assertSame(panels.gun, panels.gunPage.console);
-        assertNull(panels.open(at(ship, helm, "helm")));
-        assertNull(panels.open(at(ship, helm, "weapons")));
+        assertSame(panels.helm, panels.open(at(ship, helm, "helm")));
+        assertSame(panels.helmPanel, panels.helm.console);
+        Entity weapons = ship.system(SubsystemType.WEAPONS, 9, 9, false);
+        assertSame(panels.weapons, panels.open(at(ship, weapons, "weapons")));
+        assertSame(panels.tactical, panels.weapons.console);
+        // Defense while a missile comes in, or when the shield is the worst of Tactical's alerts
+        d = at(ship, weapons, "weapons");
+        d.alerts.begin(5);
+        d.alerts.raise("sys:TURRET:7,1", Level.CAUTION, Category.ENGINEERING);
+        d.alerts.raise("sys:SHIELDS:3,3", Level.WARNING, Category.ENGINEERING);
+        d.alerts.end();
+        assertSame(panels.defense, panels.open(d));
+        d = at(ship, weapons, "weapons");
+        d.threatFrame.add().side = com.ringsofiron.uihud.providers.ThreatProvider.Side.INCOMING;
+        assertSame(panels.defense, panels.open(d));
+        // A prize's weapons console: its Systems, the console's row selected
+        Ship prize = new Ship();
+        Entity theirs = prize.system(SubsystemType.WEAPONS, 2, 2, false);
+        d = at(prize, theirs, "weapons");
+        d.ctx.ship = ship.entity;
+        assertSame(panels.switches, panels.open(d));
 
         // An alert's tab first: the most severe, then the newest, of those Engineering acts on
         d = at(ship, life, "life_support");
@@ -447,5 +466,243 @@ class ConsolePanelsTest {
         assertEquals("GUN", page.label);
         assertFalse(page.lines.contains(GunPage.MODE));
         assertTrue(page.lines.contains(GunPage.HEALTH));
+    }
+
+    private static com.ringsofiron.uihud.providers.ContactProvider.Contact contact(HudData d, String label, float range) {
+        com.ringsofiron.uihud.providers.ContactProvider.Contact c = new com.ringsofiron.uihud.providers.ContactProvider.Contact();
+        c.label = label;
+        c.range = range;
+        d.contactFrame.contacts.add(c);
+        return c;
+    }
+
+    @Test
+    void theContactsTabPutsAMissileComingInFirstAndSaysWhenItHits() {
+        Ship ship = new Ship();
+        Entity weapons = ship.system(SubsystemType.WEAPONS, 9, 9, false);
+        HudData d = at(ship, weapons, "weapons");
+        com.ringsofiron.uihud.providers.ContactProvider.Contact station = contact(d, "Kestrel Station", 40_000f);
+        station.kind = com.ringsofiron.uihud.providers.ContactProvider.Kind.STATION;
+        station.relation = com.ringsofiron.uihud.providers.TargetStatusProvider.Relation.NEUTRAL;
+        station.nav = true;
+        com.ringsofiron.uihud.providers.ContactProvider.Contact raider = contact(d, "Raider", 2_800f);
+        raider.relation = com.ringsofiron.uihud.providers.TargetStatusProvider.Relation.HOSTILE;
+        raider.closing = 104f;
+        raider.locked = true;
+        raider.bearingDeg = 45f;
+        com.ringsofiron.uihud.providers.ContactProvider.Contact missile = contact(d, "", 650f);
+        missile.kind = com.ringsofiron.uihud.providers.ContactProvider.Kind.MISSILE;
+        missile.threat = true;
+        missile.closing = 50f;
+        com.ringsofiron.uihud.providers.ContactProvider.Contact wreck = contact(d, "Hulk", 900f);
+        wreck.kind = com.ringsofiron.uihud.providers.ContactProvider.Kind.DERELICT;
+        wreck.relation = com.ringsofiron.uihud.providers.TargetStatusProvider.Relation.HOSTILE;
+        contact(d, "Beacon", 10f).kind = com.ringsofiron.uihud.providers.ContactProvider.Kind.WAYPOINT;
+        Boards b = new Boards();
+        b.refresh(d);
+        ContactsPage page = new ContactsPage();
+        page.refresh(b);
+        assertTrue(page.offered());
+        assertEquals(4, page.count(), "a waypoint isn't a contact");
+        assertEquals("INBOUND", ContactsPage.what(page.list.get(0)), "the missile coming in first");
+        assertEquals("Raider", page.list.get(1).label, "then the hostile");
+        assertEquals("Kestrel Station", page.list.get(2).label, "then the course, before the nearer wreck");
+        assertEquals(1, page.inbound());
+        assertEquals("0:13", ContactsPage.tail(page.list.get(0)));
+        assertEquals("+104", ContactsPage.tail(raider));
+        assertEquals("", ContactsPage.tail(station));
+        assertEquals("LOCK", ContactsPage.tags(raider));
+        assertEquals("2.8 KM", ContactsPage.range(raider.range));
+        assertEquals("650 M", ContactsPage.range(650f));
+        assertEquals("RAIDER, CLOSING 104 M/S, BEARING 045°", ContactsPage.detail(raider));
+        assertEquals("INBOUND, HITS IN 0:13", ContactsPage.detail(page.list.get(0)));
+        raider.state = com.ringsofiron.uihud.providers.ContactProvider.State.STRUCK;
+        assertEquals("STRUCK", ContactsPage.what(raider), "a state says more than a side");
+        // The rows are copied: the frame's own are reused
+        d.contactFrame.contacts.clear();
+        assertEquals(4, page.count());
+        // A prize's board has none: it isn't the player's sensors
+        Ship prize = new Ship();
+        HudData across = at(prize, prize.system(SubsystemType.WEAPONS, 2, 2, false), "weapons");
+        across.ctx.ship = ship.entity;
+        b.refresh(across);
+        page.refresh(b);
+        assertFalse(page.offered());
+    }
+
+    @Test
+    void theWeaponsTabHoldsFireSwitchesAMountAndTakesTheGuns() {
+        Ship ship = new Ship();
+        Entity weapons = ship.system(SubsystemType.WEAPONS, 9, 9, false);
+        Entity gun = ship.system(SubsystemType.TURRET_MOUNT, 7, 1, false);
+        HudData d = at(ship, weapons, "weapons");
+        boolean[] taken = {false};
+        Array<HudData.ConsoleAction> actions = new Array<>();
+        actions.add(new HudData.ConsoleAction("Take fire control: every gun", "VIEW", () -> taken[0] = true));
+        actions.add(new HudData.ConsoleAction("Hold fire", HudData.ConsoleAction.HOLD_FIRE, () -> d.weaponFrame.holdFire = !d.weaponFrame.holdFire));
+        d.console.set(weapons, d.console.data, actions);
+        Mount m = d.weaponFrame.add();
+        m.name = "FWD GUN";
+        m.tileX = 7;
+        m.tileY = 1;
+        m.inArc = true;
+        m.hitChance = 0.64f;
+        m.weaponsFree = true;
+        d.weaponFrame.target = "Raider";
+        Boards b = new Boards();
+        b.refresh(d);
+        WeaponsPage page = new WeaponsPage();
+        page.refresh(b);
+        assertTrue(page.offered());
+        assertEquals(WeaponsPage.MOUNT, page.kinds.get(page.sel), "the first mount is selected");
+        assertSame(m, page.mount(page.sel));
+        assertSame(sys(gun), page.system(m));
+        assertEquals("64%", WeaponsPage.odds(m, true));
+        assertEquals("", WeaponsPage.odds(m, false));
+        m.inArc = false;
+        assertEquals("NO ARC", WeaponsPage.odds(m, true));
+        assertEquals("AT WILL: 1 GUN MANNED", WeaponsPage.fire(false, d.weaponFrame));
+        // Enter holds fire, and again lifts the hold
+        assertEquals("HOLD FIRE", page.enterLabel());
+        page.key(com.badlogic.gdx.Input.Keys.ENTER);
+        assertTrue(d.weaponFrame.holdFire);
+        assertTrue(page.hold());
+        assertEquals("LIFT HOLD", page.enterLabel());
+        assertEquals("HELD: THE GUNNERS HOLD FIRE", WeaponsPage.fire(true, d.weaponFrame));
+        page.pressKey(0);
+        assertFalse(d.weaponFrame.holdFire);
+        // The second key switches the selected mount, the third takes every gun
+        page.pressKey(1);
+        assertFalse(sys(gun).switchedOn);
+        page.pressKey(2);
+        assertTrue(taken[0]);
+    }
+
+    @Test
+    void theDefenseTabListsWhatIsComingInSoonestFirstAndThePointDefense() {
+        Ship ship = new Ship();
+        Entity weapons = ship.system(SubsystemType.WEAPONS, 9, 9, false);
+        HudData d = at(ship, weapons, "weapons");
+        com.ringsofiron.uihud.providers.ThreatProvider.MissileTrack late = d.threatFrame.add(), soon = d.threatFrame.add();
+        late.side = soon.side = com.ringsofiron.uihud.providers.ThreatProvider.Side.INCOMING;
+        late.timeToImpact = 30f;
+        soon.timeToImpact = 8f;
+        soon.shooter = "Raider";
+        d.threatFrame.add().side = com.ringsofiron.uihud.providers.ThreatProvider.Side.OWN;
+        Mount pd = pd(d.weaponFrame, "FWD PD", 0f, 180f);
+        d.weaponFrame.decoyCooldown = 4.2f;
+        Boards b = new Boards();
+        b.refresh(d);
+        DefensePage page = new DefensePage();
+        page.refresh(b);
+        assertTrue(page.offered());
+        int first = page.kinds.indexOf(DefensePage.INBOUND);
+        assertEquals(1, page.index.get(first), "the soonest to strike first");
+        assertEquals(DefensePage.INBOUND, page.kinds.get(first + 1));
+        assertFalse(page.kinds.contains(DefensePage.NO_PD));
+        assertEquals("HITS 0:08", DefensePage.when(soon));
+        assertEquals("READY IN 4.2 S", DefensePage.decoy(d.weaponFrame));
+        assertEquals("NO EMITTER FITTED", DefensePage.shield(d.shieldStatus));
+        assertEquals("HUNTING", DefensePage.pd(pd, null));
+        pd.controller = Controller.PLAYER;
+        assertEquals("IN YOUR HAND: HUNTS NONE", DefensePage.pd(pd, null));
+        pd.state = com.ringsofiron.uihud.providers.WeaponStatusProvider.State.NO_POWER;
+        assertEquals("NO POWER", DefensePage.pd(pd, null));
+        // No point defense, no missiles: the rows say so
+        d.threatFrame.clear();
+        d.weaponFrame.clear();
+        page.refresh(b);
+        assertFalse(page.kinds.contains(DefensePage.IN_HEAD));
+        assertTrue(page.kinds.contains(DefensePage.NO_PD));
+    }
+
+    @Test
+    void theHelmPanelOpensWhereTheHelmIsNeededAndSaysWhatItWouldRefuse() {
+        Ship ship = new Ship();
+        Entity helm = ship.system(SubsystemType.HELM, 5, 5, false);
+        ConsolePanels panels = new ConsolePanels(new Boards(), new FireTrend());
+        HudData d = at(ship, helm, "helm");
+        boolean[] seated = {false};
+        Array<HudData.ConsoleAction> actions = new Array<>();
+        actions.add(new HudData.ConsoleAction("Take the helm", "VIEW", () -> seated[0] = true));
+        d.console.set(helm, d.console.data, actions);
+        d.ctx.helmsman = "Cole";
+        d.orderState.helmRefusal[com.ringsofiron.uihud.providers.OrdersProvider.HelmOrder.DOCK.ordinal()] = "The helm needs a navigation target for that";
+        d.orderState.helm = com.ringsofiron.uihud.providers.OrdersProvider.HelmOrder.HOLD_POSITION;
+        d.orderState.autopilotRefusal = "The autopilot needs a destination";
+        assertSame(panels.helm, panels.open(d));
+        HelmPage h = panels.helm;
+        assertEquals("COLE", h.value("HELMSMAN"));
+        assertEquals("HOLD POSITION", h.value("ORDER"));
+        assertEquals("IN FORCE", h.value("3 HOLD"));
+        assertEquals("READY", h.value("1 BURNS"));
+        assertEquals("THE HELM NEEDS A NAVIGATION TARGET FOR THAT", h.value("5 DOCK"));
+        assertEquals("NEEDS A DESTINATION", h.value("6 AUTO"), "the row names the autopilot already");
+        assertTrue(h.says("NO DOCKING PORT FITTED"));
+        assertEquals("TAKE HELM", h.enterLabel());
+        h.key(com.badlogic.gdx.Input.Keys.ENTER);
+        assertTrue(seated[0], "the soft key seats the captain, where the orders are given");
+        d.ctx.presence = Presence.HELM;
+        assertNull(h.enterLabel(), "seated, there is nothing to take");
+
+        // Navigation with a transfer proposed, and the plot it opens
+        d = at(ship, helm, "helm");
+        d.navReadout.proposal = true;
+        d.navReadout.planDeltaV = 900;
+        d.flightStatus.deltaVLeft = 600;
+        assertSame(panels.nav, panels.open(d));
+        assertEquals("900 M/S OF 600 M/S", panels.nav.value("NEEDS"));
+        assertTrue(panels.nav.says("A TRANSFER IS PROPOSED"));
+        boolean[] plot = {false};
+        panels.nav.openPlot = () -> plot[0] = true;
+        panels.nav.pressKey(0);
+        assertTrue(plot[0]);
+        // Comms when the station refused the port
+        d = at(ship, helm, "helm");
+        d.docking.present = true;
+        d.docking.clearance = com.ringsofiron.uihud.providers.DockingApproachProvider.Clearance.DENIED;
+        assertSame(panels.comms, panels.open(d));
+        assertEquals("DENIED", panels.comms.value("CLEARANCE"));
+        // A prize's helm: its Systems
+        Ship prize = new Ship();
+        Entity theirs = prize.system(SubsystemType.HELM, 2, 2, false);
+        d = at(prize, theirs, "helm");
+        d.ctx.ship = ship.entity;
+        assertSame(panels.switches, panels.open(d));
+    }
+
+    @Test
+    void theCommsTabSaysTheStationTheTowAndTheNewestMessagesFirst() {
+        Ship ship = new Ship();
+        HudData d = at(ship, ship.system(SubsystemType.HELM, 5, 5, false), "helm");
+        com.ringsofiron.uihud.providers.NavigationProvider.StationInfo s = d.navReadout.docked;
+        s.present = true;
+        s.name = "Highport";
+        s.owner = "Free Traders";
+        s.standing = 12f;
+        s.standingName = "Trusted";
+        s.market = s.yard = s.contracts = true;
+        d.orderState.towFee = 1240;
+        d.messages.add("Older", com.ringsofiron.uihud.data.AlertRegistry.Level.ADVISORY, 1);
+        d.messages.all().insert(0, d.messages.all().pop());
+        d.messages.add("Newest", com.ringsofiron.uihud.data.AlertRegistry.Level.WARNING, 2);
+        d.messages.all().insert(0, d.messages.all().pop());
+        Boards b = new Boards();
+        b.refresh(d);
+        CommsPage page = new CommsPage();
+        page.refresh(b);
+        assertEquals("FREE TRADERS", page.value("HELD BY"));
+        assertEquals("+12, TRUSTED", page.value("STANDING"));
+        assertEquals("MARKET, YARD, JOBS", page.value("OFFERS"));
+        assertEquals("COMES FOR 1,240 CR", page.value("A TUG"));
+        int newest = -1, older = -1;
+        for (int i = 0; i < page.facts.size; i++) {
+            if (page.facts.get(i).value.equals("NEWEST")) newest = i;
+            if (page.facts.get(i).value.equals("OLDER")) older = i;
+        }
+        assertTrue(newest >= 0 && newest < older, "the newest message first");
+        // The hold is on its own tab, standing for the console
+        CargoPage cargo = new ConsolePanels(new Boards(), new FireTrend()).cargo;
+        assertSame(com.ringsofiron.uihud.variants.ClassicWindow.CONSOLE, cargo.window);
     }
 }

@@ -8,14 +8,17 @@ import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.UiContextProvider.Presence;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.systems.InteractPromptSystem;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 
 import java.util.Locale;
 
 /**
  * The Stations spec's console panels (10.2), which E at a deck console hangs at the right, a tab for each
  * page of the station the console hosts, every page with its controls: Engineering at the reactor and at
- * life support (Power, Atmos, Damage, Systems, Tanks, and Shields on a hull with an emitter), and the gun
- * panel at a gun. The title bar names the station and the console, with the console's system's state.
+ * life support (Power, Atmos, Damage, Systems, Tanks, and Shields on a hull with an emitter), the gun
+ * panel at a gun, and the tactical board at the weapons console (Contacts, Weapons, Defense; a prize's
+ * weapons console opens on Engineering's Systems), and the helm panel at the helm (Helm, Navigation, Comms
+ * and Cargo; a prize's helm opens on Systems too). The title bar names the station and the console, with the console's system's state.
  *
  * <p>A panel opens on the tab that matters (10.1): the one where the most severe, then newest, live alert
  * its station owns is acted on, else the console's own (Power at the reactor, Atmos at life support). It
@@ -31,13 +34,20 @@ final class ConsolePanels {
     /** Seconds a panel waits for the game to say how far the captain is before it gives up on them. */
     static final float REACH_WAIT = 0.5f;
 
-    final BigConsole engineering, gun;
+    final BigConsole engineering, gun, tactical, helmPanel;
     final PowerPage power = new PowerPage();
     final AtmosPage atmos = new AtmosPage();
     final SystemsPage damage, switches;
     final TanksPage tanks = new TanksPage();
     final ShieldsPage shields = new ShieldsPage();
     final GunPage gunPage = new GunPage();
+    final ContactsPage contacts = new ContactsPage();
+    final WeaponsPage weapons = new WeaponsPage();
+    final DefensePage defense = new DefensePage();
+    final HelmPage helm = new HelmPage();
+    final NavPage nav = new NavPage();
+    final CommsPage comms = new CommsPage();
+    final CargoPage cargo = new CargoPage(ClassicWindow.CONSOLE);
     private final Array<BigConsole> all = new Array<>();
     private final Boards boards;
     /** The console the panel up was opened at, and where the captain was then. */
@@ -53,8 +63,12 @@ final class ConsolePanels {
         engineering = new BigConsole(BigConsole.Livery.SHIP, "ENGINEERING", boards).consolePanel()
                 .add(power).add(atmos).add(damage).add(switches).add(tanks).add(shields);
         gun = new BigConsole(BigConsole.Livery.SHIP, "GUN", boards).consolePanel().add(gunPage);
+        tactical = new BigConsole(BigConsole.Livery.SHIP, "TACTICAL", boards).consolePanel().add(contacts).add(weapons).add(defense);
         all.add(engineering);
         all.add(gun);
+        helmPanel = new BigConsole(BigConsole.Livery.SHIP, "HELM", boards).consolePanel().add(helm).add(nav).add(comms).add(cargo);
+        all.add(tactical);
+        all.add(helmPanel);
     }
 
     /** The panels, for the windows to put on their canvas. */
@@ -83,10 +97,19 @@ final class ConsolePanels {
         SubsystemComponent s = v.console.getComponent(SubsystemComponent.class);
         String id = v.data.consoleId;
         if ("turret_mount".equals(id)) return gunPage.offered() ? gunPage : null;
-        // The helm's and the weapons console's panels are their stations' own, which aren't drawn yet
-        if ("helm".equals(id) || "weapons".equals(id)) return null;
-        // Engineering: every console that hosts no other station (the reactor, life support)
         switches.focus(s);
+        if ("weapons".equals(id)) {
+            Page t = tacticalTab(d);
+            if (t.offered()) return t;
+            // A prize's weapons console: its systems, the console's own row selected
+            return switches.offered() ? switches : null;
+        }
+        if ("helm".equals(id)) {
+            Page h = helmTab(d);
+            if (h.offered()) return h;
+            return switches.offered() ? switches : null;
+        }
+        // Engineering: every console that hosts no other station (the reactor, life support)
         power.focus(s);
         atmos.focus(s);
         Page alert = tabFor(d.alerts);
@@ -95,6 +118,35 @@ final class ConsolePanels {
         if (own.offered()) return own;
         for (int i = 0; i < engineering.pages.size; i++) if (engineering.pages.get(i).offered()) return engineering.pages.get(i);
         return null;
+    }
+
+    /**
+     * The helm panel's tab to open on: Comms when a station has refused clearance, Navigation while a burn
+     * is near or a transfer is proposed or the orbit runs into the body, else Helm.
+     */
+    Page helmTab(HudData d) {
+        if (d.docking.clearance == com.ringsofiron.uihud.providers.DockingApproachProvider.Clearance.DENIED
+                || d.docking.clearance == com.ringsofiron.uihud.providers.DockingApproachProvider.Clearance.NO_PORT) return comms;
+        com.ringsofiron.uihud.providers.OrbitInfoProvider.OrbitInfo o = d.orbitInfo == null ? null : d.orbitInfo.getPlayerOrbit();
+        boolean burnNear = d.navReadout.burning || (!Float.isNaN(d.navReadout.burnIn) && d.navReadout.burnIn < 120f);
+        if (d.navReadout.proposal || burnNear || (o != null && o.impactWarning)) return nav;
+        return helm;
+    }
+
+    /**
+     * The tactical board's tab to open on: Defense while a missile is coming in or the shield is the newest
+     * worst alert, else Weapons.
+     */
+    Page tacticalTab(HudData d) {
+        if (d.threatFrame.incoming() > 0) return defense;
+        AlertRegistry.Alert best = null;
+        Array<AlertRegistry.Alert> list = d.alerts.all();
+        for (int i = 0; i < list.size; i++) {
+            AlertRegistry.Alert a = list.get(i);
+            if (!a.id.startsWith("sys:SHIELDS") && !a.id.startsWith("sys:TURRET") && !a.id.startsWith("sys:WEAPONS")) continue;
+            if (best == null || a.level.ordinal() > best.level.ordinal() || (a.level == best.level && a.since > best.since)) best = a;
+        }
+        return best != null && best.id.startsWith("sys:SHIELDS") ? defense : weapons;
     }
 
     /**
