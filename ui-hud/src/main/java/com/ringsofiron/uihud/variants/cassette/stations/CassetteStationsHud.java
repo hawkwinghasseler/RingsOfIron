@@ -41,8 +41,9 @@ import java.util.Set;
  * the menus, the map with its bays, and the game's windows as consoles. A screen hides the band (10.1)
  * and starts under the annunciator, so the status strip and the annunciator with its master lamps stay
  * above it, hung whether or not they have anything to say, so they don't move while it is up. The top
- * column is on a canvas of its own in the screen layer, over the map and the consoles; the telex of the
- * ship lost or the career over has the whole screen.
+ * column and the guide card are on a canvas of its own in the screen layer, over the map and the consoles
+ * (the overlay is over the panels, 6.1), so a guide's step still reads in the yard or on the map it sends
+ * the player to; the telex of the ship lost or the career over has the whole screen.
  */
 public class CassetteStationsHud implements HudVariant, Actions {
     /** Where a screen starts: under the annunciator, the last unit hung above it. */
@@ -56,7 +57,7 @@ public class CassetteStationsHud implements HudVariant, Actions {
     private final Pages pages = new Pages();
     private YardPaint paint;
     private YardCanvas canvas;
-    /** The top column's canvas, over the screens. */
+    /** The top column's canvas and the guide card's, over the screens. */
     private YardCanvas over;
     private TopColumn top;
     private Mfd left, right;
@@ -93,10 +94,11 @@ public class CassetteStationsHud implements HudVariant, Actions {
         prompt = new PromptLine(frame);
         berth = new BerthCard(frame);
         guide = new GuideCard(frame);
-        // Painted in this order: the sill under the units standing on it, the out-of-fiction card last; the
-        // top column over everything, screens included
-        for (YardPart p : new YardPart[]{board, left, right, helm, tac, sight, suit, prompt, berth, guide}) canvas.add(p);
+        // Painted in this order: the sill under the units standing on it; the top column and the
+        // out-of-fiction card over everything, screens included
+        for (YardPart p : new YardPart[]{board, left, right, helm, tac, sight, suit, prompt, berth}) canvas.add(p);
         over.add(top);
+        over.add(guide);
         host.layer().addActor(canvas);
         canvas.setBounds(0f, 0f, host.width(), host.height());
         screens.attach(host, SCREEN_TOP);
