@@ -273,6 +273,11 @@ public class VfdStationsHud implements HudVariant, Filament.Painter, FilamentAct
         return screens.mapPainter();
     }
 
+    /** The map in the Plot's terminal, which has its title and its help, or on its own with them over the plot. */
+    void mapFramed(boolean on) {
+        screens.framed(on, 0f);
+    }
+
     @Override
     public void resize(int width, int height, float uiScale) {
         screens.resize(uiScale);

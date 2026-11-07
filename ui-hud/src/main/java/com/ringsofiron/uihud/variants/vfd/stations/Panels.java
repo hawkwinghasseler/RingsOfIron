@@ -50,7 +50,12 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
     final Boards boards = new Boards();
     final StationLink link = new StationLink();
     final CaptainSlate slate = new CaptainSlate();
-    private final Panel[] all = {link, slate};
+    final PlotPanel plot = new PlotPanel();
+    private final Panel[] all = {link, slate, plot};
+    /** The game's orbit canvas's insets as last set, so they are set only when they change. */
+    private final float[] insets = new float[4];
+    /** Whether the canvas leaves its title and help to the Plot's terminal, as last set. */
+    private boolean framed;
     Panel current;
     /** The ship lost or the career over: the card shows over the dark HUD, and no panel opens. */
     boolean lost;
@@ -98,6 +103,8 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
     }
 
     void detach() {
+        canvas(0f, 0f, 0f, 0f);
+        framed(false);
         if (actor != null) {
             Stage s = actor.getStage();
             if (s != null && s.getScrollFocus() == actor) s.setScrollFocus(null);
@@ -120,6 +127,7 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
             case CREW:
             case BOARDING:
             case LOG:
+            case MAP:
             case GAME_OVER:
                 return true;
             default:
@@ -141,6 +149,8 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
             case BOARDING:
             case LOG:
                 return slate;
+            case MAP:
+                return plot;
             default:
                 return null;
         }
@@ -302,6 +312,8 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
             if (sayLeft <= 0f && current != null) current.response = "";
         }
         actor.setVisible(up());
+        if (current != plot) canvas(0f, 0f, 0f, 0f);
+        framed(current == plot);
         if (!up() || d == null) return;
         float w = host.width(), h = host.height();
         actor.setBounds(0f, 0f, w, h);
@@ -317,6 +329,27 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
         current.update(boards, d, delta);
         current.layout(w, h, floor(d, h));
         current.boxes(actor);
+        // The game's orbit canvas keeps clear of the Plot's terminal and of the top column over it
+        if (current == plot) canvas(0f, Geo.WIDE_Y, w - (plot.x - Terminal.PAD - Geo.PANEL_GAP), 0f);
+    }
+
+    /** Sets the game's orbit canvas's insets, UI units in from each edge, when they change. */
+    private void canvas(float l, float t, float r, float b) {
+        if (l == insets[0] && t == insets[1] && r == insets[2] && b == insets[3]) return;
+        UiHud g = gameHud();
+        if (g == null || g.getManeuverMap() == null) return;
+        insets[0] = l;
+        insets[1] = t;
+        insets[2] = r;
+        insets[3] = b;
+        g.getManeuverMap().setCanvasInsets(l, t, r, b);
+    }
+
+    /** The canvas leaves its title and help line to the Plot's terminal while that shows, when it changes. */
+    private void framed(boolean on) {
+        if (on == framed) return;
+        framed = on;
+        hud.mapFramed(on);
     }
 
     @Override
@@ -328,6 +361,8 @@ final class Panels implements Filament.Painter, FilamentActor.Clicks {
             if (d != null) lostCard.paint(f, d.gameOver);
             return;
         }
+        // The canvas covers the HUD's own layer: the top column stands over it here
+        if (current == plot) hud.paintTop(f);
         current.paint(f, time);
     }
 
