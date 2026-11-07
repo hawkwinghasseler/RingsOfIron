@@ -44,6 +44,18 @@ final class Fmt {
     }
 
     /** The first letter in capitals: "the nose" as "The nose". */
+    /**
+     * As many of {@code s}'s clauses (split at ", ") as fit {@code n} characters, whole; the first cut
+     * when even it doesn't fit: "4 / 8 BERTHS, 0 CR/WK IN WAGES" of three.
+     */
+    static String clauses(String s, int n) {
+        if (s == null) return "";
+        if (s.length() <= n) return s;
+        int end = -1;
+        for (int at = s.indexOf(", "); at >= 0 && at <= n; at = s.indexOf(", ", at + 2)) end = at;
+        return end > 0 ? s.substring(0, end) : Ledger.cut(s, n);
+    }
+
     static String capital(String s) {
         if (s == null || s.isEmpty()) return "";
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);

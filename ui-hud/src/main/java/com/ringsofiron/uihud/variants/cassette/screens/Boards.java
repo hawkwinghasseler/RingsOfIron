@@ -38,6 +38,8 @@ final class Boards {
     private String shipRead = "";
     /** The player's rank ("Lieutenant, Terran Patrol Authority") and standing with the station's owner. */
     String rank = "";
+    /** The rank in capitals, as the slate's title bar engraves it. */
+    String rankCaps = "";
     int standing;
     boolean hasStanding;
     /** Each tank's fluid and how full it is (0 to 1), from the yard's line. */
@@ -79,15 +81,19 @@ final class Boards {
         if (line == null) line = "";
         if (line.equals(careerRead)) return;
         careerRead = line;
-        rank = line;
         owner = "";
         ownerCaps = "";
         badge = "";
         hasStanding = false;
+        // Away from a station the board has no career line: the captain keeps the rank last read, for the slate
+        if (line.isEmpty()) return;
+        rank = line;
+        rankCaps = line.toUpperCase(Locale.ROOT);
         int at = line.indexOf("Standing with ");
         if (at < 0) return;
         rank = line.substring(0, at).trim();
         if (rank.endsWith(".")) rank = rank.substring(0, rank.length() - 1);
+        rankCaps = rank.toUpperCase(Locale.ROOT);
         String rest = line.substring(at + "Standing with ".length()).trim();
         int sp = rest.lastIndexOf(' ');
         if (sp <= 0) return;

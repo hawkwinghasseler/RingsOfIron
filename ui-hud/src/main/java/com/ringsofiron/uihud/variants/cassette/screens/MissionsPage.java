@@ -19,7 +19,8 @@ import com.ringsofiron.uihud.variants.cassette.YardPaint;
  * guarded.
  */
 final class MissionsPage extends ListPage {
-    private static final int HEAD = 0, OFFER = 1, HELD = 2;
+    /** Row kinds; in a side panel each job's terms take a dim row of their own under it ({@code TERMS}). */
+    private static final int HEAD = 0, OFFER = 1, HELD = 2, TERMS = 3;
     /** True on the record (the contracts held, anywhere), false on a station's board. */
     private final boolean record;
     private Boards b;
@@ -27,6 +28,8 @@ final class MissionsPage extends ListPage {
     private final Array<String> wrapped = new Array<>();
     private String wrappedFor;
     private float wrappedW;
+    /** Whether it drew in a side panel last frame (the Station link, the slate): a job's terms under it. */
+    private boolean narrow;
 
     MissionsPage(boolean record) {
         super(record ? "CONTRACTS" : "MISSIONS", "JOBS", ClassicWindow.MISSIONS);
@@ -35,6 +38,11 @@ final class MissionsPage extends ListPage {
 
     private MissionBoard board() {
         return b.missions;
+    }
+
+    @Override
+    boolean fitsSide() {
+        return true;
     }
 
     @Override
@@ -52,10 +60,16 @@ final class MissionsPage extends ListPage {
         refs.clear();
         if (!record) {
             add(HEAD, 0);
-            for (int i = 0; i < m.offers.size; i++) add(OFFER, i);
+            for (int i = 0; i < m.offers.size; i++) {
+                add(OFFER, i);
+                if (narrow) add(TERMS, i);
+            }
         }
         add(HEAD, 1);
-        for (int i = 0; i < m.held.size; i++) add(HELD, i);
+        for (int i = 0; i < m.held.size; i++) {
+            add(HELD, i);
+            if (narrow) add(TERMS, -1 - i);
+        }
         keepSelection();
     }
 
@@ -71,7 +85,18 @@ final class MissionsPage extends ListPage {
 
     @Override
     boolean selectable(int i) {
-        return kinds.get(i) != HEAD;
+        return kinds.get(i) != HEAD && kinds.get(i) != TERMS;
+    }
+
+    @Override
+    boolean belongsAbove(int i) {
+        return kinds.get(i) == TERMS;
+    }
+
+    @Override
+    String windowKey() {
+        // J opens the board while docked, the contracts held only away from a station
+        return record && b != null && !board().stationName.isEmpty() ? null : super.windowKey();
     }
 
     private Job job(int i) {
@@ -90,7 +115,26 @@ final class MissionsPage extends ListPage {
             L.at(p, 1, r, offers ? "OFFERS" : "HELD", DIM);
             if (offers && m.offers.size == 0) L.at(p, 9, r, "No work posted here", DIM);
             else if (!offers && m.held.size == 0) L.at(p, 9, r, "No contracts held", DIM);
-            else L.at(p, termsAt, r, offers ? "TERMS" : "TERMS, TIME LEFT", DIM);
+            else if (narrow && !offers) L.right(p, L.cols - 1, r, "HOLDING " + m.held.size + " OF 3", DIM);
+            else if (!narrow) L.at(p, termsAt, r, offers ? "TERMS" : "TERMS, TIME LEFT", DIM);
+            return;
+        }
+        if (kind == TERMS) {
+            // The job's terms under it, lit with it while it is selected
+            int ref = refs.get(i);
+            Job j = ref >= 0 ? m.offers.get(ref) : m.held.get(-1 - ref);
+            boolean locked = ref >= 0 && !j.locked.isEmpty();
+            String t = Ledger.cut(locked ? Fmt.upper(j.locked) : j.terms, L.cols - 5);
+            if (s) L.rev(p, 4, r, t);
+            else L.at(p, 4, r, t, DIM);
+            return;
+        }
+        if (narrow) {
+            Job j = job(i);
+            boolean locked = kind == OFFER && !j.locked.isEmpty();
+            String title = Ledger.cut(j.title, L.cols - 3);
+            if (s) L.rev(p, 2, r, title);
+            else L.at(p, 2, r, title, locked ? DIM : AMBER);
             return;
         }
         Job j = job(i);
@@ -125,6 +169,13 @@ final class MissionsPage extends ListPage {
 
     @Override
     void draw(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        boolean was = narrow;
+        narrow = w < 700f;
+        if (narrow != was && b != null) refresh(b);
+        if (narrow) {
+            drawNarrow(p, hits, x, y, w, h);
+            return;
+        }
         boolean liv = !record;
         float bx = x + 8f, by = y + 6f, bw = w - 16f, bh = h - 12f;
         BigConsole.bay(p, bx, by, bw, bh, null, liv);
@@ -155,6 +206,28 @@ final class MissionsPage extends ListPage {
         sheet(p, sheetX, uy, sheetW, by + bh - 16f - uy, liv);
     }
 
+    /**
+     * In a side panel: the jobs on the tube, each with its terms on a dim row under it, the contracts
+     * held under them with how many of three; the soft keys under the tube; and the selected job typed
+     * on the sheet under them, for whom and why it was posted.
+     */
+    private void drawNarrow(YardPaint p, Hits hits, float x, float y, float w, float h) {
+        boolean liv = !record;
+        float bx = x + 8f, by = y + 4f, bw = w - 16f, bh = h - 8f;
+        BigConsole.bay(p, bx, by, bw, bh, null, liv);
+        float sheetH = Math.min(150f, Math.max(0f, bh - 330f));
+        int cols = Ledger.colsIn(bw - 36f), rows = Math.max(8, Ledger.rowsIn(bh - 42f - sheetH));
+        L.set(bx + 12f, by + 10f, cols, rows);
+        L.under(p, false);
+        title(p, record ? "CONTRACTS HELD" : "CONTRACT BOARD", record ? null : Ledger.cut(Fmt.upper(b.station), 18));
+        drawList(p, hits, 2, rows - 3);
+        drawSoftRow(p, hits);
+        L.over(p);
+        drawSoftKeys(p, hits);
+        float sy = L.y + L.h + 30f;
+        if (sheetH >= 80f) sheet(p, L.x, sy, L.w, by + bh - 8f - sy, liv);
+    }
+
     /** The selected job typed on a fanfold sheet: what, for whom, the terms and the note; a stamp when it is locked. */
     private void sheet(YardPaint p, float x, float y, float w, float h, boolean liv) {
         Job j = job(sel);
@@ -172,7 +245,8 @@ final class MissionsPage extends ListPage {
                 Paper.wrap(p, parts[i], tw, Paper.SIZE, part);
                 if (part.size == 0) continue;
                 wrapped.addAll(part);
-                wrapped.add("");
+                // A line between the parts where there is room for it; in a side panel the sheet is short
+                if (!narrow) wrapped.add("");
             }
         }
         float ly = y + 30f + 13f;
