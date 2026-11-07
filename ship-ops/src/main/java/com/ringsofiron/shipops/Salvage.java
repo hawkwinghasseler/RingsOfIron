@@ -44,7 +44,7 @@ import java.util.Locale;
  * time ({@link YardTask}); the part then waits by its mount as a crate, {@code part:<id>}, until a
  * crew member who carries brings it home to the ship's cargo bays ({@link CarryTask}). A weapon
  * comes off as {@code part:<weapon id>}, anything else as {@code part:<system>} (reactor, engine...).
- * A stripped system is dead for good. Cargo in the craft's bays can be carried over too
+ * A stripped system is dead for good, and gone from the craft's art ({@link SubsystemComponent#stripped}). Cargo in the craft's bays can be carried over too
  * ({@link #takeCargo}).
  *
  * <p>Stations buy parts at {@link #SALE_SHARE} of their price ({@link #salePrice}); a salvaged
@@ -508,6 +508,7 @@ public class Salvage extends EntitySystem {
         SubsystemComponent system = systemAt(craft, s.x, s.y);
         if (system != null) {
             system.health = 0f;
+            system.stripped = true;
             system.isOperational = false;
             system.switchedOn = false;
             ShipSubsystemRegistryComponent registry = craft.getComponent(ShipSubsystemRegistryComponent.class);

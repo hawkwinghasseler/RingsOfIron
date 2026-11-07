@@ -227,6 +227,13 @@ class ArtNamesTest {
     }
 
     @Test
+    void everyPrimaryMountSizeHasAGuttedBay() {
+        for (MountFootprint.MountSize size : MountFootprint.MountSize.values()) {
+            assertArt(ArtNames.guttedBay(size));
+        }
+    }
+
+    @Test
     void aComponentMadeInDataFallsBackToItsBehavior() {
         String[] names = ArtNames.component("fusion_core", SubsystemComponent.SubsystemType.REACTOR,
                 MountFootprint.MountSize.L, null, false);

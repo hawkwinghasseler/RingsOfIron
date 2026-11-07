@@ -200,6 +200,7 @@ class SalvageEvaTest {
                 + (s == null ? "" : ", " + world.salvage.status(game.player, game.raider, s)));
         assertTrue(game.raider.getComponent(SalvagedComponent.class).has(f.originX, f.originY), "stripped");
         assertFalse(engine.system.isOperational, "the engine is dead");
+        assertTrue(engine.system.stripped, "the engine is gone, not just wrecked");
         assertTrue(world.salvage.parts(game.raider).stream().noneMatch(p -> p.system == engine.system), "only stripped once");
         run(120f);
         assertEquals(0, ourCrewAboardRaider(), "everyone back home");

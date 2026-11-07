@@ -251,6 +251,14 @@ public final class ArtNames {
         return out.toArray(new String[0]);
     }
 
+    /**
+     * A primary mount whose system was stripped for salvage: the bay with the machine's guts torn
+     * out, cut power leads and open pipe ends. Rectangular slots have none; nothing is drawn there.
+     */
+    public static String guttedBay(MountFootprint.MountSize size) {
+        return "components/gutted_bay_" + size.name().toLowerCase(Locale.ROOT);
+    }
+
     /** A docking port's latch collar, half a tile outside its outer edge. */
     public static String collar(MountFootprint.MountSize size, boolean powered) {
         return "components/docking_collar_" + size.name().toLowerCase(Locale.ROOT) + (powered ? "" : "_unpowered");

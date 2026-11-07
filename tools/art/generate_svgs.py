@@ -3342,6 +3342,9 @@ def main():
     edge_conduits()
     pipes()
     components()
+    # The bay a stripped primary system leaves, drawn by its own script
+    from gutted_bay_svgs import gutted_bays
+    gutted_bays()
     effects()
     decor()
     # The furnishings yards sell, drawn by their own script
