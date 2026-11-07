@@ -76,8 +76,8 @@ card. The map and the console stay the game's. What the three share is in `varia
   notes, and a scroll bar when the rows run past the box. `stack` shares a box between parts, the
   tallest giving way first; `flow` packs them into columns; `pageActs` lines the page's own orders up
   along a foot. A narrow list can leave out the fixed columns at its right that its words won't fit,
-  run a long last column onto the next lines, and leave each row's dim line to the terms beside or
-  under it. Each part records which columns it last drew whole, so the terms needn't say them again.
+  run its notes and a long last column onto the next lines, and leave each row's dim line to the
+  terms beside or under it. Each part records which columns it last drew whole, so the terms needn't say them again.
   `Ui` holds the pieces: the text sizes, key caps, the lit push buttons and the barber-pole strip of
   a barred order, the cyan cursor.
 - **The workings.** `ScreenModes` is what each combination builds its modes on: which page a
