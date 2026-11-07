@@ -46,4 +46,11 @@ on caps; a body or the target pulled in to the map's top edge comes down clear o
 with it. Circles far bigger than the canvas are drawn only where they cross it.
 
 `tools/playtest/shell-nasapunk.sh <task|stations|context>` drives the menus, a paused game, the map
-and the mod scripts dialog in a real window.
+and the mod scripts dialog in a real window. From its run under the context HUD at 1280x800, where
+the HUD itself is still the classic one:
+
+| | |
+|---|---|
+| ![The main menu](nasapunk/main-menu.png) | ![Settings, the focus on a slider](nasapunk/settings.png) |
+| ![The pause menu over the game](nasapunk/pause.png) | ![The map](nasapunk/map.png) |
+| ![The mod scripts question](nasapunk/mod-scripts.png) | |
