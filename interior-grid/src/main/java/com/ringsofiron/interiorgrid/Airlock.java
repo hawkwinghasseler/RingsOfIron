@@ -75,6 +75,14 @@ public final class Airlock {
     public boolean crowded;
     /** How many are out on this airlock's tether reel. Set by the crew module each tick. */
     public int tethered;
+    /**
+     * Broken with nothing locked across it ({@link #open}): no cycle, the door left working as a
+     * plain door that suited crew walk out of and back in by. Read again from the doors each time
+     * it is looked up.
+     */
+    private boolean openPort;
+    /** Whether it was {@link #broken} at the last {@link #failsafe}; null before the first look. */
+    private Boolean wasBroken;
 
     private final int[] tile = new int[2];
 
@@ -91,6 +99,7 @@ public final class Airlock {
     public static Airlock of(ShipGridComponent grid, MountFootprint port) {
         if (port == null || port.kind != MountFootprint.MountKind.PORT) return null;
         if (port.airlock == null) port.airlock = new Airlock(port, read(grid, port));
+        port.airlock.openPort = open(grid, port);
         return port.airlock;
     }
 
@@ -114,12 +123,12 @@ public final class Airlock {
 
     /** True at rest, hatch open: whoever is going out can step into the chamber. */
     public boolean isIn() {
-        return state == State.IN;
+        return state == State.IN || openPort;
     }
 
     /** True with the outer door open: whoever is in the chamber can step out, and whoever is outside in. */
     public boolean isOut() {
-        return state == State.OUT;
+        return state == State.OUT || openPort;
     }
 
     /** Who the airlock is cycling for, or null. */
@@ -145,21 +154,23 @@ public final class Airlock {
 
     /**
      * True if crew can go out through {@code port} on {@code grid} now or after a cycle: not latched to
-     * another craft, its outer doors and inner hatch all there and none blown away.
+     * another craft, its outer doors and inner hatch all there, none blown away and none locked
+     * ({@link EdgeWall#lockedShut}); or broken with what is left of it unlocked ({@link #open}).
      */
     public static boolean works(ShipGridComponent grid, MountFootprint port) {
         if (port == null || port.kind != MountFootprint.MountKind.PORT || docked(grid, port)) return false;
+        if (open(grid, port)) return true;
         boolean any = false;
         for (int y = port.originY; y < port.originY + port.height(); y++) {
             for (int x = port.originX; x < port.originX + port.width(); x++) {
                 if (DockingPortLayout.isDoorTile(port, x, y)) {
                     EdgeWall d = DockingPortLayout.door(grid, port, x, y);
-                    if (d == null || d.isDestroyed()) return false;
+                    if (d == null || d.isDestroyed() || d.lockedShut) return false;
                     any = true;
                 }
                 if (DockingPortLayout.isHatchTile(port, x, y)) {
                     EdgeWall h = DockingPortLayout.hatch(grid, port, x, y);
-                    if (h == null || h.isDestroyed()) return false;
+                    if (h == null || h.isDestroyed() || h.lockedShut) return false;
                 }
             }
         }
@@ -201,8 +212,121 @@ public final class Airlock {
         return s == null || s.powered && !s.isDisabled();
     }
 
+    /**
+     * True if {@code port}, not docked, has stopped working as an airlock: an outer door or its inner
+     * hatch wrecked, so the two no longer make a chamber between them.
+     */
+    public static boolean broken(ShipGridComponent grid, MountFootprint port) {
+        if (port == null || port.kind != MountFootprint.MountKind.PORT || docked(grid, port)) return false;
+        Side in = DockingPortLayout.facing(port).opposite();
+        for (int y = port.originY; y < port.originY + port.height(); y++) {
+            for (int x = port.originX; x < port.originX + port.width(); x++) {
+                EdgeWall d = DockingPortLayout.door(grid, port, x, y);
+                if (d != null && d.isDestroyed()) return true;
+                if (DockingPortLayout.isHatchTile(port, x, y)) {
+                    EdgeWall h = grid.getEdge(x, y, in);
+                    if (h != null && h.hasBulkhead && h.isDestroyed()) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True if {@code port} is {@link #broken} and nothing left across its opening is locked: its
+     * remaining door works as a plain door, and suited crew go out and come back in through it (the
+     * rooms behind it open to space while it stands open). Locked, it holds until the player unlocks it.
+     */
+    public static boolean open(ShipGridComponent grid, MountFootprint port) {
+        return broken(grid, port) && !lockedAcross(grid, port);
+    }
+
+    /** True if any door or hatch across {@code port}'s opening is {@link EdgeWall#lockedShut}. */
+    public static boolean lockedAcross(ShipGridComponent grid, MountFootprint port) {
+        Side in = DockingPortLayout.facing(port).opposite();
+        for (int y = port.originY; y < port.originY + port.height(); y++) {
+            for (int x = port.originX; x < port.originX + port.width(); x++) {
+                EdgeWall d = DockingPortLayout.door(grid, port, x, y);
+                if (d != null && !d.isDestroyed() && d.lockedShut) return true;
+                if (DockingPortLayout.isHatchTile(port, x, y)) {
+                    EdgeWall h = grid.getEdge(x, y, in);
+                    if (h != null && !h.isDestroyed() && h.lockedShut) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The airlock failsafe, once a tick for every docking port: when one of its doors stops working
+     * ({@link #broken}), the others across its opening shut and lock ({@link EdgeWall#lock}), so the
+     * room behind keeps its air; once it is whole again (a door braced or rebuilt) the locks it put
+     * on come off. A port broken when first looked at (a game loaded so) is left as it is, locks and
+     * all. True on the tick it locked something.
+     */
+    public static boolean failsafe(ShipGridComponent grid, MountFootprint port) {
+        Airlock lock = of(grid, port);
+        if (lock == null) return false;
+        boolean now = broken(grid, port);
+        Boolean was = lock.wasBroken;
+        lock.wasBroken = now;
+        if (was == null || was == now) return false;
+        boolean locked = false;
+        Side in = DockingPortLayout.facing(port).opposite();
+        for (int y = port.originY; y < port.originY + port.height(); y++) {
+            for (int x = port.originX; x < port.originX + port.width(); x++) {
+                EdgeWall d = DockingPortLayout.door(grid, port, x, y);
+                EdgeWall h = DockingPortLayout.isHatchTile(port, x, y) ? grid.getEdge(x, y, in) : null;
+                for (EdgeWall w : new EdgeWall[] {d, h}) {
+                    if (w == null || !w.hasBulkhead || w.isDestroyed()) continue;
+                    if (now && !w.lockedShut) {
+                        w.lock(true);
+                        w.locked = false;
+                        locked = true;
+                    } else if (!now && w.lockedByAirlock) {
+                        w.unlock();
+                    }
+                }
+            }
+        }
+        if (locked) grid.gridDirty = true;
+        lock.state = read(grid, port);
+        lock.user = null;
+        return locked;
+    }
+
+    /**
+     * True if the edge between (x, y) and (nx, ny) is a door or hatch across a docking port that is
+     * {@link #open}: broken and unlocked, a plain door suited crew may go out by.
+     */
+    public static boolean openPortEdge(ShipGridComponent grid, int x, int y, int nx, int ny) {
+        for (int k = 0; k < 2; k++) {
+            int tx = k == 0 ? x : nx, ty = k == 0 ? y : ny;
+            Tile t = grid.getTile(tx, ty);
+            MountFootprint m = t == null ? null : t.mount;
+            if (m == null || m.kind != MountFootprint.MountKind.PORT || !m.covers(tx, ty) || !open(grid, m)) continue;
+            Side facing = DockingPortLayout.facing(m);
+            int ox = k == 0 ? nx : x, oy = k == 0 ? ny : y;
+            int dx = ox - tx, dy = oy - ty;
+            if (DockingPortLayout.isDoorTile(m, tx, ty) && dx == facing.dx && dy == facing.dy) return true;
+            if (DockingPortLayout.isHatchTile(m, tx, ty) && dx == -facing.dx && dy == -facing.dy) return true;
+        }
+        return false;
+    }
+
     /** Works the doors, pump and valve for {@code dt} seconds. */
     public void update(ShipGridComponent grid, float dt) {
+        openPort = open(grid, port);
+        if (openPort || broken(grid, port) || lockedAcross(grid, port)) {
+            // Broken, or a door locked across it: no cycle. What is left works as a plain door, or
+            // holds locked till the player unlocks it
+            if (openPort) state = State.OUT;
+            timer = 0f;
+            user = null;
+            setDoorLock(grid, false);
+            unlockHatch(grid);
+            return;
+        }
         if (docked(grid, port)) {
             // The docking module has the outer door; the hatch stands open
             if (state != State.IN) setHatch(grid, false, false);
@@ -346,6 +470,15 @@ public final class Airlock {
                 if (h == null || h.isDestroyed()) continue;
                 h.bulkheadSealed = shut;
                 h.locked = lock;
+            }
+        }
+    }
+
+    private void unlockHatch(ShipGridComponent grid) {
+        for (int y = port.originY; y < port.originY + port.height(); y++) {
+            for (int x = port.originX; x < port.originX + port.width(); x++) {
+                EdgeWall h = DockingPortLayout.hatch(grid, port, x, y);
+                if (h != null) h.locked = false;
             }
         }
     }

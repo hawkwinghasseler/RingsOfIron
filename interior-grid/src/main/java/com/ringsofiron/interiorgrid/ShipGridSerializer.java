@@ -187,6 +187,8 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
                 json.writeValue("bulkhead", e.hasBulkhead);
                 json.writeValue("sealed", e.bulkheadSealed);
                 if (e.patchedAt > 0f) json.writeValue("patch", e.patchedAt);
+                if (e.lockedShut) json.writeValue("lockedShut", true);
+                if (e.lockedByAirlock) json.writeValue("lockedByAirlock", true);
                 json.writeObjectEnd();
             }
         }
@@ -379,6 +381,8 @@ public class ShipGridSerializer implements Json.Serializer<ShipGridComponent> {
             wall.integrity = e.getFloat("integrity");
             wall.bulkheadSealed = e.getBoolean("sealed");
             wall.patchedAt = e.getFloat("patch", 0f);
+            wall.lockedShut = e.getBoolean("lockedShut", false);
+            wall.lockedByAirlock = e.getBoolean("lockedByAirlock", false);
             edges[e.getInt("y")][e.getInt("x")] = wall;
         }
     }

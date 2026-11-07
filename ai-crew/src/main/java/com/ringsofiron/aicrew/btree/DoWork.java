@@ -95,9 +95,11 @@ public class DoWork extends CrewLeaf {
                 grid.gridDirty = true;
                 return Status.SUCCEEDED;
             case PATCH_LEAK: {
-                a.crew.showProgress(elapsed, a.crew.def.patchTime);
-                if (elapsed < a.crew.def.patchTime) return Status.RUNNING;
                 PatchLeakTask p = (PatchLeakTask) t;
+                // Bracing a wrecked airlock door takes longer than patching a leak
+                float work = a.crew.def.patchTime * (p.side != null && LeakPatches.braceable(grid, p.x, p.y, p.side) ? LeakPatches.BRACE_WORK : 1f);
+                a.crew.showProgress(elapsed, work);
+                if (elapsed < work) return Status.RUNNING;
                 return LeakPatches.patch(grid, p.x, p.y, p.side) ? Status.SUCCEEDED : Status.FAILED;
             }
             case REPAIR: {

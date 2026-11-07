@@ -31,6 +31,14 @@ public class EdgeWall {
      * cycle is done. Not saved; the airlock sets it again each tick.
      */
     public transient boolean locked;
+    /**
+     * Locked shut, by the captain or by its airlock when the door paired with it stops working
+     * ({@link Airlock#failsafe}): no one opens it until it is unlocked ({@link #unlock}), which takes
+     * the player at the door, or for the crew an order from the captain. Saved.
+     */
+    public boolean lockedShut;
+    /** Locked by its airlock's failsafe rather than by hand: unlocked again once the airlock is whole. Saved. */
+    public boolean lockedByAirlock;
 
     public EdgeWall(WeightClass weightClass) {
         this(weightClass, MaterialTable.DEFAULT_MATERIAL, false);
@@ -40,6 +48,20 @@ public class EdgeWall {
         this.weightClass = weightClass;
         this.material = material;
         this.hasBulkhead = hasBulkhead;
+    }
+
+    /** Shuts and locks a door ({@link #lockedShut}); {@code byAirlock} if its airlock's failsafe did it. */
+    public void lock(boolean byAirlock) {
+        if (!hasBulkhead || isDestroyed()) return;
+        bulkheadSealed = true;
+        lockedShut = true;
+        lockedByAirlock = byAirlock;
+    }
+
+    /** Unlocks a door: it opens again for whoever may open it. */
+    public void unlock() {
+        lockedShut = false;
+        lockedByAirlock = false;
     }
 
     public boolean isDestroyed() {

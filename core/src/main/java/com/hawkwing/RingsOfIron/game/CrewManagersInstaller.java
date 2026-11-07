@@ -14,6 +14,8 @@ final class CrewManagersInstaller {
     final BerthVenting berthVenting;
     final Spacewalks spacewalks;
     final JammedCollars jammedCollars;
+    final AirlockLocks airlockLocks;
+    final DoorControls doors;
     final FieldRefits fieldRefits;
     final CaptainSafety captain;
     final AirWatch air;
@@ -28,6 +30,8 @@ final class CrewManagersInstaller {
         berthVenting = new BerthVenting(context, crew, docking, world.yard);
         spacewalks = new Spacewalks(context, crew, world.crewCareer, world.physics);
         jammedCollars = new JammedCollars(context, crew);
+        airlockLocks = new AirlockLocks(context);
+        doors = new DoorControls(context, crew);
         fieldRefits = new FieldRefits(context, crew, world.combatDefs);
         captain = new CaptainSafety(context, crew);
         air = new AirWatch(context, crew, captain);

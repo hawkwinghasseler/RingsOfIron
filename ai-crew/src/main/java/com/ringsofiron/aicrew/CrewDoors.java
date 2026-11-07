@@ -6,6 +6,7 @@ import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.aicrew.nav.GridNavGraph;
 import com.ringsofiron.aicrew.nav.GridNode;
 import com.ringsofiron.interiorgrid.AirflowEdge;
+import com.ringsofiron.interiorgrid.Airlock;
 import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.EdgeWall;
 import com.ringsofiron.interiorgrid.GridLink;
@@ -89,6 +90,8 @@ public final class CrewDoors {
         // by those who force their way
         EdgeWall wall = grid.getEdgeBetween(x, y, nx, ny);
         if (mustForce(crew, ship, c, wall) && service.doorRights.forcing(crew, ship, wall) == null) return false;
+        // A broken airlock's door left unlocked (the captain's leave): crew in EVA suits go out by it
+        if (c.inEvaSuit() && Airlock.openPortEdge(grid, x, y, nx, ny)) return true;
         boolean hereThick = grid.pressureRatioAt(x, y) >= TaskRules.SAFE_PRESSURE;
         boolean thereThick = grid.pressureRatioAt(nx, ny) >= TaskRules.SAFE_PRESSURE;
         if (!hereThick || thereThick) return true;
@@ -97,10 +100,10 @@ public final class CrewDoors {
 
     /**
      * True if {@code wall} of {@code ship} is shut against {@code crew}: an airlock's door held for its
-     * cycle, or a door of a craft whose crew are hostile to them that they have no rights to.
+     * cycle, a door locked ({@link EdgeWall#lockedShut}: by the captain, or by its airlock's failsafe), or a door of a craft whose crew are hostile to them that they have no rights to.
      */
     private boolean mustForce(Entity crew, Entity ship, CrewMemberComponent c, EdgeWall wall) {
-        if (wall != null && wall.locked) return true;
+        if (wall != null && (wall.locked || wall.lockedShut)) return true;
         ShipTaskBoardComponent board = service.board(ship);
         return board != null && service.hostility.hostile(board.faction, c.faction) && !service.doorRights.mayPass(crew, ship);
     }

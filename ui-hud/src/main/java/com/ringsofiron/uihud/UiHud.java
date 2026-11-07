@@ -119,6 +119,7 @@ public class UiHud implements Disposable {
     private final ShipyardWindow shipyardWindow;
     private final BoardingWindow boardingWindow;
     private final CrewWindow crewWindow;
+    private final com.ringsofiron.uihud.widgets.DoorWindow doorWindow;
     private final ThreatOverlay threatOverlay;
     private final ShipGauges gauges;
     private final RadarScope radar;
@@ -251,6 +252,7 @@ public class UiHud implements Disposable {
         yardWindow = new YardWindow(skin);
         missionWindow = new MissionWindow(skin);
         crewWindow = new CrewWindow(skin);
+        doorWindow = new com.ringsofiron.uihud.widgets.DoorWindow(skin);
         shipyardWindow = new ShipyardWindow(skin);
         tradeWindow.setHintSuffix(() -> (yardWindow.isAvailable() && !yardWindow.isField() && !yardWindow.isOpen() ? "   [Y] Yard" : "")
                 + (!missionWindow.getBoard().stationName.isEmpty() && !missionWindow.isOpen() ? "   [J] Missions" : "")
@@ -274,6 +276,7 @@ public class UiHud implements Disposable {
         stage.addActor(shipyardWindow);
         stage.addActor(boardingWindow);
         stage.addActor(crewWindow);
+        stage.addActor(doorWindow);
 
         hudRenderSystem = new HudRenderSystem(viewports, markerLayer, skin);
         hudRenderSystem.keepClear(threatBanner, () -> threatOverlay.isVisible() && threatBanner.getText().length() > 0);
@@ -344,9 +347,17 @@ public class UiHud implements Disposable {
         if (window != null && focusNav.key(window, keycode)) return true;
         switch (keycode) {
             case Input.Keys.E:
+                if (doorWindow.isOpen()) {
+                    doorWindow.setOpen(false);
+                    return true;
+                }
                 if (consoleWindow.isOpen()) return false;
                 return interactPromptSystem.interact();
             case Input.Keys.ESCAPE:
+                if (doorWindow.isOpen()) {
+                    doorWindow.setOpen(false);
+                    return true;
+                }
                 if (isMapOpen()) {
                     setMapVisible(false);
                     return true;
@@ -431,6 +442,7 @@ public class UiHud implements Disposable {
         if (yardWindow.isOpen()) return yardWindow;
         if (missionWindow.isOpen()) return missionWindow;
         if (boardingWindow.isOpen()) return boardingWindow;
+        if (doorWindow.isOpen()) return doorWindow;
         return null;
     }
 
@@ -602,6 +614,16 @@ public class UiHud implements Disposable {
 
     public CrewWindow getCrewWindow() {
         return crewWindow;
+    }
+
+    /** Feeds the door menu ([E] at a door); null leaves it empty. */
+    public void setDoors(com.ringsofiron.uihud.providers.DoorProvider doors) {
+        doorWindow.setProvider(doors);
+    }
+
+    /** The door menu, opened on the door its provider has in use; for the game's [E] at a door. */
+    public com.ringsofiron.uihud.widgets.DoorWindow getDoorWindow() {
+        return doorWindow;
     }
 
     /** Feeds the shipyard window (the yard window's Ships for sale, or [Y] with a prize to hand over and no yard); null hides it. */
