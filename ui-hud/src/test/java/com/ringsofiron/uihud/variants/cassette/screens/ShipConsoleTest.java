@@ -122,6 +122,39 @@ class ShipConsoleTest {
     }
 
     @Test
+    void eAtASystemsConsoleOpensTheSystemsTabOnItsRowItsGroupOpened() {
+        ShipGridComponent grid = new ShipGridComponent(12, 12, 1f);
+        Array<SubsystemComponent> systems = ship(grid);
+        com.badlogic.ashley.core.Entity ship = new com.badlogic.ashley.core.Entity();
+        ship.add(grid);
+        com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent registry = new com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent();
+        for (SubsystemComponent s : systems) {
+            com.badlogic.ashley.core.Entity e = new com.badlogic.ashley.core.Entity();
+            e.add(s);
+            registry.subsystems.add(e);
+        }
+        ship.add(registry);
+        com.ringsofiron.uihud.data.HudData d = new com.ringsofiron.uihud.data.HudData();
+        d.ctx.ship = ship;
+        Boards b = new Boards();
+        b.refresh(d);
+        SystemsPage page = new SystemsPage(new FireTrend());
+        page.refresh(b);
+        assertTrue(page.offered());
+        SubsystemComponent life = systems.get(4), engine = systems.get(2);
+        page.focus(life);
+        assertEquals(1, page.selected().size);
+        assertTrue(page.selected().first() == life, "life support's own row");
+        page.focus(engine);
+        assertEquals(1, page.selected().size, "the engine's own row, not its group's");
+        assertTrue(page.selected().first() == engine);
+        page.refresh(b);
+        assertTrue(page.selected().first() == engine, "the group stays open, the row selected");
+        page.focus(null);
+        assertTrue(page.selected().first() == engine, "nothing to select leaves it be");
+    }
+
+    @Test
     void aGroupsStateFitsItsColumnAndADownGunIsNamedByItsMount() {
         assertEquals("1 SHORTED · 1 ON", SystemsPage.fit("1 SHORTED · 1 ON", 16));
         assertEquals("1 SHORTED", SystemsPage.fit("1 SHORTED · 1 ON", 14), "the worst counts first, the rest go");
