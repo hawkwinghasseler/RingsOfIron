@@ -74,4 +74,17 @@ class GameSettingsTest {
         s.save(file);
         assertEquals("classic", GameSettings.load(file).hudVariant);
     }
+
+    @Test
+    void theOrbitFadeIsKeptAndDefaultsToForward(@TempDir Path dir) {
+        FileHandle file = new FileHandle(dir.resolve(GameSettings.FILE_NAME).toFile());
+        assertEquals("forward", new GameSettings().orbitFade, "fading ahead of the ship by default");
+        GameSettings s = new GameSettings();
+        s.orbitFade = "backward";
+        s.save(file);
+        assertEquals("backward", GameSettings.load(file).orbitFade);
+        assertEquals("backward", ShellMenus.copy(GameSettings.load(file)).orbitFade, "and the settings window keeps it");
+        file.writeString("{orbitFade: sideways}", false);
+        assertEquals("forward", GameSettings.load(file).orbitFade);
+    }
 }

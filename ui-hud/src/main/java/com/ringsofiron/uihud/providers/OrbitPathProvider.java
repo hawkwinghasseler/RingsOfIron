@@ -56,6 +56,8 @@ public interface OrbitPathProvider {
      */
     final class PathLeg {
         public final FloatArray points = new FloatArray();
+        /** How far along each point is, one float a point: see {@link OrbitPath#currentFade}. */
+        public final FloatArray fade = new FloatArray();
         /** Follows the planned path, rather than the orbit now. */
         public boolean planned;
     }
@@ -81,10 +83,22 @@ public interface OrbitPathProvider {
         public String bodyName = "";
         public double bodyRadius;
         public double shipX, shipY;
-        /** The orbit the ship is on now. */
+        /** The orbit the ship is on now, from where the ship is, along its direction of travel. */
         public final FloatArray current = new FloatArray();
-        /** The orbit after every planned burn, or empty with no burns planned. */
+        /**
+         * How far along {@link #current} each point is, one float a point: the share of an orbital
+         * period the ship takes to get there from the line's start (where it is now, or the burn a line
+         * starts at), 0 to 1; for an open path, the share of the line as drawn. The map fades a line's
+         * brightness by it to show which way the ship goes. Empty when not known.
+         */
+        public final FloatArray currentFade = new FloatArray();
+        /**
+         * The orbit after every planned burn, or empty with no burns planned: from the last burn on, as
+         * far as it goes before it changes sphere of influence (then on in {@link #legs}).
+         */
         public final FloatArray planned = new FloatArray();
+        /** How far along {@link #planned} each point is, as {@link #currentFade}. */
+        public final FloatArray plannedFade = new FloatArray();
         /** Where each planned burn happens, as x,y pairs. */
         public final FloatArray nodes = new FloatArray();
         /** A label by each planned burn, in order ("1: 0:12:30"), or empty to draw none. */
@@ -111,6 +125,8 @@ public interface OrbitPathProvider {
         public final FloatArray approach = new FloatArray();
         /** A transfer proposed to the target but not yet accepted: its path and its burns. */
         public final FloatArray proposed = new FloatArray();
+        /** How far along {@link #proposed} each point is, as {@link #currentFade}. */
+        public final FloatArray proposedFade = new FloatArray();
         public final FloatArray proposedNodes = new FloatArray();
         /**
          * Each planned burn's axes as unit vectors in the map's frame, four floats a burn: prograde x
@@ -123,6 +139,14 @@ public interface OrbitPathProvider {
         /** The path on past a change of sphere of influence. */
         public final Array<PathLeg> legs = new Array<>();
         private final Array<PathLeg> legPool = new Array<>();
+        /**
+         * The path between one planned burn and the next, in order: what each burn but the last leaves
+         * the ship on until the next fires, cut into legs where it changes sphere of influence. Before
+         * the first burn the orbit now is {@link #current} itself; only its legs past a moon it meets are
+         * here, not {@link PathLeg#planned}. Drawn dotted, with {@link #planned}, as where the ship is
+         * expected to go.
+         */
+        public final Array<PathLeg> stretches = new Array<>();
 
         public PathMark addMark(MarkKind kind, double x, double y, String text) {
             PathMark m = markPool.size > 0 ? markPool.pop() : new PathMark();
@@ -139,8 +163,18 @@ public interface OrbitPathProvider {
         public PathLeg addLeg(boolean planned) {
             PathLeg l = legPool.size > 0 ? legPool.pop() : new PathLeg();
             l.points.clear();
+            l.fade.clear();
             l.planned = planned;
             legs.add(l);
+            return l;
+        }
+
+        public PathLeg addStretch(boolean planned) {
+            PathLeg l = legPool.size > 0 ? legPool.pop() : new PathLeg();
+            l.points.clear();
+            l.fade.clear();
+            l.planned = planned;
+            stretches.add(l);
             return l;
         }
 
@@ -165,7 +199,9 @@ public interface OrbitPathProvider {
             bodyRadius = 0;
             shipX = shipY = 0;
             current.clear();
+            currentFade.clear();
             planned.clear();
+            plannedFade.clear();
             nodes.clear();
             nodeLabels.clear();
             selectedNode = -1;
@@ -177,12 +213,15 @@ public interface OrbitPathProvider {
             targetOrbit.clear();
             approach.clear();
             proposed.clear();
+            proposedFade.clear();
             proposedNodes.clear();
             nodeAxes.clear();
             markPool.addAll(marks);
             marks.clear();
             legPool.addAll(legs);
             legs.clear();
+            legPool.addAll(stretches);
+            stretches.clear();
         }
     }
 }

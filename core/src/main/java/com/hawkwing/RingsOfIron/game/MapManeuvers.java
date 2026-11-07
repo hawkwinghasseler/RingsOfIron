@@ -20,7 +20,7 @@ import com.ringsofiron.orbital.rails.RailsUniverse;
  * orders the keys do, each told to the player as a notice.
  *
  * <p>The path is the one the map draws: the orbit now until the first burn, then the orbit each burn
- * leaves until the next, and the last one as {@link MapTrajectory} patches it: cut where it meets a moon,
+ * leaves until the next, every one as {@link MapTrajectory#plan} patches it: cut where it meets a moon,
  * on through the moon's sphere (the moon moving on under it, as {@link PlayerOrbitPath} draws it) and
  * back out, each leg with no end found drawn for an orbit (or {@link PlayerOrbitPath#OPEN_SPAN} on an
  * open one). A point is matched to the time the ship passes nearest it on that path.
@@ -82,46 +82,24 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         List<Span> out = new ArrayList<>();
         KeplerOrbit k = orbits.currentConic();
         if (k == null) return out;
-        double t = universe.now();
         List<ManeuverNodeComponent.Node> nodes = shown();
-        for (ManeuverNodeComponent.Node n : nodes) {
-            out.add(new Span(k, t, n.time));
-            k = k.withBurn(n.time, n.prograde, n.radial);
-            t = n.time;
-        }
-        path(k, t, nodes, nodes.size(), out);
+        for (MapTrajectory.Leg leg : trajectory.plan(k, orbits.parent(), universe.now(), nodes)) out.add(span(leg));
         return out;
     }
 
     /**
-     * The path on from {@code from} on conic {@code k}, as the map draws it past the plan's last burn
-     * (or past {@code burns} of {@code nodes}), into {@code out}: its legs through any moon it meets.
+     * A leg of the planned path as the map draws it: around the map's body, through a moon's sphere (the
+     * moon moving on under it), or caught by a moon (its orbit there drawn about where the moon is at the
+     * periapsis). One with no end found goes on an orbit, or the open span.
      */
-    private void path(KeplerOrbit k, double from, List<ManeuverNodeComponent.Node> nodes, int burns, List<Span> out) {
+    private Span span(MapTrajectory.Leg leg) {
         Entity frame = orbits.parent();
-        if (frame == null) {
-            out.add(new Span(k, from, from + reach(k)));
-            return;
-        }
-        long plan = 17;
-        for (int i = 0; i < burns; i++) {
-            ManeuverNodeComponent.Node n = nodes.get(i);
-            plan = plan * 1_000_003 + Double.hashCode(n.time) * 31L + Double.hashCode(n.prograde) * 7L + Double.hashCode(n.radial);
-        }
-        for (MapTrajectory.Leg leg : trajectory.legs(k, frame, from, plan)) {
-            boolean ends = !Double.isNaN(leg.to);
-            double to = ends ? leg.to : leg.from + reach(leg.conic);
-            if (leg.frame == frame) {
-                out.add(new Span(leg.conic, leg.from, to));
-            } else if (ends) {
-                // Through a moon's sphere: drawn where the ship really is, the moon moving on under it
-                out.add(new Span(leg.conic, leg.from, to, leg.frame, 0, 0));
-            } else {
-                // Caught by the moon: its orbit there, drawn about where the moon is at the periapsis
-                universe.stateInFrame(leg.frame, frame, PlayerOrbitPath.ghostTime(leg), moon);
-                out.add(new Span(leg.conic, leg.from, to, null, moon.x, moon.y));
-            }
-        }
+        boolean ends = !Double.isNaN(leg.to);
+        double to = ends ? leg.to : leg.from + reach(leg.conic);
+        if (leg.frame == frame) return new Span(leg.conic, leg.from, to);
+        if (ends) return new Span(leg.conic, leg.from, to, leg.frame, 0, 0);
+        universe.stateInFrame(leg.frame, frame, PlayerOrbitPath.ghostTime(leg), moon);
+        return new Span(leg.conic, leg.from, to, null, moon.x, moon.y);
     }
 
     /** How far on the last stretch of a path is drawn: an orbit, or the open span. */
@@ -227,17 +205,15 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         // Along the path the burns before it leave, from the last of them: through any moon it meets
         KeplerOrbit k = orbits.currentConic();
         if (k == null) return;
-        double from = universe.now();
-        List<ManeuverNodeComponent.Node> nodes = shown();
-        int before = 0;
-        for (ManeuverNodeComponent.Node b : nodes) {
+        List<ManeuverNodeComponent.Node> before = new ArrayList<>();
+        for (ManeuverNodeComponent.Node b : shown()) {
             if (b == n) break;
-            k = k.withBurn(b.time, b.prograde, b.radial);
-            from = b.time;
-            before++;
+            before.add(b);
         }
         List<Span> spans = new ArrayList<>();
-        path(k, from, nodes, before, spans);
+        for (MapTrajectory.Leg leg : trajectory.plan(k, orbits.parent(), universe.now(), before)) {
+            if (leg.stretch == before.size()) spans.add(span(leg));
+        }
         double t = nearest(spans, x, y)[0];
         if (!Double.isNaN(t)) burnPlanner.setTime(t);
     }
@@ -334,20 +310,23 @@ public class MapManeuvers implements ManeuverPlannerProvider {
         if (n == null || k == null || body == null) return "";
         double now = universe.now();
         List<ManeuverNodeComponent.Node> nodes = shown();
-        KeplerOrbit after = k;
-        for (ManeuverNodeComponent.Node b : nodes) {
-            after = after.withBurn(b.time, b.prograde, b.radial);
-            if (b == n) break;
-        }
+        int index = nodes.indexOf(n);
+        if (index < 0) return "";
+        // What the burn leaves the ship on, around whatever it is around by then
+        trajectory.plan(k, orbits.parent(), now, nodes);
+        MapTrajectory.Leg leg = trajectory.afterBurn(index);
+        KeplerOrbit after = leg.conic;
+        if (leg.frame != orbits.parent() && universe.celestial(leg.frame) != null) body = universe.celestial(leg.frame);
         double dv = Math.hypot(n.prograde, n.radial);
         double accel = nav.mainEngineAccel();
         StringBuilder out = new StringBuilder();
-        out.append(String.format(Locale.ROOT, "Burn %d of %d in %s%n", nodes.indexOf(n) + 1, nodes.size(),
+        out.append(String.format(Locale.ROOT, "Burn %d of %d in %s%n", index + 1, nodes.size(),
                 Navigation.formatTime(n.time - now)));
         out.append(String.format(Locale.ROOT, "Prograde %+.1f, radial %+.1f m/s%n", n.prograde, n.radial));
         out.append(String.format(Locale.ROOT, "%,.1f m/s", dv));
         if (accel > 0 && dv > 0) out.append(", about ").append(Navigation.formatTime(Math.max(1, dv / accel))).append(" on the main engine");
-        out.append("\nThen Pe ").append(km(after.periapsis() - body.radius));
+        out.append("\nThen ").append(leg.frame != orbits.parent() ? "around " + body.name + ": " : "")
+                .append("Pe ").append(km(after.periapsis() - body.radius));
         out.append(after.isElliptic() ? ", Ap " + km(after.apoapsis() - body.radius) : ", escaping");
         if (after.periapsis() < body.radius) out.append(", IMPACT");
         return out.toString();

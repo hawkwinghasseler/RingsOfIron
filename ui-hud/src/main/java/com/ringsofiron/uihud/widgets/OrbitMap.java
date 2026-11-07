@@ -22,7 +22,8 @@ import com.ringsofiron.uihud.providers.OrbitPathProvider;
  * edge of the map in their direction. Stations show as small squares; the navigation target as a
  * larger magenta one with its orbit, and the closest approach to it along the planned path as a
  * line between where each will be. A transfer proposed to the target but not accepted yet is drawn
- * in green.
+ * in green. Where planned burns take the ship is dotted: from each burn to the next, and past the last.
+ * The ship's paths fade along the way it flies, over an orbital period, as {@link #setFade} sets.
  *
  * <p>A path that meets a moon goes on around it, drawn where the moon will be then (the moon's outline
  * and sphere of influence there, faint), and back out; one that meets the body's surface stops there.
@@ -33,6 +34,52 @@ import com.ringsofiron.uihud.providers.OrbitPathProvider;
  * screen and zooms; {@link #screenX} and {@link #screenY} then place anything else in the same frame.
  */
 public class OrbitMap extends Widget {
+    /**
+     * Which way the ship's paths fade, to show the way it flies: {@link #FORWARD} from full brightness
+     * where a line starts (the ship, or a burn) to half brightness an orbital period on;
+     * {@link #BACKWARD} from half up to full.
+     */
+    public enum Fade {
+        /** Full brightness at the ship, fading to half over an orbital period ahead. */
+        FORWARD("forward", "Bright at the ship, fading ahead"),
+        /** Half brightness at the ship, brightening to full over an orbital period ahead. */
+        BACKWARD("backward", "Faint at the ship, brightening ahead");
+
+        /** As the settings file keeps it. */
+        public final String id;
+        /** As the settings menu shows it. */
+        public final String label;
+
+        Fade(String id, String label) {
+            this.id = id;
+            this.label = label;
+        }
+
+        /** The fade with {@code id}, or {@link #FORWARD} for anything else. */
+        public static Fade of(String id) {
+            for (Fade f : values()) if (f.id.equals(id)) return f;
+            return FORWARD;
+        }
+
+        /** Brightness, 0.5 to 1, a share {@code along} (0 to 1) of an orbital period on from a line's start. */
+        public float brightness(float along) {
+            float a = Math.max(0f, Math.min(1f, along));
+            return this == FORWARD ? 1f - 0.5f * a : 0.5f + 0.5f * a;
+        }
+    }
+
+    /** How every orbit map fades the ship's paths: the player's setting. */
+    private static Fade fade = Fade.FORWARD;
+
+    /** Sets how every orbit map fades the ship's paths along their direction of travel. */
+    public static void setFade(Fade f) {
+        fade = f == null ? Fade.FORWARD : f;
+    }
+
+    public static Fade getFade() {
+        return fade;
+    }
+
     private static final Color BODY = new Color(0.12f, 0.25f, 0.42f, 1f);
     private static final Color PLANNED = new Color(1f, 0.7f, 0.2f, 1f);
     private static final Color OTHER_BODY = new Color(0.55f, 0.6f, 0.65f, 1f);
@@ -50,6 +97,8 @@ public class OrbitMap extends Widget {
     private static final float MAX_BODY_RADII = 80f;
     private static final float EDGE = 8f;
     private static final float LABEL_WIDTH = 110f;
+    /** A dotted path: a dash this long, pixels, every {@link #DOT_PERIOD}. */
+    private static final double DOT_LENGTH = 4, DOT_PERIOD = 9;
 
     private final TextureRegion white;
     private final OrbitPathProvider.OrbitPath path = new OrbitPathProvider.OrbitPath();
@@ -241,10 +290,17 @@ public class OrbitMap extends Widget {
         }
 
         polyline(batch, path.targetOrbit, TARGET_ORBIT, a);
-        polyline(batch, path.current, HudSkin.HUD_CYAN, a);
-        polyline(batch, path.planned, PLANNED, a);
-        for (OrbitPathProvider.PathLeg l : path.legs) polyline(batch, l.points, l.planned ? PLANNED_LEG : CURRENT_LEG, a);
-        polyline(batch, path.proposed, PROPOSED, a);
+        // The ship's paths fade along the way it flies (setFade)
+        polyline(batch, path.current, path.currentFade, HudSkin.HUD_CYAN, a, false);
+        // Where the planned burns are expected to take the ship, dotted: each burn on to the next, and past the last
+        for (OrbitPathProvider.PathLeg l : path.stretches) {
+            polyline(batch, l.points, l.fade, l.planned ? PLANNED : CURRENT_LEG, a, l.planned);
+        }
+        polyline(batch, path.planned, path.plannedFade, PLANNED, a, true);
+        for (OrbitPathProvider.PathLeg l : path.legs) {
+            polyline(batch, l.points, l.fade, l.planned ? PLANNED_LEG : CURRENT_LEG, a, l.planned);
+        }
+        polyline(batch, path.proposed, path.proposedFade, PROPOSED, a, false);
         for (int i = 0; i + 1 < path.proposedNodes.size; i += 2) {
             dot(batch, pathScreenX(path.proposedNodes.get(i)), pathScreenY(path.proposedNodes.get(i + 1)), 5f, PROPOSED, a);
         }
@@ -410,11 +466,25 @@ public class OrbitMap extends Widget {
      * far end strays from where the next one starts.
      */
     private void polyline(Batch batch, FloatArray points, Color c, float alpha) {
+        polyline(batch, points, null, c, alpha, false);
+    }
+
+    /**
+     * As {@link #polyline(Batch, FloatArray, Color, float)}, each segment's brightness faded by how far
+     * along the path it is ({@code share}, one float a point, as {@link OrbitPathProvider.OrbitPath#currentFade};
+     * null or the wrong size for none), and {@code dotted} as short dashes {@link #DOT_PERIOD} pixels apart,
+     * the pattern measured along the whole path so it holds still as the map pans.
+     */
+    private void polyline(Batch batch, FloatArray points, FloatArray share, Color c, float alpha, boolean dotted) {
+        boolean faded = share != null && share.size * 2 == points.size;
         batch.setColor(c.r, c.g, c.b, c.a * alpha);
         double left = getX() - 2, right = getX() + getWidth() + 2, bottom = getY() - 2, top = getY() + getHeight() + 2;
+        double along = 0;
         for (int i = 2; i + 1 < points.size; i += 2) {
             double x0 = pathX + points.get(i - 2) * drawScale, y0 = pathY + points.get(i - 1) * drawScale;
             double x1 = pathX + points.get(i) * drawScale, y1 = pathY + points.get(i + 1) * drawScale;
+            double start = along;
+            along += Math.hypot(x1 - x0, y1 - y0);
             // Far-off paths: drop segments wholly to one side of the map
             if ((x0 < left && x1 < left) || (x0 > right && x1 > right)
                     || (y0 < bottom && y1 < bottom) || (y0 > top && y1 > top)) continue;
@@ -435,7 +505,28 @@ public class OrbitMap extends Widget {
                 }
             }
             if (outside) continue;
-            line(batch, (float) (x0 + dx * t0), (float) (y0 + dy * t0), (float) (x0 + dx * t1), (float) (y0 + dy * t1));
+            if (faded) {
+                float b = fade.brightness((share.get(i / 2 - 1) + share.get(i / 2)) / 2f);
+                batch.setColor(c.r, c.g, c.b, c.a * alpha * b);
+            }
+            if (dotted) dashes(batch, x0, y0, dx, dy, t0, t1, start);
+            else line(batch, (float) (x0 + dx * t0), (float) (y0 + dy * t0), (float) (x0 + dx * t1), (float) (y0 + dy * t1));
+        }
+    }
+
+    /**
+     * The dashes of a dotted line on the part [t0, t1] of the segment from (x0, y0) along (dx, dy),
+     * which starts {@code start} pixels along its path.
+     */
+    private void dashes(Batch batch, double x0, double y0, double dx, double dy, double t0, double t1, double start) {
+        double len = Math.hypot(dx, dy);
+        if (len < 1e-6) return;
+        double s0 = start + t0 * len, s1 = start + t1 * len;
+        for (double d = Math.floor(s0 / DOT_PERIOD) * DOT_PERIOD; d < s1; d += DOT_PERIOD) {
+            double a = Math.max(d, s0), b = Math.min(d + DOT_LENGTH, s1);
+            if (b <= a) continue;
+            double ta = (a - start) / len, tb = (b - start) / len;
+            line(batch, (float) (x0 + dx * ta), (float) (y0 + dy * ta), (float) (x0 + dx * tb), (float) (y0 + dy * tb), 2f);
         }
     }
 

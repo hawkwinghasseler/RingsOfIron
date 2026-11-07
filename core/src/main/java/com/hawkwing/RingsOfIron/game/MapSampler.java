@@ -37,6 +37,8 @@ final class MapSampler {
     private double originX, originY;
     private int budget;
     private final double[] xy = new double[2];
+    /** Where {@link #sample} also puts each point's parameter, or null. */
+    private FloatArray params;
 
     /** Takes the map's view from {@code path} and sets its origin to the view's middle. */
     void setView(OrbitPathProvider.OrbitPath path) {
@@ -74,20 +76,36 @@ final class MapSampler {
      * without a view has {@code segments + 1} points.
      */
     void sample(Curve c, double u0, double u1, int segments, FloatArray out) {
+        sample(c, u0, u1, segments, out, null);
+    }
+
+    /**
+     * As {@link #sample(Curve, double, double, int, FloatArray)}, with each point's parameter into
+     * {@code params} (when not null), one float a point, in the same order.
+     */
+    void sample(Curve c, double u0, double u1, int segments, FloatArray out, FloatArray params) {
+        this.params = params;
         budget = MAX_EXTRA;
         c.at(u0, xy);
         double pu = u0, px = xy[0], py = xy[1];
         add(px, py, out);
+        param(u0);
         for (int i = 1; i <= segments; i++) {
             double u = u0 + (u1 - u0) * i / segments;
             c.at(u, xy);
             double x = xy[0], y = xy[1];
             if (metersPerPixel > 0) refine(c, pu, px, py, u, x, y, 0, out);
             add(x, y, out);
+            param(u);
             pu = u;
             px = x;
             py = y;
         }
+        this.params = null;
+    }
+
+    private void param(double u) {
+        if (params != null) params.add((float) u);
     }
 
     /** The points between (ax, ay) at {@code ua} and (bx, by) at {@code ub}, not those two, as needed. */
@@ -108,6 +126,7 @@ final class MapSampler {
         budget--;
         refine(c, ua, ax, ay, um, mx, my, depth + 1, out);
         add(mx, my, out);
+        param(um);
         refine(c, um, mx, my, ub, bx, by, depth + 1, out);
     }
 }

@@ -77,6 +77,36 @@ class OrbitMapPlanningTest {
     }
 
     @Test
+    void theOrbitNowRunsFromTheShipTheWayItFlies() {
+        OrbitPathProvider.OrbitPath p = draw();
+        assertEquals(p.current.size, 2 * p.currentFade.size, "how far along, a float a point");
+        assertEquals(0, Math.hypot(p.current.get(0) - p.shipX, p.current.get(1) - p.shipY), 1_000, "starts at the ship");
+        assertEquals(0, p.currentFade.first(), 1e-6);
+        assertEquals(1, p.currentFade.peek(), 1e-4, "a whole period on at the end");
+        for (int i = 1; i < p.currentFade.size; i++) {
+            assertTrue(p.currentFade.get(i) >= p.currentFade.get(i - 1), "on along the direction of travel");
+        }
+        // A quarter of the way along in time is where the ship will be a quarter period on
+        KeplerOrbit k = orbits.currentConic();
+        StateVector q = k.stateAt(world.universe.now() + k.period() / 4);
+        int nearest = 0;
+        for (int i = 0; i < p.currentFade.size; i++) {
+            if (Math.abs(p.currentFade.get(i) - 0.25f) < Math.abs(p.currentFade.get(nearest) - 0.25f)) nearest = i;
+        }
+        assertEquals(0, Math.hypot(p.current.get(2 * nearest) - q.x, p.current.get(2 * nearest + 1) - q.y), 0.03 * k.a);
+    }
+
+    @Test
+    void theFadeGoesFromFullToHalfOrBack() {
+        assertEquals(1f, com.ringsofiron.uihud.widgets.OrbitMap.Fade.FORWARD.brightness(0f));
+        assertEquals(0.5f, com.ringsofiron.uihud.widgets.OrbitMap.Fade.FORWARD.brightness(1f));
+        assertEquals(0.5f, com.ringsofiron.uihud.widgets.OrbitMap.Fade.BACKWARD.brightness(0f));
+        assertEquals(1f, com.ringsofiron.uihud.widgets.OrbitMap.Fade.BACKWARD.brightness(1f));
+        assertEquals(0.75f, com.ringsofiron.uihud.widgets.OrbitMap.Fade.FORWARD.brightness(0.5f), 1e-6);
+        assertSame(com.ringsofiron.uihud.widgets.OrbitMap.Fade.FORWARD, com.ringsofiron.uihud.widgets.OrbitMap.Fade.of("nonsense"));
+    }
+
+    @Test
     void aTripToTheMoonIsDrawnThroughItsSphereOfInfluence() {
         world.nav.target.select(game.lunarMine);
         world.nav.transfer.plan();
@@ -191,6 +221,91 @@ class OrbitMapPlanningTest {
         assertSame(first, world.burns.selected());
         maneuvers.clearBurns();
         assertEquals(0, world.burns.nodes().nodes.size);
+    }
+
+    @Test
+    void eachBurnsOrbitIsDrawnOnToTheNextBurn() {
+        KeplerOrbit k = orbits.currentConic();
+        double now = world.universe.now();
+        StateVector s = k.stateAt(now + 600);
+        assertTrue(maneuvers.addBurnNear(s.x, s.y, 5_000));
+        maneuvers.setSelectedBurn(500, 0);
+        ManeuverNodeComponent.Node first = world.burns.selected();
+        KeplerOrbit after = k.withBurn(first.time, 500, 0);
+        double apTime = MapTrajectory.nextApoapsis(after, first.time);
+        StateVector ap = after.stateAt(apTime);
+        assertTrue(maneuvers.addBurnNear(ap.x, ap.y, 20_000));
+        maneuvers.setSelectedBurn(300, 0);
+        ManeuverNodeComponent.Node second = world.burns.selected();
+
+        OrbitPathProvider.OrbitPath p = draw();
+        assertEquals(1, p.stretches.size, "the orbit the first burn leaves, until the second fires");
+        OrbitPathProvider.PathLeg between = p.stretches.first();
+        assertTrue(between.planned, "drawn as planned, dotted");
+        assertEquals(between.points.size, 2 * between.fade.size, "and faded from the first burn on");
+        assertEquals(0, between.fade.first(), 1e-6);
+        com.badlogic.gdx.utils.FloatArray pts = between.points;
+        assertTrue(pts.size >= 4);
+        // From the first burn to the second, on the orbit the first one leaves
+        assertEquals(0, Math.hypot(pts.get(0) - p.nodes.get(0), pts.get(1) - p.nodes.get(1)), 100, "starts at the first burn");
+        assertEquals(0, Math.hypot(pts.get(pts.size - 2) - p.nodes.get(2), pts.get(pts.size - 1) - p.nodes.get(3)), 100,
+                "ends at the second");
+        StateVector at = after.stateAt(second.time);
+        assertEquals(0, Math.hypot(p.nodes.get(2) - at.x, p.nodes.get(3) - at.y), 100, "the second burn sits on the first's orbit");
+        // And past the last burn, the orbit both leave
+        assertTrue(p.planned.size > 0);
+        KeplerOrbit last = after.withBurn(second.time, 300, 0);
+        double r = Math.hypot(p.planned.get(0), p.planned.get(1));
+        assertTrue(r >= last.periapsis() - 100 && r <= last.apoapsis() + 100, "on the final orbit: " + r);
+    }
+
+    @Test
+    void aBurnInsideTheMoonsSphereIsFlownAroundTheMoon() {
+        world.nav.target.select(game.lunarMine);
+        world.nav.transfer.plan();
+        world.nav.transfer.accept(world.burns);
+        com.badlogic.ashley.core.Entity moonBody = world.universe.entity(GameScenario.MOON);
+        double now = world.universe.now();
+        java.util.List<ManeuverNodeComponent.Node> nodes = maneuvers.shown();
+        MapTrajectory planned = new MapTrajectory(world.universe);
+        MapTrajectory.Leg pass = null;
+        for (MapTrajectory.Leg l : planned.plan(orbits.currentConic(), orbits.parent(), now, nodes)) {
+            if (l.stretch == nodes.size() && l.frame == moonBody) {
+                pass = l;
+                break;
+            }
+        }
+        assertNotNull(pass, "the transfer meets the Moon");
+        double mid = pass.from + (Double.isNaN(pass.to) ? 600 : (pass.to - pass.from) / 3);
+        world.burns.addNodeAt(mid);
+        world.burns.set(-150, 0);
+
+        OrbitPathProvider.OrbitPath p = draw();
+        nodes = maneuvers.shown();
+        int index = nodes.indexOf(world.burns.selected());
+        planned.plan(orbits.currentConic(), orbits.parent(), now, nodes);
+        MapTrajectory.Leg from = planned.burnLeg(index);
+        assertSame(moonBody, from.frame, "flown about the Moon, as the rails will fly it");
+        MapTrajectory.Leg after = planned.afterBurn(index);
+        assertSame(moonBody, after.frame);
+        double moonSpeed = from.conic.stateAt(mid).speed();
+        assertEquals(moonSpeed - 150, after.conic.stateAt(mid).speed(), 1, "150 m/s off its speed past the Moon");
+        assertTrue(maneuvers.burnText().contains("Then around Moon"), maneuvers.burnText());
+
+        // The burn is drawn where the ship is then, the Moon moved on under it
+        StateVector ship = from.conic.stateAt(mid);
+        StateVector moon = world.universe.stateInFrame(moonBody, orbits.parent(), mid, new StateVector());
+        double soi = world.universe.celestial(moonBody).soiRadius;
+        assertEquals(0, Math.hypot(p.nodes.get(2 * index) - (ship.x + moon.x), p.nodes.get(2 * index + 1) - (ship.y + moon.y)),
+                0.001 * soi);
+        // And the pass up to it is on the way there, dotted
+        boolean onTheWay = false;
+        for (OrbitPathProvider.PathLeg l : p.stretches) {
+            if (!l.planned || l.points.size < 2) continue;
+            float ex = l.points.get(l.points.size - 2), ey = l.points.get(l.points.size - 1);
+            onTheWay |= Math.hypot(ex - p.nodes.get(2 * index), ey - p.nodes.get(2 * index + 1)) < 0.001 * soi;
+        }
+        assertTrue(onTheWay, "a stretch through the Moon's sphere ends at the burn");
     }
 
     @Test

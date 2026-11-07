@@ -2,6 +2,7 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.ringsofiron.orbital.components.CelestialBodyComponent;
+import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.orbital.events.OrbitalEvent;
 import com.ringsofiron.orbital.math.KeplerOrbit;
 import com.ringsofiron.orbital.math.KeplerSolver;
@@ -43,15 +44,22 @@ public class MapTrajectory {
         public OrbitalEvent.Type end;
         /** The body it enters, for SOI_ENTRY. */
         public Entity entered;
+        /** How many of the plan's burns are flown before it: 0 for the orbit now, 1 after the first burn. */
+        public int stretch;
+        /** It ends at the plan's next burn rather than at an event: {@link #to} is the burn's time. */
+        public boolean toBurn;
     }
 
     private final RailsUniverse universe;
     private final List<Leg> legs = new ArrayList<>();
+    /** For each burn of the last plan, the leg the ship is on when it fires. */
+    private final List<Leg> burnFrom = new ArrayList<>();
     private final StateVector s = new StateVector();
     private final StateVector b = new StateVector();
     private KeplerOrbit lastConic;
     private Entity lastFrame;
     private long lastPlan;
+    private int lastBurns = -1;
     private long computedAt;
 
     public MapTrajectory(RailsUniverse universe) {
@@ -64,15 +72,64 @@ public class MapTrajectory {
      * search at once. The list is reused: read it before the next call.
      */
     public List<Leg> legs(KeplerOrbit k, Entity frame, double from, long plan) {
+        return compute(k, frame, from, java.util.Collections.emptyList(), plan, -1);
+    }
+
+    /**
+     * The whole planned path as patched conics: conic {@code k} around {@code frame} from {@code from},
+     * through each of {@code burns} (soonest first) in turn, and on past the last as {@link #legs} goes.
+     * Each burn is flown in the sphere of influence the ship is in by its time, the way the rails fly it:
+     * a burn after the path meets a moon is a burn around the moon. Each leg says how many burns come
+     * before it ({@link Leg#stretch}); {@link #burnLeg} gives the leg each burn fires from. A burn the
+     * path never reaches (after an impact, or out of the map body's sphere) is flown on the last leg's
+     * conic as if nothing had happened. The list is reused: read it before the next call.
+     */
+    public List<Leg> plan(KeplerOrbit k, Entity frame, double from, List<ManeuverNodeComponent.Node> burns) {
+        long plan = 17;
+        for (ManeuverNodeComponent.Node n : burns) {
+            plan = plan * 1_000_003 + Double.hashCode(n.time) * 31L + Double.hashCode(n.prograde) * 7L + Double.hashCode(n.radial);
+        }
+        return compute(k, frame, from, burns, plan, burns.size());
+    }
+
+    /** The leg burn {@code i} of the last {@link #plan} fires from: its conic and frame just before the burn. */
+    public Leg burnLeg(int i) {
+        return burnFrom.get(i);
+    }
+
+    /** The first leg after burn {@code i} of the last {@link #plan}: the conic the burn leaves the ship on. */
+    public Leg afterBurn(int i) {
+        for (Leg l : legs) if (l.stretch == i + 1) return l;
+        return legs.get(legs.size() - 1);
+    }
+
+    private List<Leg> compute(KeplerOrbit k, Entity frame, double from, List<ManeuverNodeComponent.Node> burns,
+                              long plan, int burnCount) {
         long now = System.nanoTime();
         double age = (now - computedAt) / 1e9;
-        boolean same = frame == lastFrame && plan == lastPlan && !legs.isEmpty() && age < MAX_AGE
+        boolean same = frame == lastFrame && plan == lastPlan && burnCount == lastBurns && !legs.isEmpty() && age < MAX_AGE
                 && (sameConic(k, lastConic) || age < REUSE);
         if (!same) {
-            compute(k, frame, from);
+            legs.clear();
+            burnFrom.clear();
+            Entity f = frame;
+            KeplerOrbit c = k;
+            double t0 = from;
+            for (int i = 0; ; i++) {
+                double until = i < burns.size() ? burns.get(i).time : Double.NaN;
+                walk(c, f, frame, t0, until, i);
+                if (i >= burns.size()) break;
+                Leg last = legs.get(legs.size() - 1);
+                ManeuverNodeComponent.Node n = burns.get(i);
+                burnFrom.add(last);
+                c = last.conic.withBurn(n.time, n.prograde, n.radial);
+                f = last.frame;
+                t0 = n.time;
+            }
             lastConic = k;
             lastFrame = frame;
             lastPlan = plan;
+            lastBurns = burnCount;
             computedAt = now;
         }
         // The path starts where the ship is now, or at the last burn
@@ -82,24 +139,36 @@ public class MapTrajectory {
         return legs;
     }
 
-    private void compute(KeplerOrbit k, Entity frame, double from) {
-        legs.clear();
-        Entity mapFrame = frame;
-        KeplerOrbit c = k;
-        double t0 = from;
+    /**
+     * Legs on from {@code t0} on conic {@code c} around {@code frame}, into {@link #legs}, through the
+     * moons of {@code mapFrame} it meets, until {@code until} (the next burn; NaN to go on as far as an
+     * orbit, or {@link PlayerOrbitPath#OPEN_SPAN} open) or until it hits something or leaves
+     * {@code mapFrame}'s sphere. At most {@link #MAX_LEGS} legs.
+     */
+    private void walk(KeplerOrbit c, Entity frame, Entity mapFrame, double t0, double until, int stretch) {
+        boolean bounded = !Double.isNaN(until);
         for (int i = 0; i < MAX_LEGS; i++) {
             Leg leg = new Leg();
             leg.frame = frame;
             leg.conic = c;
             leg.from = t0;
+            leg.stretch = stretch;
             legs.add(leg);
             CelestialBodyComponent body = universe.celestial(frame);
             String frameUuid = universe.uuidOf(frame);
-            if (body == null || frameUuid == null) return;
-            double horizon = c.isElliptic() ? Math.min(c.period(), MAX_HORIZON) : PlayerOrbitPath.OPEN_SPAN;
+            if (body == null || frameUuid == null) {
+                if (bounded) endAtBurn(leg, until);
+                return;
+            }
+            double horizon = bounded ? Math.min(Math.max(until - t0, 0), MAX_HORIZON)
+                    : c.isElliptic() ? Math.min(c.period(), MAX_HORIZON) : PlayerOrbitPath.OPEN_SPAN;
             OrbitalEvent ev = new SoiPredictor(universe, horizon).predict("orbit-map-path", frameUuid, c, 0, t0);
-            if (ev.type != OrbitalEvent.Type.SOI_ENTRY && ev.type != OrbitalEvent.Type.SOI_EXIT
-                    && ev.type != OrbitalEvent.Type.IMPACT) return;
+            boolean event = ev.type == OrbitalEvent.Type.SOI_ENTRY || ev.type == OrbitalEvent.Type.SOI_EXIT
+                    || ev.type == OrbitalEvent.Type.IMPACT;
+            if (!event || bounded && ev.time >= until) {
+                if (bounded) endAtBurn(leg, until);
+                return;
+            }
             leg.to = ev.time;
             leg.end = ev.type;
             double te = ev.time;
@@ -123,6 +192,12 @@ public class MapTrajectory {
             }
             t0 = te;
         }
+    }
+
+    private static void endAtBurn(Leg leg, double until) {
+        leg.to = until;
+        leg.end = null;
+        leg.toBurn = true;
     }
 
     static boolean sameConic(KeplerOrbit a, KeplerOrbit b) {
