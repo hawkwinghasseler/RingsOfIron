@@ -286,6 +286,13 @@ public final class HudData {
     public String promptConsole = "";
     /** The docked banner's text ("Docked at Highport   [T] Trade   [Y] Yard"), or "" when not docked. */
     public String dockHint = "";
+    /**
+     * The tutorial running now, for a variant's guide card: its heading ("FIRST PLAY · 2 OF 9",
+     * "GETTING STARTED") and the objective with the player's keys, both "" with no guide running; and
+     * whether that is a finished guide's last word. Set each frame by the game.
+     */
+    public String guideTitle = "", guideText = "";
+    public boolean guideDone;
 
     private RoomNames roomNames = new RoomNames();
     private Entity roomShip;

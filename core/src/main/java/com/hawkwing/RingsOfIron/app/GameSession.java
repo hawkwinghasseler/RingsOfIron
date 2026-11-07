@@ -15,6 +15,7 @@ import com.ringsofiron.uihud.UiHud;
 import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
+import com.ringsofiron.uihud.data.HudData;
 
 /**
  * The state the game's parts share once it is created: the world and scenario, the HUD, the
@@ -119,6 +120,7 @@ public final class GameSession {
         firstPlay = FirstPlay.resume(world, game);
         opening = firstPlay != null ? null
                 : OpeningGuide.resume(world, () -> hud.isOpen(ClassicWindow.MISSIONS), options.openingWanted);
+        openingLastWord = null;
     }
 
     /** Outside while seated at a console, on deck otherwise. */
@@ -142,6 +144,34 @@ public final class GameSession {
             show(next.substring(next.indexOf(':') + 1).trim(), NoticeLog.Kind.IMPORTANT);
         }
         updateOpening();
+        guideCard();
+    }
+
+    /** The walkthrough's last word once it has let go, for a HUD variant's guide card; null before. */
+    private String openingLastWord;
+
+    /** Tells the HUD which guide runs and its objective now, for a variant that shows it on a card of its own. */
+    private void guideCard() {
+        HudData d = hud.getData();
+        if (firstPlay != null) {
+            FirstPlay.Step step = firstPlay.step();
+            boolean done = step == FirstPlay.Step.DONE;
+            String text = firstPlay.objective(this::key);
+            d.guideTitle = done ? "FIRST PLAY \u00b7 DONE" : "FIRST PLAY \u00b7 " + (step.ordinal() + 1) + " OF " + FirstPlay.Step.DONE.ordinal();
+            d.guideText = done ? text : text.substring(text.indexOf(':') + 1).trim();
+            d.guideDone = done;
+        } else if (opening != null) {
+            d.guideTitle = "GETTING STARTED";
+            d.guideText = opening.text(this::key);
+            d.guideDone = false;
+        } else if (openingLastWord != null) {
+            d.guideTitle = "GETTING STARTED";
+            d.guideText = openingLastWord;
+            d.guideDone = true;
+        } else {
+            d.guideTitle = d.guideText = "";
+            d.guideDone = false;
+        }
     }
 
     /** Moves the walkthrough on, says each new step, and lets it go once its last word is said. */
@@ -155,6 +185,9 @@ public final class GameSession {
         }
         if (!opening.update()) return;
         show(opening.text(this::key), NoticeLog.Kind.IMPORTANT);
-        if (opening.finished()) opening = null;
+        if (opening.finished()) {
+            openingLastWord = opening.text(this::key);
+            opening = null;
+        }
     }
 }
