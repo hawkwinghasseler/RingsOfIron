@@ -48,6 +48,12 @@ public final class NoticeLog implements SaveParticipant, Resettable {
         public final double time;
         /** Times posted while still on screen; 1 for once. */
         public int count = 1;
+        /**
+         * The id of the alert that carries this notice's condition ({@link GameAlerts#MISSILE}), or
+         * empty when none does: a HUD whose log keeps each alert once leaves the notice out (the Task
+         * spec's 9.2, an alert is logged as an alert, not as a notice). Set by whoever posts it.
+         */
+        public String alert = "";
         /** Seconds it stays on screen. */
         float left;
 
@@ -154,6 +160,7 @@ public final class NoticeLog implements SaveParticipant, Resettable {
         if (old == null || !history.contains(old)) return post(text, kind);
         Notice n = new Notice(text, kind, old.time);
         n.left = Math.max(old.left, kind.seconds);
+        n.alert = old.alert;
         List<Notice> kept = new ArrayList<>(history);
         kept.set(kept.indexOf(old), n);
         history.clear();
@@ -239,7 +246,7 @@ public final class NoticeLog implements SaveParticipant, Resettable {
         return "notices";
     }
 
-    /** The log, newest first: what it said, how much it mattered, when it came and how often. Nothing on screen. */
+    /** The log, newest first: what it said, how much it mattered, when it came, how often and its alert. Nothing on screen. */
     @Override
     public void write(Json json) {
         json.writeArrayStart("log");
@@ -249,6 +256,7 @@ public final class NoticeLog implements SaveParticipant, Resettable {
             json.writeValue("kind", n.kind.name());
             json.writeValue("time", n.time);
             if (n.count > 1) json.writeValue("count", n.count);
+            if (!n.alert.isEmpty()) json.writeValue("alert", n.alert);
             json.writeObjectEnd();
         }
         json.writeArrayEnd();
@@ -265,6 +273,7 @@ public final class NoticeLog implements SaveParticipant, Resettable {
             for (Kind k : Kind.values()) if (k.name().equals(v.getString("kind", ""))) kind = k;
             Notice n = new Notice(text, kind, v.getDouble("time", 0));
             n.count = Math.max(1, v.getInt("count", 1));
+            n.alert = v.getString("alert", "");
             n.left = 0f;
             history.addLast(n);
         }

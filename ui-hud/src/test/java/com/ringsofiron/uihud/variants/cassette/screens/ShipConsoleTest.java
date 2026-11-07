@@ -440,6 +440,31 @@ class ShipConsoleTest {
         assertFalse(LogPage.kind(2, true, Level.WARNING, false), "an alert is an alert");
     }
 
+    @Test
+    void keptOnceTheLogLeavesOutANoticeAnAlertCarriesForTheAlertsLine() {
+        com.ringsofiron.uihud.data.HudData d = new com.ringsofiron.uihud.data.HudData();
+        Boards b = new Boards();
+        b.data = d;
+        d.messages.clear();
+        d.messages.add("MISSILE WARNING: 2 inbound, impact in 9 s", Level.WARNING, 100).alert = ConditionLog.MISSILES;
+        d.messages.add("Raider moves to intercept you", Level.WARNING, 80);
+        d.messages.add("Undocked from Highport", Level.ADVISORY, 60);
+        d.alerts.begin(100);
+        d.alerts.raise(ConditionLog.MISSILES, Level.WARNING, Category.TACTICAL).set("MISSILE", "2 missiles inbound").count(2);
+        d.alerts.end();
+        d.record.update(d.alerts, 100);
+        LogPage once = new LogPage().once(true);
+        once.refresh(b);
+        assertEquals(3, once.lines(), "an alert is logged as an alert, not as a notice");
+        assertEquals("2 missiles fired at the ship", once.line(0));
+        assertEquals("Raider moves to intercept you", once.line(1), "a warning no alert carries stays");
+        // The Context spec's Log keeps the notice, among a line for each missile
+        LogPage lines = new LogPage();
+        lines.refresh(b);
+        assertEquals(5, lines.lines());
+        assertEquals("MISSILE WARNING: 2 inbound, impact in 9 s", lines.line(0));
+    }
+
     /** One frame of the game's alerts: up to two raised, then the log reads them. */
     private static void frame(AlertRegistry alerts, ConditionLog log, double now, String id1, String code1, Level l1,
                               String id2, String code2, Level l2) {

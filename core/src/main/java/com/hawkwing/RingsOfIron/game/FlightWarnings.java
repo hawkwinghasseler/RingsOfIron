@@ -84,6 +84,8 @@ public final class FlightWarnings {
                     Float.isNaN(soonest) ? "" : String.format(Locale.ROOT, ", impact in %.0f s", soonest));
             salvo = salvo == null ? ctx.notices.replace(MISSILE_WARNING, text, NoticeLog.Kind.WARNING)
                     : ctx.notices.revise(salvo, text);
+            // The MISSILE alert carries the salvo, so a log keeping each alert once leaves this out
+            if (salvo != null) salvo.alert = GameAlerts.MISSILE;
         }
         inbound = n;
     }
@@ -108,7 +110,9 @@ public final class FlightWarnings {
         String said = String.format(Locale.ROOT, "Propellant low: %.0f%% (%,.0f kg) left", share * 100f, kg);
         if (known) said += kg < home ? String.format(Locale.ROOT, ", short of the %,.0f kg the trip home takes", home)
                 : String.format(Locale.ROOT, ", little more than the %,.0f kg the trip home takes", home);
-        ctx.notices.post(said, NoticeLog.Kind.WARNING);
+        NoticeLog.Notice n = ctx.notices.post(said, NoticeLog.Kind.WARNING);
+        // The PROPELLANT alert holds while propellant is low, so a log keeping each alert once leaves this out
+        if (n != null) n.alert = GameAlerts.PROPELLANT;
     }
 
     /** Whether propellant is low now: warned of and not yet filled back past the clear mark. */
