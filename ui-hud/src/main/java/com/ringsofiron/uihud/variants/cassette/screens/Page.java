@@ -59,6 +59,14 @@ abstract class Page implements Hits.Target {
         return WindowScreens.keyOf(window);
     }
 
+    /**
+     * What Enter does on the page now, for a console panel's foot ("SWITCH OFF"), or null when it does
+     * nothing.
+     */
+    String enterLabel() {
+        return null;
+    }
+
     /** Whether something on the page waits for the player: the amber jewel on its key. */
     boolean jewel() {
         return false;

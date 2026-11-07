@@ -64,6 +64,16 @@ public final class YardScreens {
         return this;
     }
 
+    /**
+     * What E at a deck console opens: the game's own window, or the spec's answer (the modes': a seat, or
+     * the ship's Systems on that system). Set before the HUD is attached, which is when the game asks
+     * which windows it shows.
+     */
+    public YardScreens consoles(WindowScreens.Consoles use) {
+        windows.consoles(use);
+        return this;
+    }
+
     /** Where a side panel stops, from the top in design units: above the seated band, or 0 for 16 from the foot. */
     public void panelBottom(float y) {
         windows.panelBottom(y);

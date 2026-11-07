@@ -2,13 +2,16 @@ package com.hawkwing.RingsOfIron.game;
 
 import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.utils.ObjectMap;
 import com.ringsofiron.combatsys.shields.ShieldCloudComponent;
+import com.ringsofiron.combatsys.shields.ShieldModel;
 import com.ringsofiron.combatsys.shields.ShieldPerimeter;
 import com.ringsofiron.uihud.providers.ShieldStatusProvider;
 
 /**
  * ui-hud's {@link ShieldStatusProvider}: the player's shield cloud from combat-sys, its mass, its four
- * sectors (the perimeter's 96 samples by bearing off the bow) and its emitters.
+ * sectors (the perimeter's 96 samples by bearing off the bow) and its emitters, each with its heat and
+ * when a tripped one starts again.
  */
 public class PlayerShieldStatus implements ShieldStatusProvider {
     private final GameContext ctx;
@@ -35,11 +38,23 @@ public class PlayerShieldStatus implements ShieldStatusProvider {
         out.stowed = c.stowed;
         out.trim = c.trim == null ? "even" : c.trim.label;
         out.powerStunned = c.powerStunned;
-        for (ShieldCloudComponent.Emitter e : c.emitters.values()) {
+        for (ObjectMap.Entry<Entity, ShieldCloudComponent.Emitter> en : c.emitters) {
+            ShieldCloudComponent.Emitter e = en.value;
             out.emitters++;
             if (e.working) out.emittersWorking++;
             if (e.tripped) out.emittersTripped++;
-            if (e.spec != null && e.spec.heatTrip > 0f) out.hottest = Math.max(out.hottest, Math.min(1f, e.heat / e.spec.heatTrip));
+            float heat = e.spec != null && e.spec.heatTrip > 0f ? Math.min(1f, e.heat / e.spec.heatTrip) : 0f;
+            out.hottest = Math.max(out.hottest, heat);
+            ShieldStatusProvider.Emitter row = out.add();
+            row.system = en.key;
+            row.heat = heat;
+            row.working = e.working;
+            row.tripped = e.tripped;
+            row.starved = e.starved;
+            // Tripped, it draws nothing and sheds its heat until it is down to the restart share
+            if (e.tripped && e.spec != null && e.spec.cooling > 0f) {
+                row.restartIn = Math.max(0f, e.heat - ShieldModel.RESTART_AT * e.spec.heatTrip) / e.spec.cooling;
+            }
         }
         sectors(c, out.sectors);
     }
