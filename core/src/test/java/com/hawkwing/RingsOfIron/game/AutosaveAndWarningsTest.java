@@ -60,6 +60,7 @@ class AutosaveAndWarningsTest {
         w.checkPropellant(0.19f, 380);
         assertEquals(NoticeLog.Kind.WARNING, world.notices.latest().kind);
         assertTrue(world.notices.latest().text.startsWith("Propellant low: 19%"), world.notices.latest().text);
+        assertEquals(GameAlerts.PROPELLANT, world.notices.latest().alert, "the PROPELLANT alert carries it");
         w.checkPropellant(0.1f, 200);
         assertEquals(1, world.notices.history().size(), "once");
         w.checkPropellant(0.3f, 600);
@@ -78,6 +79,7 @@ class AutosaveAndWarningsTest {
         for (int n : counts) w.missiles(n, 9f);
         assertEquals(1, world.notices.history().size(), "one warning for the salvo");
         assertEquals("MISSILE WARNING: 6 inbound, impact in 9 s", world.notices.latest().text);
+        assertEquals(GameAlerts.MISSILE, world.notices.latest().alert, "the MISSILE alert carries it");
         assertEquals(1, world.notices.showing().size());
         assertSame(world.notices.latest(), world.notices.showing().get(0));
         w.missiles(0, Float.NaN);

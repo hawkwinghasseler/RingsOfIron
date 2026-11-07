@@ -9,6 +9,7 @@ import com.hawkwing.RingsOfIron.art.ArtLibrary;
 import com.hawkwing.RingsOfIron.debug.DebugScenario;
 import com.hawkwing.RingsOfIron.render.FireArcOverlay;
 import com.hawkwing.RingsOfIron.game.FirstPlay;
+import com.hawkwing.RingsOfIron.game.GameAlerts;
 import com.hawkwing.RingsOfIron.game.GameHud;
 import com.hawkwing.RingsOfIron.game.GameScenario;
 import com.hawkwing.RingsOfIron.game.GameWorld;
@@ -293,7 +294,9 @@ public final class GameBootstrap {
             // The player's own ship: the newest state replaces the last, so "back in action" doesn't
             // sit above a "disabled" it has just undone
             if (change.ship == game.player) {
-                world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
+                NoticeLog.Notice n = world.notices.replace("Your ship is", news, change.now != null ? NoticeLog.Kind.WARNING : NoticeLog.Kind.INFO);
+                // Disabled, the DISABLED alert carries it; wrecked or abandoned, it is news (the Task spec's 9.2)
+                if (n != null && disabledOnly(change.now)) n.alert = GameAlerts.DISABLED;
             } else {
                 session.show(news);
             }
@@ -332,6 +335,19 @@ public final class GameBootstrap {
     }
 
     /** What to tell the player about a ship disabled, surrendering, breaking up or recovering; null for nothing. */
+    /** Whether a ship's new state is disabled, as the DISABLED alert says, rather than surrendered, wrecked or abandoned. */
+    static boolean disabledOnly(DisabledComponent.Reason now) {
+        if (now == null) return false;
+        switch (now) {
+            case SURRENDERED:
+            case WRECKED:
+            case ABANDONED:
+                return false;
+            default:
+                return true;
+        }
+    }
+
     private String disabledNotice(ShipDisablement.Change change) {
         boolean mine = change.ship == game.player;
         DisabledComponent d = change.ship.getComponent(DisabledComponent.class);

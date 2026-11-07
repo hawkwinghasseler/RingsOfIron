@@ -22,8 +22,10 @@ import java.util.Locale;
  * so they show under all only.
  *
  * <p>Kept {@link #once(boolean) once} (the Task spec's book), each condition is one line from its
- * raising: its latest words at the worst it reached, and "cleared 14:31" once it has cleared. One
- * control then picks alerts, important news (the game's good news and its warnings) or the rest.
+ * raising: its latest words at the worst it reached, and "cleared 14:31" once it has cleared. A notice
+ * an alert carries is left out for the alert's line ({@link MessageFeed.Message#alert}: the salvo's,
+ * low propellant's, the ship disabled). One control then picks alerts, important news (the game's
+ * good news and its warnings) or the rest.
  *
  * <p>Keys, as every mode's controls: Up and Down move between the controls and the roll, Left and
  * Right step the control with the focus (from the roll, the first). On the roll, Up and Down feed it
@@ -149,10 +151,15 @@ final class LogPage extends Page {
                 ConditionLog.Course k = held.get(c--);
                 if (kind(filter, true, k.level, false)) add(k.text, k.level, false, k.time, "", k.cleared);
             }
-            if (m != null && rows.size < ConditionLog.KEEP && kind(filter, false, m.level, m.important)) {
+            if (m != null && rows.size < ConditionLog.KEEP && kind(filter, false, m.level, m.important) && !anAlerts(m)) {
                 add(m.label(), m.level, m.important, m.time, "", Double.NaN);
             }
         }
+    }
+
+    /** Whether a notice is one an alert carries (the salvo's), which the log kept once leaves out for the alert's line. */
+    static boolean anAlerts(MessageFeed.Message m) {
+        return !m.alert.isEmpty();
     }
 
     private void add(String text, AlertRegistry.Level level, boolean important, double time, String src, double cleared) {
