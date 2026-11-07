@@ -15,6 +15,7 @@ import com.ringsofiron.uihud.variants.cassette.YardCanvas;
 import com.ringsofiron.uihud.variants.cassette.YardPaint;
 import com.ringsofiron.uihud.variants.cassette.YardPart;
 import com.ringsofiron.uihud.variants.cassette.YardScreens;
+import com.ringsofiron.uihud.variants.cassette.screens.WindowScreens;
 import com.ringsofiron.uihud.widgets.MapPainter;
 
 import java.util.EnumSet;
@@ -74,7 +75,7 @@ public class CassetteStationsHud implements HudVariant, Actions {
      * The menus, the map and the windows in the Yard Standard, the windows as this spec's panels: the
      * Station link and the slate hang at the right with the world and the band beside them (10.1).
      */
-    private final YardScreens screens = new YardScreens().panels(true);
+    private final YardScreens screens = new YardScreens().panels(true).consoles(WindowScreens.Consoles.PANELS);
 
     @Override
     public void attach(HudVariantHost host) {
@@ -246,6 +247,12 @@ public class CassetteStationsHud implements HudVariant, Actions {
     @Override
     public void station(Station s) {
         if (frame.commandSeat()) right.cycle(s);
+    }
+
+    /** A console's panel hangs beside the world: the captain may walk off from it, which closes it (10.2, 4). */
+    @Override
+    public boolean consoleLetsWalk() {
+        return true;
     }
 
     // --- Keys ----------------------------------------------------------------------------------------
