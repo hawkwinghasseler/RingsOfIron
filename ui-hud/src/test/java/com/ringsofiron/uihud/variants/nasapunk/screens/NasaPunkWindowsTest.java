@@ -1,5 +1,6 @@
 package com.ringsofiron.uihud.variants.nasapunk.screens;
 
+import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.BoardingProvider;
@@ -549,6 +550,74 @@ class NasaPunkWindowsTest {
         Tables.cap(even, 3, 600f);
         assertEquals(200f, even[0], 1e-3);
         assertEquals(200f, even[2], 1e-3);
+    }
+
+    @Test
+    void aNarrowListLeavesOutTheFixedColumnsAtItsRightThatItsWordsWontFit() {
+        // the crew's columns on the slate: name, role, skills, condition, morale, wage
+        float[] width = {130f, 96f, 170f, 190f, 66f, 96f};
+        float[] need = {50f, 80f, 190f, 80f, 60f, 70f};
+        assertEquals(3, Tables.kept(width, need, 6, 426f, 12f));
+        assertEquals(6, Tables.kept(width, need, 6, 900f, 12f), "all fit: none left out");
+        assertEquals(2, Tables.kept(width, need, 6, 100f, 12f), "never fewer than two");
+        // a last column that takes the rest stops it: the log keeps its message
+        assertEquals(3, Tables.kept(new float[] {92f, 132f, 0f}, new float[] {80f, 100f, 900f}, 3, 200f, 12f));
+    }
+
+    @Test
+    void aLineTooLongForTheColumnThatTakesTheRestRunsOntoTheLinesItNeeds() {
+        Tables.Measure m = t -> t.length() * 10f; // 10 a character
+        Array<String> out = new Array<>();
+        assertEquals(1, Tables.breaks("Raider is taken.", 200f, 3, m, out));
+        assertEquals("Raider is taken.", out.first());
+        // whole words to a line
+        assertEquals(3, Tables.breaks("Pick a job on the board and take it", 120f, 3, m, out));
+        assertEquals("Pick a job", out.get(0));
+        assertEquals("on the board", out.get(1));
+        assertEquals("and take it", out.get(2));
+        // what is left at the last line stays on it, to be cut where it is drawn
+        assertEquals(2, Tables.breaks("Raider bounty done: +7 500 CR, +6 standing", 200f, 2, m, out));
+        assertEquals("Raider bounty done:", out.get(0));
+        assertEquals("+7 500 CR, +6 standing", out.get(1));
+        // a word wider than a line stands on its own
+        assertEquals(2, Tables.breaks("Supercalifragilistic yes", 100f, 3, m, out));
+        assertEquals("Supercalifragilistic", out.get(0));
+        assertEquals("yes", out.get(1));
+        assertEquals(0, Tables.breaks("", 100f, 3, m, null));
+    }
+
+    @Test
+    void aWrappingColumnTakesTheRoomTheFixedOnesDontUse() {
+        // the log on the slate: TIME and SOURCE need 62 and 60 of their 92 and 132, the message 900 of its 172
+        float[] log = {92f, 132f, 172f};
+        Tables.give(log, new float[] {62f, 60f, 900f}, new boolean[] {true, true, false}, 3);
+        assertEquals(62f, log[0], 1e-3);
+        assertEquals(60f, log[1], 1e-3);
+        assertEquals(274f, log[2], 1e-3);
+        // only as much as the message is short of: the rest of the slack stays where it was
+        float[] some = {92f, 132f, 172f};
+        Tables.give(some, new float[] {62f, 60f, 222f}, new boolean[] {true, true, false}, 3);
+        assertEquals(222f, some[2], 1e-3);
+        assertEquals(396f, some[0] + some[1] + some[2], 1e-3);
+        assertTrue(some[0] > 62f && some[1] > 60f, "each gives in proportion to its spare");
+        // a last column of fixed width takes nothing
+        float[] fixed = {92f, 132f, 172f};
+        Tables.give(fixed, new float[] {62f, 60f, 900f}, new boolean[] {true, true, true}, 3);
+        assertEquals(172f, fixed[2], 1e-3);
+    }
+
+    @Test
+    void aPartKnowsWhichColumnsItsTableLastDrewWhole() {
+        // the crew on the slate: the name and the role whole, the skills cut
+        long bits = Tables.whole(new float[] {130f, 96f, 150f}, new float[] {60f, 96f, 190f}, 3);
+        assertEquals(0b011L, bits);
+        Sect s = new Sect("ABOARD");
+        assertFalse(s.drawnWhole(0), "not drawn yet: none is known whole");
+        s.whole = bits;
+        assertTrue(s.drawnWhole(0));
+        assertTrue(s.drawnWhole(1));
+        assertFalse(s.drawnWhole(2));
+        assertFalse(s.drawnWhole(5), "a column it left out");
     }
 
     @Test
