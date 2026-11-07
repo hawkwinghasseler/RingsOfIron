@@ -25,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 import com.ringsofiron.aicrew.CrewService;
 import com.ringsofiron.physicsexterior.PhysicsManager;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 
 /**
  * The player's crew out on EVA ({@link EvaSystem}), on the game's side. The crew module moves them,
@@ -336,7 +337,7 @@ public final class Spacewalks {
                 ctx.notices.post(name + " is aboard " + Boarding.name(e.ship) + " through its airlock", NoticeLog.Kind.INFO);
                 break;
             case LOST_GRIP:
-                ctx.notices.post(name + " is thrown off the hull", NoticeLog.Kind.WARNING);
+                ctx.notices.post(name + " is thrown off the hull", NoticeLog.Kind.WARNING, NoticeAlerts.EVA);
                 break;
             case CAUGHT_HULL:
                 if (e.amount >= LONG_ADRIFT) {
@@ -347,20 +348,21 @@ public final class Spacewalks {
                 }
                 break;
             case TETHER_SNAPPED:
-                ctx.notices.post(name + "'s tether has parted", NoticeLog.Kind.WARNING);
+                ctx.notices.post(name + "'s tether has parted", NoticeLog.Kind.WARNING, NoticeAlerts.EVA);
                 break;
             case EXHAUST:
-                ctx.notices.post(name + " is caught in the main engines' exhaust", NoticeLog.Kind.WARNING);
+                ctx.notices.post(name + " is caught in the main engines' exhaust", NoticeLog.Kind.WARNING, NoticeAlerts.EVA_BURN);
                 break;
             case TETHER_BURNED:
-                ctx.notices.post(name + "'s tether has burned through in the main engines' exhaust", NoticeLog.Kind.WARNING);
+                ctx.notices.post(name + "'s tether has burned through in the main engines' exhaust", NoticeLog.Kind.WARNING,
+                        NoticeAlerts.EVA_BURN);
                 break;
             case ADRIFT:
                 ctx.notices.post(name + " is adrift " + distance(e.amount) + " off with no way back alone: bring the ship to them",
-                        NoticeLog.Kind.WARNING);
+                        NoticeLog.Kind.WARNING, NoticeAlerts.ADRIFT);
                 break;
             case AIR_OUT:
-                ctx.notices.post(name + "'s suit is out of air", NoticeLog.Kind.WARNING);
+                ctx.notices.post(name + "'s suit is out of air", NoticeLog.Kind.WARNING, NoticeAlerts.EVA);
                 break;
             case TAKEN_IN_TOW:
                 if (e.by != null && crew.crew(e.by) != null) {

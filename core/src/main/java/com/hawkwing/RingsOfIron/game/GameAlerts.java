@@ -28,6 +28,7 @@ import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.AlertRegistry.TimerKind;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.data.MessageFeed;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.minimap.ShipAlerts;
 import com.ringsofiron.uihud.minimap.TileShade;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
@@ -66,10 +67,10 @@ public class GameAlerts {
     /** Oxygen tanks below this share are a caution. */
     static final float OXYGEN_CAUTION = 0.2f;
     /**
-     * Alerts a notice can belong to ({@link NoticeLog.Notice#alert}), by id: the salvo's notice, low
-     * propellant's and the ship disabled's each have an alert carrying their condition.
+     * The alerts here that carry a warning notice ({@link NoticeLog.Notice#alert}), by the id they
+     * are raised under: the salvo's notice, low propellant's and the ship disabled's.
      */
-    public static final String MISSILE = "missile", PROPELLANT = "propellant", DISABLED = "disabled";
+    public static final String MISSILE = NoticeAlerts.MISSILE, PROPELLANT = NoticeAlerts.PROPELLANT, DISABLED = NoticeAlerts.DISABLED;
 
     private final GameContext ctx;
     private final FlightWarnings warnings;
@@ -455,6 +456,7 @@ public class GameAlerts {
             m.count = n.count;
             m.secondsLeft = showing.contains(n) ? n.secondsLeft() : 0f;
             m.alert = n.alert;
+            m.minor = n.minor;
         }
     }
 }

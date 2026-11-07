@@ -43,6 +43,7 @@ import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 
 import java.util.Locale;
 
@@ -439,7 +440,7 @@ public final class GameInput {
         if (towAsked <= 0f) {
             towAsked = ABANDON_CONFIRM;
             session.show(String.format(Locale.ROOT, "Call the sponsor's tug? %s again: %,.0f cr and %.0f standing, and days pass",
-                    session.key(Action.CUT), world.beacon.fee(), DistressBeacon.STANDING_COST), NoticeLog.Kind.WARNING);
+                    session.key(Action.CUT), world.beacon.fee(), DistressBeacon.STANDING_COST), NoticeLog.Kind.WARNING, NoticeAlerts.ASKED);
             return;
         }
         towAsked = 0f;
@@ -458,7 +459,8 @@ public final class GameInput {
         }
         if (abandonAsked <= 0f) {
             abandonAsked = ABANDON_CONFIRM;
-            session.show("Abandon ship? " + session.key(Action.ABANDON) + " again to send the crew to the escape pods", NoticeLog.Kind.WARNING);
+            session.show("Abandon ship? " + session.key(Action.ABANDON) + " again to send the crew to the escape pods", NoticeLog.Kind.WARNING,
+                    NoticeAlerts.ASKED);
             return;
         }
         abandonAsked = 0f;

@@ -19,6 +19,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Map;
 import com.ringsofiron.aicrew.CrewService;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 
 /**
  * Docking collars jammed by hits ({@link CollarWear}): the port can't arm or latch until its crew
@@ -64,7 +65,7 @@ public final class JammedCollars {
                     jobs.put(p, job);
                     if (ship == ctx.player()) {
                         ctx.notices.post("Port " + (k + 1) + "'s docking collar is jammed: it won't arm till the crew free it on EVA",
-                                NoticeLog.Kind.WARNING);
+                                NoticeLog.Kind.WARNING, NoticeAlerts.COLLAR);
                     }
                 }
                 job.seen = true;

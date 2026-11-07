@@ -12,6 +12,7 @@ import com.ringsofiron.interiorgrid.Compartment;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.shipops.DisabledComponent;
 import com.ringsofiron.uihud.HintRegistry;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.AfterEach;
@@ -99,7 +100,7 @@ class CaptainSafetyTest {
         }
         assertTrue(world.captain.inThinAir());
         assertFalse(you().suited, "no suit without the player");
-        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.equals(CaptainSafety.NO_SUIT)),
+        assertTrue(world.notices.history().stream().anyMatch(n -> n.text.equals(CaptainSafety.NO_SUIT) && n.alert.equals(NoticeAlerts.CAPTAIN)),
                 () -> world.notices.history().stream().map(n -> n.text).toList().toString());
         assertTrue(world.hints.forContexts(java.util.EnumSet.of(HintRegistry.Context.DECK)).stream().anyMatch(h -> h.label.startsWith("walk to air")),
                 "a hint to walk to air");

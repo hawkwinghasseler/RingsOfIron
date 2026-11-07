@@ -17,6 +17,7 @@ import java.util.function.Function;
 import com.ringsofiron.stationsdocking.DockingSystem;
 import com.ringsofiron.orbital.rails.RailsUniverse;
 import com.ringsofiron.orbital.events.OrbitalEventSystem;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -163,7 +164,7 @@ public class Autopilot implements DropOutSource {
         Entity target = ctx.engine.getEntity(a.targetUuid);
         if (target == null) {
             disengage();
-            notice("Autopilot off: " + nav.target.name(a.targetUuid) + " is gone", NoticeLog.Kind.WARNING);
+            notice("Autopilot off: " + nav.target.name(a.targetUuid) + " is gone", NoticeLog.Kind.WARNING, NoticeAlerts.HELM);
             return;
         }
         if (docking.dockedTo(ship) != null) {
@@ -187,7 +188,7 @@ public class Autopilot implements DropOutSource {
                 disengage();
                 notice(String.format(Locale.ROOT, "Autopilot off: the transfer is flown, but %s is %s off. Plan to it again (%s)",
                         nav.target.name(a.targetUuid), Navigation.formatDistance(distance(ship, target)),
-                        keys.apply(Action.PLAN_TO_TARGET)), NoticeLog.Kind.WARNING);
+                        keys.apply(Action.PLAN_TO_TARGET)), NoticeLog.Kind.WARNING, NoticeAlerts.HELM);
                 return;
             }
         }
@@ -220,7 +221,8 @@ public class Autopilot implements DropOutSource {
         disengage();
         HelmOrderComponent.Mode mode = dockable(ship, target) ? HelmOrderComponent.Mode.DOCK : HelmOrderComponent.Mode.APPROACH;
         String said = nav.helm.give(mode);
-        notice("Autopilot: arrived off " + to + ". " + said, said.startsWith("Helm:") ? NoticeLog.Kind.INFO : NoticeLog.Kind.WARNING);
+        notice("Autopilot: arrived off " + to + ". " + said, said.startsWith("Helm:") ? NoticeLog.Kind.INFO : NoticeLog.Kind.WARNING,
+                said.startsWith("Helm:") ? "" : NoticeAlerts.HELM);
     }
 
     /** When warp should next stop on its own: the next burn or crossing, else the closest approach. NaN for none. */
@@ -284,11 +286,17 @@ public class Autopilot implements DropOutSource {
     private void hold(AutopilotComponent a, String why) {
         a.held = true;
         a.holdReason = why;
-        notice("Autopilot holds: " + why + ". " + keys.apply(Action.AUTOPILOT) + " or raising warp goes on", NoticeLog.Kind.WARNING);
+        notice("Autopilot holds: " + why + ". " + keys.apply(Action.AUTOPILOT) + " or raising warp goes on", NoticeLog.Kind.WARNING,
+                NoticeAlerts.AUTOPILOT);
     }
 
     private void notice(String text, NoticeLog.Kind kind) {
         ctx.notices.post(text, kind);
+    }
+
+    /** {@link #notice(String, NoticeLog.Kind)} for a warning that {@code alert} carries ({@link NoticeLog.Notice#alert}). */
+    private void notice(String text, NoticeLog.Kind kind, String alert) {
+        ctx.notices.post(text, kind, alert);
     }
 
     private boolean planned() {
