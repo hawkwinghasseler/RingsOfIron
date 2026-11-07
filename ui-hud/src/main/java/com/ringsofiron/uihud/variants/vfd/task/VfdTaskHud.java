@@ -212,11 +212,16 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
 
     @Override
     public void paint(Filament f) {
+        // The ship lost: every tube off round the card, every ghost showing, the world's marks gone with them
+        boolean lost = windows.lost;
+        f.dark = lost;
         // The projected world first: every widget covers it
         f.origin(0f, 0f);
-        world.paint(f);
-        deck.paintTags(f);
-        deck.paintPrompt(f);
+        if (!lost) {
+            world.paint(f);
+            deck.paintTags(f);
+            deck.paintPrompt(f);
+        }
         // Top left: the cluster, CHR over ANN, and PER under it on deck
         cluster.paintChr(f, !posts.screen && posts.common());
         if (!posts.screen && posts.common()) {

@@ -32,6 +32,7 @@ import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.State;
 import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.vfd.screens.Boards;
+import com.ringsofiron.uihud.variants.vfd.screens.Glass;
 import com.ringsofiron.uihud.variants.vfd.screens.SoftKeys;
 import org.junit.jupiter.api.Test;
 
@@ -103,6 +104,30 @@ class WindowsTest {
         assertSame(windows.map, windows.screenFor(ClassicWindow.MAP, d));
         assertSame(windows.console, windows.screenFor(ClassicWindow.CONSOLE, d));
         assertSame(windows.controls, windows.screenFor(ClassicWindow.HELP, d));
+    }
+
+    @Test
+    void theMapsHeaderFitsItsKeysAndNameAtTheMockupsSizeAndAbove() {
+        MapScreen map = windows.map;
+        map.body = "EARTH";
+        map.centre = "EARTH";
+        // The game's design size (UiScale never makes the stage smaller where the window holds it) and bigger
+        for (float[] stage : new float[][] {{1280f, 800f}, {1920f, 1200f}, {2048f, 1152f}}) {
+            map.layout(stage[0], stage[1]);
+            String at = " at " + (int) stage[0];
+            for (int i = 0; i < MapScreen.VIEW_KEYS; i++) {
+                assertTrue(Glass.width(map.viewWord(i).length()) + MapScreen.KEY_PAD <= map.viewKeyW(i) + 0.01f, "each word on its key" + at);
+                if (i > 0) assertTrue(map.viewKeyX(i - 1) + map.viewKeyW(i - 1) < map.viewKeyX(i), "the keys apart" + at);
+            }
+            assertTrue(map.viewKeyX(2) + map.viewKeyW(2) <= map.plotRight() - MapScreen.CLOSE_ROOM + 0.01f, "clear of the close keys" + at);
+            assertTrue(map.plotLeft() + 8f + MapScreen.TITLE_CELL * map.headerTitle().length() < map.viewKeyX(0), "the name clear of the keys" + at);
+        }
+        map.layout(1920f, 1200f);
+        assertEquals("EARTH SYSTEM", map.headerTitle());
+        assertEquals("CENTRE: EARTH", map.viewWord(0));
+        map.layout(1280f, 800f);
+        assertEquals("EARTH", map.headerTitle(), "the name gives up SYSTEM before the centre's word is cut");
+        assertEquals("CENTRE: EARTH", map.viewWord(0));
     }
 
     @Test
@@ -300,7 +325,7 @@ class WindowsTest {
         assertTrue(windows.open(ClassicWindow.CONSOLE, d));
         ConsoleTab face = windows.console.face;
         assertEquals("PD LASER", face.title, "a gun by its weapon");
-        assertEquals("FWD PD", face.room, "and its mount");
+        assertEquals("FWD", face.room, "and where its mount sits, less the kind the title says");
         assertEquals("PD LASER, READY", row(face, "WEAPON"));
         assertEquals("COLE, AT THE GUN", row(face, "WORKED BY"));
         assertEquals(1, face.orders);

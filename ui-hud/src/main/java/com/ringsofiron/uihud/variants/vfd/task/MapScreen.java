@@ -33,6 +33,12 @@ final class MapScreen extends Screen {
     static final float GAP = 12f, PAD = 6f, HEAD = 30f;
     static final int VIEW_KEYS = 3;
     static final String[] VIEW_WORD = {"CENTRE: ", "FIT", "ALL TRAFFIC"};
+    /**
+     * The header's parts: the room the close keys take at its right with a gap before them, a view key's
+     * pad round its word and the gap between two, and the body's name in fourteen segments (a cell's
+     * advance at its height, as {@code Filament.seg14Width} sets it).
+     */
+    static final float CLOSE_ROOM = 172f, KEY_PAD = 16f, KEY_GAP = 6f, TITLE_H = 13f, TITLE_CELL = TITLE_H * 0.84f;
     /** Click ids: the timeline's events and their warps, and the view's keys. */
     static final int EVENT = Windows.TAB_IDS + 150, WARP = Windows.TAB_IDS + 180, VIEW = Windows.TAB_IDS + 210;
 
@@ -47,8 +53,9 @@ final class MapScreen extends Screen {
     /** The plot's plate: the box round the header and the plot. */
     private float bx, by, bw, bh;
     private final String[] viewWords = new String[VIEW_KEYS];
-    private final float[] keyAt = new float[2];
-    private float keysX, keysW;
+    /** The view's keys in the header, each round its word, and the body's name as it fits before them. */
+    private final float[] keyX = new float[VIEW_KEYS], keyW = new float[VIEW_KEYS];
+    private String heading = "";
     private final String[] esc = {"ESC"}, m = {"M"};
 
     @Override
@@ -119,9 +126,60 @@ final class MapScreen extends Screen {
         py = by + HEAD;
         pw = bw;
         ph = bh - HEAD;
-        // The view's keys in the header, between the body's name and the close keys
-        keysW = Math.min(3f * 120f, bw * 0.5f);
-        keysX = bx + bw - keysW - 150f;
+        header();
+    }
+
+    /**
+     * The header from its right: the close keys, then the view's keys, each round its word, then the
+     * body's name in what is left. Where there is not room for all of it, the name gives up " SYSTEM"
+     * first, then the centre's word is cut, keeping a few letters of what it centres on, and last the
+     * name is cut (fourteen segments have no "…").
+     */
+    private void header() {
+        float left = bx + 8f, right = bx + bw - CLOSE_ROOM;
+        float room = right - left - keyWidth(VIEW_WORD[1]) - keyWidth(VIEW_WORD[2]) - 2f * KEY_GAP;
+        String full = body.isEmpty() ? "NO MAP" : body + " SYSTEM", centred = VIEW_WORD[0] + centre;
+        heading = body.isEmpty() || named(full) + keyWidth(centred) <= room ? full : body;
+        int centreCells = Math.max(VIEW_WORD[0].length() + 3, Glass.cells(room - named(heading) - KEY_PAD));
+        viewWords[0] = Glass.cut(centred, centreCells);
+        viewWords[1] = VIEW_WORD[1];
+        viewWords[2] = VIEW_WORD[2];
+        float kx = right;
+        for (int i = VIEW_KEYS - 1; i >= 0; i--) {
+            keyW[i] = keyWidth(viewWords[i]);
+            kx -= keyW[i];
+            keyX[i] = kx;
+            kx -= KEY_GAP;
+        }
+        int cells = Math.max(4, (int) Math.floor((keyX[0] - 16f - left + TITLE_H * 0.24f) / TITLE_CELL));
+        if (heading.length() > cells) heading = heading.substring(0, cells).stripTrailing();
+    }
+
+    /** How wide the body's name {@code s} sets in the header, with its gap before the keys. */
+    private static float named(String s) {
+        return TITLE_CELL * s.length() + 16f;
+    }
+
+    private static float keyWidth(String word) {
+        return Glass.width(word.length()) + KEY_PAD;
+    }
+
+    /** The word on view key {@code i}, and where that key is on the stage: its left and its width. */
+    String viewWord(int i) {
+        return viewWords[i];
+    }
+
+    float viewKeyX(int i) {
+        return keyX[i];
+    }
+
+    float viewKeyW(int i) {
+        return keyW[i];
+    }
+
+    /** The body's name as the header sets it. */
+    String headerTitle() {
+        return heading;
     }
 
     /** The plot's edges on the stage, for the game's canvas's insets. */
@@ -148,16 +206,10 @@ final class MapScreen extends Screen {
         // The plate round the plot, its window cut through to the canvas; the header row on the plate
         f.plateAround(bx, by, bw, bh, PAD, 8f, px, py, pw, ph);
         f.rectLit(px, py - 1f, pw, 0.8f, f.o().ghostOnly().k(2.2f));
-        String title = body.isEmpty() ? "NO MAP" : body + " SYSTEM";
-        f.seg14(bx + 8f, by + 6f, 13f, Glass.cut(title, Math.max(4, Glass.cells(keysX - bx - 24f) / 2)), f.o().norm());
-        viewWords[0] = Glass.cut(VIEW_WORD[0] + centre, Glass.cells(keysW / VIEW_KEYS - 8f));
-        viewWords[1] = VIEW_WORD[1];
-        viewWords[2] = VIEW_WORD[2];
+        f.seg14(bx + 8f, by + 6f, TITLE_H, heading, f.o().norm());
         for (int i = 0; i < VIEW_KEYS; i++) {
-            Glass.keyBox(keysX, keysW, VIEW_KEYS, i, keyAt);
-            f.key(keyAt[0], by + 3f, keyAt[1], Glass.KEY_H - 2f, "", f.o().size(11f));
-            float lw = Glass.width(viewWords[i].length());
-            Glass.text(f, keyAt[0] + (keyAt[1] - lw) / 2f, by + 9f, viewWords[i], Drive.NORM);
+            f.key(keyX[i], by + 3f, keyW[i], Glass.KEY_H - 2f, "", f.o().size(11f));
+            Glass.text(f, keyX[i] + KEY_PAD / 2f, by + 9f, viewWords[i], Drive.NORM);
         }
         float cx = bx + bw - 8f - Glass.capWordWidth(f, esc, "CLOSE") - Glass.capWordWidth(f, m, "OR");
         cx = Glass.capWord(f, cx, by + 5f, m, "OR", Drive.DIM) - 8f;
@@ -178,10 +230,7 @@ final class MapScreen extends Screen {
         a.box(Windows.PLATE, x - PAD, y + h - MapTimeline.H - PAD, w + 2f * PAD, MapTimeline.H + 2f * PAD);
         plan.boxes(a);
         traffic.boxes(a);
-        for (int i = 0; i < VIEW_KEYS; i++) {
-            Glass.keyBox(keysX, keysW, VIEW_KEYS, i, keyAt);
-            a.box(VIEW + i, keyAt[0], by + 3f, keyAt[1], Glass.KEY_H - 2f);
-        }
+        for (int i = 0; i < VIEW_KEYS; i++) a.box(VIEW + i, keyX[i], by + 3f, keyW[i], Glass.KEY_H - 2f);
         timeline.boxes(a, EVENT, WARP);
     }
 

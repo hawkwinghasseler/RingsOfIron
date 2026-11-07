@@ -24,6 +24,7 @@ import com.ringsofiron.uihud.providers.WeaponStatusProvider.Kind;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.vfd.Drive;
+import com.ringsofiron.uihud.variants.vfd.Fmt;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.FilamentActor;
 import com.ringsofiron.uihud.variants.vfd.Phosphor;
@@ -135,7 +136,11 @@ final class ConsoleTab extends Tab {
         String fallback = v.data == null || v.data.title == null ? "CONSOLE" : v.data.title.toUpperCase(Locale.ROOT);
         title = sys == null ? fallback : ShipSystems.name(sys, gun);
         room = grid == null || v.data == null ? "" : rooms.at(grid, v.data.tileX, v.data.tileY).toUpperCase(Locale.ROOT);
-        if (gun != null && !gun.name.isEmpty()) room = gun.name.toUpperCase(Locale.ROOT);
+        if (gun != null && !gun.name.isEmpty()) {
+            // Where the gun sits, less its kind, which the title says: "PORT MSL" is PORT
+            String at = Fmt.place(gun.name);
+            room = at.isEmpty() ? gun.name.toUpperCase(Locale.ROOT) : at;
+        }
         health = sys == null ? Float.NaN : sys.health;
         orders = 0;
         if (sys == null) {
