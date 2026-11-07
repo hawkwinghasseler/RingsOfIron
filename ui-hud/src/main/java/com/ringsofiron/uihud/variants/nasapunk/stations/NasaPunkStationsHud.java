@@ -3,6 +3,7 @@ package com.ringsofiron.uihud.variants.nasapunk.stations;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
@@ -32,6 +33,7 @@ import com.ringsofiron.uihud.providers.UiContextProvider.UiContext;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.ShellLook;
@@ -41,9 +43,12 @@ import com.ringsofiron.uihud.variants.nasapunk.NpHardware.BoxState;
 import com.ringsofiron.uihud.variants.nasapunk.NpKit;
 import com.ringsofiron.uihud.variants.nasapunk.NpScreens;
 import com.ringsofiron.uihud.variants.nasapunk.NpSymbols;
+import com.ringsofiron.uihud.variants.nasapunk.screens.ScreenModes;
 import com.ringsofiron.uihud.variants.nasapunk.stations.StationsLayout.Zone;
 import com.ringsofiron.uihud.widgets.MapPainter;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -52,7 +57,9 @@ import java.util.Set;
  * deck the captain sees the always-on overlay (the status strip, the annunciator with its master
  * lamps, the warp strip, the callout ticker) and the suit readout on their chest. Seated at a command
  * console the band comes up on the bottom edge: the seat's cluster between two MFDs, and the station
- * board under them. At a gun, the gunner sight and the gun's own tile.
+ * board under them. At a gun, the gunner sight and the gun's own tile. The game's windows are the
+ * spec's station link, full screen under the master lamps, and its slate down the right side
+ * ({@link StationScreen}).
  *
  * <p>The ship's condition ({@link ShipCondition}) sets the MFDs' pages and the board's lights; the
  * annunciator's tiles ({@link Annunciation}) light the board's stations and turn an MFD to their home
@@ -84,6 +91,9 @@ public class NasaPunkStationsHud implements HudVariant {
 
     /** The menus as pages of CDU-1 and the map's system plot, the same under all three Nasa-punk HUDs. */
     private final NpScreens screens = new NpScreens();
+    /** The game's windows as the spec's station link and slate. */
+    private StationScreen screen;
+    private final List<Rectangle> panelPool = new ArrayList<>();
     private HudVariantHost host;
     private NpKit kit;
     private Group root;
@@ -171,6 +181,7 @@ public class NasaPunkStationsHud implements HudVariant {
             if (mfds.seat != MfdState.Seat.NONE) mfds.station(false, s);
         };
         for (Actor a : root.getChildren()) a.setVisible(false);
+        screen = new StationScreen(ScreenModes.of(host), host.screenLayer(), kit);
     }
 
     private <T extends Actor> T add(T a) {
@@ -237,7 +248,26 @@ public class NasaPunkStationsHud implements HudVariant {
         board.dark = cond.blackout;
         if (board.isVisible()) board(d);
         prompt(d, ship, dt);
+        // the slate stops above the band, or above the gunner sight and the gun's tile at a gun (S5)
+        screen.slateFoot = band || seat == Seat.GUN ? StationsLayout.zone(Zone.BAND, host.width(), host.height())[1] - 9f : Float.NaN;
+        screen.update(delta);
         layout();
+        if (screen.lostShows()) lostPanels();
+        // the station link and the controls take the screen under the strip and the master lamps (S6)
+        if (screen.covering() && !screen.slateShows()) {
+            for (Actor x : root.getChildren()) if (x != strip && x != annunciator) x.setVisible(false);
+        }
+    }
+
+    /** The displays the ship-lost card strikes through: every one showing but the strip and the prompt line, y up. */
+    private void lostPanels() {
+        screen.panels.clear();
+        int n = 0;
+        for (Actor x : root.getChildren()) {
+            if (x == strip || x == prompt || !x.isVisible() || x.getWidth() <= 0f || x.getHeight() <= 0f) continue;
+            if (panelPool.size() <= n) panelPool.add(new Rectangle());
+            screen.panels.add(panelPool.get(n++).set(x.getX(), x.getY(), x.getWidth(), x.getHeight()));
+        }
     }
 
     private static Seat seatOf(UiContext ctx) {
@@ -929,14 +959,16 @@ public class NasaPunkStationsHud implements HudVariant {
     private void layout() {
         float w = host.width(), h = host.height();
         root.setBounds(0f, 0f, w, h);
-        place(strip, Zone.STRIP, w, h);
-        place(annunciator, Zone.ANNUNCIATOR, w, h);
-        place(warpStrip, Zone.WARP, w, h);
-        place(ticker, Zone.TICKER, w, h);
-        place(berth, Zone.BERTH, w, h);
+        // with the slate down the right side, the top column recentres left of it (S5, S7)
+        float cw = screen != null && screen.slateShows() ? w - StationScreen.SLATE_W - StationScreen.SLATE_EDGE : w;
+        place(strip, Zone.STRIP, cw, h);
+        place(annunciator, Zone.ANNUNCIATOR, cw, h);
+        place(warpStrip, Zone.WARP, cw, h);
+        place(ticker, Zone.TICKER, cw, h);
+        place(berth, Zone.BERTH, cw, h);
         float[] z = StationsLayout.zone(Zone.SUIT, w, h);
         put(suit, z[0], z[1] + z[3] - suit.getHeight(), h);
-        place(prompt, seat == Seat.HELM || seat == Seat.WEAPONS || seat == Seat.GUN ? Zone.PROMPT_SEATED : Zone.PROMPT_DECK, w, h);
+        place(prompt, seat == Seat.HELM || seat == Seat.WEAPONS || seat == Seat.GUN ? Zone.PROMPT_SEATED : Zone.PROMPT_DECK, cw, h);
         foot(mfdLeft, StationsLayout.zone(Zone.MFD_LEFT, w, h), h);
         foot(mfdRight, StationsLayout.zone(Zone.MFD_RIGHT, w, h), h);
         z = StationsLayout.zone(Zone.CLUSTER, w, h);
@@ -972,6 +1004,8 @@ public class NasaPunkStationsHud implements HudVariant {
     @Override
     public boolean keyDown(int keycode) {
         if (host == null) return false;
+        // a display in place of a window has its tabs and its page's keys first
+        if (screen != null && screen.covering() && screen.keyDown(keycode)) return true;
         if (keycode == Input.Keys.BACKSLASH) {
             acknowledge();
             return true;
@@ -1020,7 +1054,43 @@ public class NasaPunkStationsHud implements HudVariant {
         if (kit != null) kit.dispose();
         kit = null;
         host = null;
+        screen = null;
         screens.dispose();
+    }
+
+    // ---- the game's windows as the spec's displays -------------------------------------------------
+
+    @Override
+    public boolean replaces(ClassicWindow window) {
+        switch (window) {
+            case TRADE:
+            case YARD:
+            case SHIPYARD:
+            case MISSIONS:
+            case BOARDING:
+            case CREW:
+            case LOG:
+            case HELP:
+            case GAME_OVER:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
+    public boolean open(ClassicWindow window) {
+        return screen != null && screen.show(window);
+    }
+
+    @Override
+    public boolean showing(ClassicWindow window) {
+        return screen != null && screen.showing(window);
+    }
+
+    @Override
+    public void close(ClassicWindow window) {
+        if (screen != null) screen.close(window);
     }
 
     @Override
