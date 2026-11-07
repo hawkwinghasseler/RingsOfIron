@@ -7,6 +7,7 @@ import com.ringsofiron.aicrew.CrewDef;
 import com.ringsofiron.aicrew.CrewMemberComponent;
 import com.ringsofiron.aicrew.CrewRecord;
 import com.ringsofiron.aicrew.CrewRole;
+import com.ringsofiron.aicrew.GridPositionComponent;
 import com.ringsofiron.coreengine.components.UuidComponent;
 import com.ringsofiron.moddingdata.components.DefRefComponent;
 import com.ringsofiron.moddingdata.defs.ShipDef;
@@ -73,6 +74,14 @@ public class CrewRoster implements CrewProvider {
             m.history = CrewCareer.history(r);
             m.dismissable = station != null;
             m.evaAction = spacewalks.orderFor(e);
+            // Where they stand, for a plan: aboard, or across on a ship they boarded
+            GridPositionComponent pos = crewService.position(e);
+            if (pos != null && pos.ship != null) {
+                m.craft = pos.ship;
+                m.x = pos.x;
+                m.y = pos.y;
+                m.working = c.task != null && !pos.isMoving();
+            }
         }
         for (Entity e : prisoners.aboard(ship)) {
             CrewMemberComponent c = crewService.crew(e);

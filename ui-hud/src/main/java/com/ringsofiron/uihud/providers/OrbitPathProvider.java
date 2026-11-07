@@ -48,6 +48,10 @@ public interface OrbitPathProvider {
         /** On the path after planned burns, rather than the orbit now. */
         public boolean planned;
         public String text = "";
+        /** Seconds from now until the path reaches it (a ghost: the time it is drawn for); NaN unknown. */
+        public float in = Float.NaN;
+        /** The body the path is around there, when it is not the map's own: "Moon" for the Moon's periapsis; "" else. */
+        public String body = "";
     }
 
     /**
@@ -91,6 +95,15 @@ public interface OrbitPathProvider {
         public final Array<String> nodeLabels = new Array<>();
         /** Index into the burns of the one the planner is editing, or -1. */
         public int selectedNode = -1;
+        /** Each planned burn's seconds from now, in the order of {@link #nodes}. */
+        public final FloatArray nodeIn = new FloatArray();
+        /** Each planned burn's delta-v, m/s, as prograde,radial pairs in the order of {@link #nodes}. */
+        public final FloatArray nodeDv = new FloatArray();
+        /**
+         * The orbit the selected burn leads to, m over the body's surface: its periapsis, and its
+         * apoapsis (NaN when it escapes). Both NaN with no burn selected.
+         */
+        public double selectedPe = Double.NaN, selectedAp = Double.NaN;
         /** Text under the map: the selected burn and where it leads. Empty for none. */
         public final StringBuilder caption = new StringBuilder();
         /** Other bodies, positioned relative to the parent body. */
@@ -132,6 +145,8 @@ public interface OrbitPathProvider {
             m.radius = m.soiRadius = 0;
             m.planned = false;
             m.text = text == null ? "" : text;
+            m.in = Float.NaN;
+            m.body = "";
             marks.add(m);
             return m;
         }
@@ -169,6 +184,9 @@ public interface OrbitPathProvider {
             nodes.clear();
             nodeLabels.clear();
             selectedNode = -1;
+            nodeIn.clear();
+            nodeDv.clear();
+            selectedPe = selectedAp = Double.NaN;
             caption.setLength(0);
             bodyPool.addAll(bodies);
             bodies.clear();

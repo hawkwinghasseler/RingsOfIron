@@ -17,6 +17,8 @@ public interface OrbitInfoProvider {
         public double periapsis;
         /** Orbital period in seconds, or {@code Double.POSITIVE_INFINITY} on an escape trajectory. */
         public double period;
+        /** Seconds until the ship next passes periapsis and apoapsis; NaN for none ahead (an open orbit past its periapsis has neither). */
+        public float peIn = Float.NaN, apIn = Float.NaN;
         /** True when periapsis is below the surface or atmosphere: the ship is on a collision course. */
         public boolean impactWarning;
     }

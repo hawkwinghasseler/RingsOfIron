@@ -52,6 +52,7 @@ public class BoardingWork implements BoardingProvider {
         boolean alongside = !docked && boarding.alongside(ship, craft);
         out.byEva = !docked;
         out.craftName = Boarding.name(craft);
+        out.craft = craft;
         BoardedComponent b = Boarding.of(craft);
         boolean ours = b != null && b.by != null && b.by.get(ctx.engine.getUuidRegistry()) == ship;
         out.boarding = ours && !b.taken;

@@ -43,13 +43,15 @@ Life cycle, all on the render thread:
 
 1. `attach` when the variant is picked, or the game starts with it. Everything you add to the stage
    goes in `host.layer()`, a `Group` filling the stage above the classic panels and the world
-   markers and below the windows and the map. The host clears it on detach.
+   markers and below the windows and the map, or for your own screens in place of the windows
+   `host.screenLayer()`, above the windows and the map (below). The host clears both on detach.
 2. `update(delta)` once a frame, after the game has updated and the data layer has been refreshed,
    before the stage acts and draws.
 3. `resize(width, height, uiScale)` when the window or the UI scale changes. The stage's units are
    already resized; this is where a variant that generates its own fonts rebuilds them.
 4. `keyDown` for keys the classic HUD did not use, before the game's own bindings see them. Not
-   called while a window or the map has the keys. Return true for a key you used and the game's
+   called while a classic window or the map has the keys; called while one of your own screens
+   shows, the map's panels among them. Return true for a key you used and the game's
    binding for it does nothing that frame (`UiHud.keyUsedByVariant`): Alt with 1 picks your page
    and gives no helm order. The game reads its bindings whatever modifier is held, so take a key
    only when it means yours (with Alt held, say); one you take is gone from the game that frame.
@@ -65,9 +67,166 @@ A style's three variants can share a drawing kit in the style's package: FILAMEN
 `keeps()` returns the classic pieces that stay up under the variant (`ClassicPart`): the flight
 panel, the gauges, the radar, the ship panel, the orbit panel, the missile banner, the threat
 overlay, the world markers, the game's status column, the key hint line, the docked banner and the
-E prompt. Everything not in the set is hidden for you, each frame. Windows (market, yard, missions,
-crew, boarding, the console window and the map) and the world overlays the game draws under the HUD (burn
-arrows, fire arcs, picture-in-picture) stay until a variant replaces them in its own PR.
+E prompt. Everything not in the set is hidden for you, each frame. The windows, the map's panels and
+the game's text panels stay classic unless the variant shows its own screens for them (below). The
+world overlays the game draws under the HUD (burn arrows, fire arcs) stay until a variant replaces
+them in its own PR. The magnified bubbles stay too, but a variant can steer them and draw their rims
+itself (below).
+
+### The magnified bubbles
+
+The game's picture-in-picture bubbles magnify the player's ship, the lock and the nav target while
+the outside view draws them too small to make out. Four hooks on `HudVariant` steer them, and each
+default leaves them as the classic HUD has them:
+
+- `panels(out)`: the variant's own panels, in UI units with y up. The bubbles slide clear of them.
+  The classic status column and flight panel count only while the variant keeps them.
+- `wantsInset(role)`: whether there is a bubble at all for the player's ship, the lock or the nav
+  target.
+- `drawsInsets()`: when true, the game lays the magnified pictures alone, with no rim, line, pointer
+  or name, and the variant draws those from `HudData.insets`.
+- `insetRoom(room)`: how far the variant's rim, marks and caption reach past each picture: either
+  side, above and below. The game keeps that room clear of the panels, the other bubbles and the
+  stage's edges.
+
+The game reads the hooks as the variant left them at its last `update`, and fills `insets` before
+this frame's `update`, so the pictures and the variant's rims never fall a frame apart.
+
+### Screens in place of the windows
+
+A variant can show its own screens for the classic windows, the map's panels and the game's text
+panels (`ClassicWindow`), whatever shape its spec gives them: a side panel, a full-screen mode with
+tabs, a terminal that serves several. Four hooks on `HudVariant`, each doing nothing by default:
+
+- `replaces(window)`: whether the variant shows its own screen for it. Read once on attach.
+- `open(window)`: show the screen, or turn an open one to it (a station terminal to its market tab).
+  True when it shows now.
+- `showing(window)`: whether it shows now. A terminal that serves several shows the one on its tab.
+- `close(window)`: close it (its key again, Esc, or the game: the ship undocked).
+
+The game keeps everything else, so the screens behave as the classic windows do whoever draws them:
+
+- **When a window can open stays the game's word** (`UiHud.available`): the market only while
+  docked, boarding only while latched, the yard where there is one or the crew's field refit away
+  from one. The variant is asked to open only then, and a screen whose window can no longer open is
+  closed for it on the next frame.
+- **The keys stay the game's**: T, Y, J, K, I, M, L and F1 open and close the variant's screens as
+  they do the classic windows, and E at a console opens its console screen. Esc closes the topmost
+  window, whoever shows it: the log and the controls first, then the map, then the windows. An Esc
+  used that way neither pauses nor quits.
+- **Opening one from another**: `host.hud().open(window)`, `close`, `toggle` and `isOpen` work on a
+  window whoever shows it, so a yard screen's Ships for sale is `open(ClassicWindow.SHIPYARD)`.
+- **The game's checks see your screens**: while one shows, the game's flight and walking keys stop
+  where they stop for the classic window (a console, the log), the burn planner's keys leave the
+  arrow keys and Enter to you, the pad is in menu mode, and Esc closes the screen before it pauses.
+- **Switching variants keeps what was open**: cycling with a window up opens it again, shown by
+  whoever shows it now. Not a console's screen (E opens it again).
+
+Each window's data and actions come through the provider the classic window reads, mirrored on
+`HudData` (below). A screen goes in `host.screenLayer()`, over the classic windows and the map, and
+takes clicks only on its own actors: a click off them reaches the map or the world under it.
+
+| `ClassicWindow` | The classic window | What a screen reads and acts through |
+|---|---|---|
+| `MAP` | The map (M): its orbit canvas, and the side panel of orbit, burn, fly it, target and view | `orbitPath`, `planner`, `trafficMap`. The canvas stays the game's, with its zoom, panning, burn handles and contact picks, and fills the stage when the variant shows the panels: the classic side panel is hidden. Its look is `mapPainter()` (below) |
+| `CONSOLE` | The window E opens at a console | `console`: the console entity (its `SubsystemComponent` has the system, health and switch), what E found there, and the game's own actions at it ("Take fire control", with its key) |
+| `TRADE` | The station market (T, docked) | `trade` |
+| `YARD` | The yard (Y): repairs, tanks, refits, furnishings, Rebuild decks; away from a yard, the field refit | `yard` |
+| `SHIPYARD` | Ships for sale, the trade-in, a prize to hand over | `shipyard` |
+| `MISSIONS` | The mission board (J) | `missions` |
+| `BOARDING` | Boarding and salvage (K, latched) | `boarding` |
+| `CREW` | The crew roster (I) | `crew` |
+| `LOG` | The notice log (L) | `messages`, the last fifty notices with their time; for a captain's record, `career` too (below) |
+| `HELP` | The controls panel (F1) | `hints.collectAll(frame)`: every hint by where it applies, with the player's keys; each section marked when it holds where the player is now (`here`), or is the gamepad's (`gamepad`) |
+| `GAME_OVER` | Ship lost or career over | `gameOver`: what happened, and the ways on with their keys. It opens and closes by itself; the game keeps its keys there (Enter, the quick load, Esc), so show them but don't take them |
+
+Furniture placing needs no screen of its own: while the player places furniture, the key hints say
+so (`keyHints.placing` and `placingText`), and a variant that hides the classic hint line shows
+that line in its place.
+
+### The map's look
+
+The map's orbit canvas stays the game's whoever shows its panels, but a variant can make it look its
+own. `mapPainter()` returns a `MapPainter`, read once after `attach`; null keeps the classic look.
+`MapPainter` itself is the classic look, so a variant extends it and overrides what it draws
+differently:
+
+- `color(role)` recolours every piece and keeps its shape. The roles are `MapPainter.Role`: the
+  backdrop, the body, moons and their orbits, the orbit now and planned, legs around a moon, a
+  proposed transfer, the target, the ship, the selected burn, impacts, each kind of contact, the
+  handles, the scale bar, the title and dim text.
+- `font()` is the labels' font. The map measures labels with it to keep them clear of each other.
+  `lineHeight()` is the gap between a contact's lines.
+- Each piece has its own method for its shape, called where the map has put it, in stage
+  coordinates:
+  - the screen: `backdrop`, `noOrbit`, `title`, `instructions`, `scaleBar`;
+  - the orbits: `path` (one piece of a path, already cut to the canvas), `body`, `ghost`,
+    `approach`, `burn`, `ship`, `moon`, `marker`, `mark`, `label`;
+  - the traffic: `contact`, `objective`, `targetBrackets`, `leader`, `contactName`,
+    `contactDetail`, `regions` (the tension readout);
+  - planning: `handle` (one of the selected burn's four).
+
+  A variant that shows the title, the instructions or the tension in its own panels draws nothing
+  in those.
+
+The map keeps where everything goes and when it shows: the zoom and panning, the clipping, what is
+pulled to the canvas's edge, the labels kept apart, the burn handles and what a click picks. So the
+mouse planning works the same under every look.
+
+A variant that `replaces(ClassicWindow.MAP)` also shows what the classic side panel did, in its own
+panels:
+
+- the orbit, burn and plan text, and the orders, through `planner`: `orbitText`, `burnText`,
+  `planText`, `selectedBurn`, `deleteSelected`, `clearBurns`, `warpToBurn`, `helmFlyBurns`,
+  `autopilot`, `nextTarget`, `planToTarget`, `hasTarget`, `acceptPlan`, `discardPlan` and
+  `hasProposal`;
+- the view, through `host.hud().getManeuverMap()`: `nextFocus`, `getFocus`, `focusName`, `fit`,
+  `fitTraffic`, `centreOn` (a point in the map's frame, as a timeline's event), `pick` (a contact by
+  its id, as a click on it does) and the traffic's layers (`getTraffic().setShown`);
+- the times the panels give, through `orbitPath` and `orbitInfo`: each planned burn's time and
+  delta-v (`nodeIn`, `nodeDv`), the orbit the selected burn leads to, the time to each ghost and
+  the body it is round, and the times to the next periapsis and apoapsis (`peIn`, `apIn`);
+  `planner.warpTo(in, what)` warps on to any of them, stopping just before.
+
+The classic panel is hidden then, and the canvas fills the screen. To keep it clear of the panels,
+call `getManeuverMap().setCanvasInsets(left, top, right, bottom)` (UI units). The orbits then fit
+and centre in what is left, and the scale bar and title sit there. The insets go back to 0 when the
+variant changes.
+
+### The menus
+
+The menus around the game are the shell's, not windows: the main menu before any game, the pause
+menu over one, and what they open (`ShellScreen`): new game, load, save, settings, and the dialog
+that asks before mod scripts run. A variant gives them its own look with `shellLook()`, which
+returns a `ShellLook`; null keeps the classic menus.
+
+- **When the look is made**: the shell asks a fresh instance of the variant, one it never
+  attaches, as soon as the variant is picked: at launch, or on Apply in the settings. So make the
+  look's fonts and skin in `shellLook()`, not in `attach`. The shell disposes the look when another
+  variant is picked, and the look disposes what it made.
+- **`skin()`**: the menus are built from it as they always are, under the classic skin's style
+  names, so each label, button, field and list takes its fonts, colours and frames. It needs those
+  names: the `panel` drawable behind each menu; the label styles `display` (the game's title),
+  `heading`, `title`, `default`, `dim` and `warn`; the text button styles `menu`, `toggle` and
+  `default`; and the default styles of `TextField`, `SelectBox`, `CheckBox`, `Slider`
+  (`default-horizontal`), `ScrollPane` and `Window`. `HudSkin.create()` makes each of them for the
+  classic look.
+- **`rescale(uiScale)`**: draw the text at the UI scale, as `HudSkin.rescale` does for the classic
+  skin. It is called once when the look is made and again when the scale changes; true lays the
+  menus out again.
+- **`backdrop(batch, width, height, delta)`**: draw behind the main menu, over the whole screen.
+  `pauseBackdrop` draws over the paused game, under the pause menu. False keeps the classic drifting
+  stars and planet, or the classic dimming.
+- **`dress(screen, panel, root)`**: once a menu is built, dress it: a frame, a header, a legend of
+  soft keys. `panel` is the menu's own table and `root` the table filling the screen around it. For
+  the mod scripts dialog, `panel` is the dialog and `root` is null: it floats over the game.
+
+The shell keeps what the menus hold, what their buttons do and their keys: Esc backs out, and the
+arrow keys, Enter and the pad move between the buttons. A look that throws, or has no skin, leaves
+the classic menus up until the variant is picked again.
+
+The ship editor that the yard's Rebuild decks opens draws itself, outside Scene2D, and has no hook
+yet.
 
 ## The common data layer
 
@@ -86,10 +245,10 @@ their contents.
 | `targetStatus` | the locked target: label, relation, state, range, closing, relative speed, closest approach and its time, bearing, aspect, firing on us, hull, track age |
 | `threatFrame` | missiles in flight: side, who launched it, position, path, **time to impact with the missile's closing burn in it**, closest approach, range, closing speed, burning |
 | `flightStatus` | the speed against the frame that matters, first that applies: the locked target, the nav target within 5 km, the nearest station within 20 km, else the body orbited (its name and the altitude); closing and lateral against that object, velocity for a marker; heading and spin; delta-v left, home (to the nearest station that would take the ship) and planned; mass and full-thrust acceleration; the stick, main engine and RCS firing, rotation assist and whether it is held, out of propellant, autopilot (`PlayerFlightStatus`) |
-| `navReadout` | the nav target: name, kind (station, ship, wreck, body, point), relation, distance and closing, in the bubble and its bearing, the closest approach along the plan, the contract whose waypoint it is, and a station's `StationInfo`; the plan: burns left, **burn n of N (counting burns already flown)**, the next burn's countdown to its centre, to the engine lighting and to the turn onto it, its delta-v; the burn being flown with its delta-v **to go**; for either, the burn time, its direction and the pointing error; the plan's delta-v and a proposal up; and the station docked at. `StationInfo` is the owner, sponsor or not, standing and its word (Hostile, Unwelcome, Neutral, Friendly, Trusted), why it would refuse clearance, and its services (market, yard, shipyard, contracts, hiring, infirmary); for the station docked at, the infirmary's record of the docking: who it is treating now, by name, and how many of the crew it has treated and what it billed since the ship docked (`PlayerNavigation`) |
+| `navReadout` | the nav target: name, kind (station, ship, wreck, body, point), relation, distance and closing, in the bubble and its bearing, the closest approach along the plan, the contract whose waypoint it is, the body it orbits when that isn't the ship's, and a station's `StationInfo`; the plan: burns left, **burn n of N (counting burns already flown)**, the next burn's countdown to its centre, to the engine lighting and to the turn onto it, its delta-v; the burn being flown with its delta-v **to go**; for either, the burn time, its direction and the pointing error; the plan's delta-v and a proposal up; for an accepted trip that goes on past its last burn into another body's sphere, that body and the rest's estimated delta-v, and the arrival; and the station docked at. `StationInfo` is the owner, its kind ("Ice Mine"), sponsor or not, standing and its word (Hostile, Unwelcome, Neutral, Friendly, Trusted), why it would refuse clearance, and its services (market, yard, shipyard, contracts, hiring, infirmary); for the station docked at, the infirmary's record of the docking: who it is treating now, by name, and how many of the crew it has treated and what it billed since the ship docked (`PlayerNavigation`) |
 | `docking` | the selected port: number of how many, size, armed, active, collar torn or jammed; free, lining up, captured or docked; the craft and port it lines up with or is latched to, and that port's size; clearance (none, granted with the seconds it has left, denied and why, no free port of the size, a struck ship that yields), read from the station's ports without asking; range, lateral (+ to port), turn still needed, closing and the safe closing speed; docked, the latch's strain and whether it has settled (`PlayerDockingApproach`) |
 | `contactFrame` | every marked craft in the bubble and every missile in flight, nearest first: label, kind (ship, station, missile, derelict, waypoint, crew adrift), relation, state (fit, running, struck, silenced, disabled, wrecked) and the disabled reason, position in bubble metres, range, bearing from the nose (port +), closing, size, locked, nav target, a threat to the ship (`PlayerContacts`) |
-| `objectiveFrame` | the contracts held, soonest deadline first: title, kind, giver and station, state (under way, homeward, done, failed), time left and late, where it sends the ship next and whether that is the nav target, progress of how many, pay; and the operation running with its step (`PlayerObjectives`) |
+| `objectiveFrame` | the contracts held, soonest deadline first: title, kind, giver and station, state (under way, homeward, done, failed), time left and late, where it sends the ship next and whether that is the nav target, progress of how many, pay and the standing it brings, and its contract id, for `objectives.navTo(id)` to make its next place the nav target; and the operation running with its step (`PlayerObjectives`) |
 | `stations` | each post aboard (helm, weapons, each gun, life support, reactor), named by place ("HELM", "FWD GUN", "PORT GUN 2"): who works it (you, a crew member by name, one on the way, nobody), whether the console works, its tile; and the crew aboard and how many are free for a post (`PlayerStationBoard`) |
 | `keyHints` | the hints the classic bottom line draws from, for where the player is, with the player's keys: every one, most useful first, each action once, then help; or, while placing furniture, the placing line instead. Set by the game screen (`PlayerKeyHints`) |
 | `orderState` | the orders that stand and why any can't be given now: the helm's order, who it flies relative to, an approach's distance and the helm's own line, and for each of keys 0 to 5 why the helm would refuse it, in its words; the autopilot (off, on, held), where to and why it holds, and why it can't be engaged; whether the player is at a seat, where those are taken; the crew's battle stations, suits for them and the EVA hold; abandoning ship, with the seconds until the pods go anyway, the crew aboard and in a pod, the pods and their free seats, and the captain's straight-line distance to the nearest pod with a seat free and its tile; why the crew can't be sent to the pods; the seconds left on a first press of abandon ship and of the tow; the tow's fee, standing cost and refusal; paused. Set by the game screen (`PlayerOrders`) |
@@ -100,9 +259,23 @@ their contents.
 | `key("FIRE")` | the key bound to an action, for a prompt |
 | `promptAction`, `promptKey` | what E does here, as the classic prompt words it after the key ("to put on a pressure suit", "for the Helm panel"), or ""; and the key |
 | `dockHint` | the docked banner's text, or "" when not docked |
+| `console` | the console E opened while the variant shows its console screen: the entity, what E found, the game's actions there (`UiHud.registerConsoleAction`); empty otherwise |
+| `gameOver` | ship lost or career over: shown, which, the title ("SHIP LOST"), what happened in one line, and the ways on, each with its key, what it does and the action a click runs (`GameOverChoices`) |
+| `insets` | the game's magnified bubbles this frame, at most three: the craft, what each is for (the player's ship, the lock, the nav target), the craft's label as the game has it, the bubble's middle and radius (UI units, y up), where the craft is, whether it is in view and whether the bubble sits right over it, how far the craft reaches as drawn, and its distance. Filled before `update`, and empty on deck (`PictureInPicture.report`) |
 
 `targeting`, `orbitInfo`, `interactor` and `physics` are the classic providers, set on `UiHud` as
-before and mirrored here.
+before and mirrored here. So are the classic windows' providers, for a variant's own screens: `trade`,
+`yard`, `shipyard`, `missions`, `boarding`, `crew`, `orbitPath`, `planner` and `trafficMap`. A screen
+calls them when it draws, as the classic window's refresh does (each fills a board), and acts
+through them. The crew's rows say which craft each hand stands on and where on its deck, and whether
+they are at work there; the boarding board names the craft boarded (`craft`), for a plan of it, and
+says whether it was taken undefended and how many berths are free for its prisoners.
+
+`career` (`CareerProvider`) is the captain's career, for a captain's record: rank, the next rank and
+what earns it, time still to serve, pay and payday, what the rank may fly, the record (contracts,
+bounties, promotions with their days), every faction's standing, and the tension on each lawful
+faction's stations with what it does to their yards and boards. A screen reads it when it shows,
+not each frame.
 
 ### Alerts
 

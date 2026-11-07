@@ -1,5 +1,6 @@
 package com.ringsofiron.uihud.providers;
 
+import com.badlogic.ashley.core.Entity;
 import com.badlogic.gdx.utils.Array;
 
 /**
@@ -55,6 +56,8 @@ public interface BoardingProvider {
     final class BoardingBoard {
         /** The ship latched to; empty when none. */
         public String craftName = "";
+        /** That ship, for a plan of it; null when none. */
+        public Entity craft;
         /** How it stands: disabled and why, being boarded, taken. */
         public String state = "";
         /** Why no boarding party can go now, or empty if one can. */
@@ -96,6 +99,7 @@ public interface BoardingProvider {
 
         public void clear() {
             craftName = state = boardRefusal = stormRefusal = salvageRefusal = "";
+            craft = null;
             boarding = salvage = byEva = taken = disabled = undefended = false;
             aboard = defenders = prisoners = berthsFree = 0;
             parts.clear();

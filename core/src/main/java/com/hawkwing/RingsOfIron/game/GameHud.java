@@ -91,15 +91,15 @@ public class GameHud implements Disposable {
     }
 
     /**
-     * The providers for flight, navigation, docking, contacts, objectives and the posts aboard,
-     * which every variant reads; the game screen adds the key hints, which need its view of where
+     * The providers for flight, navigation, docking, contacts, objectives, the posts aboard and the
+     * career, which every variant reads; the game screen adds the key hints, which need its view of where
      * the player is ({@link PlayerKeyHints}).
      */
     static void wireFlightAndPosts(com.ringsofiron.uihud.data.HudData data, GameWorld world) {
         data.flight = new PlayerFlightStatus(world.context, world.docking, world.sensors, world.nav,
                 new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
-        StationServices services = new StationServices(world.macroSim, world.universe, world.standing, world.docking, world.shipyard)
-                .infirmary(world.infirmary);
+        StationServices services = new StationServices(world.macroSim, world.universe, world.standing, world.docking, world.shipyard,
+                StationServices.typeNames(world)).infirmary(world.infirmary);
         data.navigation = new PlayerNavigation(world.context, world.nav, world.docking, world.contracts, world.universe,
                 world.pirateBase, new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer), services);
         data.dockingApproach = new PlayerDockingApproach(world.context, world.docking, world.physics);
@@ -107,6 +107,7 @@ public class GameHud implements Disposable {
                 world.sensors);
         data.objectives = new PlayerObjectives(world.context, world.contracts, world.nav.target);
         data.stationBoard = new PlayerStationBoard(world.context, world.crew, world.bridge);
+        data.career = new PlayerCareer(world.standing, world.budget, world.tension, world.contracts);
     }
 
     /** The mod-script trust prompt as a dialog; pass to {@link GameWorld.Modules#modTrust} before loading content. */

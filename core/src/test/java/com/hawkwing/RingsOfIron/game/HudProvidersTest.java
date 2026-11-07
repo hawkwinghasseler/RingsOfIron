@@ -15,6 +15,7 @@ import com.ringsofiron.orbital.components.ManeuverNodeComponent;
 import com.ringsofiron.shipops.ShipNames;
 import com.ringsofiron.uihud.HintRegistry;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.providers.CareerProvider;
 import com.ringsofiron.uihud.providers.ContactProvider;
 import com.ringsofiron.uihud.providers.DockingApproachProvider;
 import com.ringsofiron.uihud.providers.FlightStatusProvider;
@@ -123,6 +124,16 @@ class HudProvidersTest {
     }
 
     @Test
+    void aStationNavTargetSaysWhatKindItIsAndWhichBodyItOrbits() {
+        world.nav.target.select(game.lunarMine);
+        data.refresh();
+        NavigationProvider.NavReadout n = data.navReadout;
+        assertEquals("Ice Mine", n.station.type, "its station type's name");
+        assertEquals("Moon", n.around, "round the Moon, not Earth");
+        assertFalse(n.docked.type.isEmpty(), "the dock's kind too");
+    }
+
+    @Test
     void plannedBurnsCountDownAndPointTheWay() {
         ManeuverNodeComponent plan = game.player.getComponent(ManeuverNodeComponent.class);
         if (plan == null) game.player.add(plan = new ManeuverNodeComponent());
@@ -213,6 +224,71 @@ class HudProvidersTest {
     }
 
     @Test
+    void setAsNavMakesAContractsNextPlaceTheNavTarget() {
+        Contract taken = null;
+        for (Contract c : world.contracts.offers(world.universe.uuidOf(dock()))) {
+            if (c.waypointUuid() != null && world.contracts.locked(c) == null) {
+                taken = c;
+                break;
+            }
+        }
+        assertNotNull(taken, "an offer with somewhere to go");
+        String said = world.contracts.accept(taken.id);
+        world.nav.target.select(null);
+        data.refresh();
+        com.ringsofiron.uihud.providers.ObjectiveProvider.Objective o = data.objectiveFrame.first();
+        assertNotNull(o, said);
+        assertEquals(taken.id, o.id, "the board's id, for the record's orders");
+        assertEquals(taken.standing, o.standing, 1e-6f);
+        assertFalse(o.nextIsNav);
+        said = data.objectives.navTo(o.id);
+        data.refresh();
+        assertTrue(data.objectiveFrame.first().nextIsNav, said);
+        assertEquals("No such contract", data.objectives.navTo(-7));
+    }
+
+    @Test
+    void theCareerReadsTheRankThePayAndEveryFactionTheSponsorFirst() {
+        CareerProvider.Career c = new CareerProvider.Career();
+        assertNotNull(data.career, "wired for the HUD variants");
+        data.career.read(c);
+        assertTrue(c.present);
+        assertEquals("Terran Patrol Authority", c.sponsor);
+        assertEquals("Ensign", c.rank);
+        assertEquals("Lieutenant", c.nextRank);
+        assertTrue(c.nextAt > c.standing, c.nextAt + " to earn");
+        assertTrue(c.budget > 0 && c.payIn > 0, "a budget, and a payday to come");
+        assertEquals("corvette", c.mayFly);
+        assertEquals(1, c.promotions.size, "the first rank, given at the start");
+        assertEquals("Ensign", c.promotions.first().rank);
+        assertEquals(0, c.recordOf);
+        assertTrue(c.factions.size >= 3);
+        assertTrue(c.factions.first().sponsor, "the sponsor first");
+        boolean outlaws = false;
+        for (CareerProvider.Faction f : c.factions) {
+            if (!f.outlaw) continue;
+            outlaws = true;
+            assertTrue(f.hostile && f.refuses, f.name);
+        }
+        assertTrue(outlaws, "the pirates, at war with everyone");
+        assertTrue(c.factions.peek().outlaw, "and they come last");
+        assertTrue(c.regions.size > 0);
+        for (CareerProvider.Region r : c.regions) {
+            for (CareerProvider.Faction f : c.factions) assertFalse(f.outlaw && f.name.equals(r.name), "no lawful stations: " + r.name);
+        }
+        assertEquals(c.refuseBelow, com.ringsofiron.career.FactionStanding.REFUSE_BELOW, 1e-6f);
+        // A contract given up is in the record
+        Contract offer = world.contracts.offers(world.universe.uuidOf(dock())).get(0);
+        world.contracts.accept(offer.id);
+        world.contracts.abandon(offer.id);
+        c.clear();
+        data.career.read(c);
+        assertEquals(1, c.recordOf);
+        assertEquals(1, c.abandoned);
+        assertEquals(0, c.done + c.failed);
+    }
+
+    @Test
     void thePostsAboardAreNamedAndTheHelmIsOne() {
         data.refresh();
         StationBoardProvider.StationBoard b = data.stations;
@@ -251,6 +327,37 @@ class HudProvidersTest {
         assertTrue(k.placing);
         assertEquals("Click to place", k.placingText);
         assertEquals(0, k.hints.size);
+    }
+
+    @Test
+    void theControlsPanelListsEveryHintByWhereItApplies() {
+        data.hints = new PlayerKeyHints(world.hints, () -> EnumSet.of(HintRegistry.Context.ANY), Action::defaultKeyName, () -> null);
+        KeyHintProvider.HelpFrame help = new KeyHintProvider.HelpFrame();
+        data.hints.collectAll(help);
+        // As the classic F1 panel has them: a section for each place, in the registry's order
+        java.util.Map<HintRegistry.Context, List<HintRegistry.Hint>> byContext = world.hints.byContext();
+        assertEquals(byContext.size(), help.sections.size);
+        int i = 0;
+        for (java.util.Map.Entry<HintRegistry.Context, List<HintRegistry.Hint>> e : byContext.entrySet()) {
+            KeyHintProvider.HelpSection s = help.sections.get(i++);
+            assertEquals(e.getKey().title, s.title);
+            assertEquals(e.getValue().size(), s.hints.size, s.title);
+            for (KeyHintProvider.KeyHint h : s.hints) assertFalse(h.label.isEmpty(), s.title);
+        }
+        assertTrue(help.sections.size > 1, "more than the one place");
+        // Asked again, it is the same list, not twice as long
+        help.clear();
+        data.hints.collectAll(help);
+        assertEquals(byContext.size(), help.sections.size);
+        // Where the player is, and the pad's own section, are marked for a variant to put first or apart
+        data.hints = new PlayerKeyHints(world.hints, () -> EnumSet.of(HintRegistry.Context.ANY, HintRegistry.Context.DECK),
+                Action::defaultKeyName, () -> null);
+        help.clear();
+        data.hints.collectAll(help);
+        for (KeyHintProvider.HelpSection s : help.sections) {
+            assertEquals(s.title.equals(HintRegistry.Context.DECK.title), s.here, s.title);
+            assertEquals(s.title.equals(HintRegistry.Context.GAMEPAD.title), s.gamepad, s.title);
+        }
     }
 
     // --- Orders -------------------------------------------------------------------------

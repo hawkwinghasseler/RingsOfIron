@@ -8,11 +8,15 @@ import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.providers.BoardingProvider.BoardingBoard;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
+import com.ringsofiron.uihud.variants.ShellLook;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.FilamentActor;
 import com.ringsofiron.uihud.variants.vfd.Optic;
+import com.ringsofiron.uihud.variants.vfd.VfdScreens;
+import com.ringsofiron.uihud.widgets.MapPainter;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -61,19 +65,28 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
     final Captain captain = new Captain();
     final OrdersMenu orders = new OrdersMenu();
     final World world = new World();
+    /** The menus in setup mode and the map's plot, the same under all three FILAMENT HUDs. */
+    private final VfdScreens screens = new VfdScreens();
+    /** The full-screen modes in place of the classic windows. */
+    final Modes modes = new Modes(this);
 
     /** The groups' origins on the stage, and this frame's slots, on the grid. */
     float width = Geo.W, height = Geo.H, midX, rightX, bottomY;
     float p2Y, goalY, navY, threatsY, lockY, stripY, panelY, x3Y, faceFoot, shieldsFoot, shieldsH, promptY, ordersFoot, rackY;
     double now;
     float time;
+    /** The ship lost or the career over: the lost card shows, and the HUD under it is dark. */
+    private boolean lost;
     private final float[] centre = new float[4];
 
     @Override
     public void attach(HudVariantHost host) {
         this.host = host;
+        // The map shows only in M1's frame, which has its title and its keys
+        screens.framed(true, MapTab.LABELS);
         actor = new FilamentActor(this, this);
         host.layer().addActor(actor);
+        modes.attach(host);
     }
 
     @Override
@@ -83,10 +96,13 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         actor.setBounds(0f, 0f, w, h);
         actor.setUnitsPx(host.uiScale());
         UiHud hud = host.hud();
-        boolean fullScreen = hud != null && (hud.openWindow() != null || hud.isMapOpen());
+        // The lost card is over the HUD as it stood, gone dark; a mode takes the whole screen
+        boolean fullScreen = modes.current != null || hud != null && (hud.openWindow() != null || hud.isMapOpen());
+        lost = modes.lost;
         BoardingBoard board = hud == null || hud.getBoardingWindow() == null ? null : hud.getBoardingWindow().getBoard();
         layout(d, w, h, delta, fullScreen, board);
         boxes(actor);
+        modes.update(delta);
     }
 
     /** Reads this frame's data into every part and places them, on a {@code w} x {@code h} stage. */
@@ -212,11 +228,13 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
 
     @Override
     public void paint(Filament f) {
-        boolean dim = interrupts.card;
+        boolean dim = interrupts.card && !lost;
         float w = width;
+        // The ship lost: every tube off, every ghost showing, the world's marks gone with them
+        f.dark = lost;
         // The projected world first: every widget covers it
         f.origin(0f, 0f);
-        world.paint(f);
+        if (!lost) world.paint(f);
         // The racks
         TopRack.paintRack(f, w);
         if (!sit.fullScreen) {
@@ -256,9 +274,12 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         f.origin(0f, 0f);
         captain.paintTags(f);
         if (!sit.fullScreen) CautionPanel.paint(f, cautions, p2Y, now, time);
-        f.origin(midX, 0f);
-        interrupts.paintThreat(f);
-        interrupts.paintCard(f, x3Y, time);
+        // Over a mode, the mode puts them over itself (paintInterruptsOver)
+        if (!modes.up()) {
+            f.origin(midX, 0f);
+            interrupts.paintThreat(f);
+            interrupts.paintCard(f, x3Y, time);
+        }
         if (sit.fullScreen) return;
         f.origin(0f, bottomY);
         rack.paintLights(f);
@@ -268,6 +289,31 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         rack.paintCue(f);
         // The orders menu over the world, on top of everything round it
         orders.paint(f, ordersFoot, time);
+    }
+
+    /** The top rack over the map, which covers this HUD's own layer when it opens: M1 stands under the rack. */
+    void paintTopOver(Filament f) {
+        f.origin(0f, 0f);
+        TopRack.paintRack(f, width);
+        top.paintLeft(f);
+        f.origin(rightX, 0f);
+        top.paintRight(f);
+        f.origin(0f, 0f);
+    }
+
+    /**
+     * P3 and X3 over a mode, in the mode's own glass (functional-context 10: they still interrupt),
+     * with the mode on the dimmer bus while X3 shows.
+     */
+    void paintInterruptsOver(Filament f) {
+        if (interrupts.card) {
+            f.origin(0f, 0f);
+            f.dimRegion(0f, 0f, width, height, DIMMER);
+        }
+        f.origin(midX, 0f);
+        interrupts.paintThreat(f);
+        interrupts.paintCard(f, x3Y, time);
+        f.origin(0f, 0f);
     }
 
     @Override
@@ -306,7 +352,10 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
 
     @Override
     public boolean keyDown(int keycode) {
-        return host != null && key(host.data(), keycode);
+        if (host == null) return false;
+        // A mode's keys first: its tabs, its lists and its soft keys
+        if (modes.keyDown(keycode)) return true;
+        return key(host.data(), keycode);
     }
 
     /** A key the classic HUD did not use: true for the HUD's own two, which the game's bindings then leave alone. */
@@ -325,10 +374,32 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
     }
 
     @Override
+    public boolean replaces(ClassicWindow window) {
+        return modes.replaces(window);
+    }
+
+    @Override
+    public boolean open(ClassicWindow window) {
+        return modes.open(window);
+    }
+
+    @Override
+    public boolean showing(ClassicWindow window) {
+        return modes.showing(window);
+    }
+
+    @Override
+    public void close(ClassicWindow window) {
+        modes.close(window);
+    }
+
+    @Override
     public void detach() {
+        modes.detach();
         if (actor != null) actor.dispose();
         actor = null;
         host = null;
+        screens.dispose();
     }
 
     @Override
@@ -360,5 +431,20 @@ public class VfdContextHud implements HudVariant, Filament.Painter, FilamentActo
         // in P3, markers and threats in the world overlays, the status column in P1, P2, P4 and P5, the
         // key hints and the E prompt in P6, and the docked banner in X1
         return EnumSet.noneOf(ClassicPart.class);
+    }
+
+    @Override
+    public ShellLook shellLook() {
+        return screens.shellLook();
+    }
+
+    @Override
+    public MapPainter mapPainter() {
+        return screens.mapPainter();
+    }
+
+    @Override
+    public void resize(int width, int height, float uiScale) {
+        screens.resize(uiScale);
     }
 }

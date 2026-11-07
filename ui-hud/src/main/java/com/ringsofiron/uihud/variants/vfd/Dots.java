@@ -24,6 +24,12 @@ final class Dots implements Disposable {
     final float dotU0, dotV0, dotU1, dotV1;
     /** The ghost cell's texture box: the 5x7 block with half a pitch round it. */
     final float ghostU0, ghostV0, ghostU1, ghostV1;
+    /**
+     * One dot in a tile of its own that repeats, so a whole graphic dot panel's unlit dots are one
+     * quad ({@link Filament#dotField}). The dot is 0.62 of the tile across, as the mockups' plot has it.
+     */
+    final Texture field;
+    static final int FIELD = 32;
 
     Dots() {
         Pixmap pixmap = new Pixmap(WIDTH, HEIGHT, Pixmap.Format.RGBA8888);
@@ -52,6 +58,16 @@ final class Dots implements Disposable {
         texture = new Texture(pixmap, true);
         texture.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
         pixmap.dispose();
+        Pixmap tile = new Pixmap(FIELD, FIELD, Pixmap.Format.RGBA8888);
+        tile.setBlending(Pixmap.Blending.None);
+        float fd = FIELD * 0.62f, frr = fd * 0.28f, fo = (FIELD - fd) / 2f;
+        for (int y = 0; y < FIELD; y++) {
+            for (int x = 0; x < FIELD; x++) tile.drawPixel(x, y, 0xffffff00 | Math.round(coverage(x, y, fo, fo, fd, frr) * 255f));
+        }
+        field = new Texture(tile, true);
+        field.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
+        field.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+        tile.dispose();
         whiteU = 64.5f / WIDTH;
         whiteV = 64.5f / HEIGHT;
         dotU0 = 0f;
@@ -84,5 +100,6 @@ final class Dots implements Disposable {
     @Override
     public void dispose() {
         texture.dispose();
+        field.dispose();
     }
 }
