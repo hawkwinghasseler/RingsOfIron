@@ -128,6 +128,15 @@ abstract class ListPage extends Page {
         if (focusKey >= keyCount) focusKey = keyCount - 1;
     }
 
+    /** What Enter presses now: the soft key the keyboard is on, else the first that can act; null for none. */
+    @Override
+    String enterLabel() {
+        sayKeys();
+        if (focusKey >= 0 && focusKey < keyCount) return keyRefusal[focusKey] == null ? keyLabel[focusKey] : null;
+        for (int k = 0; k < keyCount; k++) if (keyRefusal[k] == null) return keyLabel[k];
+        return null;
+    }
+
     /** After a refresh: keeps the selection on a row that is still there. */
     void keepSelection() {
         int n = count();
