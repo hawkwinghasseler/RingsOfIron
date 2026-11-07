@@ -99,6 +99,19 @@ public class Autopilot implements DropOutSource {
         return engage();
     }
 
+    /**
+     * Why the autopilot can't be engaged now, as {@link #engage} would answer it before planning,
+     * or null when it may be (a transfer it can't plan is only found by trying); gives nothing.
+     */
+    public String refusal() {
+        Entity ship = ctx.player();
+        if (ship == null) return "No ship";
+        if (nav.target.uuid() == null) return "The autopilot needs a navigation target (" + keys.apply(Action.NAV_TARGET) + " picks one)";
+        if (docking.dockedTo(ship) != null) return "Undock first (" + keys.apply(Action.UNDOCK) + "): the autopilot flies from open space";
+        if (!nav.helm.hasCrewForHelm(ship)) return "Nobody aboard to take the helm: the autopilot is a helmsman's job";
+        return null;
+    }
+
     /** Engages the autopilot for the navigation target. Returns what to tell the player. */
     public String engage() {
         Entity ship = ctx.player();

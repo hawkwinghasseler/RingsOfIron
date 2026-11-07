@@ -6,14 +6,30 @@ import com.ringsofiron.interiorgrid.ShipGridComponent;
 import com.ringsofiron.physicsexterior.PhysicsManager;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
+import com.ringsofiron.uihud.providers.ContactProvider;
+import com.ringsofiron.uihud.providers.ContactProvider.ContactFrame;
+import com.ringsofiron.uihud.providers.DockingApproachProvider;
+import com.ringsofiron.uihud.providers.DockingApproachProvider.DockingApproach;
+import com.ringsofiron.uihud.providers.FlightStatusProvider;
+import com.ringsofiron.uihud.providers.FlightStatusProvider.FlightStatus;
 import com.ringsofiron.uihud.providers.InteractorProvider;
+import com.ringsofiron.uihud.providers.KeyHintProvider;
+import com.ringsofiron.uihud.providers.KeyHintProvider.KeyHintFrame;
+import com.ringsofiron.uihud.providers.NavigationProvider;
+import com.ringsofiron.uihud.providers.NavigationProvider.NavReadout;
+import com.ringsofiron.uihud.providers.ObjectiveProvider;
+import com.ringsofiron.uihud.providers.ObjectiveProvider.ObjectiveFrame;
 import com.ringsofiron.uihud.providers.OrbitInfoProvider;
+import com.ringsofiron.uihud.providers.OrdersProvider;
+import com.ringsofiron.uihud.providers.OrdersProvider.Orders;
 import com.ringsofiron.uihud.providers.PowerStatusProvider;
 import com.ringsofiron.uihud.providers.PowerStatusProvider.PowerFrame;
 import com.ringsofiron.uihud.providers.ShieldStatusProvider;
 import com.ringsofiron.uihud.providers.ShieldStatusProvider.ShieldStatus;
 import com.ringsofiron.uihud.providers.ShipStatusProvider;
 import com.ringsofiron.uihud.providers.ShipStatusProvider.ShipStatus;
+import com.ringsofiron.uihud.providers.StationBoardProvider;
+import com.ringsofiron.uihud.providers.StationBoardProvider.StationBoard;
 import com.ringsofiron.uihud.providers.TargetStatusProvider;
 import com.ringsofiron.uihud.providers.TargetStatusProvider.TargetStatus;
 import com.ringsofiron.uihud.providers.TargetingProvider;
@@ -46,6 +62,14 @@ public final class HudData {
     public PowerStatusProvider power;
     public TargetStatusProvider target;
     public ThreatProvider threats;
+    public FlightStatusProvider flight;
+    public NavigationProvider navigation;
+    public DockingApproachProvider dockingApproach;
+    public ContactProvider contacts;
+    public ObjectiveProvider objectives;
+    public StationBoardProvider stationBoard;
+    public KeyHintProvider hints;
+    public OrdersProvider orders;
     /** Also set by {@code UiHud} when the game sets them there. */
     public TargetingProvider targeting;
     public OrbitInfoProvider orbitInfo;
@@ -64,6 +88,16 @@ public final class HudData {
     public final AlertRegistry alerts = new AlertRegistry();
     /** What the game has told the player lately. */
     public final MessageFeed messages = new MessageFeed();
+    /** The last hit on the player's hull, for a schematic to flash ({@link #hullHit(int, int)}). */
+    public final HullHit lastHullHit = new HullHit();
+    /** The game's magnified insets this frame (picture-in-picture), set as it lays them, before the HUD updates. */
+    public final Insets insets = new Insets();
+
+    /** A hit on the player's hull: the deck tile it struck, and seconds since, NaN before any. */
+    public static final class HullHit {
+        public int tileX = -1, tileY = -1;
+        public float age = Float.NaN;
+    }
 
     // --- This frame's snapshots -----------------------------------------------------------
     public final UiContext ctx = new UiContext();
@@ -74,6 +108,22 @@ public final class HudData {
     public final PowerFrame powerFrame = new PowerFrame();
     public final TargetStatus targetStatus = new TargetStatus();
     public final ThreatFrame threatFrame = new ThreatFrame();
+    /** Speed against the frame that matters, engines, delta-v. */
+    public final FlightStatus flightStatus = new FlightStatus();
+    /** The nav target, the next burn, the station docked at. */
+    public final NavReadout navReadout = new NavReadout();
+    /** The selected docking port and how it lines up. */
+    public final DockingApproach docking = new DockingApproach();
+    /** Every contact in the bubble, as values. */
+    public final ContactFrame contactFrame = new ContactFrame();
+    /** The contracts held. */
+    public final ObjectiveFrame objectiveFrame = new ObjectiveFrame();
+    /** Who is at each post. */
+    public final StationBoard stations = new StationBoard();
+    /** The keys worth knowing where the player is. */
+    public final KeyHintFrame keyHints = new KeyHintFrame();
+    /** The orders that stand, and why any can't be given now. */
+    public final Orders orderState = new Orders();
     /** Whether {@link #shipStatus} holds a ship this frame. */
     public boolean hasShipStatus;
     /**
@@ -86,6 +136,18 @@ public final class HudData {
 
     private RoomNames roomNames = new RoomNames();
     private Entity roomShip;
+
+    /** The player's hull was hit at deck tile ({@code tileX}, {@code tileY}), as {@code UiHud#flashHullHit} hears it. */
+    public void hullHit(int tileX, int tileY) {
+        lastHullHit.tileX = tileX;
+        lastHullHit.tileY = tileY;
+        lastHullHit.age = 0f;
+    }
+
+    /** {@code delta} seconds pass for what the game keeps here. Called by {@code UiHud} once a frame, variant or none. */
+    public void age(float delta) {
+        if (!Float.isNaN(lastHullHit.age)) lastHullHit.age += delta;
+    }
 
     /** Reads every provider into its snapshot. Called by {@code UiHud} once a frame while a variant is up. */
     public void refresh() {
@@ -107,6 +169,22 @@ public final class HudData {
         if (target != null) target.read(targetStatus);
         threatFrame.clear();
         if (threats != null) threats.collect(threatFrame);
+        flightStatus.clear();
+        if (flight != null) flight.read(flightStatus);
+        navReadout.clear();
+        if (navigation != null) navigation.read(navReadout);
+        docking.clear();
+        if (dockingApproach != null) dockingApproach.read(docking);
+        contactFrame.clear();
+        if (contacts != null) contacts.collect(contactFrame);
+        objectiveFrame.clear();
+        if (objectives != null) objectives.collect(objectiveFrame);
+        stations.clear();
+        if (stationBoard != null) stationBoard.collect(stations);
+        keyHints.clear();
+        if (hints != null) hints.collect(keyHints);
+        orderState.clear();
+        if (orders != null) orders.read(orderState);
         if (afterRefresh != null) afterRefresh.run();
     }
 

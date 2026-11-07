@@ -86,9 +86,9 @@ public final class GameInput {
         this.exteriorViewMeters = startView;
     }
 
-    /** The action's key went down this frame. */
-    private static boolean just(Action action) {
-        return Gdx.input.isKeyJustPressed(action.defaultKey);
+    /** The action's key went down this frame, and the HUD variant did not take it for itself. */
+    private boolean just(Action action) {
+        return Gdx.input.isKeyJustPressed(action.defaultKey) && !hud.keyUsedByVariant(action.defaultKey);
     }
 
     private static boolean held(Action action) {
@@ -397,6 +397,16 @@ public final class GameInput {
     }
 
     // --- Press twice: the tow and abandoning ship ----------------------------------------
+
+    /** Seconds left to press abandon ship again and give the order; 0 when it isn't armed. */
+    float abandonArmed() {
+        return Math.max(0f, abandonAsked);
+    }
+
+    /** Seconds left to press the tow key again and call the tug; 0 when it isn't armed. */
+    float towArmed() {
+        return Math.max(0f, towAsked);
+    }
 
     /** B while stranded, or the pause menu: the first press asks and names the fee, a second calls the tug. */
     public void callTow() {

@@ -204,6 +204,44 @@ public class HelmOrders {
         }
     }
 
+    /**
+     * Why the helm can't take {@code mode} now, as {@link #give} would answer it, or null when it
+     * can; gives nothing. Cancel ({@link HelmOrderComponent.Mode#NONE}) can always be given. For a
+     * menu of orders that shows which are possible.
+     */
+    public String refusal(HelmOrderComponent.Mode mode) {
+        Entity ship = ctx.player();
+        if (ship == null) return "No ship";
+        if (mode == HelmOrderComponent.Mode.NONE) return null;
+        if (!hasCrewForHelm(ship)) return "Nobody aboard to take the helm: the autopilot is a helmsman's job";
+        if (mode == HelmOrderComponent.Mode.FLY_BURNS) {
+            ManeuverNodeComponent m = ship.getComponent(ManeuverNodeComponent.class);
+            if (m == null || m.nodes.size == 0) return "No burns planned for the helm to fly (" + keys.apply(Action.PLAN_BURN) + " plans one, "
+                    + keys.apply(Action.PLAN_TO_TARGET) + " plans to the target)";
+            return null;
+        }
+        String uuid = target.uuid();
+        if (uuid == null) return "The helm needs a navigation target for that (" + keys.apply(Action.NAV_TARGET) + " picks one)";
+        if (!trueState(ship)) return "The helm can only fly that in the bubble";
+        double[] at = probe;
+        if (!relative(ship, target.entity(), at)) return "Can't place " + target.name() + " from here";
+        HelmOrderComponent o = ship.getComponent(HelmOrderComponent.class);
+        // Given again, the approach steps its distance wherever the ship is
+        if (mode == HelmOrderComponent.Mode.APPROACH && o != null && o.mode == mode && uuid.equals(o.targetUuid)) return null;
+        double range = Math.hypot(at[0], at[1]);
+        if (mode == HelmOrderComponent.Mode.DOCK) {
+            String refused = dockRefusal(ship, target.entity());
+            if (refused != null) return refused;
+            if (range > APPROACH_RANGE) {
+                return target.name() + " is too far for the helm to dock at: plan a transfer (" + keys.apply(Action.PLAN_TO_TARGET) + ")";
+            }
+        }
+        if (mode == HelmOrderComponent.Mode.APPROACH && range > APPROACH_RANGE) {
+            return target.name() + " is too far for the helm to approach: plan a transfer (" + keys.apply(Action.PLAN_TO_TARGET) + ")";
+        }
+        return null;
+    }
+
     /** What the helm is doing, for the screen, or null with no order. */
     public String describe() {
         HelmOrderComponent o = order();
@@ -538,7 +576,7 @@ public class HelmOrders {
         return false;
     }
 
-    private final double[] rel = new double[4];
+    private final double[] rel = new double[4], probe = new double[4];
     private final com.badlogic.gdx.math.Vector2 v1 = new com.badlogic.gdx.math.Vector2(), v2 = new com.badlogic.gdx.math.Vector2();
 
     /**
