@@ -323,7 +323,7 @@ final class CrewPage extends ListPage {
                 Member m = c.crew.get(ref);
                 if (!m.evaAction.isEmpty()) softKey(Fmt.upper(m.evaAction), null);
                 // It can't be undone: the person leaves, and doesn't go back on the station's hiring list
-                guardedKey("LET GO", m.dismissable ? null : "CREW ARE LET GO ONLY WHILE DOCKED",
+                guardedKey("LET GO", m.dismissable ? null : "ONLY WHILE DOCKED",
                         "Let " + m.name + " go? Press again: " + m.name + " leaves the ship for good");
                 return;
             }
