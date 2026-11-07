@@ -55,9 +55,28 @@ public final class YardScreens {
         return this;
     }
 
+    /**
+     * Has the boarding console hang down the right side, the deck or the outside view in sight beside
+     * it (the Task spec's BRD), the other windows across the screen.
+     */
+    public YardScreens sideBoarding(boolean on) {
+        windows.sideBoarding(on);
+        return this;
+    }
+
     /** Where a side panel stops, from the top in design units: above the seated band, or 0 for 16 from the foot. */
     public void panelBottom(float y) {
         windows.panelBottom(y);
+    }
+
+    /** Where a side panel starts, from the top in design units: 16 unless the HUD keeps more above it. */
+    public void panelTop(float y) {
+        windows.panelTop(y);
+    }
+
+    /** How wide the boarding console hangs beside the view, at most its own width ({@link WindowScreens#boardingWidth}). */
+    public void boardingWidth(float w) {
+        windows.boardingWidth(w);
     }
 
     /** Whether a side panel hangs at the right now, the band and the world beside it. */
