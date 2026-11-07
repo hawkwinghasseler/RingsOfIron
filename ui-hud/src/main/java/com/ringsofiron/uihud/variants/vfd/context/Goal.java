@@ -45,7 +45,7 @@ final class Goal {
         on = true;
         String kind = o.kind.isEmpty() ? "" : o.kind.toUpperCase(Locale.ROOT) + ": ";
         String progress = o.of > 0 ? " · " + Math.round(o.progress) + " OF " + Math.round(o.of) : "";
-        line1 = Fmt.cut(kind + o.title, 33 - progress.length()) + progress;
+        line1 = Fmt.cut(kind + title(o), 33 - progress.length()) + progress;
         String where = o.state == State.RETURN ? "BACK TO " + o.station : o.next;
         line2 = where.isEmpty() ? "" : "→ " + Fmt.name(where, 19);
         late = o.late || (!Double.isNaN(o.timeLeft) && o.timeLeft < 0);
@@ -66,6 +66,12 @@ final class Goal {
         if (s.seat == Situations.Seat.NONE) return false;
         // On deck in a fight the captain has other things to read
         return !(s.seat == Situations.Seat.DECK && s.combat);
+    }
+
+    /** A contract's title without the kind the line already leads with: the game's bounty is "Bounty: Raider 'Vex'". */
+    static String title(Objective o) {
+        String t = o.title, lead = o.kind + ": ";
+        return !o.kind.isEmpty() && t.regionMatches(true, 0, lead, 0, lead.length()) ? t.substring(lead.length()) : t;
     }
 
     static boolean fight(Objective o) {
