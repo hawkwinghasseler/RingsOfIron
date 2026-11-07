@@ -10,11 +10,14 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.ringsofiron.moddingdata.ModManifest;
 import com.ringsofiron.moddingdata.ModTrustPolicy;
+import com.ringsofiron.uihud.variants.ShellLook;
+import com.ringsofiron.uihud.variants.ShellScreen;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Asks the player before mod scripts run with full access to their computer.
@@ -28,13 +31,15 @@ import java.util.function.Consumer;
  *       {@code onDecision} listener when the player answers so the game can reload mods.</li>
  * </ul>
  * With "Remember" ticked, the answer is stored per exact set of mods and versions, so the
- * dialog only reappears when a script mod is added or updated.
+ * dialog only reappears when a script mod is added or updated. Under a HUD variant with a look of
+ * its own for the menus ({@link ShellLook}) the dialog takes that look.
  */
 public class ModTrustDialog implements ModTrustPolicy {
     private static final String PREF_PREFIX = "modTrust.";
 
     private final Stage stage;
-    private final Skin skin;
+    private final Skin classicSkin;
+    private final Supplier<ShellLook> look;
     private final Preferences prefs;
     private final Thread renderThread;
     private Consumer<Boolean> onDecision;
@@ -45,8 +50,21 @@ public class ModTrustDialog implements ModTrustPolicy {
      * @param prefs where remembered answers are kept; null keeps nothing between runs
      */
     public ModTrustDialog(Stage stage, Skin skin, Preferences prefs) {
+        this(stage, skin, prefs, () -> null);
+    }
+
+    /**
+     * Create on the render thread.
+     *
+     * @param skin  the classic look's skin
+     * @param prefs where remembered answers are kept; null keeps nothing between runs
+     * @param look  the menus' look for the HUD variant picked, asked each time the dialog shows; it
+     *              gives null for the classic look
+     */
+    public ModTrustDialog(Stage stage, Skin skin, Preferences prefs, Supplier<ShellLook> look) {
         this.stage = stage;
-        this.skin = skin;
+        this.classicSkin = skin;
+        this.look = look;
         this.prefs = prefs;
         this.renderThread = Thread.currentThread();
     }
@@ -83,6 +101,8 @@ public class ModTrustDialog implements ModTrustPolicy {
     }
 
     private void show(List<ModManifest> mods, String key, Consumer<Boolean> waiter) {
+        ShellLook dressing = look.get();
+        Skin skin = dressing != null ? dressing.skin() : classicSkin;
         CheckBox remember = new CheckBox(" Remember for these mods", skin);
         Dialog dialog = new Dialog("MOD SCRIPTS", skin) {
             @Override
@@ -112,6 +132,14 @@ public class ModTrustDialog implements ModTrustPolicy {
         dialog.button("Run scripts", Boolean.TRUE);
         dialog.button("Data only", Boolean.FALSE);
         dialog.key(com.badlogic.gdx.Input.Keys.ESCAPE, Boolean.FALSE);
+        if (dressing != null) {
+            try {
+                dressing.dress(ShellScreen.MOD_SCRIPTS, dialog, null);
+            } catch (RuntimeException e) {
+                // Undressed, the dialog still asks
+                Gdx.app.error("RingsOfIron", "The menus' look failed to dress the mod scripts dialog", e);
+            }
+        }
         dialog.show(stage);
     }
 

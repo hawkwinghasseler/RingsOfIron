@@ -11,11 +11,12 @@ import com.ringsofiron.uihud.data.HudData;
 /** What a {@link HudVariant} is given: where to draw, the data, and the classic HUD it sits on. */
 public final class HudVariantHost {
     private final UiHud hud;
-    private final Group layer;
+    private final Group layer, screenLayer;
 
-    public HudVariantHost(UiHud hud, Group layer) {
+    public HudVariantHost(UiHud hud, Group layer, Group screenLayer) {
         this.hud = hud;
         this.layer = layer;
+        this.screenLayer = screenLayer;
     }
 
     /**
@@ -24,6 +25,16 @@ public final class HudVariantHost {
      */
     public Group layer() {
         return layer;
+    }
+
+    /**
+     * The layer for the variant's screens in place of the classic windows ({@link HudVariant#replaces}):
+     * filling the stage, over the classic windows and the map, so a screen's panels sit over the
+     * game's orbit canvas. Touchable for its children only: a click off them reaches the map or the
+     * world under it. Cleared with {@link #layer()} on detach.
+     */
+    public Group screenLayer() {
+        return screenLayer;
     }
 
     /** The common data layer, refreshed each frame before {@link HudVariant#update}. */
@@ -64,7 +75,11 @@ public final class HudVariantHost {
         return hud.getViewports().getUiScale();
     }
 
-    /** The classic HUD, for its windows and the map (open them, ask if one is open). */
+    /**
+     * The classic HUD: whether a window can open ({@code available}), is open, and opening or closing
+     * one ({@code open}, {@code close}), whoever shows it; its map canvas for a variant that shows
+     * the map's panels.
+     */
     public UiHud hud() {
         return hud;
     }

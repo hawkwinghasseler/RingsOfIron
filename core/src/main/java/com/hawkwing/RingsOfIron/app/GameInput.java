@@ -39,6 +39,7 @@ import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
 import com.ringsofiron.physicsexterior.components.FlightControlComponent;
 import com.ringsofiron.stationsdocking.ForceMethod;
 import com.ringsofiron.uihud.UiHud;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.ViewMode;
 import com.ringsofiron.uihud.ViewportManager;
 import com.ringsofiron.uihud.components.HudMarkerComponent;
@@ -123,23 +124,24 @@ public final class GameInput {
             NoticeFeeds.collect(world);
             return;
         }
-        boolean consoleOpen = hud.getConsoleWindow().isOpen();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && (session.logOpen || session.helpOpen)) {
-            session.logOpen = false;
-            session.helpOpen = false;
-        } else if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen && !session.options.hosted && !hudWindowOpen()
-                && !backOut()) {
+        boolean consoleOpen = hud.isOpen(ClassicWindow.CONSOLE);
+        // Esc closes the topmost window, the log and the controls among them, on the HUD's stage
+        // (UiHud); one it used there neither pauses nor quits
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !consoleOpen && !session.options.hosted && !hudWindowOpen()
+                && !hud.keyUsedByVariant(Input.Keys.ESCAPE) && !backOut()) {
             Gdx.app.exit();
         }
+        // The log and the controls, the game's own panels or a HUD variant's screens for them
         if (just(Action.LOG)) {
-            session.logOpen = !session.logOpen;
-            session.logScroll = 0;
-            if (session.logOpen && session.firstPlay != null) session.firstPlay.logOpened();
-            session.helpOpen = false;
+            hud.toggle(ClassicWindow.LOG);
+            if (hud.isOpen(ClassicWindow.LOG)) {
+                hud.close(ClassicWindow.HELP);
+                if (session.firstPlay != null) session.firstPlay.logOpened();
+            }
         }
         if (just(Action.HELP)) {
-            session.helpOpen = !session.helpOpen;
-            session.logOpen = false;
+            hud.toggle(ClassicWindow.HELP);
+            if (hud.isOpen(ClassicWindow.HELP)) hud.close(ClassicWindow.LOG);
         }
         if (just(Action.QUICK_LOAD)) saves.quickLoad();
         if (world.getCrash() != null || world.getCareerOver() != null) {
@@ -174,7 +176,7 @@ public final class GameInput {
             walker.moveY = 0f;
         }
         NoticeFeeds.collect(world);
-        if (consoleOpen || session.logOpen) return;
+        if (consoleOpen || hud.isOpen(ClassicWindow.LOG)) return;
 
         if (session.deckView()) {
             if (walker == null) return;
@@ -235,8 +237,8 @@ public final class GameInput {
             if (world.playerStation() != null) saves.autosave("undocking");
             session.show(docking.undock());
         }
-        // An open window has the arrow keys
-        if (hud.openWindow() == null) planBurns();
+        // An open window has the arrow keys, a HUD variant's screens among them
+        if (!hud.windowHasKeys()) planBurns();
     }
 
     /** Raises the player's shields, or lowers them safely into the emitters; what to tell the player. */
@@ -261,11 +263,9 @@ public final class GameInput {
         session.show(pipeline.toggleLights() ? "Lighting on" : "Lighting off");
     }
 
-    /** True while one of the HUD's windows or the map is open; Esc closes it first. */
+    /** True while one of the HUD's windows, the map, the log or the controls is open (whoever draws it), or a developer tool; Esc closes it first. */
     private boolean hudWindowOpen() {
-        return hud.isMapOpen() || hud.getTradeWindow().isOpen() || hud.getYardWindow().isOpen()
-                || hud.getMissionWindow().isOpen() || hud.getBoardingWindow().isOpen() || hud.getConsoleWindow().isOpen()
-                || dev.isConsoleOpen() || dev.isMenuOpen();
+        return hud.windowOpen() || dev.isConsoleOpen() || dev.isMenuOpen();
     }
 
     /**
@@ -332,11 +332,16 @@ public final class GameInput {
         take.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                hud.getConsoleWindow().close();
-                sitAt(type);
+                takeControl(type);
             }
         });
         body.add(take).left().padTop(6f).row();
+    }
+
+    /** The console window's take-control action, whoever draws the window: it closes, and the player sits at the guns. */
+    void takeControl(SubsystemType type) {
+        hud.close(ClassicWindow.CONSOLE);
+        sitAt(type);
     }
 
     /**
