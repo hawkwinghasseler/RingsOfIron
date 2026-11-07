@@ -12,6 +12,7 @@ import com.ringsofiron.uihud.data.AlertRegistry.Alert;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.variants.ClassicPart;
+import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.ShellLook;
@@ -35,10 +36,15 @@ import java.util.Set;
  * it; the schematic bottom left; the flight instrument and the helm's line bottom middle; the weapons
  * pod and the scope bottom right; the key strip along the bottom; and the overlays in the world.
  *
+ * <p>The game's windows are its screens and panels ({@link Windows}, functional-task 7): the station
+ * terminal, the ship's book and the map cover the view under the band, CHR and the band staying over
+ * them; the boarding panel takes the right column's place; a console's panel stands beside its
+ * console; the controls reference is a printed card over all of them.
+ *
  * <p>Clicks: the message centre acknowledges; the scope's − and + set its range and a contact on it is
- * picked as on the classic scope; the helm's line lists the helm's orders. Keys: backslash
- * acknowledges, as a click on the message centre does; every other key goes on to the game, the key
- * strip counting the uses of the keys it shows.
+ * picked as on the classic scope; the helm's line lists the helm's orders. Keys: a screen's or a
+ * panel's own keys first; then backslash acknowledges, as a click on the message centre does; every
+ * other key goes on to the game, the key strip counting the uses of the keys it shows.
  */
 public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.Clicks {
     static final int CLICK_BAND = 1;
@@ -62,6 +68,8 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
     final World world = new World();
     /** The menus in setup mode and the map's plot, the same under all three FILAMENT HUDs. */
     private final VfdScreens screens = new VfdScreens();
+    /** The screens and panels in place of the game's windows. */
+    final Windows windows = new Windows(this);
 
     /** The groups' origins on the stage. */
     float width = Geo.W, height = Geo.H, midX, rightX, bottomY;
@@ -73,6 +81,7 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
         this.host = host;
         actor = new FilamentActor(this, this);
         host.layer().addActor(actor);
+        windows.attach(host);
     }
 
     @Override
@@ -81,11 +90,23 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
         float w = host.width(), h = host.height();
         actor.setBounds(0f, 0f, w, h);
         actor.setUnitsPx(host.uiScale());
+        // The screens first: what they cover makes the widgets give way
+        windows.update(delta);
         UiHud hud = host.hud();
-        boolean screen = hud != null && (hud.openWindow() != null || hud.isMapOpen());
+        Screen.Cover cover = windows.cover();
+        boolean screen = cover == Screen.Cover.SCREEN || hud != null && (hud.openWindow() != null || hud.isMapOpen());
         Entity console = hud == null || hud.getInteractPromptSystem() == null ? null : hud.getInteractPromptSystem().getNearest();
         layout(d, w, h, delta, screen, host.viewports(), console);
+        if (cover == Screen.Cover.RIGHT) rightGivesWay();
         boxes(actor);
+    }
+
+    /** The boarding panel down the right: the right column's widgets give way to it (functional-task 7, BRD). */
+    void rightGivesWay() {
+        trip.on = false;
+        target.on = false;
+        weapons.on = false;
+        scope.on = false;
     }
 
     /** Reads this frame's data into every part and places them, on a {@code w} x {@code h} stage. */
@@ -276,6 +297,8 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
 
     @Override
     public boolean keyDown(int keycode) {
+        // A screen's or a panel's keys first: its tabs, its lists and its soft keys
+        if (windows.keyDown(keycode)) return true;
         return host != null && key(host.data(), keycode);
     }
 
@@ -297,10 +320,51 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
 
     @Override
     public void detach() {
+        windows.detach();
         if (actor != null) actor.dispose();
         actor = null;
         host = null;
         screens.dispose();
+    }
+
+    // ------------------------------------------------------------------ the game's windows
+
+    @Override
+    public boolean replaces(ClassicWindow window) {
+        return windows.replaces(window);
+    }
+
+    @Override
+    public boolean open(ClassicWindow window) {
+        return windows.open(window);
+    }
+
+    @Override
+    public boolean showing(ClassicWindow window) {
+        return windows.showing(window);
+    }
+
+    @Override
+    public void close(ClassicWindow window) {
+        windows.close(window);
+    }
+
+    /** The map with its panels round the game's canvas, which leaves its title and help to them; or on its own with them. */
+    void mapFramed(boolean on) {
+        screens.framed(on, 0f);
+    }
+
+    /**
+     * What stands over the map's canvas, which covers this HUD's own layer: CHR and the message
+     * centre, with the crisis panel under it (functional-task 7: CHR and the band stay over a screen).
+     */
+    void paintTop(Filament f) {
+        f.origin(0f, 0f);
+        cluster.paintChr(f, false);
+        f.origin(midX, 0f);
+        if (catalogue.warning != null || catalogue.row.size > 0) Band.paint(f, catalogue, time);
+        crisis.paint(f, time);
+        f.origin(0f, 0f);
     }
 
     @Override

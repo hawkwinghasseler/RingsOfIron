@@ -74,7 +74,7 @@ final class KeyStrip {
             if (repeats(c, elsewhere)) continue;
             String id = id(h);
             if (uses.get(ctx + "|" + id, 0) >= LEARNED) continue;
-            add(c, h.label, id);
+            add(c, ControlsTab.word(h), id);
         }
         // Help last, always
         add(help == null ? new String[] {Catalogue.key(d, Action.HELP.name(), Action.HELP.defaultKeyName())} : caps(help.key),
