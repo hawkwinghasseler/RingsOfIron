@@ -239,6 +239,10 @@ public class GameWorld implements Disposable {
     public final Spacewalks spacewalks;
     /** Docking collars jammed by hits, and the crew's work outside to free them. */
     public final JammedCollars jammedCollars;
+    /** Airlocks that lock what is left of them when a door of theirs is wrecked. */
+    public final AirlockLocks airlockLocks;
+    /** The player's door menu: locking and unlocking doors, and the pressure across them. */
+    public final DoorControls doors;
     /** Salvaged weapons the crew mount on the ship's hardpoints from outside, away from a yard. */
     public final FieldRefits fieldRefits;
     /** The player's figure suiting up at battle stations and in thin air. */
@@ -357,6 +361,8 @@ public class GameWorld implements Disposable {
         berthVenting = managers.berthVenting;
         spacewalks = managers.spacewalks;
         jammedCollars = managers.jammedCollars;
+        airlockLocks = managers.airlockLocks;
+        doors = managers.doors;
         fieldRefits = managers.fieldRefits;
         captain = managers.captain;
         air = managers.air;
@@ -487,6 +493,7 @@ public class GameWorld implements Disposable {
         pirateBase.afterUpdate();
         derelicts.update();
         spacewalks.update();
+        airlockLocks.update();
         jammedCollars.update();
         fieldRefits.update();
         events.update();

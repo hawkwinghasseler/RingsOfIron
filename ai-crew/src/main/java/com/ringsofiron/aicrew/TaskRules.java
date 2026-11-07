@@ -13,6 +13,8 @@ import com.ringsofiron.interiorgrid.HullPlating;
 import com.ringsofiron.interiorgrid.LeakPatches;
 import com.ringsofiron.interiorgrid.RcsThruster;
 import com.ringsofiron.interiorgrid.ShipGridComponent;
+import com.ringsofiron.interiorgrid.DockingPortLayout;
+import com.ringsofiron.interiorgrid.MountFootprint;
 import com.ringsofiron.interiorgrid.Side;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.TileConduit;
@@ -182,7 +184,17 @@ public final class TaskRules {
                 // A thin wall from the air tile beside it; a wall from a tile next to it, or reaching
                 // across a machine that stands against it; a deck plate from on it or next to it
                 Side side = ((PatchLeakTask) task).side;
-                if (side != null) return x == tx && y == ty;
+                if (side != null) {
+                    if (x == tx && y == ty) return true;
+                    // A wrecked airlock door is braced from the deck just inside its hatch as well,
+                    // the hatch locked shut behind it to hold the cabin's air (Airlock#failsafe)
+                    Tile t = grid.getTile(tx, ty);
+                    MountFootprint m = t == null ? null : t.mount;
+                    if (m == null || m.kind != MountFootprint.MountKind.PORT || !DockingPortLayout.isHatchTile(m, tx, ty)
+                            || !LeakPatches.braceable(grid, tx, ty, side)) return false;
+                    Side in = DockingPortLayout.facing(m).opposite();
+                    return x == tx + in.dx && y == ty + in.dy;
+                }
                 Tile t = grid.getTile(tx, ty);
                 if (t != null && t.isFloor() && x == tx && y == ty) return true;
                 if (isAdjacent(x, y, tx, ty)) return !grid.isEdgeBlocked(x, y, tx, ty);

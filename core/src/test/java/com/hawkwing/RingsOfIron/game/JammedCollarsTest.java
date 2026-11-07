@@ -140,7 +140,9 @@ class JammedCollarsTest {
         for (int y = mount.originY; y < mount.originY + mount.height(); y++)
             for (int x = mount.originX; x < mount.originX + mount.width(); x++)
                 if (DockingPortLayout.isDoorTile(mount, x, y)) DockingPortLayout.door(grid, mount, x, y).integrity = 0f;
-        assertFalse(Airlock.works(grid, mount));
+        // A tick for the airlock's failsafe to lock its hatch
+        run(1);
+        assertFalse(Airlock.works(grid, mount), "broken, its hatch locked");
         return grid;
     }
 
@@ -161,34 +163,80 @@ class JammedCollarsTest {
         return out;
     }
 
+    private EdgeWall hatch(ShipGridComponent grid) {
+        for (int y = mount.originY; y < mount.originY + mount.height(); y++)
+            for (int x = mount.originX; x < mount.originX + mount.width(); x++) {
+                EdgeWall h = DockingPortLayout.hatch(grid, mount, x, y);
+                if (h != null) return h;
+            }
+        return null;
+    }
+
     @Test
     void aWreckedAirlockDoorIsBracedWithAPatchKitAndTheCollarFreed() {
         ShipGridComponent grid = wreckTheDoor();
         int kits = grid.patchKits;
         assertTrue(kits > 0);
+        run(2);
+        assertTrue(hatch(grid).lockedShut && hatch(grid).lockedByAirlock && hatch(grid).bulkheadSealed, "the hatch locked itself behind the wrecked door");
+        assertTrue(saidStarting("Port " + (index + 1) + "'s airlock is broken: its other door has locked itself"));
         boolean out = runTillFreed(15);
         assertTrue(saidStarting("No airlock aboard can cycle: the crew are bracing a wrecked airlock door"));
         assertEquals(LeakPatches.BRACED, door(grid).integrity, 1e-4f, "braced back up, but no more");
         assertTrue(door(grid).isPatched(), "holding its air");
         assertEquals(kits - 1, grid.patchKits, "one kit for the door");
+        assertFalse(hatch(grid).lockedShut, "whole again, the hatch unlocked itself");
         assertTrue(out, "someone went out once it cycled");
         assertFalse(port.jammed, "freed");
         assertNull(world.docking.arm(game.player, index), "it arms again");
     }
 
     @Test
-    void withNoPatchKitsTheCrewCutThePortOpenToGetOut() {
+    void withNoPatchKitsTheCrewGoOutOnceTheCaptainUnlocksTheHatch() {
+        ShipGridComponent grid = wreckTheDoor();
+        grid.patchKits = 0;
+        run(60 * 60 * 3);
+        assertTrue(hatch(grid).lockedShut, "locked by the failsafe");
+        assertTrue(Airlock.of(grid, mount).cabin(grid).pressureRatio() > 0.9f, "holding the cabin's air");
+        assertTrue(world.spacewalks.onEva().isEmpty(), "nobody opens a locked door");
+        assertTrue(port.jammed);
+        assertTrue(saidStarting("No airlock aboard can let anyone out to port " + (index + 1) + "'s collar, and there are no patch kits"));
+        // The captain unlocks it: what is left of the airlock is a plain door
+        hatch(grid).unlock();
+        assertTrue(Airlock.open(grid, mount));
+        boolean out = runTillFreed(30);
+        assertTrue(out, "someone went out through it");
+        assertFalse(port.jammed, "freed");
+        assertNull(world.docking.arm(game.player, index), "it arms again");
+    }
+
+    @Test
+    void theDoorMenuShowsThePressureAcrossALockedHatchAndUnlocksIt() {
         ShipGridComponent grid = wreckTheDoor();
         grid.patchKits = 0;
         run(60 * 30);
-        assertEquals(Airlock.State.OUT, Airlock.of(grid, mount).state(), "the hatch shut behind the wrecked door");
-        assertTrue(Airlock.of(grid, mount).cabin(grid).pressureRatio() > 0.9f, "holding the cabin's air");
-        boolean out = runTillFreed(30);
-        assertTrue(saidStarting("No airlock aboard can cycle and there are no patch kits to brace one: the crew will cut an airlock open"));
-        assertTrue(Airlock.open(grid, mount), "cut open: nothing left across it");
-        assertTrue(out, "someone went out through the hole");
-        assertFalse(port.jammed, "freed");
-        assertNull(world.docking.arm(game.player, index), "it arms again");
+        // The captain walks up to the hatch, from the cabin
+        Entity avatar = null;
+        for (Entity e : world.crew.crewEntities()) if (e.getComponent(com.ringsofiron.aicrew.PlayerAvatarComponent.class) != null) avatar = e;
+        int[] t = DockingPortLayout.hatchTile(mount, new int[2]);
+        com.ringsofiron.interiorgrid.Side in = DockingPortLayout.facing(mount).opposite();
+        com.ringsofiron.aicrew.GridPositionComponent p = world.crew.position(avatar);
+        p.stop();
+        p.setTile(t[0] + in.dx, t[1] + in.dy);
+        assertTrue(world.doors.use(), "a door in reach");
+        com.ringsofiron.uihud.providers.DoorProvider.Door d = new com.ringsofiron.uihud.providers.DoorProvider.Door();
+        world.doors.collect(d);
+        assertEquals("Port " + (index + 1) + " airlock hatch", d.name);
+        assertTrue(d.locked);
+        assertTrue(d.nearKpa > 90f, "the cabin's air this side");
+        assertTrue(d.farKpa < 5f, "next to none in the holed chamber");
+        assertTrue(d.state.startsWith("Locked by its airlock"));
+        assertEquals("", d.lockBlocked, "powered");
+        assertFalse(d.canCut);
+        assertTrue(world.doors.toggleLock().startsWith("Unlocked"));
+        assertFalse(hatch(grid).lockedShut);
+        assertEquals("Locked: the crew won't open it till you unlock it", world.doors.toggleLock());
+        assertTrue(hatch(grid).lockedShut && !hatch(grid).lockedByAirlock, "locked by hand now");
     }
 
     @Test

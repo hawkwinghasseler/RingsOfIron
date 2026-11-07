@@ -30,9 +30,9 @@ import com.ringsofiron.aicrew.CrewService;
  * there: at battle stations, only by anyone the player sends out ({@link
  * com.ringsofiron.aicrew.EvaOrders}). The player hears when one of their ports jams, and when it is
  * freed. When no airlock aboard can let anyone out (the hit wrecked a lone port's door too), the
- * crew brace a wrecked door or hatch back up with a patch kit ({@link LeakPatches#braces}), or,
- * with no kits for it, suit up and cut a port open from inside ({@link
- * com.ringsofiron.aicrew.btree.EvaTasks#mayCutOut}); the player is told, and
+ * crew brace a wrecked door or hatch back up with a patch kit ({@link LeakPatches#braces}); with no
+ * kits for it, the player unlocks the door its failsafe locked ({@link Airlock#failsafe}, {@link
+ * DoorControls}) and suited crew go out through it; the player is told, and
  * that the distress beacon can call a tow instead ({@link DistressBeacon#cannotDock}).
  */
 public final class JammedCollars {
@@ -78,13 +78,13 @@ public final class JammedCollars {
                 if (!noWayOut(grid) || ship != ctx.player()) continue;
                 // Its door wrecked with it and no other airlock to go out by. The crew brace a wrecked
                 // door or hatch with a patch kit (LeakPatches#braces, posted with the leaks); with too
-                // few kits for any port, they suit up and cut one open from inside (EvaTasks#mayCutOut)
+                // few kits for any port, it takes the player unlocking a broken airlock's locked door
                 int how = anyBraceable(grid) ? 1 : 2;
                 if (job.toldStuck != how) {
                     job.toldStuck = how;
                     ctx.notices.post(how == 2
-                            ? "No airlock aboard can cycle and there are no patch kits to brace one: the crew will cut an airlock open"
-                                    + " from inside to get out to port " + (k + 1) + "'s collar, venting the rooms behind it. The distress beacon can call a tow instead"
+                            ? "No airlock aboard can let anyone out to port " + (k + 1) + "'s collar, and there are no patch kits to brace one."
+                                    + " Unlock a broken airlock's locked door ([E] at it) to let suited crew out through it, venting the room behind, or call a tow"
                             : "No airlock aboard can cycle: the crew are bracing a wrecked airlock door with a patch kit to get out to port "
                                     + (k + 1) + "'s collar. The distress beacon can call a tow instead",
                             NoticeLog.Kind.WARNING);
@@ -126,7 +126,7 @@ public final class JammedCollars {
         final DockingPort port;
         final MountFootprint mount;
         boolean seen;
-        /** What the player was last told of the way out to it: 0 nothing, 1 bracing, 2 cutting. */
+        /** What the player was last told of the way out to it: 0 nothing, 1 bracing, 2 unlock a door or tow. */
         int toldStuck;
 
         Free(Entity ship, int index, DockingPort port, MountFootprint mount) {

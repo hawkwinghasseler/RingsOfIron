@@ -166,25 +166,31 @@ If nobody can get out to it, the ship still isn't stuck. That happens when the h
 port also wrecks its door, so no airlock aboard can cycle. A field fix keeps the ship flying, but
 only a yard makes it whole:
 
+- **The failsafe (`Airlock.failsafe`, core `AirlockLocks`).** An airlock needs both its doors. When
+  one is wrecked (`Airlock.broken`), what is left across the opening shuts and locks itself
+  (`EdgeWall.lock`, `lockedByAirlock`), so the room behind keeps its air, and the player is told.
+  Once the airlock is whole again (the door braced or rebuilt) the locks it put on come off. A port
+  already broken when a game loads is left as it is.
 - **Bracing (`LeakPatches.braces`/`brace`).** With a patch kit aboard, an engineer braces each wrecked
-  port door or hatch back up from the chamber (`BRACE_KITS`, 1 kit apiece, `BRACE_WORK`, ten times a
-  leak patch's work). The door goes back at `BRACED` (25%), patched so it holds its air: shut, it
-  seals, and the airlock cycles again. It stays that damaged, so a new hit breaks it, and the yard
-  still lists it as a wall repair. Bracing is posted with the leak patches (`PatchLeakTask` on the
-  door's edge).
-- **Cutting out (`EvaTasks.mayCutOut`, `Airlock.cutThrough`).** With too few kits to brace any port, a
-  wrecked outer door shuts the hatch behind it (`Airlock.holdsCabinAir`), so the cabin keeps its air
-  and the crew can still suit up. Whoever takes the work outside then suits up and cuts the port open
-  from inside: from the deck behind the hatch, then from the chamber, each door or hatch in turn
-  (`CUT_SECONDS`, 20 s at their suited pace, the work kept on the airlock for whoever carries on
-  with it). With nothing left across it the port is open (`Airlock.open`): a hole the crew walk out
-  of and back in by, no cycle. The room behind it vents to space until a yard puts the doors back.
+  port door or hatch back up (`BRACE_KITS`, 1 kit apiece; `BRACE_WORK`, ten times a leak patch's
+  work), from the chamber or from the deck just inside the locked hatch. The door goes back at
+  `BRACED` (25%), patched so it holds its air, and the airlock works again. It stays that damaged,
+  so a new hit breaks it, and the yard still lists it as a wall repair.
+- **Unlocking (`Airlock.open`, core `DoorControls`).** With no kits, the remaining door stays locked
+  until the player unlocks it at the door's menu ([E]); crew never unlock a door themselves, so
+  unlocking is the captain's order. Broken and unlocked, it works as a plain door: crew in EVA suits
+  may open it onto the holed chamber or space (`CrewDoors.mayOpen`), go out through it with no
+  cycle, and come back in the same way. The room behind it vents while it stands open.
+- **Cutting (`DoorControls.Cut`).** Working a door's lock takes power (`DoorPower`). A locked door with
+  none can't be unlocked, so the menu offers to order it cut open instead: a crew member goes to it
+  and cuts through it in 20 s, leaving it wrecked until a yard rebuilds it.
 - **The tow.** While no airlock aboard can let anyone out and no port can dock, the ship counts as
   stranded (`DistressBeacon.cannotDock`), so the distress beacon can call a tow instead. The tug clamps
   the ship in at the sponsor's station, where the yard refits the collar (clearing the jam) and the
   doors. Every collar torn off, with none jammed, counts the same way.
 
-The player is told which of these the crew are doing, and that the beacon can call a tow instead.
+The player is told whether the crew are bracing or waiting on them to unlock a door, and that the
+beacon can call a tow instead.
 
 ## Out on the hull
 

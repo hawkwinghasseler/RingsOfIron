@@ -165,8 +165,10 @@ public final class GameBootstrap {
 
     /** The seats, the view, and what the world tells the player: rescues, tows, ships bought and disabled. */
     private void listenToTheWorld(UiHud hud) {
-        // E at a suit locker: a suit on, or hung back up
-        hud.getInteractPromptSystem().setInteraction(world.captain.lockerUse());
+        // E at a suit locker: a suit on, or hung back up; at a door, the door menu: whichever is nearer
+        hud.setDoors(world.doors);
+        hud.getInteractPromptSystem().setInteraction(com.hawkwing.RingsOfIron.game.Interactions.nearer(
+                world.captain.lockerUse(), world.doors.doorUse(() -> hud.getDoorWindow().setOpen(true))));
         world.bridge.playerAlwaysAtHelm = GameSession.VIEW_ANYWHERE;
         if (!GameSession.VIEW_ANYWHERE) {
             hud.setViewKey(input::sitOrStand);
