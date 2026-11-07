@@ -38,8 +38,9 @@ import java.util.Locale;
  * under the cursor with its orders as the hard keys under the glass; the page's own orders are soft
  * keys along the list's foot. A page whose rows have none (the log, the contracts held) takes one
  * unit the whole width, its orders on its rows. The controls take the book's frame without tabs,
- * every key in three columns (T9). Boarding is a panel down the right side, so the deck stays in
- * sight (T5).
+ * every key by where it works in three columns, with no HERE since the hint line says that (T9).
+ * Boarding is a panel down the right side, so the deck stays in sight (T5), its parts' titles at
+ * their left so the orders on them leave room for what they say.
  */
 final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
     /** The spec's panels that stand in for the game's windows, with the console's name and its units' plate. */
@@ -95,16 +96,19 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
             s.nameSize = 14f;
         }
         list.acts = false;
+        help.byWhereOnly();
         whole.actW = 70f;
         whole.actH = 22f;
         panel.acts = false;
+        panel.centre = false;
         panel.pad = 12f;
         panel.rowH = 26f;
         panel.gap = 10f;
         panel.actW = 64f;
         terms.pairCol = 130f;
         terms.lineH = 24f;
-        keys.rowH = 21f;
+        // T9's pitch, so every key the game lists has its room
+        keys.rowH = 18f;
         keys.titleH = 26f;
         keys.rules = false;
         keys.cursor = false;
@@ -321,7 +325,7 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
             }
             case CONTROLS: {
                 float tx = l + cv.text(l, b1, "CONTROLS", Ui.V + 1f, true, NpColors.WHITE, 0.8f, NpCanvas.START) + 12f;
-                cv.text(tx, b1, "EVERY KEY, FIRST WHAT WORKS WHERE YOU ARE", Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.START);
+                cv.text(tx, b1, "EVERY KEY BY WHERE IT WORKS", Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.START);
                 fact(cv, l, b2, "KEYS", "AS YOU HAVE THEM BOUND", NpColors.WHITE);
                 break;
             }
@@ -474,8 +478,13 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
         float sy = gy + gh - SAY_H;
         Ui.rule(cv, gx + 8f, sy, gw - 16f);
         String say = enterLine(r);
-        if (!say.isEmpty()) cv.text(l, sy + 16f, Ui.fit(cv, say, gw - 28f, Ui.LB, true, 0.6f), Ui.LB, true, enter != null && !enter.live ? NpColors.AMBER : NpColors.DIM, 0.6f, NpCanvas.START);
+        if (!say.isEmpty()) cv.text(l, sy + 16f, Ui.fit(cv, say, gw - 28f, Ui.LB, true, 0.6f), Ui.LB, true, barred(enter) ? NpColors.AMBER : NpColors.DIM, 0.6f, NpCanvas.START);
         hardKeys(cv, cam, r, enter, gx, gy + gh + 6f, gw, hits);
+    }
+
+    /** Whether Enter gives nothing on a row with orders: the one picked, or every one, is barred. */
+    private static boolean barred(Act enter) {
+        return enter == null || !enter.live;
     }
 
     /** The row's orders as push buttons under the glass, each under its key: ENTER for the one Enter gives. */
@@ -516,7 +525,7 @@ final class TaskScreen extends ScreenModes<TaskScreen.Mode> {
         // with no tab row over it, the panel's foot carries the last order's words while they stand
         boolean news = feed.showing();
         String say = news ? (feed.source.isEmpty() ? "" : feed.source + "  ") + feed.text.toUpperCase(Locale.ROOT) : enterLine(r);
-        Color ink = news ? NpColors.WHITE : enter != null && !enter.live ? NpColors.AMBER : NpColors.DIM;
+        Color ink = news ? NpColors.WHITE : r != null && barred(enter) ? NpColors.AMBER : NpColors.DIM;
         if (!say.isEmpty()) cv.text(gx + 12f, sy + 16f, Ui.fit(cv, say, gw - 24f, Ui.LB, true, 0.6f), Ui.LB, true, ink, 0.6f, NpCanvas.START);
         if (r != null) hardKeys(cv, cam, r, enter, gx, gy + gh + 6f, gw, hits);
     }
