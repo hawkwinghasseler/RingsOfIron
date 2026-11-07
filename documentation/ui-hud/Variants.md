@@ -136,8 +136,8 @@ takes clicks only on its own actors: a click off them reaches the map or the wor
 | `MISSIONS` | The mission board (J) | `missions` |
 | `BOARDING` | Boarding and salvage (K, latched) | `boarding` |
 | `CREW` | The crew roster (I) | `crew` |
-| `LOG` | The notice log (L) | `messages`, the last fifty notices with their time |
-| `HELP` | The controls panel (F1) | `hints.collectAll(frame)`: every hint by where it applies, with the player's keys |
+| `LOG` | The notice log (L) | `messages`, the last fifty notices with their time; for a captain's record, `career` too (below) |
+| `HELP` | The controls panel (F1) | `hints.collectAll(frame)`: every hint by where it applies, with the player's keys; each section marked when it holds where the player is now (`here`), or is the gamepad's (`gamepad`) |
 | `GAME_OVER` | Ship lost or career over | `gameOver`: what happened, and the ways on with their keys. It opens and closes by itself; the game keeps its keys there (Enter, the quick load, Esc), so show them but don't take them |
 
 Furniture placing needs no screen of its own: while the player places furniture, the key hints say
@@ -180,7 +180,13 @@ panels:
   `planText`, `selectedBurn`, `deleteSelected`, `clearBurns`, `warpToBurn`, `helmFlyBurns`,
   `autopilot`, `nextTarget`, `planToTarget`, `hasTarget`, `acceptPlan`, `discardPlan` and
   `hasProposal`;
-- the view, through `host.hud().getManeuverMap()`: `nextFocus`, `getFocus`, `fit` and `fitTraffic`.
+- the view, through `host.hud().getManeuverMap()`: `nextFocus`, `getFocus`, `focusName`, `fit`,
+  `fitTraffic`, `centreOn` (a point in the map's frame, as a timeline's event), `pick` (a contact by
+  its id, as a click on it does) and the traffic's layers (`getTraffic().setShown`);
+- the times the panels give, through `orbitPath` and `orbitInfo`: each planned burn's time and
+  delta-v (`nodeIn`, `nodeDv`), the orbit the selected burn leads to, the time to each ghost and
+  the body it is round, and the times to the next periapsis and apoapsis (`peIn`, `apIn`);
+  `planner.warpTo(in, what)` warps on to any of them, stopping just before.
 
 The classic panel is hidden then, and the canvas fills the screen. To keep it clear of the panels,
 call `getManeuverMap().setCanvasInsets(left, top, right, bottom)` (UI units). The orbits then fit
@@ -239,10 +245,10 @@ their contents.
 | `targetStatus` | the locked target: label, relation, state, range, closing, relative speed, closest approach and its time, bearing, aspect, firing on us, hull, track age |
 | `threatFrame` | missiles in flight: side, who launched it, position, path, **time to impact with the missile's closing burn in it**, closest approach, range, closing speed, burning |
 | `flightStatus` | the speed against the frame that matters, first that applies: the locked target, the nav target within 5 km, the nearest station within 20 km, else the body orbited (its name and the altitude); closing and lateral against that object, velocity for a marker; heading and spin; delta-v left, home (to the nearest station that would take the ship) and planned; mass and full-thrust acceleration; the stick, main engine and RCS firing, rotation assist and whether it is held, out of propellant, autopilot (`PlayerFlightStatus`) |
-| `navReadout` | the nav target: name, kind (station, ship, wreck, body, point), relation, distance and closing, in the bubble and its bearing, the closest approach along the plan, the contract whose waypoint it is, and a station's `StationInfo`; the plan: burns left, **burn n of N (counting burns already flown)**, the next burn's countdown to its centre, to the engine lighting and to the turn onto it, its delta-v; the burn being flown with its delta-v **to go**; for either, the burn time, its direction and the pointing error; the plan's delta-v and a proposal up; and the station docked at. `StationInfo` is the owner, sponsor or not, standing and its word (Hostile, Unwelcome, Neutral, Friendly, Trusted), why it would refuse clearance, and its services (market, yard, shipyard, contracts, hiring, infirmary); for the station docked at, the infirmary's record of the docking: who it is treating now, by name, and how many of the crew it has treated and what it billed since the ship docked (`PlayerNavigation`) |
+| `navReadout` | the nav target: name, kind (station, ship, wreck, body, point), relation, distance and closing, in the bubble and its bearing, the closest approach along the plan, the contract whose waypoint it is, the body it orbits when that isn't the ship's, and a station's `StationInfo`; the plan: burns left, **burn n of N (counting burns already flown)**, the next burn's countdown to its centre, to the engine lighting and to the turn onto it, its delta-v; the burn being flown with its delta-v **to go**; for either, the burn time, its direction and the pointing error; the plan's delta-v and a proposal up; for an accepted trip that goes on past its last burn into another body's sphere, that body and the rest's estimated delta-v, and the arrival; and the station docked at. `StationInfo` is the owner, its kind ("Ice Mine"), sponsor or not, standing and its word (Hostile, Unwelcome, Neutral, Friendly, Trusted), why it would refuse clearance, and its services (market, yard, shipyard, contracts, hiring, infirmary); for the station docked at, the infirmary's record of the docking: who it is treating now, by name, and how many of the crew it has treated and what it billed since the ship docked (`PlayerNavigation`) |
 | `docking` | the selected port: number of how many, size, armed, active, collar torn or jammed; free, lining up, captured or docked; the craft and port it lines up with or is latched to, and that port's size; clearance (none, granted with the seconds it has left, denied and why, no free port of the size, a struck ship that yields), read from the station's ports without asking; range, lateral (+ to port), turn still needed, closing and the safe closing speed; docked, the latch's strain and whether it has settled (`PlayerDockingApproach`) |
 | `contactFrame` | every marked craft in the bubble and every missile in flight, nearest first: label, kind (ship, station, missile, derelict, waypoint, crew adrift), relation, state (fit, running, struck, silenced, disabled, wrecked) and the disabled reason, position in bubble metres, range, bearing from the nose (port +), closing, size, locked, nav target, a threat to the ship (`PlayerContacts`) |
-| `objectiveFrame` | the contracts held, soonest deadline first: title, kind, giver and station, state (under way, homeward, done, failed), time left and late, where it sends the ship next and whether that is the nav target, progress of how many, pay; and the operation running with its step (`PlayerObjectives`) |
+| `objectiveFrame` | the contracts held, soonest deadline first: title, kind, giver and station, state (under way, homeward, done, failed), time left and late, where it sends the ship next and whether that is the nav target, progress of how many, pay and the standing it brings, and its contract id, for `objectives.navTo(id)` to make its next place the nav target; and the operation running with its step (`PlayerObjectives`) |
 | `stations` | each post aboard (helm, weapons, each gun, life support, reactor), named by place ("HELM", "FWD GUN", "PORT GUN 2"): who works it (you, a crew member by name, one on the way, nobody), whether the console works, its tile; and the crew aboard and how many are free for a post (`PlayerStationBoard`) |
 | `keyHints` | the hints the classic bottom line draws from, for where the player is, with the player's keys: every one, most useful first, each action once, then help; or, while placing furniture, the placing line instead. Set by the game screen (`PlayerKeyHints`) |
 | `orderState` | the orders that stand and why any can't be given now: the helm's order, who it flies relative to, an approach's distance and the helm's own line, and for each of keys 0 to 5 why the helm would refuse it, in its words; the autopilot (off, on, held), where to and why it holds, and why it can't be engaged; whether the player is at a seat, where those are taken; the crew's battle stations, suits for them and the EVA hold; abandoning ship, with the seconds until the pods go anyway, the crew aboard and in a pod, the pods and their free seats, and the captain's straight-line distance to the nearest pod with a seat free and its tile; why the crew can't be sent to the pods; the seconds left on a first press of abandon ship and of the tow; the tow's fee, standing cost and refusal; paused. Set by the game screen (`PlayerOrders`) |
@@ -261,7 +267,15 @@ their contents.
 before and mirrored here. So are the classic windows' providers, for a variant's own screens: `trade`,
 `yard`, `shipyard`, `missions`, `boarding`, `crew`, `orbitPath`, `planner` and `trafficMap`. A screen
 calls them when it draws, as the classic window's refresh does (each fills a board), and acts
-through them.
+through them. The crew's rows say which craft each hand stands on and where on its deck, and whether
+they are at work there; the boarding board names the craft boarded (`craft`), for a plan of it, and
+says whether it was taken undefended and how many berths are free for its prisoners.
+
+`career` (`CareerProvider`) is the captain's career, for a captain's record: rank, the next rank and
+what earns it, time still to serve, pay and payday, what the rank may fly, the record (contracts,
+bounties, promotions with their days), every faction's standing, and the tension on each lawful
+faction's stations with what it does to their yards and boards. A screen reads it when it shows,
+not each frame.
 
 ### Alerts
 
