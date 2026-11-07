@@ -38,7 +38,15 @@ public final class Tables {
         public float pairCol = 150f;
         /** The part's title centred over it with its dim line at its left, as a display unit heads its page; at its left when the line needs the room. */
         public boolean centre;
+        /**
+         * A narrow list leaves out the fixed columns at its right that its words won't fit, down to
+         * two, for a frame that shows every cell of the cursor's row beside or under it.
+         */
+        public boolean drop;
     }
+
+    /** A part's dim line under its title, when it won't fit beside it. */
+    private static final float SUB_H = 16f;
 
     /** A click on a scroll bar: the part, and which way. */
     public static final class Scroll {
@@ -53,6 +61,7 @@ public final class Tables {
     private static final Color EMPTY = NpColors.GRATICULE.cpy().lerp(NpColors.DIM, 0.45f);
     private static final float[] COLX = new float[16], COLW = new float[16];
     private static final boolean[] GROWS = new boolean[16];
+    private static final float[] WIDTH = new float[16];
     /**
      * The row buttons' places in the part being drawn, set by {@link #sect}: each place as wide as the
      * longest word any row has there, rows with fewer buttons taking the places at the right; and the
@@ -226,7 +235,7 @@ public final class Tables {
     /** How tall part {@code s} draws at width {@code w} with every row showing. */
     public static float want(NpCanvas cv, Page p, int s, float w, Style st) {
         Sect sect = p.sects.get(s);
-        float h = st.title && !sect.title.isEmpty() ? st.titleH : 0f;
+        float h = st.title && !sect.title.isEmpty() ? st.titleH + (subBelow(cv, sect, st.pad, titleRight(cv, sect, 0f, w, st), st) ? SUB_H : 0f) : 0f;
         if (heads(sect) && sect.rows.size > 0 && !anyFilter(sect)) h += st.headH;
         for (int i = 0; i < sect.rows.size; i++) h += rowH(sect.rows.get(i), st);
         if (sect.rows.size == 0 && !sect.empty.isEmpty()) h += st.rowH;
@@ -242,10 +251,9 @@ public final class Tables {
         p.area(s, x, y, w, h);
         float y0 = y, inner = w - 2f * st.pad, lx = x + st.pad;
         if (st.title && !sect.title.isEmpty()) {
-            float right = x + w - st.pad;
+            float right = titleRight(cv, sect, x, w, st);
             if (st.sectActs && sect.acts.size > 0) {
-                float bx = right + st.actGap;
-                for (int i = 0; i < sect.acts.size; i++) bx -= actW(cv, sect.acts.get(i).label, st) + st.actGap;
+                float bx = right + 12f;
                 float ax = bx, ay = y + (st.titleH - st.actH) / 2f - 1f;
                 for (int i = 0; i < sect.acts.size; i++) {
                     Act a = sect.acts.get(i);
@@ -254,11 +262,12 @@ public final class Tables {
                     hits.add(ax - 2f, ay - 2f, bw + 4f, st.actH + 4f, a, 0);
                     ax += bw + st.actGap;
                 }
-                right = bx - 12f;
             }
-            // centred, unless the sub needs more than the room left of the title: then the title goes left
+            // centred, unless the sub needs more than the room left of the title: then the title goes
+            // left, and the sub under it if it won't fit beside it either
             float mid = (lx + right) / 2f, tw = cv.width(sect.title, st.titleSize, true, 0.6f);
-            boolean centre = st.centre && (sect.sub.isEmpty() || cv.width(sect.sub, Ui.LB, true, 0.6f) <= mid - tw / 2f - 20f - lx);
+            boolean below = subBelow(cv, sect, lx, right, st);
+            boolean centre = !below && st.centre && (sect.sub.isEmpty() || cv.width(sect.sub, Ui.LB, true, 0.6f) <= mid - tw / 2f - 20f - lx);
             if (centre) {
                 cv.text(mid, y + 21f, sect.title, st.titleSize, true, NpColors.WHITE, 0.6f, NpCanvas.MIDDLE);
                 if (!sect.sub.isEmpty()) {
@@ -267,12 +276,14 @@ public final class Tables {
                 }
             } else {
                 cv.text(lx, y + 21f, sect.title, st.titleSize, true, NpColors.WHITE, 0.6f, NpCanvas.START);
-                if (!sect.sub.isEmpty()) {
+                if (below) {
+                    cv.text(lx, y + st.titleH + 9f, Ui.fit(cv, sect.sub, inner, Ui.LB, true, 0.6f), Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.START);
+                } else if (!sect.sub.isEmpty()) {
                     String sub = Ui.fit(cv, sect.sub, right - (lx + tw + 24f), Ui.LB, true, 0.6f);
                     cv.text(right, y + 21f, sub, Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.END);
                 }
             }
-            y += st.titleH;
+            y += st.titleH + (below ? SUB_H : 0f);
         }
         // what goes under the rows, so the rows know their room
         float tail = linesH(cv, sect.lines, w, st) + sect.notes.size * st.noteH;
@@ -281,9 +292,8 @@ public final class Tables {
 
         boolean filters = anyFilter(sect);
         float actsW = st.acts ? slots(cv, sect, x + w - st.pad, st) : 0f;
-        int nCols = Math.min(sect.cols.size, COLX.length);
         float gutter = anyMark(sect) ? 18f : 0f;
-        columns(cv, sect, lx + gutter, inner - gutter - actsW - (actsW > 0f ? 8f : 0f), st);
+        int nCols = columns(cv, sect, lx + gutter, inner - gutter - actsW - (actsW > 0f ? 8f : 0f), st);
         if (heads(sect) && sect.rows.size > 0 && !filters) {
             for (int c = 0; c < nCols; c++) {
                 Col col = sect.cols.get(c);
@@ -543,6 +553,23 @@ public final class Tables {
         return Math.min(150f, Math.max(st.actW, cv.width(label, Ui.LB, true, 0.4f) + 10f));
     }
 
+    /** Where part {@code sect}'s title has room to, in a box at {@code x} {@code w} wide: its orders' buttons, if it shows them, take the right. */
+    private static float titleRight(NpCanvas cv, Sect sect, float x, float w, Style st) {
+        float right = x + w - st.pad;
+        if (!st.sectActs || sect.acts.size == 0) return right;
+        float bx = right + st.actGap;
+        for (int i = 0; i < sect.acts.size; i++) bx -= actW(cv, sect.acts.get(i).label, st) + st.actGap;
+        return bx - 12f;
+    }
+
+    /** Whether part {@code sect}'s line goes under its title, fitting beside it neither centred nor at the left, between {@code lx} and {@code right}. */
+    private static boolean subBelow(NpCanvas cv, Sect sect, float lx, float right, Style st) {
+        if (sect.sub.isEmpty()) return false;
+        float tw = cv.width(sect.title, st.titleSize, true, 0.6f), sw = cv.width(sect.sub, Ui.LB, true, 0.6f);
+        if (st.centre && sw <= (lx + right) / 2f - tw / 2f - 20f - lx) return false;
+        return sw > right - (lx + tw + 24f);
+    }
+
     /**
      * Sets out the part's row buttons' places against {@code right} ({@link #SLOT_X}): as many as the
      * row with the most has, each as wide as the longest word a row has there, rows with fewer taking
@@ -599,9 +626,14 @@ public final class Tables {
      * and its widest cell) widened to them. Too wide for the room then, the columns first give up what
      * their words don't use, then all shrink alike, to 55 per cent at most.
      */
-    private static void columns(NpCanvas cv, Sect s, float x, float w, Style st) {
+    private static int columns(NpCanvas cv, Sect s, float x, float w, Style st) {
         int n = Math.min(s.cols.size, COLX.length);
-        if (n == 0) return;
+        if (n == 0) return 0;
+        if (s.need == null) s.need = needs(cv, s, n, st);
+        if (st.drop) {
+            for (int c = 0; c < n; c++) WIDTH[c] = s.cols.get(c).width;
+            n = kept(WIDTH, s.need, n, w, st.gap);
+        }
         float fixed = 0f, gap = st.gap;
         int rest = 0;
         for (int c = 0; c < n; c++) {
@@ -616,7 +648,6 @@ public final class Tables {
             float cw = s.cols.get(c).width;
             COLW[c] = cw <= 0f ? restW : cw;
         }
-        if (s.need == null) s.need = needs(cv, s, n, st);
         fit(COLW, s.need, GROWS, n, w - gaps);
         float cx = x;
         for (int c = 0; c < n; c++) {
@@ -625,6 +656,23 @@ public final class Tables {
         }
         // the last 0-width column takes to the end
         if (rest > 0 && s.cols.get(n - 1).width <= 0f) COLW[n - 1] = Math.max(COLW[n - 1], x + w - COLX[n - 1]);
+        return n;
+    }
+
+    /**
+     * How many of the first {@code n} columns, {@code width} wide (0 for one that takes the rest) and
+     * needing {@code need} for their words, show in {@code w}: all, less the fixed ones at the right
+     * whose words won't fit, down to two. One that takes the rest counts at 60 at most, and stops the
+     * dropping when it is the last.
+     */
+    static int kept(float[] width, float[] need, int n, float w, float gap) {
+        while (n > 2 && width[n - 1] > 0f) {
+            float sum = gap * (n - 1);
+            for (int c = 0; c < n; c++) sum += width[c] > 0f ? need[c] : Math.min(60f, need[c]);
+            if (sum <= w) break;
+            n--;
+        }
+        return n;
     }
 
     /**
