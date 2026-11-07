@@ -501,6 +501,22 @@ class NasaPunkWindowsTest {
     }
 
     @Test
+    void aColumnTooNarrowForItsWordsWidensIntoWhatTheOthersDontUse() {
+        // the hiring hall: SKILLS needs 214 of its 190, and TERMS, taking what is left, uses 190 of 420
+        float[] w = {130f, 96f, 190f, 420f};
+        float[] need = {122f, 80f, 214f, 190f};
+        Tables.fit(w, need, new boolean[] {true, true, true, false}, 4, 836f);
+        assertEquals(214f, w[2], 1e-3);
+        assertEquals(836f, w[0] + w[1] + w[2] + w[3], 1e-3);
+        for (int c = 0; c < 4; c++) assertTrue(w[c] >= need[c], "column " + c + " keeps its words whole");
+        assertTrue(w[3] > 390f, "the 24 come mostly from what TERMS doesn't use");
+        // a column that takes what is left never widens for long words; it is cut instead
+        float[] log = {92f, 132f, 500f};
+        Tables.fit(log, new float[] {70f, 80f, 900f}, new boolean[] {true, true, false}, 3, 724f);
+        assertEquals(500f, log[2], 1e-3);
+    }
+
+    @Test
     void partsTooTallForTheirBoxGiveWayTallestFirst() {
         float[] h = {58f, 172f, 150f, 460f};
         Tables.cap(h, 4, 606f);
