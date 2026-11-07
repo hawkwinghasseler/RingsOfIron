@@ -47,6 +47,8 @@ import java.util.Set;
 public class CassetteStationsHud implements HudVariant, Actions {
     /** Where a screen starts: under the annunciator, the last unit hung above it. */
     static final float SCREEN_TOP = StationsLayout.ANN_Y + StationsLayout.ANN_H + 4f;
+    /** How far left the world moves while a side panel is open: half the panel's width (6.2). */
+    static final float SIDE_SHIFT = 240f;
 
     private HudVariantHost host;
     private final StationsFrame frame = new StationsFrame();
@@ -198,6 +200,10 @@ public class CassetteStationsHud implements HudVariant, Actions {
         l.solve();
         // A side panel stops 8 above the seated band, or the gunner sight, and runs down the screen on deck (6.2)
         screens.panelBottom(l.panelBottom());
+        // The ship, or the avatar on deck, in the middle of the world the band and a side panel leave in view:
+        // up by half the band, left by half the panel (6.2). Not while a screen hides the world, so it doesn't
+        // move as the screen goes
+        if (!l.map) host.viewports().easeViewShift(l.panelLeft >= 0f ? -SIDE_SHIFT : 0f, l.cluster.on ? StationsLayout.BAND_H / 2f : 0f);
 
         board.gun = f.seat == StationsFrame.Seat.GUN;
         board.berthBadge = berth.folded();
@@ -283,6 +289,8 @@ public class CassetteStationsHud implements HudVariant, Actions {
 
     @Override
     public void detach() {
+        // The world back in the middle, as the game and the other HUDs have it
+        if (host != null) host.viewports().setViewShift(0f, 0f);
         screens.dispose();
         if (over != null) over.remove();
         if (paint != null) paint.dispose();

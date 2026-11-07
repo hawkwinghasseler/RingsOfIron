@@ -32,6 +32,11 @@ public class ViewportManager {
     private final Vector3 tmp = new Vector3();
     private float viewMeters;
     private final ZoomEase ease = new ZoomEase();
+    /**
+     * Where the followed point sits off the screen's middle, UI units (x right, y up), as eased this
+     * frame; where the ease started and where it is heading; how far along it is (1 once settled).
+     */
+    private float shiftX, shiftY, shiftFromX, shiftFromY, shiftToX, shiftToY, shiftT = 1f;
     private int screenWidth = 1, screenHeight = 1;
     private float uiScale = 1f;
 
@@ -59,10 +64,46 @@ public class ViewportManager {
         return uiScale;
     }
 
-    /** Centers the world camera on a point in bubble meters. */
+    /**
+     * Centers the world camera on a point in bubble meters, or puts the point {@link #easeViewShift
+     * off the middle} where a HUD has asked for it.
+     */
     public void follow(float x, float y) {
-        worldCamera.position.set(x, y, 0f);
+        float mpu = shiftX == 0f && shiftY == 0f ? 0f : metersPerUiUnit();
+        worldCamera.position.set(x - shiftX * mpu, y - shiftY * mpu, 0f);
         worldCamera.update();
+    }
+
+    /**
+     * Has the followed point (the ship, or the avatar on deck) sit {@code x}, {@code y} UI units off
+     * the screen's middle (x right, y up), eased over {@link ZoomEase#SECONDS} as the zoom is, so a HUD
+     * keeps it in the middle of the world its own units leave in view: up by half a band at the foot,
+     * left by half a panel at the right. 0, 0 is the middle, as the game has it.
+     */
+    public void easeViewShift(float x, float y) {
+        if (x == shiftToX && y == shiftToY) return;
+        shiftFromX = shiftX;
+        shiftFromY = shiftY;
+        shiftToX = x;
+        shiftToY = y;
+        shiftT = 0f;
+    }
+
+    /** As {@link #easeViewShift}, at once: a HUD going puts the middle back so. */
+    public void setViewShift(float x, float y) {
+        shiftX = shiftToX = x;
+        shiftY = shiftToY = y;
+        shiftT = 1f;
+    }
+
+    /** Where the followed point sits off the screen's middle now, UI units, x right. */
+    public float getViewShiftX() {
+        return shiftX;
+    }
+
+    /** Where the followed point sits off the screen's middle now, UI units, y up. */
+    public float getViewShiftY() {
+        return shiftY;
     }
 
     /** Zooms so the shorter screen axis shows this many meters, at once (ending any eased zoom). */
@@ -83,8 +124,14 @@ public class ViewportManager {
         ease.start(viewMeters, MathUtils.clamp(meters, MIN_VIEW_METERS, MAX_VIEW_METERS));
     }
 
-    /** Moves an eased zoom on by {@code delta} seconds of real time. */
+    /** Moves an eased zoom, and an eased shift of the view, on by {@code delta} seconds of real time. */
     public void update(float delta) {
+        if (shiftT < 1f) {
+            shiftT = Math.min(1f, shiftT + delta / ZoomEase.SECONDS);
+            float e = shiftT * shiftT * (3f - 2f * shiftT);
+            shiftX = MathUtils.lerp(shiftFromX, shiftToX, e);
+            shiftY = MathUtils.lerp(shiftFromY, shiftToY, e);
+        }
         if (!ease.isEasing()) return;
         ease.update(delta);
         apply(ease.meters());
