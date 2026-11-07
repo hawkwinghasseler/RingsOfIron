@@ -9,15 +9,24 @@ import com.ringsofiron.uihud.variants.ClassicWindow;
  * The controls (F1): first the keys worth knowing where the player is now, then every key the game
  * knows by where it applies, as the classic controls panel lists them, leaving out the section that
  * is all where the player is now; each key on its cap against what it does, with the player's own
- * bindings.
+ * bindings. A frame whose hint line already says where the player is now can list every key by
+ * where it applies alone ({@link #byWhereOnly}).
  */
 public final class HelpPage extends Page {
     private final HelpFrame frame = new HelpFrame();
     /** HERE's keys, each as its key and what it does. */
     private final com.badlogic.gdx.utils.ObjectSet<String> here = new com.badlogic.gdx.utils.ObjectSet<>();
+    /** Whether HERE leads the keys. */
+    private boolean leadHere = true;
 
     public HelpPage() {
         super("CONTROLS", ClassicWindow.HELP);
+    }
+
+    /** Lists every key by where it applies and no more: no HERE, and so no section left out for being all of it. */
+    public HelpPage byWhereOnly() {
+        leadHere = false;
+        return this;
     }
 
     @Override
@@ -28,7 +37,7 @@ public final class HelpPage extends Page {
     @Override
     protected void build(Boards b) {
         here.clear();
-        if (b.data.keyHints.hints.size > 0) {
+        if (leadHere && b.data.keyHints.hints.size > 0) {
             Sect s = sect("HERE");
             s.col(Col.end("", 84f)).col(Col.start("", 0f));
             for (int i = 0; i < b.data.keyHints.hints.size; i++) {

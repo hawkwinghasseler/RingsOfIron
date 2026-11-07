@@ -36,7 +36,7 @@ public final class Tables {
         public boolean cursor = true;
         /** Where a line's value starts after its label. */
         public float pairCol = 150f;
-        /** The part's title centred over it with its dim line at its left, as a display unit heads its page. */
+        /** The part's title centred over it with its dim line at its left, as a display unit heads its page; at its left when the line needs the room. */
         public boolean centre;
     }
 
@@ -108,6 +108,8 @@ public final class Tables {
     // ---- parts in a box -------------------------------------------------------------------------
 
     private static final float[] HEIGHTS = new float[32], SORTED = new float[32], COL_Y = new float[8];
+    private static final float[] USED = new float[8], SHARE = new float[32];
+    private static final int[] COL_OF = new int[32];
 
     /**
      * Parts {@code sects} of {@code p} one under another in the box, each as tall as it wants; when
@@ -145,26 +147,50 @@ public final class Tables {
 
     /**
      * Parts {@code sects} of {@code p} flowed into {@code columns} columns across the box, each whole
-     * in the first column with room for it and else in the emptiest, where its rows past the foot
-     * scroll; the columns' tops keep the parts' order.
+     * in the first column with room for it and else in the emptiest; a column given more than it
+     * holds shares its height out as {@link #stack} does, so every part shows, its rows past its foot
+     * scrolling. The columns' tops keep the parts' order.
      */
     public static void flow(NpCanvas cv, Camera cam, Page p, IntArray sects, int columns, float x, float y, float w, float h, float gap, Style st, Hits hits) {
-        int cols = Math.max(1, Math.min(columns, COL_Y.length));
+        int cols = Math.max(1, Math.min(columns, COL_Y.length)), n = Math.min(sects.size, HEIGHTS.length);
         float cw = (w - (cols - 1) * gap) / cols;
+        for (int i = 0; i < n; i++) HEIGHTS[i] = want(cv, p, sects.get(i), cw, st);
+        place(HEIGHTS, n, cols, h, COL_OF);
         for (int c = 0; c < cols; c++) COL_Y[c] = y;
-        for (int i = 0; i < sects.size; i++) {
-            int s = sects.get(i);
-            float want = want(cv, p, s, cw, st);
+        for (int i = 0; i < n; i++) {
+            int at = COL_OF[i];
+            float sh = Math.min(HEIGHTS[i], y + h - COL_Y[at]);
+            if (sh < 24f) continue;
+            sect(cv, cam, p, sects.get(i), x + at * (cw + gap), COL_Y[at], cw, sh, st, hits);
+            COL_Y[at] += sh;
+        }
+    }
+
+    /**
+     * Places {@code n} parts wanting {@code hs} in {@code cols} columns {@code h} tall: each whole in
+     * the first column with room for it, else in the emptiest; then the parts of a column given more
+     * than {@code h} share it, the short keeping theirs and the tall what is left. Writes each part's
+     * column to {@code colOf} and the height it gets over its want in {@code hs}.
+     */
+    static void place(float[] hs, int n, int cols, float h, int[] colOf) {
+        for (int c = 0; c < cols; c++) USED[c] = 0f;
+        for (int i = 0; i < n; i++) {
             int at = -1;
-            for (int c = 0; c < cols && at < 0; c++) if (COL_Y[c] + want <= y + h) at = c;
+            for (int c = 0; c < cols && at < 0; c++) if (USED[c] + hs[i] <= h) at = c;
             if (at < 0) {
                 at = 0;
-                for (int c = 1; c < cols; c++) if (COL_Y[c] < COL_Y[at]) at = c;
+                for (int c = 1; c < cols; c++) if (USED[c] < USED[at]) at = c;
             }
-            float sh = Math.min(want, y + h - COL_Y[at]);
-            if (sh < 30f) continue;
-            sect(cv, cam, p, s, x + at * (cw + gap), COL_Y[at], cw, sh, st, hits);
-            COL_Y[at] += sh;
+            colOf[i] = at;
+            USED[at] += hs[i];
+        }
+        for (int c = 0; c < cols; c++) {
+            if (USED[c] <= h) continue;
+            int m = 0;
+            for (int i = 0; i < n; i++) if (colOf[i] == c) SHARE[m++] = hs[i];
+            cap(SHARE, m, h);
+            m = 0;
+            for (int i = 0; i < n; i++) if (colOf[i] == c) hs[i] = SHARE[m++];
         }
     }
 
@@ -230,15 +256,17 @@ public final class Tables {
                 }
                 right = bx - 12f;
             }
-            if (st.centre) {
-                float mid = (lx + right) / 2f, tw = cv.width(sect.title, st.titleSize, true, 0.6f);
+            // centred, unless the sub needs more than the room left of the title: then the title goes left
+            float mid = (lx + right) / 2f, tw = cv.width(sect.title, st.titleSize, true, 0.6f);
+            boolean centre = st.centre && (sect.sub.isEmpty() || cv.width(sect.sub, Ui.LB, true, 0.6f) <= mid - tw / 2f - 20f - lx);
+            if (centre) {
                 cv.text(mid, y + 21f, sect.title, st.titleSize, true, NpColors.WHITE, 0.6f, NpCanvas.MIDDLE);
                 if (!sect.sub.isEmpty()) {
                     String sub = Ui.fit(cv, sect.sub, mid - tw / 2f - 20f - lx, Ui.LB, true, 0.6f);
                     cv.text(lx, y + 21f, sub, Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.START);
                 }
             } else {
-                float tw = cv.text(lx, y + 21f, sect.title, st.titleSize, true, NpColors.WHITE, 0.6f, NpCanvas.START);
+                cv.text(lx, y + 21f, sect.title, st.titleSize, true, NpColors.WHITE, 0.6f, NpCanvas.START);
                 if (!sect.sub.isEmpty()) {
                     String sub = Ui.fit(cv, sect.sub, right - (lx + tw + 24f), Ui.LB, true, 0.6f);
                     cv.text(right, y + 21f, sub, Ui.LB, true, NpColors.DIM, 0.6f, NpCanvas.END);
