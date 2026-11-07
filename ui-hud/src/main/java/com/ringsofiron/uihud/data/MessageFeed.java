@@ -8,8 +8,8 @@ import com.badlogic.gdx.utils.Array;
  * {@link AlertRegistry}; this is for events. Filled by the game wiring layer from its notice log.
  */
 public final class MessageFeed {
-    /** Rows kept. */
-    public static final int KEEP = 50;
+    /** Rows kept: as many as the game's log keeps, so a HUD's log can show a career's last weeks. */
+    public static final int KEEP = 500;
 
     public static final class Message {
         public String text = "";

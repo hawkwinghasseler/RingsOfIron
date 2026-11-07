@@ -15,6 +15,7 @@ import com.ringsofiron.interiorgrid.ShipSubsystemRegistryComponent;
 import com.ringsofiron.interiorgrid.SubsystemComponent;
 import com.ringsofiron.interiorgrid.Tile;
 import com.ringsofiron.uihud.data.AlertRegistry;
+import com.ringsofiron.uihud.data.ConditionLog;
 import com.ringsofiron.uihud.data.HudData;
 import com.ringsofiron.uihud.providers.PowerStatusProvider;
 import com.ringsofiron.uihud.variants.ClassicWindow;

@@ -41,8 +41,7 @@ public final class WindowScreens {
     private final CargoPage cargo = new CargoPage();
     private final BoardingPage boardingPage = new BoardingPage();
     /** The fight's record for the log: each condition as it is raised and clears, watched every frame. */
-    private final ConditionLog conditions = new ConditionLog();
-    private final LogPage log = new LogPage(conditions);
+    private final LogPage log = new LogPage();
     private final HelpFrame help = new HelpFrame();
     private final ControlsCard[] cards = new ControlsCard[8];
     private final Telex telex = new Telex();
@@ -86,6 +85,16 @@ public final class WindowScreens {
     /** Has the controls card rise over the screen under it, Esc closing it first; else it replaces the screen. */
     public WindowScreens controlsOver(boolean over) {
         controlsOver = over;
+        return this;
+    }
+
+    /**
+     * Has the Log keep each condition on one line, revised as it worsens and stamped when it clears,
+     * and filter by alerts, important news and the rest (the Task spec's book); else each step and
+     * each clearing is a line of its own, filtered by severity and source (the Context spec's Log).
+     */
+    public WindowScreens onceLog(boolean once) {
+        log.once(once);
         return this;
     }
 
@@ -290,7 +299,6 @@ public final class WindowScreens {
 
     public void update(float delta) {
         if (host == null) return;
-        conditions.update(host.data().alerts, host.data().weaponFrame.mounts, host.data().ctx.simSeconds);
         fires.update(host.data().alerts, host.data().ctx.simSeconds);
         if (telex.visible) {
             if (host.data().gameOver.shown) telex.show(host.data().gameOver, host.data().ctx.simSeconds);

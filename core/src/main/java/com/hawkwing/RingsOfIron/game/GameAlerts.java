@@ -443,7 +443,7 @@ public class GameAlerts {
         feed.clear();
         List<NoticeLog.Notice> showing = ctx.notices.showing();
         int kept = 0;
-        for (NoticeLog.Notice n : ctx.notices.history()) {
+        for (NoticeLog.Notice n : ctx.notices.log()) {
             if (kept++ >= MessageFeed.KEEP) break;
             MessageFeed.Message m = feed.add(n.text, n.kind == NoticeLog.Kind.WARNING ? Level.WARNING : Level.ADVISORY, n.time);
             m.important = n.kind == NoticeLog.Kind.IMPORTANT;

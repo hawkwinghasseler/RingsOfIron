@@ -14,6 +14,7 @@ import com.ringsofiron.interiorgrid.SubsystemComponent.SubsystemType;
 import com.ringsofiron.uihud.data.AlertRegistry;
 import com.ringsofiron.uihud.data.AlertRegistry.Category;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
+import com.ringsofiron.uihud.data.ConditionLog;
 import com.ringsofiron.uihud.providers.TradeProvider.TradeBoard;
 import com.ringsofiron.uihud.providers.TradeProvider.TradeLine;
 import com.ringsofiron.uihud.providers.WeaponStatusProvider.Mount;
@@ -371,10 +372,10 @@ class ShipConsoleTest {
         d.messages.add("Third", Level.ADVISORY, 180);
         d.messages.add("Second", Level.ADVISORY, 120);
         d.messages.add("First", Level.ADVISORY, 60);
-        ConditionLog record = new ConditionLog();
+        ConditionLog record = d.record;
         frame(d.alerts, record, 90, "fire:HOLD", "FIRE", Level.WARNING, null, null, null);
         frame(d.alerts, record, 93, "fire:HOLD", "FIRE", Level.WARNING, null, null, null);
-        LogPage log = new LogPage(record);
+        LogPage log = new LogPage();
         log.refresh(b);
         assertEquals(4, log.lines());
         assertEquals("Third", log.line(0), "the newest at the platen");
@@ -390,6 +391,53 @@ class ShipConsoleTest {
         // Warnings only
         log.hit(3);
         assertEquals(1, log.lines());
+    }
+
+    @Test
+    void keptOnceTheLogHasEachAlertOnOneLineStampedWhenItClearsAndFiltersByKind() {
+        com.ringsofiron.uihud.data.HudData d = new com.ringsofiron.uihud.data.HudData();
+        Boards b = new Boards();
+        b.data = d;
+        d.messages.clear();
+        d.messages.add("Promoted to Lieutenant", Level.ADVISORY, 200).important = true;
+        d.messages.add("Raider moves to intercept you", Level.WARNING, 150);
+        d.messages.add("Docked at Highport", Level.ADVISORY, 60);
+        // A breach at 14:00 on day 0, sealed and refilled, all clear at 14:31
+        frame(d.alerts, d.record, 50400, "breach:HOLD", "BREACH", Level.WARNING, null, null, null);
+        frame(d.alerts, d.record, 50700, "air:HOLD", "PRESSURE", Level.CAUTION, null, null, null);
+        frame(d.alerts, d.record, 52260, null, null, null, null, null, null);
+        frame(d.alerts, d.record, 52263, null, null, null, null, null, null);
+        LogPage log = new LogPage().once(true);
+        log.refresh(b);
+        assertEquals(4, log.lines(), "the breach once, and the three notices");
+        assertEquals("Low pressure: HOLD", log.line(0), "its latest words, at the time it began");
+        assertEquals(Level.WARNING, log.lineLevel(0), "at the worst it reached");
+        assertEquals(52260, log.lineCleared(0), 1e-9);
+        assertEquals("cleared 14:31", LogPage.cleared(50400, 52260));
+        assertEquals("cleared 001 00:10", LogPage.cleared(86000, 87000), "on another day, with the day");
+        assertEquals("", log.lineSource(0), "no source column kept once");
+        assertTrue(Double.isNaN(log.lineCleared(1)), "a notice has no clearing");
+        // The kinds: alerts; the news that matters, good news and warnings; the rest
+        log.hit(1);
+        assertEquals(1, log.lines());
+        log.hit(2);
+        assertEquals(2, log.lines());
+        assertEquals("Promoted to Lieutenant", log.line(0));
+        assertEquals("Raider moves to intercept you", log.line(1));
+        log.hit(3);
+        assertEquals(1, log.lines());
+        assertEquals("Docked at Highport", log.line(0));
+        // Left and Right step the one control from the roll; Up from the roll's top goes to it
+        log.hit(0);
+        log.hit(20);
+        log.key(com.badlogic.gdx.Input.Keys.RIGHT);
+        assertEquals(1, log.lines(), "alerts");
+        log.key(com.badlogic.gdx.Input.Keys.LEFT);
+        log.key(com.badlogic.gdx.Input.Keys.LEFT);
+        assertEquals("Docked at Highport", log.line(0), "round to info");
+        assertTrue(LogPage.kind(2, false, Level.WARNING, false), "a warning notice matters");
+        assertFalse(LogPage.kind(3, false, Level.WARNING, false));
+        assertFalse(LogPage.kind(2, true, Level.WARNING, false), "an alert is an alert");
     }
 
     /** One frame of the game's alerts: up to two raised, then the log reads them. */
