@@ -54,7 +54,7 @@ final class NavPage extends FactsPage {
             fact("RANGE", dist(n.distance), AMBER);
             if (!Float.isNaN(n.closing)) fact("CLOSING", mps(n.closing), AMBER);
             if (!Double.isNaN(n.cpaDistance)) fact("CPA", dist(n.cpaDistance) + (Float.isNaN(n.cpaIn) ? "" : " IN " + YardText.clock(n.cpaIn)), AMBER);
-        } else text("NO NAVIGATION TARGET", DIM);
+        }
 
         head("PLAN", right == null ? "NO PLAN" : right);
         if (n.burning) text("BURN " + n.burnNumber + " BURNING, " + mps(n.burnToGo) + " TO GO", AMBER);

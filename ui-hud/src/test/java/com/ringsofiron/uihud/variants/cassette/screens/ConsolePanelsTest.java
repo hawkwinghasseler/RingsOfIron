@@ -639,6 +639,12 @@ class ConsolePanelsTest {
         assertEquals("THE HELM NEEDS A NAVIGATION TARGET FOR THAT", h.value("5 DOCK"));
         assertEquals("NEEDS A DESTINATION", h.value("6 AUTO"), "the row names the autopilot already");
         assertTrue(h.says("NO DOCKING PORT FITTED"));
+        // Off the seat, a refusal every order shares is the heading's, not each row's
+        com.ringsofiron.uihud.providers.OrdersProvider.Orders off = new com.ringsofiron.uihud.providers.OrdersProvider.Orders();
+        for (com.ringsofiron.uihud.providers.OrdersProvider.HelmOrder o : HelmPage.ORDERS) off.helmRefusal[o.ordinal()] = "Take a seat to give orders";
+        assertEquals("Take a seat to give orders", HelmPage.shared(off));
+        off.seated = true;
+        assertNull(HelmPage.shared(off));
         assertEquals("TAKE HELM", h.enterLabel());
         h.key(com.badlogic.gdx.Input.Keys.ENTER);
         assertTrue(seated[0], "the soft key seats the captain, where the orders are given");
