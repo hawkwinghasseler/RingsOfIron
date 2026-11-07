@@ -235,7 +235,7 @@ public final class Tables {
         float actsW = st.acts ? maxActs(sect) * (rowActW + st.actGap) : 0f;
         int nCols = Math.min(sect.cols.size, COLX.length);
         float gutter = anyMark(sect) ? 18f : 0f;
-        columns(sect, lx + gutter, inner - gutter - actsW - (actsW > 0f ? 8f : 0f), st.gap);
+        columns(cv, sect, lx + gutter, inner - gutter - actsW - (actsW > 0f ? 8f : 0f), st);
         if (heads(sect) && sect.rows.size > 0 && !filters) {
             for (int c = 0; c < nCols; c++) {
                 Col col = sect.cols.get(c);
@@ -495,7 +495,7 @@ public final class Tables {
         float w = st.actW;
         for (int i = 0; i < s.rows.size; i++) {
             Row r = s.rows.get(i);
-            for (int j = 0; j < r.acts.size; j++) w = Math.max(w, cv.width(r.acts.get(j).label, Ui.LB, true, 0.4f) + 14f);
+            for (int j = 0; j < r.acts.size; j++) w = Math.max(w, cv.width(r.acts.get(j).label, Ui.LB, true, 0.4f) + 10f);
         }
         return Math.min(w, 150f);
     }
@@ -523,10 +523,15 @@ public final class Tables {
     }
 
     /** Places the columns from {@code x} across {@code w}: fixed widths, the rest to a 0-width one, all squeezed to fit. */
-    private static void columns(Sect s, float x, float w, float gap) {
+    /**
+     * Lays the part's columns out from {@code x} across {@code w}: each at its own width, a 0-width one
+     * taking what is left (60 at least). Too wide for the room, the columns first give up what their
+     * words don't use (the head and the widest cell), then all shrink alike, to 55 per cent at most.
+     */
+    private static void columns(NpCanvas cv, Sect s, float x, float w, Style st) {
         int n = Math.min(s.cols.size, COLX.length);
         if (n == 0) return;
-        float fixed = 0f;
+        float fixed = 0f, gap = st.gap;
         int rest = 0;
         for (int c = 0; c < n; c++) {
             float cw = s.cols.get(c).width;
@@ -536,16 +541,64 @@ public final class Tables {
         float gaps = gap * (n - 1);
         float free = w - fixed - gaps;
         float restW = rest == 0 ? 0f : Math.max(60f, free / rest);
-        float total = fixed + gaps + restW * rest;
-        float k = total > w && total > 0f ? Math.max(0.55f, (w - gaps) / (total - gaps)) : 1f;
-        float cx = x;
+        float over = fixed + gaps + restW * rest - w;
         for (int c = 0; c < n; c++) {
             float cw = s.cols.get(c).width;
-            COLW[c] = (cw <= 0f ? restW : cw) * k;
+            COLW[c] = cw <= 0f ? restW : cw;
+        }
+        if (over > 0f) {
+            if (s.need == null) s.need = needs(cv, s, n, st);
+            squeeze(COLW, s.need, n, over);
+        }
+        float cx = x;
+        for (int c = 0; c < n; c++) {
             COLX[c] = cx;
             cx += COLW[c] + gap;
         }
         // the last 0-width column takes to the end
         if (rest > 0 && s.cols.get(n - 1).width <= 0f) COLW[n - 1] = Math.max(COLW[n - 1], x + w - COLX[n - 1]);
+    }
+
+    /**
+     * Takes {@code over} from the first {@code n} widths: first what each has beyond its {@code need},
+     * each giving in proportion to what it has spare, then from all alike, down to 55 per cent at most.
+     */
+    static void squeeze(float[] w, float[] need, int n, float over) {
+        float slack = 0f;
+        for (int c = 0; c < n; c++) slack += Math.max(0f, w[c] - need[c]);
+        float take = Math.min(over, slack);
+        if (take > 0f) for (int c = 0; c < n; c++) w[c] -= Math.max(0f, w[c] - need[c]) * take / slack;
+        over -= take;
+        if (over <= 0f) return;
+        float sum = 0f;
+        for (int c = 0; c < n; c++) sum += w[c];
+        float k = sum > 0f ? Math.max(0.55f, (sum - over) / sum) : 1f;
+        for (int c = 0; c < n; c++) w[c] *= k;
+    }
+
+    /** The room each of the part's first {@code n} columns' words take: its head, and its widest cell with the cell's unit. */
+    private static float[] needs(NpCanvas cv, Sect s, int n, Style st) {
+        float[] need = new float[n];
+        for (int c = 0; c < n; c++) {
+            String head = s.cols.get(c).head;
+            need[c] = head.isEmpty() ? 0f : cv.width(head, Ui.LB, true, 0.6f);
+        }
+        for (int i = 0; i < s.rows.size; i++) {
+            Row r = s.rows.get(i);
+            if (r.filter != null) continue;
+            for (int c = 0; c < n && c < r.cells.size; c++) need[c] = Math.max(need[c], cellW(cv, r, r.cells.get(c), st));
+        }
+        for (int c = 0; c < n; c++) need[c] += 2f;
+        return need;
+    }
+
+    /** How wide a cell's words are drawn, as {@link #cell} draws them. */
+    private static float cellW(NpCanvas cv, Row r, Cell c, Style st) {
+        if (c.text.isEmpty()) return 0f;
+        if (c.tone == Cell.Tone.KEY) return Ui.capW(cv, c.text);
+        boolean bold = Ui.bold(c.tone) || r.notable;
+        float size = c.tone == Cell.Tone.NAME ? st.nameSize : st.cellSize, track = bold ? 0.4f : 0.2f;
+        float uw = c.unit.isEmpty() ? 0f : cv.width(c.unit, Ui.LB, true, 0.3f) + 4f;
+        return cv.width(c.text, size, bold, track) + uw;
     }
 }
