@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.Array;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.MessageFeed;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.providers.ObjectiveProvider.Objective;
 import com.ringsofiron.uihud.providers.ObjectiveProvider.ObjectiveFrame;
 import com.ringsofiron.uihud.providers.ObjectiveProvider.State;
@@ -18,9 +19,11 @@ import java.util.Locale;
  * Z3, the incoming rack at top right: each contract held (OBJ) a paper slip of its title with its time
  * left on drums and a state flap (blank, NAV or LATE: the game pays a contract as it ends, so none waits
  * done), the navigation target's slip standing proud with its next step under it; the news (NTF) on a
- * telex strip below, newest at the bottom, important lines in red. A title or a notice too long for its
- * line takes a second (a title breaks before where the job goes, or at a word, its time staying on the
- * first), never a third.
+ * telex strip below, newest at the bottom, important lines in red. The news is the game's info and
+ * important notices, and each warning nothing else here shows (9.2's table: a death, a crewman left
+ * behind, the boarders this HUD can't raise yet); a warning the band or the crisis placard carries is
+ * theirs. A title or a notice too long for its line takes a second (a title breaks before where the job
+ * goes, or at a word, its time staying on the first), never a third.
  */
 final class Rack extends YardPart {
     static final float W = 300f;
@@ -48,11 +51,12 @@ final class Rack extends YardPart {
     float measure(float limit) {
         telex.clear();
         Array<MessageFeed.Message> all = f.data.messages.all();
+        boolean armed = f.data.orderState.abandonArmed > 0f || f.data.orderState.towArmed > 0f;
         for (int i = 0; i < all.size && telex.size < LINES; i++) {
             MessageFeed.Message m = all.get(i);
-            if (m.secondsLeft <= 0f || m.level == Level.WARNING) continue;
+            if (m.secondsLeft <= 0f || !news(m, f.alerts, f.crisis, armed)) continue;
             // In combat, news waits unless it is important
-            if (f.combat && !m.important) continue;
+            if (f.combat && !important(m)) continue;
             telex.add(m);
         }
         telex.reverse();
@@ -67,6 +71,23 @@ final class Rack extends YardPart {
             h = height();
         }
         return h;
+    }
+
+    /**
+     * Whether a notice is news here: an info or important notice, or a warning nothing this HUD shows
+     * in its place this frame ({@link TaskAlerts#carries}). The first press of a guarded order (abandon
+     * ship, the tow) asks for the second only while {@code armed}, its guard holding: after that the
+     * key asks again.
+     */
+    static boolean news(MessageFeed.Message m, TaskAlerts alerts, boolean crisis, boolean armed) {
+        if (m.level != Level.WARNING) return true;
+        if (m.alert.equals(NoticeAlerts.ASKED)) return armed && !crisis;
+        return !alerts.carries(m.alert, crisis);
+    }
+
+    /** Important news, in red: the game's good news, and a warning that is news unless it is of a loss and nothing more. */
+    static boolean important(MessageFeed.Message m) {
+        return m.important || m.level == Level.WARNING && !m.minor;
     }
 
     private float height() {
@@ -159,7 +180,7 @@ final class Rack extends YardPart {
             for (int i = 0; i < telex.size; i++) {
                 MessageFeed.Message m = telex.get(i);
                 for (String l : wrap(m.label(), TELEX_CHARS, false)) {
-                    p.typed(l, 998f, py + 15f + line++ * 16f, 13f, m.important ? Yard.PAPER_RED : Yard.PAPER_INK);
+                    p.typed(l, 998f, py + 15f + line++ * 16f, 13f, important(m) ? Yard.PAPER_RED : Yard.PAPER_INK);
                 }
             }
         }

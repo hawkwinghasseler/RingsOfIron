@@ -5,6 +5,7 @@ import com.ringsofiron.uihud.data.AlertRegistry.Category;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.AlertRegistry.TimerKind;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.providers.CrewProvider;
 import com.ringsofiron.uihud.providers.PowerStatusProvider.Fault;
 import com.ringsofiron.uihud.providers.PowerStatusProvider.SystemRow;
@@ -109,6 +110,23 @@ class TaskAlertsTest {
                 return "";
             }
         };
+    }
+
+    /** 9.2's table of the game's warnings: a warning is the band's only while its alert is up, else news on the telex. */
+    @Test
+    void aWarningIsTheBandsOnlyWhileItsAlertIsUp() {
+        frame(0.1f, x -> { });
+        assertFalse(t.carries(NoticeAlerts.VENTING, false), "a leak before its room's air falls: news");
+        frame(0.1f, x -> x.alerts.raise("breach:HOLD", Level.WARNING, Category.LIFE_SUPPORT).set("BREACH", "Hull breach in HOLD").room("HOLD"));
+        assertTrue(t.carries(NoticeAlerts.VENTING, false), "VENTING says it");
+        assertFalse(t.carries(NoticeAlerts.WOUNDED, false), "nobody wounded");
+        assertFalse(t.carries(NoticeAlerts.BOARDERS, false), "an alert this HUD can't raise yet");
+        assertTrue(t.carries(NoticeAlerts.ASKED, true), "the placard asks");
+        assertFalse(t.carries(NoticeAlerts.ASKED, false));
+        frame(0.1f, x -> x.alerts.raise("missile", Level.WARNING, Category.TACTICAL).set("MISSILE", "2 missiles inbound").count(2)
+                .timer(30f, TimerKind.HARM));
+        assertTrue(t.carries(NoticeAlerts.MISSILE, false));
+        assertFalse(t.carries(NoticeAlerts.VENTING, false), "the breach gone");
     }
 
     @Test

@@ -12,6 +12,8 @@ import com.ringsofiron.uihud.data.AlertRegistry.Category;
 import com.ringsofiron.uihud.data.AlertRegistry.Level;
 import com.ringsofiron.uihud.data.AlertRegistry.TimerKind;
 import com.ringsofiron.uihud.data.HudData;
+import com.ringsofiron.uihud.data.MessageFeed;
+import com.ringsofiron.uihud.data.NoticeAlerts;
 import com.ringsofiron.uihud.minimap.ShipAlerts;
 import com.ringsofiron.uihud.providers.CaptainStatusProvider.CaptainStatus;
 import com.ringsofiron.uihud.providers.CrewProvider;
@@ -232,6 +234,44 @@ final class TaskAlerts {
             if (whyText[i].length() > 0) whyText[i].append(";  ");
             whyText[i].append(text);
         }
+    }
+
+    /**
+     * Whether this HUD shows what a warning notice names ({@link MessageFeed.Message#alert}) in its
+     * place this frame, so the notice is no news (9.2's table of the game's warning notices): its alert
+     * is up (a caution past its time in the band lives on as its lamp), or the crisis placard is, for a
+     * guarded order's question, low propellant and the ship disabled. Otherwise the warning is news, so
+     * nothing the game warns of goes unshown: a wound someone is already treating, a leak before its
+     * room's air has fallen, and what this HUD can't raise yet (INTERCEPT, BOARDERS, COLLAR, BURN MISSED,
+     * HELM, SUIT AIR for the crew, EVA's other forms, and the autopilot's hold, which no part of it says).
+     */
+    boolean carries(String alert, boolean crisis) {
+        switch (alert) {
+            case NoticeAlerts.MISSILE: return up(Id.MISSILE, null);
+            case NoticeAlerts.PROPELLANT: return crisis || up(Id.PROPELLANT, null);
+            case NoticeAlerts.DISABLED: return crisis || up(Id.DISABLED, null);
+            // A leak is its room's air: the breach, then the vacuum or the low pressure
+            case NoticeAlerts.VENTING: return up(Id.VENTING, null) || up(Id.AIR, null);
+            case NoticeAlerts.AIR: return up(Id.AIR, null);
+            case NoticeAlerts.CAPTAIN:
+                return up(Id.CAPTAIN_AIR, null) || up(Id.CAPTAIN_HURT, null) || up(Id.SUIT_AIR, null) || up(Id.AIR, null);
+            // EVA's caution is ADRIFT; crew outside is its advisory
+            case NoticeAlerts.ADRIFT: return up(Id.EVA, Level.CAUTION);
+            case NoticeAlerts.EVA_BURN: return up(Id.EVA_BURN, null);
+            case NoticeAlerts.CRITICAL: return up(Id.CRITICAL, null);
+            case NoticeAlerts.WOUNDED: return up(Id.WOUNDED, null);
+            case NoticeAlerts.ASKED: return crisis;
+            default: return false;
+        }
+    }
+
+    /** Whether an alert of {@code id} is up this frame, at {@code level} when one is given. */
+    private boolean up(Id id, Level at) {
+        for (int i = 0; i < rows.size; i++) {
+            Row r = rows.get(i);
+            if (r.id == id && (at == null || r.level == at)) return true;
+        }
+        return false;
     }
 
     // --- The game's alerts, as 9.2 has them (section 13's table) -------------------------------
