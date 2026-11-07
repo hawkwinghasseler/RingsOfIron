@@ -75,6 +75,37 @@ class StationsLayoutTest {
     }
 
     @Test
+    void aSidePanelLeavesTheColumnTheCardsAndThePromptInTheWorldLeftOfIt() {
+        int checked = 0;
+        for (float[] size : SIZES) {
+            for (Seat seat : Seat.values()) {
+                for (int mask = 0; mask < 1 << 11; mask++) {
+                    // With the map up a window goes across the screen: no side panel
+                    if ((mask & 16) != 0) continue;
+                    StationsLayout l = layout(size, seat, mask);
+                    if (l == null) continue;
+                    // The panel as the windows hang it: 480 wide, 16 in from the right, from 16 down to its bottom
+                    l.panelLeft = l.width - 16f - 480f;
+                    l.solve();
+                    String where = seat + " mask " + Integer.toBinaryString(mask) + " at " + (int) size[0] + "x" + (int) size[1];
+                    check(l, where);
+                    float bottom = l.panelBottom() > 0f ? l.panelBottom() : l.height - 16f;
+                    Rect panel = new Rect();
+                    panel.set(l.panelLeft, 16f, 480f, bottom - 16f);
+                    Rect[] all = {l.column, l.mfdL, l.mfdR, l.cluster, l.board, l.sight, l.suitR, l.promptR, l.guideR, l.berthR};
+                    String[] names = {"column", "left MFD", "right MFD", "cluster", "board", "sight", "suit", "prompt", "guide", "berth"};
+                    for (int i = 0; i < all.length; i++) {
+                        if (all[i].on && all[i].overlaps(panel)) fail(names[i] + " " + all[i] + " is under the panel " + panel + ", " + where);
+                    }
+                    if (panel.h < 300f) fail("the panel is only " + panel.h + " tall, " + where);
+                    checked++;
+                }
+            }
+        }
+        assertTrue(checked > 5_000, "checked " + checked);
+    }
+
+    @Test
     void theTickerHoldsStillWhateverIsAboveIt() {
         for (int mask = 0; mask < 8; mask++) {
             StationsLayout l = new StationsLayout();

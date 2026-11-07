@@ -67,8 +67,11 @@ public class CassetteStationsHud implements HudVariant, Actions {
     private BerthCard berth;
     private GuideCard guide;
     private Presence lastPresence;
-    /** The menus, the map and the windows in the Yard Standard. */
-    private final YardScreens screens = new YardScreens();
+    /**
+     * The menus, the map and the windows in the Yard Standard, the windows as this spec's panels: the
+     * Station link and the slate hang at the right with the world and the band beside them (10.1).
+     */
+    private final YardScreens screens = new YardScreens().panels(true);
 
     @Override
     public void attach(HudVariantHost host) {
@@ -104,9 +107,11 @@ public class CassetteStationsHud implements HudVariant, Actions {
         screens.update(delta);
         HudData d = host.data();
         UiHud hud = host.hud();
-        // A screen is up (the map, a console in a window's place, the deck console's window, the telex): the band hides
+        // A screen is up (the map, a console across the screen in a window's place, the deck console's window,
+        // the telex): the band hides. A side panel leaves it standing, and the world beside it (10.1)
         boolean telex = screens.showing(ClassicWindow.GAME_OVER);
-        boolean map = hud.isMapOpen() || hud.windowOpen() || telex;
+        boolean side = screens.sideUp();
+        boolean map = hud.isMapOpen() || (hud.windowOpen() && !side) || telex;
         StationsFrame f = frame;
         f.read(d, map);
         f.time += delta;
@@ -189,7 +194,10 @@ public class CassetteStationsHud implements HudVariant, Actions {
         boolean berthUp = berth.update();
         l.berth = berthUp && f.seat != StationsFrame.Seat.NONE;
         l.guideH = guide.measure(paint);
+        l.panelLeft = screens.sideUp() ? screens.sideLeft() : -1f;
         l.solve();
+        // A side panel stops 8 above the seated band, or the gunner sight, and runs down the screen on deck (6.2)
+        screens.panelBottom(l.panelBottom());
 
         board.gun = f.seat == StationsFrame.Seat.GUN;
         board.berthBadge = berth.folded();

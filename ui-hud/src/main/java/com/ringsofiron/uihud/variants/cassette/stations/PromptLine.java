@@ -96,9 +96,10 @@ final class PromptLine extends YardPart {
 
     @Override
     protected void draw(YardPaint p) {
-        float x = X, y = Y;
-        Hardware.bar(p, x, y, W, H);
-        float tx = x + 4f, ty = y + 3f, tw = W - 8f, th = 20f;
+        // As wide as the layout leaves it: narrower beside the suit readout with a side panel up on deck
+        float x = X, y = Y, pw = w > 0f ? Math.min(W, w) : W;
+        Hardware.bar(p, x, y, pw, H);
+        float tx = x + 4f, ty = y + 3f, tw = pw - 8f, th = 20f;
         p.tube(tx, ty, tw, th, 2f, 3f, false);
         float base = ty + 14.5f, hx = tx + 10f;
         if (hint) {

@@ -76,6 +76,12 @@ final class StationsLayout {
     boolean suit, prompt, berth;
     /** The guide card's height, 0 with no guide running. */
     float guideH;
+    /**
+     * The left edge of a side panel hanging at the right (10.1), or a negative for none: the top column,
+     * the berth card and the prompt line recentre in the world left of it, and the guide card drops under
+     * the ticker (6.3, rule 2).
+     */
+    float panelLeft = -1f;
 
     // Outputs
     final Rect column = new Rect(), mfdL = new Rect(), mfdR = new Rect(), cluster = new Rect(), board = new Rect();
@@ -83,8 +89,24 @@ final class StationsLayout {
     /** The band's left edge: the MFDs, the cluster and the board tiles are placed from it. */
     float bandX;
 
+    /** The width the top column, the berth card and the prompt line centre in: the world left of a side panel, or the screen. */
+    float centreWidth() {
+        return panelLeft >= 0f ? Math.min(width, panelLeft) : width;
+    }
+
+    /**
+     * Where a side panel stops, as solved: 8 above the seated band or the gunner's sight, else 0 for
+     * the screen's foot less its margin, as on deck (6.2).
+     */
+    float panelBottom() {
+        if (cluster.on) return height - BAND_H - GAP;
+        if (sight.on) return sight.y - GAP;
+        return 0f;
+    }
+
     void solve() {
-        float cx = Math.round((width - COLUMN_W) / 2f);
+        float span = centreWidth();
+        float cx = Math.max(MARGIN, Math.round((span - COLUMN_W) / 2f));
         float bottom = ticker ? TICKER_Y + TICKER_H : warpStrip ? WARP_Y + WARP_H : ann ? ANN_Y + ANN_H : strip ? STRIP_Y + STRIP_H : 0f;
         if (bottom > 0f) column.set(cx, 0f, COLUMN_W, bottom);
         else column.off();
@@ -117,16 +139,25 @@ final class StationsLayout {
         else suitR.off();
 
         if (prompt && !map) {
-            float px = Math.round((width - PROMPT_W) / 2f);
+            float px = Math.max(MARGIN, Math.round((span - PROMPT_W) / 2f)), pw = PROMPT_W;
             float py = band ? y0 - GAP - PROMPT_H : gun ? sight.y - GAP - PROMPT_H : height - 40f;
-            promptR.set(px, py, PROMPT_W, PROMPT_H);
+            // On deck with a side panel up the world is too narrow for it beside the suit readout: it narrows between them
+            if (panelLeft >= 0f && suitR.on && py + PROMPT_H > suitR.y && px < suitR.right() + GAP) {
+                float left = suitR.right() + GAP, right = span - GAP;
+                pw = Math.min(PROMPT_W, right - left);
+                px = Math.round(left + (right - left - pw) / 2f);
+            }
+            promptR.set(px, py, pw, PROMPT_H);
         } else promptR.off();
 
-        if (guideH > 0f) guideR.set(MARGIN, MARGIN, GUIDE_W, guideH);
+        // With a side panel up the column takes the top left: the guide card drops under the ticker
+        float guideY = panelLeft >= 0f ? TICKER_Y + TICKER_H + GAP : MARGIN;
+        if (guideH > 0f) guideR.set(MARGIN, guideY, GUIDE_W, guideH);
         else guideR.off();
 
-        if (berth) berthR.set(Math.round((width - BERTH_W) / 2f), TICKER_Y + TICKER_H + GAP, BERTH_W, BERTH_H);
+        if (berth) berthR.set(Math.max(MARGIN, Math.round((span - BERTH_W) / 2f)), TICKER_Y + TICKER_H + GAP, BERTH_W, BERTH_H);
         else berthR.off();
+        if (berth && guideR.on && guideR.overlaps(berthR)) guideR.y = berthR.bottom() + GAP;
     }
 
     /** An MFD raised, or folded down to its soft-key rail, standing on the band's foot either way. */
