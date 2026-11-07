@@ -36,6 +36,16 @@ public final class YardScreens {
         return this;
     }
 
+    /**
+     * Has the Log keep each condition on one line, revised as it worsens and stamped when it clears,
+     * with filters for alerts, important news and the rest (the Task spec's book); else a line for
+     * each step and each clearing, by severity and source (the Context spec's Log).
+     */
+    public YardScreens onceLog(boolean once) {
+        windows.onceLog(once);
+        return this;
+    }
+
     /** The paint the map and the windows share, made the first time; needs GL. */
     private YardPaint paint() {
         if (paint == null) {

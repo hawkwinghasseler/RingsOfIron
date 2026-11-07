@@ -65,6 +65,11 @@ public class GameAlerts {
     static final float HULL_WARNING = 0.4f;
     /** Oxygen tanks below this share are a caution. */
     static final float OXYGEN_CAUTION = 0.2f;
+    /**
+     * Alerts a notice can belong to ({@link NoticeLog.Notice#alert}), by id: the salvo's notice, low
+     * propellant's and the ship disabled's each have an alert carrying their condition.
+     */
+    public static final String MISSILE = "missile", PROPELLANT = "propellant", DISABLED = "disabled";
 
     private final GameContext ctx;
     private final FlightWarnings warnings;
@@ -115,13 +120,13 @@ public class GameAlerts {
         if (warnings.propellantLow()) {
             ShipStatus s = data.shipStatus;
             double home = warnings.homePropellantKg();
-            alerts.raise("propellant", Double.isFinite(home) && s.propellantKg < home ? Level.WARNING : Level.CAUTION, Category.FLIGHT)
+            alerts.raise(PROPELLANT, Double.isFinite(home) && s.propellantKg < home ? Level.WARNING : Level.CAUTION, Category.FLIGHT)
                     .set("FUEL", String.format(Locale.ROOT, "Propellant low: %,.0f kg left", s.propellantKg)
                             + (Double.isFinite(home) ? String.format(Locale.ROOT, ", %,.0f kg takes you home", home) : ""));
         }
 
         DisabledComponent.Reason disabled = ShipDisablement.reason(ship);
-        if (disabled != null) alerts.raise("disabled", Level.WARNING, Category.SHIP).set("DISABLED", "Ship disabled: " + disabled.label);
+        if (disabled != null) alerts.raise(DISABLED, Level.WARNING, Category.SHIP).set("DISABLED", "Ship disabled: " + disabled.label);
         if (AbandonShip.abandoning(ship)) alerts.raise("abandon", Level.WARNING, Category.SHIP).set("ABANDON", "Abandon ship: crew to the pods");
 
         ShipGridComponent grid = ship.getComponent(ShipGridComponent.class);
@@ -161,7 +166,7 @@ public class GameAlerts {
         int n = frame.incoming();
         if (n == 0) return;
         float soonest = frame.soonestImpact();
-        alerts.raise("missile", Level.WARNING, Category.TACTICAL)
+        alerts.raise(MISSILE, Level.WARNING, Category.TACTICAL)
                 .set("MISSILE", n == 1 ? "Missile inbound" : n + " missiles inbound")
                 .count(n)
                 .timer(soonest, Float.isNaN(soonest) ? TimerKind.NONE : TimerKind.HARM);
@@ -443,12 +448,13 @@ public class GameAlerts {
         feed.clear();
         List<NoticeLog.Notice> showing = ctx.notices.showing();
         int kept = 0;
-        for (NoticeLog.Notice n : ctx.notices.history()) {
+        for (NoticeLog.Notice n : ctx.notices.log()) {
             if (kept++ >= MessageFeed.KEEP) break;
             MessageFeed.Message m = feed.add(n.text, n.kind == NoticeLog.Kind.WARNING ? Level.WARNING : Level.ADVISORY, n.time);
             m.important = n.kind == NoticeLog.Kind.IMPORTANT;
             m.count = n.count;
             m.secondsLeft = showing.contains(n) ? n.secondsLeft() : 0f;
+            m.alert = n.alert;
         }
     }
 }

@@ -40,6 +40,9 @@ public class GameHud implements Disposable {
         this.world = world;
         this.hud = hud;
         hud.addTo(world.engine.getEcsEngine());
+        // The HUD's record of the conditions raised, for the logs, is saved with the game
+        world.engine.getSerializationService().addParticipant(hud.getData().record);
+        world.addResettable(hud.getData().record);
         hud.setPhysics(world.physics);
         hud.setOrbitInfo(new PlayerOrbitInfo(world.universe, world.physics, world::getPlayer));
         PlayerOrbitPath orbitPath = new PlayerOrbitPath(world.context, world.physics, world.universe, world.macroSim, world.pirateBase, world.nav,
@@ -128,6 +131,7 @@ public class GameHud implements Disposable {
 
     @Override
     public void dispose() {
+        world.engine.getSerializationService().removeParticipant(hud.getData().record);
         world.combatEvents.hullHits.remove(hullHits);
         world.combatEvents.intercepts.remove(intercepts);
         hud.removeFrom(world.engine.getEcsEngine());

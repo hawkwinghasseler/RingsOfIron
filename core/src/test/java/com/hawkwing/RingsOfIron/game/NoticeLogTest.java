@@ -56,14 +56,59 @@ class NoticeLogTest {
     }
 
     @Test
-    void theStackKeepsTheNewestFewAndTheLogTheLastFifty() {
+    void theStackKeepsTheNewestFewAndTheLogTheLastFiveHundred() {
         NoticeLog log = new NoticeLog(() -> now);
-        for (int i = 0; i < 60; i++) log.post("n" + i);
+        int last = NoticeLog.KEEP + 9;
+        for (int i = 0; i <= last; i++) log.post("n" + i);
+        assertEquals(500, NoticeLog.KEEP, "the books of the Task and Stations specs keep 500");
         assertEquals(NoticeLog.STACK, log.showing().size());
-        assertEquals("n59", log.showing().get(0).text);
+        assertEquals("n" + last, log.showing().get(0).text);
         assertEquals(NoticeLog.KEEP, log.history().size());
-        assertEquals("n59", log.history().get(0).text);
+        assertEquals("n" + last, log.history().get(0).text);
         assertEquals("n10", log.history().get(NoticeLog.KEEP - 1).text);
+        assertEquals(NoticeLog.KEEP, log.log().size(), "read in place, the same");
+    }
+
+    @Test
+    void theLogIsSavedWithTheGameAndNothingOnScreenComesBack() {
+        NoticeLog log = new NoticeLog(() -> now);
+        now = 60;
+        log.post("Docked at Highport");
+        now = 120;
+        log.post("Promoted to Lieutenant", NoticeLog.Kind.IMPORTANT);
+        log.post("Promoted to Lieutenant", NoticeLog.Kind.IMPORTANT);
+        now = 180;
+        log.post("Raider moves to intercept you", NoticeLog.Kind.WARNING);
+        now = 200;
+        NoticeLog.Notice salvo = log.post("MISSILE WARNING: 1 inbound", NoticeLog.Kind.WARNING);
+        salvo.alert = GameAlerts.MISSILE;
+        salvo = log.revise(salvo, "MISSILE WARNING: 2 inbound");
+        assertEquals(GameAlerts.MISSILE, salvo.alert, "a revision is still the alert's");
+        com.badlogic.gdx.utils.Json json = new com.badlogic.gdx.utils.Json();
+        java.io.StringWriter out = new java.io.StringWriter();
+        json.setWriter(out);
+        json.writeObjectStart();
+        log.write(json);
+        json.writeObjectEnd();
+        assertEquals("notices", log.saveKey());
+
+        NoticeLog loaded = new NoticeLog(() -> now);
+        loaded.post("from before the load");
+        loaded.read(json, new com.badlogic.gdx.utils.JsonReader().parse(out.toString()));
+        assertEquals(4, loaded.history().size(), "the save's log, and only it");
+        assertEquals("MISSILE WARNING: 2 inbound", loaded.history().get(0).text, "newest first");
+        assertEquals(GameAlerts.MISSILE, loaded.history().get(0).alert, "with the alert that carries it");
+        assertEquals("Raider moves to intercept you", loaded.history().get(1).text);
+        assertEquals("", loaded.history().get(1).alert);
+        assertEquals(NoticeLog.Kind.WARNING, loaded.history().get(1).kind);
+        assertEquals(180, loaded.history().get(1).time, 1e-9);
+        assertEquals(2, loaded.history().get(2).count, "the repeat counted");
+        assertEquals("Promoted to Lieutenant (x2)", loaded.history().get(2).label());
+        assertEquals(NoticeLog.Kind.IMPORTANT, loaded.history().get(2).kind);
+        assertEquals("Docked at Highport", loaded.history().get(3).text);
+        assertTrue(loaded.showing().isEmpty(), "the log comes back, not the screen");
+        loaded.reset();
+        assertTrue(loaded.history().isEmpty(), "a save without a log leaves none of the last game's");
     }
 
     @Test

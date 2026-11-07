@@ -125,6 +125,12 @@ public final class HudData {
     public final AlertRegistry alerts = new AlertRegistry();
     /** What the game has told the player lately. */
     public final MessageFeed messages = new MessageFeed();
+    /**
+     * The record of the conditions the game raised, as they were raised and as they cleared, for a
+     * log among the notices: read from {@link #alerts} at the end of each {@link #refresh}, whatever
+     * the HUD shows, so a change of HUD keeps it, and saved with the game.
+     */
+    public final ConditionLog record = new ConditionLog();
     /** The last hit on the player's hull, for a schematic to flash ({@link #hullHit(int, int)}). */
     public final HullHit lastHullHit = new HullHit();
     /** The game's magnified insets this frame (picture-in-picture), set as it lays them, before the HUD updates. */
@@ -241,7 +247,10 @@ public final class HudData {
         if (!Float.isNaN(lastHullHit.age)) lastHullHit.age += delta;
     }
 
-    /** Reads every provider into its snapshot. Called by {@code UiHud} once a frame while a variant is up. */
+    /**
+     * Reads every provider into its snapshot, then the {@link #record} the alerts the game raised from
+     * them. Called by {@code UiHud} once a frame while a variant is up.
+     */
     public void refresh() {
         ctx.clear();
         if (context != null) context.read(ctx);
@@ -280,6 +289,7 @@ public final class HudData {
         gameOver.clear();
         if (ending != null) ending.read(gameOver);
         if (afterRefresh != null) afterRefresh.run();
+        record.update(alerts, weaponFrame.mounts, ctx.simSeconds);
     }
 
     /** The name of the room at tile ({@code x}, {@code y}) of the player's ship, or "" ({@link RoomNames}). */

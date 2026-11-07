@@ -8,8 +8,8 @@ import com.badlogic.gdx.utils.Array;
  * {@link AlertRegistry}; this is for events. Filled by the game wiring layer from its notice log.
  */
 public final class MessageFeed {
-    /** Rows kept. */
-    public static final int KEEP = 50;
+    /** Rows kept: as many as the game's log keeps, so a HUD's log can show a career's last weeks. */
+    public static final int KEEP = 500;
 
     public static final class Message {
         public String text = "";
@@ -22,6 +22,12 @@ public final class MessageFeed {
         public int count = 1;
         /** Seconds it stays on the classic HUD's stack; 0 once it has gone from there. */
         public float secondsLeft;
+        /**
+         * The id of the alert that carries this notice's condition (the salvo's "missile"), or empty
+         * when none does. An alert is logged as an alert, not as a notice (the Task spec's 9.2), so a
+         * log that keeps each alert once leaves the notice out.
+         */
+        public String alert = "";
 
         /** The text, with the count when it came more than once. */
         public String label() {
@@ -47,6 +53,7 @@ public final class MessageFeed {
         m.time = time;
         m.count = 1;
         m.secondsLeft = 0f;
+        m.alert = "";
         rows.add(m);
         return m;
     }
