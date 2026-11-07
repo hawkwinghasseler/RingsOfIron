@@ -361,6 +361,22 @@ public abstract class ScreenModes<M extends Enum<M>> implements PageHost, Screen
         return 0;
     }
 
+    /**
+     * What Enter gives on row {@code r}, or why it can't, for a frame that shows the cursor row's
+     * orders away from the row: ENTER and the order, its second press while armed, or the order and
+     * why it is barred (the first order's, when every one is); with ← → PICK when the row has more
+     * than one. "" for a row with no orders.
+     */
+    protected String enterLine(Row r) {
+        if (r == null || r.acts.size == 0) return "";
+        Act enter = page.picked(r);
+        if (enter == null) enter = r.acts.first();
+        String pick = r.acts.size > 1 ? "  ·  ← → PICK" : "";
+        if (!enter.live) return enter.label + ": " + (enter.why.isEmpty() ? "NOT NOW" : enter.why) + pick;
+        if (enter.state == Act.State.ARMED) return "ENTER AGAIN TO " + enter.label;
+        return "ENTER " + enter.label + pick;
+    }
+
     /** The key that opens the page's window and closes it again, as the game binds the windows' keys. */
     protected String closeKey() {
         if (page == null || page.window == null) return "ESC";

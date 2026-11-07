@@ -517,6 +517,27 @@ class NasaPunkWindowsTest {
     }
 
     @Test
+    void aRowWithoutTermsOfItsOwnShowsItsCellsUnderTheirHeads() {
+        Sect s = new Sect("FURNISHINGS");
+        s.col(Col.start("PIECE", 190f)).col(Col.start("FOR", 110f)).col(Col.end("CR", 70f));
+        Row r = s.row("couch");
+        r.add("COUCH", Cell.Tone.NAME);
+        r.add("LOUNGE", Cell.Tone.LABEL);
+        r.add("900", Cell.Tone.VALUE);
+        Terms terms = new Terms();
+        com.badlogic.gdx.utils.Array<Line> t = terms.of(r, s);
+        assertEquals(2, t.size, "the name heads the terms; the rest go under their heads");
+        assertEquals("FOR", t.get(0).label);
+        assertEquals("LOUNGE", t.get(0).value);
+        assertEquals(Cell.Tone.VALUE, t.get(0).tone);
+        assertEquals("900", t.get(1).value);
+        // asked again, the same lines, not more
+        assertEquals(2, terms.of(r, s).size);
+        r.detail.add(Line.pair("PIECE", "COUCH", "", Cell.Tone.NAME));
+        assertSame(r.detail, terms.of(r, s), "a row's own terms stand");
+    }
+
+    @Test
     void partsTooTallForTheirBoxGiveWayTallestFirst() {
         float[] h = {58f, 172f, 150f, 460f};
         Tables.cap(h, 4, 606f);
@@ -528,6 +549,36 @@ class NasaPunkWindowsTest {
         Tables.cap(even, 3, 600f);
         assertEquals(200f, even[0], 1e-3);
         assertEquals(200f, even[2], 1e-3);
+    }
+
+    @Test
+    void partsTooManyForTheirColumnsAllShowSharingTheRoomOfTheirs() {
+        // a part taller than a column, then parts that fill the rest, then two with no room left whole
+        float[] hs = {600f, 180f, 390f, 500f, 120f, 240f};
+        int[] col = new int[6];
+        Tables.place(hs, 6, 3, 565f, col);
+        assertEquals(0, col[0], "the tall part takes the first column");
+        assertEquals(565f, hs[0], 1e-3);
+        assertEquals(1, col[1]);
+        assertEquals(2, col[2]);
+        assertEquals(1, col[3], "one with no room whole goes to the emptiest");
+        assertEquals(2, col[4], "and one that fits whole still finds its room");
+        assertEquals(2, col[5]);
+        float[] sum = new float[3];
+        for (int i = 0; i < 6; i++) {
+            assertTrue(hs[i] >= 100f, "part " + i + " shows");
+            sum[col[i]] += hs[i];
+        }
+        for (int c = 0; c < 3; c++) assertTrue(sum[c] <= 565f + 1e-3, "column " + c + " holds its parts");
+        assertEquals(180f, hs[1], 1e-3, "the short keep theirs");
+        assertEquals(120f, hs[4], 1e-3);
+        // parts that fit are left as they want
+        float[] fit = {100f, 200f, 300f};
+        Tables.place(fit, 3, 2, 400f, col);
+        assertEquals(0, col[0]);
+        assertEquals(0, col[1]);
+        assertEquals(1, col[2]);
+        assertEquals(300f, fit[2], 1e-3);
     }
 
     @Test
@@ -554,6 +605,12 @@ class NasaPunkWindowsTest {
         assertEquals("HERE", page.sects.get(0).title);
         assertEquals("ON DECK", page.sects.get(1).title);
         assertEquals("W/A/S/D", page.sects.get(1).rows.get(0).cells.get(0).text);
+        // a frame whose hint line says where you are lists every key by where it works alone
+        page.byWhereOnly();
+        host.read();
+        assertEquals(2, page.sects.size);
+        assertEquals("AT THE HELM", page.sects.get(0).title);
+        assertEquals("ON DECK", page.sects.get(1).title);
     }
 
     @Test
