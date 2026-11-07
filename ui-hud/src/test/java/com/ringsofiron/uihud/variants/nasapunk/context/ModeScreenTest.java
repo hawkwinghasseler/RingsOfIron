@@ -10,6 +10,7 @@ import com.ringsofiron.uihud.providers.TradeProvider;
 import com.ringsofiron.uihud.providers.YardProvider;
 import com.ringsofiron.uihud.variants.ClassicWindow;
 import com.ringsofiron.uihud.variants.nasapunk.screens.Page;
+import com.ringsofiron.uihud.variants.nasapunk.screens.ScreenModes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The context spec's modes in place of the game's windows, without a window: which mode and tab each window opens, and how they close. */
 class ModeScreenTest {
     /** The game as far as the modes see it. */
-    private static final class Game implements ModeScreen.Game {
+    private static final class Game implements ScreenModes.Game {
         final HudData data = new HudData();
         final EnumSet<ClassicWindow> barred = EnumSet.noneOf(ClassicWindow.class);
         final List<ClassicWindow> opened = new ArrayList<>();
@@ -192,7 +193,7 @@ class ModeScreenTest {
         assertEquals(ModeScreen.Mode.STATION, modes.mode());
         assertEquals("MARKET", modes.page().name);
         // Highport sells no ships, so there is no shipyard tab
-        assertEquals(List.of("MARKET", "YARD", "MISSIONS", "HIRE"), names(modes.tabsNow()));
+        assertEquals(List.of("MARKET", "YARD", "MISSIONS", "HIRE"), names(modes.tabs()));
         assertTrue(modes.showing(ClassicWindow.TRADE));
         assertFalse(modes.showing(ClassicWindow.YARD));
         assertTrue(modes.covering());
@@ -244,7 +245,7 @@ class ModeScreenTest {
         assertTrue(modes.show(ClassicWindow.YARD));
         assertEquals(ModeScreen.Mode.SHIP, modes.mode());
         assertEquals("LOADOUT", modes.page().name);
-        assertEquals(List.of("CREW", "LOADOUT"), names(modes.tabsNow()));
+        assertEquals(List.of("CREW", "LOADOUT"), names(modes.tabs()));
         assertTrue(modes.showing(ClassicWindow.YARD));
     }
 
@@ -258,7 +259,7 @@ class ModeScreenTest {
         modes.show(ClassicWindow.MISSIONS);
         assertEquals(ModeScreen.Mode.RECORD, modes.mode());
         assertEquals("CONTRACTS", modes.page().name);
-        assertEquals(List.of("CONTRACTS", "LOG"), names(modes.tabsNow()));
+        assertEquals(List.of("CONTRACTS", "LOG"), names(modes.tabs()));
         modes.show(ClassicWindow.LOG);
         assertEquals("LOG", modes.page().name);
         assertTrue(modes.showing(ClassicWindow.LOG));
@@ -279,7 +280,7 @@ class ModeScreenTest {
         // a tab the game won't open is left out
         game.barred.add(ClassicWindow.YARD);
         modes.show(ClassicWindow.TRADE);
-        assertEquals(List.of("MARKET", "MISSIONS", "HIRE"), names(modes.tabsNow()));
+        assertEquals(List.of("MARKET", "MISSIONS", "HIRE"), names(modes.tabs()));
     }
 
     @Test

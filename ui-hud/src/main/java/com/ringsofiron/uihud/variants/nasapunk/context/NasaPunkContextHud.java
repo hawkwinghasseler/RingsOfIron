@@ -44,6 +44,7 @@ import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
 import com.ringsofiron.uihud.variants.ShellLook;
 import com.ringsofiron.uihud.variants.nasapunk.NpScreens;
+import com.ringsofiron.uihud.variants.nasapunk.screens.ScreenModes;
 import com.ringsofiron.uihud.widgets.MapPainter;
 import com.ringsofiron.uihud.variants.nasapunk.NpColors;
 import com.ringsofiron.uihud.variants.nasapunk.NpFormat;
@@ -188,7 +189,7 @@ public class NasaPunkContextHud implements HudVariant {
         orders = add(new OrdersPanel(kit), false);
         strip = add(new StatusStrip(kit), true);
         cue.onAcknowledge = this::acknowledge;
-        modes = new ModeScreen(ModeScreen.of(host), host.screenLayer(), kit);
+        modes = new ModeScreen(ScreenModes.of(host), host.screenLayer(), kit);
         // a click on P1's chip closes the full-screen mode, back to P2's rows
         strip.onChip = () -> {
             host.hud().setMapVisible(false);
