@@ -14,9 +14,12 @@ import com.ringsofiron.uihud.data.Insets;
 import com.ringsofiron.uihud.variants.ClassicPart;
 import com.ringsofiron.uihud.variants.HudVariant;
 import com.ringsofiron.uihud.variants.HudVariantHost;
+import com.ringsofiron.uihud.variants.ShellLook;
 import com.ringsofiron.uihud.variants.vfd.Filament;
 import com.ringsofiron.uihud.variants.vfd.FilamentActor;
 import com.ringsofiron.uihud.variants.vfd.Optic;
+import com.ringsofiron.uihud.variants.vfd.VfdScreens;
+import com.ringsofiron.uihud.widgets.MapPainter;
 
 import java.util.EnumSet;
 import java.util.Locale;
@@ -57,6 +60,8 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
     final Deck deck = new Deck();
     final Crisis crisis = new Crisis();
     final World world = new World();
+    /** The menus in setup mode and the map's plot, the same under all three FILAMENT HUDs. */
+    private final VfdScreens screens = new VfdScreens();
 
     /** The groups' origins on the stage. */
     float width = Geo.W, height = Geo.H, midX, rightX, bottomY;
@@ -295,6 +300,7 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
         if (actor != null) actor.dispose();
         actor = null;
         host = null;
+        screens.dispose();
     }
 
     @Override
@@ -327,5 +333,20 @@ public class VfdTaskHud implements HudVariant, Filament.Painter, FilamentActor.C
         // CHR, OBJ, NTF, TGT and HLM; the key hints in HNT; the docked banner in FLT's DEPARTURE; the
         // E prompt in INT
         return EnumSet.noneOf(ClassicPart.class);
+    }
+
+    @Override
+    public ShellLook shellLook() {
+        return screens.shellLook();
+    }
+
+    @Override
+    public MapPainter mapPainter() {
+        return screens.mapPainter();
+    }
+
+    @Override
+    public void resize(int width, int height, float uiScale) {
+        screens.resize(uiScale);
     }
 }
